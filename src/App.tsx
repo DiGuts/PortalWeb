@@ -1,0 +1,2170 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Home, Newspaper, Activity, Calendar, Users, Building2,
+  GraduationCap, MessageSquare, UserCircle, Search, Bell,
+  Moon, ChevronLeft, ChevronRight, Mail, Database, FolderOpen,
+  AlertTriangle, ArrowRight, Sun, MapPin, Clock, Phone, FileText,
+  BookOpen, Shield, ThumbsUp, Send, ExternalLink, CreditCard,
+  TrendingUp, CheckCircle, Star, LogOut, LayoutGrid, List,
+  Heart, Gift, Globe, Download, Video, Award, Settings, Eye, EyeOff, Lock
+} from 'lucide-react';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+import {
+  initDB, findUser, createUser, updateUserName, updateUserRole, User,
+  getSuggestions, addSuggestion, voteSuggestion, Suggestion,
+  getIncidencies, addIncidencia, Incidencia,
+  getEnquestes, respondreEnquesta, Enquesta,
+} from './db';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+// ── Sidebar ──────────────────────────────────────────────────────────────────
+
+const SidebarItem = ({ icon: Icon, label, active = false, onClick, collapsed = false }: {
+  icon: any; label: string; active?: boolean; onClick?: () => void; collapsed?: boolean;
+}) => (
+  <div
+    onClick={onClick}
+    title={collapsed ? label : undefined}
+    className={cn(
+      "flex items-center gap-3 rounded-lg cursor-pointer transition-colors group relative",
+      collapsed ? "justify-center px-0 py-2.5" : "px-4 py-2.5",
+      active
+        ? "text-red-600 bg-red-50 dark:bg-red-950/20"
+        : "text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-zinc-200"
+    )}
+  >
+    {active && !collapsed && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-red-600 rounded-r-full" />}
+    {active && collapsed && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-red-600 rounded-r-full" />}
+    <Icon size={18} className={cn(active ? "text-red-600" : "text-gray-400 group-hover:text-gray-500")} />
+    {!collapsed && <span className="text-sm font-medium">{label}</span>}
+  </div>
+);
+
+const SidebarSection = ({ title, children, collapsed = false }: { title: string; children: React.ReactNode; collapsed?: boolean }) => (
+  <div className="mb-4">
+    {!collapsed && <p className="px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">{title}</p>}
+    {collapsed && <div className="mx-auto w-4 h-px bg-gray-200 dark:bg-zinc-700 mb-2 mt-1" />}
+    <div className="space-y-0.5">{children}</div>
+  </div>
+);
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+const FilterChip = ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
+  <button
+    onClick={onClick}
+    className={cn(
+      "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border",
+      active
+        ? "bg-red-600 text-white border-red-600"
+        : "border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:border-gray-300 dark:hover:border-zinc-600 bg-white dark:bg-zinc-900"
+    )}
+  >
+    {label}
+  </button>
+);
+
+const UnderlineTab = ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
+  <button
+    onClick={onClick}
+    className={cn(
+      "px-5 py-3 text-sm font-medium border-b-2 transition-colors -mb-px",
+      active
+        ? "border-red-600 text-red-600"
+        : "border-transparent text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300"
+    )}
+  >
+    {label}
+  </button>
+);
+
+// ── Inici Tab ─────────────────────────────────────────────────────────────────
+
+const NOTICES = [
+  { title: "Tall de subministrament elèctric previst", content: "Diumenge 23 de març, de 06:00 a 14:00. Afecta les plantes 1 i 2. Reviseu el protocol d'aturada.", link: "Veure protocol" },
+  { title: "Nova normativa de teletreball 2026", content: "S'han actualitzat les condicions per als dies de treball remot. Consulteu els canvis a la secció de RRHH.", link: "Llegir més" },
+  { title: "Campus TAVIL: Obertes inscripcions", content: "Ja pots apuntar-te als cursos d'automatització industrial per al segon trimestre.", link: "Inscriure'm" },
+];
+
+function InicialTab({ noticeIndex, setNoticeIndex }: { noticeIndex: number; setNoticeIndex: (i: number) => void }) {
+  return (
+    <div className="animate-in fade-in duration-300">
+      {/* Compact urgent notice */}
+      <div className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl p-4 mb-6 flex items-start gap-3">
+        <AlertTriangle size={16} className="text-red-600 mt-0.5 flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">AVÍS URGENT</span>
+          </div>
+          <p className="font-semibold text-gray-900 dark:text-white text-sm">{NOTICES[noticeIndex].title}</p>
+          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">{NOTICES[noticeIndex].content}</p>
+          <button className="text-red-600 text-xs font-medium mt-1 flex items-center gap-1 hover:underline">
+            {NOTICES[noticeIndex].link} <ArrowRight size={11} />
+          </button>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+          <span className="text-xs text-gray-400">{noticeIndex + 1}/{NOTICES.length}</span>
+          <button onClick={() => setNoticeIndex((noticeIndex - 1 + NOTICES.length) % NOTICES.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
+            <ChevronLeft size={14} className="text-gray-500" />
+          </button>
+          <button onClick={() => setNoticeIndex((noticeIndex + 1) % NOTICES.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
+            <ChevronRight size={14} className="text-gray-500" />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-5 mb-6">
+        {/* Agenda */}
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm">Pròxims a l'agenda</h3>
+            <button className="text-red-600 text-xs font-medium flex items-center gap-1 hover:underline">Veure <ArrowRight size={11} /></button>
+          </div>
+          <div className="space-y-3">
+            {[
+              { date: "25", day: "DT", title: "Reunió general trimestral", time: "10:00 – 12:00" },
+              { date: "27", day: "DJ", title: "Taller de seguretat laboral", time: "09:00 – 13:00" },
+              { date: "01", day: "DT", title: "Presentació nous productes Q2", time: "11:30 – 13:00" },
+              { date: "03", day: "DJ", title: "Formació Excel avançat", time: "10:00 – 12:00" },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="flex flex-col items-center justify-center w-10 h-10 rounded-lg border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800 flex-shrink-0">
+                  <span className="text-red-600 font-bold text-sm leading-none">{item.date}</span>
+                  <span className="text-gray-400 text-[9px] font-medium uppercase">{item.day}</span>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-800 dark:text-zinc-200 leading-tight">{item.title}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{item.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick Access */}
+        <div className="col-span-2 bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+          <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Accés ràpid</h3>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { icon: Mail, title: "Correu corporatiu", desc: "Outlook Web", color: "bg-blue-50 dark:bg-blue-950/20" },
+              { icon: Database, title: "ERP", desc: "SAP / Gestió", color: "bg-green-50 dark:bg-green-950/20" },
+              { icon: FolderOpen, title: "Gestor documental", desc: "Normatives i ISO", color: "bg-amber-50 dark:bg-amber-950/20" },
+              { icon: GraduationCap, title: "Campus TAVIL", desc: "Formació interna", color: "bg-violet-50 dark:bg-violet-950/20" },
+              { icon: AlertTriangle, title: "Comunicar incidència", desc: "Manteniment / IT", color: "bg-orange-50 dark:bg-orange-950/20" },
+              { icon: Users, title: "Directori", desc: "Persones / contactes", color: "bg-red-50 dark:bg-red-950/20" },
+            ].map((item, i) => (
+              <div key={i} className={cn("flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:opacity-80 transition-opacity", item.color)}>
+                <item.icon size={18} className="text-gray-600 dark:text-zinc-300 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-gray-800 dark:text-zinc-200 leading-tight">{item.title}</p>
+                  <p className="text-[10px] text-gray-400">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Latest News */}
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-gray-900 dark:text-white text-sm">Últimes notícies</h3>
+          <button className="text-red-600 text-xs font-medium flex items-center gap-1 hover:underline">Totes les notícies <ArrowRight size={11} /></button>
+        </div>
+        <div className="divide-y divide-gray-50 dark:divide-zinc-800">
+          {[
+            { cat: "Corporatives", catColor: "bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400", title: "Nova línia de producció inaugurada a la planta de Mollet", date: "20 mar 2026" },
+            { cat: "Corporatives", catColor: "bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400", title: "Resultats del primer trimestre: creixement del 8%", date: "18 mar 2026" },
+            { cat: "RRHH", catColor: "bg-pink-100 text-pink-600 dark:bg-pink-950/30 dark:text-pink-400", title: "Convocatòria oberta per al programa de mentoria interna", date: "15 mar 2026" },
+            { cat: "Seguretat", catColor: "bg-orange-100 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400", title: "Actualització del protocol de seguretat en zones de càrrega", date: "12 mar 2026" },
+          ].map((news, i) => (
+            <div key={i} className="flex items-center justify-between py-3 group cursor-pointer">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded uppercase flex-shrink-0", news.catColor)}>{news.cat}</span>
+                <p className="text-sm text-gray-800 dark:text-zinc-200 group-hover:text-red-600 transition-colors truncate">{news.title}</p>
+              </div>
+              <span className="text-xs text-gray-400 flex-shrink-0 ml-4">{news.date}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Notícies Tab ──────────────────────────────────────────────────────────────
+
+function NoticiesTab() {
+  const [activeFilter, setActiveFilter] = useState('Totes');
+
+  return (
+    <div className="animate-in fade-in duration-300">
+      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Informació, comunicats i novetats de l'empresa</p>
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <input type="text" placeholder="Cercar notícies..." className="w-full bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {['Totes', 'Comunicats interns', 'Notícies corporatives', 'Recursos humans', 'Esdeveniments', 'Innovació', 'Seguretat'].map(f => (
+            <FilterChip key={f} label={f} active={activeFilter === f} onClick={() => setActiveFilter(f)} />
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden flex flex-col md:flex-row mb-8 min-h-[360px]">
+        <div className="md:w-1/2 h-56 md:h-auto overflow-hidden bg-gray-100 dark:bg-zinc-800">
+          <img src="/assets/images/img_4.png" alt="Featured" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+        </div>
+        <div className="md:w-1/2 p-8 flex flex-col justify-center">
+          <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider w-fit mb-4">Notícies corporatives</span>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">Nova línia de producció inaugurada a la planta de Mollet</h2>
+          <p className="text-gray-500 dark:text-zinc-400 text-sm mb-6 leading-relaxed">La inversió de 2,3 milions d'euros permetrà augmentar la capacitat productiva un 15% durant el segon semestre de 2026.</p>
+          <div className="flex items-center gap-4 text-xs text-gray-400">
+            <div className="flex items-center gap-1.5"><UserCircle size={14} /><span>Jordi Fàbrega</span></div>
+            <div className="flex items-center gap-1.5"><Calendar size={14} /><span>20 mar 2026</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {[
+          { image: "/assets/images/img_7.png", cat: "Notícies corporatives", title: "Resultats del primer trimestre: creixement del 8%", desc: "Les vendes internacionals han impulsat els resultats per sobre de les previsions.", author: "Carme Martinez", date: "18 mar 2026" },
+          { image: "/assets/images/img_3.png", cat: "Recursos humans", title: "Convocatòria oberta per al programa de mentoria interna", desc: "Els treballadors interessats poden inscriure's fins al 31 de març.", author: "Laura Martí", date: "15 mar 2026" },
+          { image: "/assets/images/img_8.png", cat: "Seguretat", title: "Actualització del protocol de seguretat en zones de càrrega", desc: "A partir de l'1 d'abril s'aplicaran noves mesures de seguretat.", author: "Xavier Casals", date: "12 mar 2026" },
+        ].map((news, i) => (
+          <div key={i} className="group bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden hover:shadow-lg transition-shadow">
+            <div className="aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-zinc-800">
+              <img src={news.image} alt={news.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            </div>
+            <div className="p-5">
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">{news.cat}</p>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-red-600 transition-colors">{news.title}</h3>
+              <p className="text-xs text-gray-500 dark:text-zinc-400 mb-4 line-clamp-2 leading-relaxed">{news.desc}</p>
+              <div className="flex items-center justify-between text-[10px] text-gray-400">
+                <div className="flex items-center gap-1"><UserCircle size={12} /><span>{news.author}</span></div>
+                <span>{news.date}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Activitats Tab ────────────────────────────────────────────────────────────
+
+const ACTIVITATS_PROPERES = [
+  { cat: "Esport", title: "Torneig de pàdel TAVIL", desc: "Competició amistosa per parelles, oberta a tots els nivells. Inclou berenar i premi als finalistes.", date: "5 abr 2026", time: "10:00 – 14:00", location: "Club esportiu Mollet", total: 32, enrolled: 24, available: 8 },
+  { cat: "Esport", title: "Partit de futbol interempresa", desc: "Partit amistós contra l'equip de Fixaciones Ibéricas. Veniu a animar o a jugar!", date: "12 abr 2026", time: "18:00 – 20:00", location: "Camp municipal de Mollet", total: 22, enrolled: 18, available: 4 },
+  { cat: "Cultura", title: "Sortida cultural al MNAC", desc: "Visita guiada a l'exposició temporal «Art i indústria» amb transport des de la planta.", date: "19 abr 2026", time: "09:30 – 14:00", location: "Museu Nacional d'Art de Catalunya", total: 25, enrolled: 20, available: 5 },
+  { cat: "RSC", title: "Cursa solidària 5K", desc: "Corre per una bona causa. Recaptació destinada al Banc dels Aliments.", date: "26 abr 2026", time: "09:00 – 12:00", location: "Passeig marítim de Barcelona", total: 50, enrolled: 38, available: 12 },
+  { cat: "Benestar", title: "Sessió de ioga al parc", desc: "Sessió de ioga per a tots els nivells al parc annex a la planta. Porta roba còmoda.", date: "3 mai 2026", time: "08:00 – 09:00", location: "Parc exterior planta", total: 20, enrolled: 12, available: 8 },
+  { cat: "Social", title: "Sopar d'equip primavera 2026", desc: "Sopar de convivència per a tots els treballadors de TAVIL. Inclou menú i activitat de team building.", date: "15 mai 2026", time: "20:00 – 23:30", location: "Restaurant Can Mollet", total: 120, enrolled: 87, available: 33 },
+];
+
+const ACTIVITATS_PASSADES = [
+  { cat: "RSC", title: "Jornada de voluntariat ambiental", desc: "Plantada d'arbres i neteja forestal als voltants de la planta. Activitat per a totes les edats.", date: "22 mar 2026", time: "09:00 – 13:00", location: "Bosc periurbà de Mollet", total: 40, enrolled: 40 },
+  { cat: "Benestar", title: "Taller de cuina saludable", desc: "Sessió pràctica amb un nutricionista per aprendre a preparar àpats equilibrats al dia a dia.", date: "15 mar 2026", time: "13:00 – 15:00", location: "Menjador de planta", total: 20, enrolled: 20 },
+];
+
+function ActivitatsTab() {
+  const [activeTab, setActiveTab] = useState('Properes');
+  const [activeFilter, setActiveFilter] = useState('Totes');
+
+  const source = activeTab === 'Properes' ? ACTIVITATS_PROPERES : ACTIVITATS_PASSADES;
+  const filtered = activeFilter === 'Totes' ? source : source.filter(a => a.cat === activeFilter);
+  const isProperes = activeTab === 'Properes';
+
+  return (
+    <div className="animate-in fade-in duration-300">
+      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Esdeveniments socials, esportius i culturals per als treballadors de TAVIL</p>
+      <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-5">
+        {[`Properes (6)`, `Passades (2)`].map(tab => {
+          const key = tab.split(' ')[0];
+          return <UnderlineTab key={tab} label={tab} active={activeTab === key} onClick={() => { setActiveTab(key); setActiveFilter('Totes'); }} />;
+        })}
+      </div>
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <input type="text" placeholder="Cercar activitats..." className="bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white w-56" />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {['Totes', 'Esport', 'Cultura', 'Social', 'RSC', 'Benestar'].map(f => (
+            <FilterChip key={f} label={f} active={activeFilter === f} onClick={() => setActiveFilter(f)} />
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {filtered.map((act, i) => (
+          <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between mb-3">
+              <span className="text-[11px] font-bold text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{act.cat}</span>
+              {isProperes
+                ? <span className="text-[11px] font-bold text-white bg-red-600 px-2.5 py-0.5 rounded">Inscripció oberta</span>
+                : <span className="text-[11px] font-bold text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 px-2.5 py-0.5 rounded">Finalitzada</span>}
+            </div>
+            <h3 className="font-bold text-gray-900 dark:text-white mb-2">{act.title}</h3>
+            <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4 leading-relaxed">{act.desc}</p>
+            <div className="space-y-1.5 mb-4">
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><Calendar size={13} /><span>{act.date}</span></div>
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><Clock size={13} /><span>{act.time}</span></div>
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><MapPin size={13} /><span>{act.location}</span></div>
+            </div>
+            <div className={isProperes ? "mb-4" : ""}>
+              <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+                <span className="flex items-center gap-1"><Users size={11} />{act.enrolled} / {act.total} places</span>
+                {isProperes && 'available' in act && <span className="text-green-600 font-medium">{(act as any).available} disponibles</span>}
+              </div>
+              <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5">
+                <div className={cn("h-1.5 rounded-full", isProperes ? "bg-red-500" : "bg-gray-400 dark:bg-zinc-600")} style={{ width: `${(act.enrolled / act.total) * 100}%` }} />
+              </div>
+            </div>
+            {isProperes && (
+              <button className="text-red-600 text-sm font-medium flex items-center gap-1 hover:underline mt-4">
+                Veure detalls i inscriure's <ArrowRight size={14} />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Agenda Tab ────────────────────────────────────────────────────────────────
+
+const AGENDA_EVENTS = [
+  { day: 24, month: 3, title: "Comitè de direcció", time: "09:00 – 11:00", location: "Sala de reunions", type: "Sessió interna" },
+  { day: 25, month: 3, title: "Reunió general trimestral", time: "10:00 – 12:00", location: "Auditori de planta", type: "Sessió interna" },
+  { day: 26, month: 3, title: "Revisió de projectes R+D", time: "15:00 – 16:30", location: "Sala d'enginyeria", type: "Sessió interna" },
+  { day: 27, month: 3, title: "Taller de seguretat laboral", time: "09:00 – 13:00", location: "Sala de formació", type: "Sessió interna" },
+  { day: 3, month: 4, title: "Divendres Sant", time: "", location: "", type: "Festiu" },
+  { day: 3, month: 4, title: "Formació Excel avançat", time: "10:00 – 12:00", location: "Sala de formació", type: "Sessió interna" },
+  { day: 5, month: 4, title: "Torneig de pàdel TAVIL", time: "10:00 – 14:00", location: "Club esportiu Mollet", type: "Activitat empresa" },
+  { day: 6, month: 4, title: "Dilluns de Pasqua", time: "", location: "", type: "Festiu" },
+  { day: 8, month: 4, title: "Visita client Grupo Aldesa", time: "10:00 – 13:00", location: "Planta Mollet", type: "Visita comercial" },
+  { day: 15, month: 4, title: "Fira Hispack Barcelona", time: "09:00 – 18:00", location: "Fira de Barcelona", type: "Fira" },
+];
+
+const EVENT_COLORS: Record<string, string> = {
+  "Sessió interna":    "bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300",
+  "Festiu":            "bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400",
+  "Activitat empresa": "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-300",
+  "Visita comercial":  "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300",
+  "Fira":              "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300",
+};
+
+function AgendaTab() {
+  const [view, setView] = useState<'calendar' | 'list'>('calendar');
+  const [activeFilter, setActiveFilter] = useState('Tots');
+
+  const filters = ['Tots', 'Festiu', 'Fira', 'Visita comercial', 'Sessió interna', 'Activitat empresa'];
+
+  const filteredEvents = activeFilter === 'Tots'
+    ? AGENDA_EVENTS
+    : AGENDA_EVENTS.filter(e => e.type === activeFilter);
+
+  // Build calendar cell events map (month 3 only for the March calendar)
+  const calendarEvents: Record<number, typeof AGENDA_EVENTS> = {};
+  filteredEvents.filter(e => e.month === 3).forEach(e => {
+    if (!calendarEvents[e.day]) calendarEvents[e.day] = [];
+    calendarEvents[e.day].push(e);
+  });
+
+  const days = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'];
+  const cells: (number | null)[] = [...Array(6).fill(null), ...Array.from({ length: 31 }, (_, i) => i + 1)];
+
+  return (
+    <div className="animate-in fade-in duration-300">
+      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Calendari d'esdeveniments i dates importants</p>
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <div className="flex gap-2 flex-wrap">
+          {filters.map(f => (
+            <FilterChip key={f} label={f} active={activeFilter === f} onClick={() => setActiveFilter(f)} />
+          ))}
+        </div>
+        <div className="flex items-center border border-gray-200 dark:border-zinc-700 rounded-lg overflow-hidden flex-shrink-0">
+          <button onClick={() => setView('calendar')} className={cn("flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors", view === 'calendar' ? "bg-red-600 text-white" : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
+            <Calendar size={15} /> Calendari
+          </button>
+          <button onClick={() => setView('list')} className={cn("flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors", view === 'list' ? "bg-red-600 text-white" : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
+            <List size={15} /> Llista
+          </button>
+        </div>
+      </div>
+
+      {view === 'calendar' ? (
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><ChevronLeft size={18} className="text-gray-500" /></button>
+            <h3 className="font-bold text-gray-900 dark:text-white">Març 2026</h3>
+            <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><ChevronRight size={18} className="text-gray-500" /></button>
+          </div>
+          <div className="grid grid-cols-7">
+            {days.map(d => (
+              <div key={d} className="px-2 py-2 text-center text-xs font-semibold text-gray-500 dark:text-zinc-400 border-b border-gray-100 dark:border-zinc-800">{d}</div>
+            ))}
+            {cells.map((day, i) => (
+              <div key={i} className={cn("min-h-[80px] p-1.5 border-b border-r border-gray-50 dark:border-zinc-800/50", day === 25 && "bg-red-50/50 dark:bg-red-950/10")}>
+                {day && (
+                  <>
+                    <span className={cn("text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1", day === 25 ? "bg-red-600 text-white" : "text-gray-700 dark:text-zinc-300")}>{day}</span>
+                    {(calendarEvents[day] || []).map((ev, j) => (
+                      <div key={j} className={cn("text-[10px] px-1.5 py-0.5 rounded truncate mb-0.5 font-medium", EVENT_COLORS[ev.type])}>{ev.title}</div>
+                    ))}
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredEvents.length === 0 && (
+            <p className="text-gray-400 text-sm text-center py-12">No hi ha esdeveniments per a aquest filtre.</p>
+          )}
+          {filteredEvents.map((ev, i) => (
+            <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 flex items-center gap-4">
+              <div className="flex flex-col items-center justify-center w-14 h-14 rounded-xl bg-red-50 dark:bg-red-950/20 flex-shrink-0">
+                <span className="text-red-600 font-bold text-lg leading-none">{ev.day}</span>
+                <span className="text-red-400 text-[10px] font-bold uppercase">{ev.month === 3 ? 'MAR' : 'ABR'}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-900 dark:text-white text-sm">{ev.title}</p>
+                {ev.time && (
+                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-zinc-400">
+                    <span className="flex items-center gap-1"><Clock size={11} />{ev.time}</span>
+                    {ev.location && <span className="flex items-center gap-1"><MapPin size={11} />{ev.location}</span>}
+                  </div>
+                )}
+              </div>
+              <span className={cn("text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0", EVENT_COLORS[ev.type])}>{ev.type}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Directori Tab ─────────────────────────────────────────────────────────────
+
+const EMPLOYEES = [
+  { initials: "AF", color: "bg-red-400",    name: "Àlex Font",       role: "Director comercial",        dept: "Comercial",       email: "a.font@tavil.com",      phone: "934 12 00 10", ext: "801" },
+  { initials: "MT", color: "bg-pink-500",   name: "Marina Torres",   role: "Executiva de comptes",      dept: "Comercial",       email: "m.torres@tavil.com",    phone: "934 12 00 11", ext: "802" },
+  { initials: "NC", color: "bg-orange-500", name: "Núria Camps",     role: "Responsable de compres",    dept: "Compres",         email: "n.camps@tavil.com",     phone: "934 12 00 20", ext: "701" },
+  { initials: "JB", color: "bg-blue-500",   name: "Jordi Bellmunt",  role: "Director general",          dept: "Direcció",        email: "j.bellmunt@tavil.com",  phone: "934 12 00 01", ext: "101" },
+  { initials: "CM", color: "bg-emerald-500",name: "Carme Martínez",  role: "Directora financera",       dept: "Direcció",        email: "c.martinez@tavil.com",  phone: "934 12 00 02", ext: "102" },
+  { initials: "CV", color: "bg-teal-500",   name: "Carla Vidal",     role: "Comptable sènior",          dept: "Direcció",        email: "c.vidal@tavil.com",     phone: "934 12 00 03", ext: "103" },
+  { initials: "MF", color: "bg-violet-500", name: "Marc Ferrer",     role: "Enginyer de processos",     dept: "Enginyeria",      email: "m.ferrer@tavil.com",    phone: "934 12 34 80", ext: "601" },
+  { initials: "SR", color: "bg-indigo-400", name: "Sílvia Roca",     role: "Dissenyadora de producte",  dept: "Enginyeria",      email: "s.roca@tavil.com",      phone: "934 12 34 81", ext: "602" },
+  { initials: "GC", color: "bg-blue-400",   name: "Gerard Costa",    role: "Enginyer mecànic",          dept: "Enginyeria",      email: "g.costa@tavil.com",     phone: "934 12 34 82", ext: "603" },
+  { initials: "JF", color: "bg-rose-500",   name: "Jordi Fàbrega",   role: "Responsable de màrqueting", dept: "Màrqueting",      email: "j.fabrega@tavil.com",   phone: "934 12 34 90", ext: "901" },
+  { initials: "MG", color: "bg-red-500",    name: "Marta García",    role: "Responsable d'operacions",  dept: "Operacions",      email: "m.garcia@tavil.com",    phone: "934 12 34 56", ext: "301" },
+  { initials: "PS", color: "bg-amber-500",  name: "Pere Soler",      role: "Cap de logística",          dept: "Operacions",      email: "p.soler@tavil.com",     phone: "934 12 34 58", ext: "302" },
+  { initials: "DL", color: "bg-orange-400", name: "David López",     role: "Tècnic de manteniment",     dept: "Operacions",      email: "d.lopez@tavil.com",     phone: "934 12 34 59", ext: "303" },
+  { initials: "JP", color: "bg-amber-600",  name: "Joan Puig",       role: "Director de producció",     dept: "Producció",       email: "j.puig@tavil.com",      phone: "934 12 34 57", ext: "401" },
+  { initials: "RB", color: "bg-cyan-500",   name: "Roger Bosch",     role: "Cap de torn – matí",        dept: "Producció",       email: "r.bosch@tavil.com",     phone: "934 12 34 70", ext: "402" },
+  { initials: "SV", color: "bg-indigo-500", name: "Sandra Vila",     role: "Cap de torn – tarda",       dept: "Producció",       email: "s.vila@tavil.com",      phone: "934 12 34 71", ext: "403" },
+  { initials: "LM", color: "bg-violet-400", name: "Laura Martí",     role: "Responsable de RRHH",       dept: "Recursos humans", email: "l.marti@tavil.com",     phone: "934 12 34 60", ext: "201" },
+  { initials: "EP", color: "bg-pink-500",   name: "Elena Pujol",     role: "Tècnica de selecció",       dept: "Recursos humans", email: "e.pujol@tavil.com",     phone: "934 12 34 61", ext: "202" },
+  { initials: "PT", color: "bg-sky-500",    name: "Pau Torrent",     role: "Cap de sistemes",           dept: "Sistemes",        email: "p.torrent@tavil.com",   phone: "934 12 34 50", ext: "501" },
+  { initials: "IM", color: "bg-cyan-600",   name: "Irene Molina",    role: "Tècnica de sistemes",       dept: "Sistemes",        email: "i.molina@tavil.com",    phone: "934 12 34 51", ext: "502" },
+  { initials: "BC", color: "bg-green-500",  name: "Bernat Camps",    role: "Responsable de qualitat",   dept: "Qualitat",        email: "b.camps@tavil.com",     phone: "934 12 34 40", ext: "1001" },
+];
+
+const DEPT_ORDER = ['Comercial', 'Compres', 'Direcció', 'Enginyeria', 'Màrqueting', 'Operacions', 'Producció', 'Recursos humans', 'Sistemes', 'Qualitat'];
+
+function DirectoriTab() {
+  const [activeFilter, setActiveFilter] = useState('Tots');
+  const [view, setView] = useState<'graella' | 'departaments'>('departaments');
+
+  const filtered = activeFilter === 'Tots' ? EMPLOYEES : EMPLOYEES.filter(e => e.dept === activeFilter);
+
+  const grouped = DEPT_ORDER.reduce((acc, dept) => {
+    const members = filtered.filter(e => e.dept === dept);
+    if (members.length > 0) acc[dept] = members;
+    return acc;
+  }, {} as Record<string, typeof EMPLOYEES>);
+
+  return (
+    <div className="animate-in fade-in duration-300">
+      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Cerca treballadors per nom, departament, càrrec o extensió</p>
+      <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input type="text" placeholder="Cercar..." className="bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white w-40" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {['Tots', ...DEPT_ORDER].map(f => (
+              <FilterChip key={f} label={f} active={activeFilter === f} onClick={() => setActiveFilter(f)} />
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center border border-gray-200 dark:border-zinc-700 rounded-lg overflow-hidden flex-shrink-0">
+          <button onClick={() => setView('graella')} className={cn("flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors", view === 'graella' ? "bg-red-600 text-white" : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
+            <LayoutGrid size={14} /> Graella
+          </button>
+          <button onClick={() => setView('departaments')} className={cn("flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors", view === 'departaments' ? "bg-red-600 text-white" : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
+            <Users size={14} /> Departaments
+          </button>
+        </div>
+      </div>
+
+      {view === 'graella' ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {filtered.map((emp, i) => (
+            <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-3 mb-3">
+                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0", emp.color)}>{emp.initials}</div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{emp.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">{emp.role}</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400 px-2 py-0.5 rounded">{emp.dept}</span>
+              <div className="mt-3 space-y-1.5">
+                <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-zinc-400"><Mail size={11} className="flex-shrink-0" /><span className="truncate">{emp.email}</span></div>
+                <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-zinc-400"><Phone size={11} className="flex-shrink-0" /><span>{emp.phone}</span></div>
+                <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-zinc-400"><span className="font-medium">Ext.</span><span>{emp.ext}</span></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(grouped).map(([dept, members]) => (
+            <div key={dept}>
+              <div className="flex items-center gap-2 mb-3">
+                <Users size={15} className="text-red-500" />
+                <h3 className="font-bold text-gray-900 dark:text-white text-sm">{dept}</h3>
+                <span className="text-xs text-gray-400 font-medium">({members.length})</span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {members.map((emp, i) => (
+                  <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-3 flex items-center gap-3 hover:shadow-sm transition-shadow">
+                    <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0", emp.color)}>{emp.initials}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{emp.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">{emp.role}</p>
+                    </div>
+                    <span className="text-xs text-gray-400 flex-shrink-0 font-medium whitespace-nowrap">Ext. {emp.ext}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Espai Corporatiu Tab ──────────────────────────────────────────────────────
+
+const ESPAI_CATS = [
+  {
+    icon: FileText, iconColor: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/20",
+    title: "Manual del treballador i protocols", desc: "Guies d'acollida, normativa interna i protocols operatius", docs: 4,
+    filters: ['Tots', 'Acollida', 'Normativa'],
+    documents: [
+      { title: "Protocol d'acollida (onboarding)", desc: "Guia completa per als nous treballadors amb tota la informació necessària.", tag: "Acollida", meta: "PDF · 2.4 MB", views: 342 },
+      { title: "Reglament de règim intern", desc: "Normativa interna que regula la convivència, els horaris i els permisos.", tag: "Normativa", meta: "PDF · 1.8 MB", views: 518 },
+      { title: "Guia de seguretat i prevenció de riscos", desc: "Manual de prevenció de riscos laborals per a les instal·lacions de TAVIL.", tag: "Normativa", meta: "PDF · 3.1 MB", views: 287 },
+      { title: "Guia d'ús dels espais comuns", desc: "Normes per a la utilització de les sales de reunions i zones comunes.", tag: "Acollida", meta: "PDF · 0.6 MB", views: 143 },
+    ],
+  },
+  {
+    icon: Shield, iconColor: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-950/20",
+    title: "Polítiques internes", desc: "Normatives, polítiques de viatge, despeses i compliance", docs: 5,
+    filters: ['Tots', 'Viatges', 'Conducta', 'RRHH'],
+    documents: [
+      { title: "Política de viatges corporatius", desc: "Normes per a la reserva de viatges, allotjaments i dietes.", tag: "Viatges", meta: "PDF · 0.9 MB", views: 195 },
+      { title: "Codi de conducta TAVIL", desc: "Valors, comportaments esperats i límits ètics de l'empresa.", tag: "Conducta", meta: "PDF · 1.1 MB", views: 320 },
+      { title: "Política de protecció de dades", desc: "Tractament de dades personals d'empleats i clients.", tag: "Conducta", meta: "PDF · 0.7 MB", views: 210 },
+      { title: "Pla d'igualtat", desc: "Mesures per garantir la igualtat de tracte i oportunitats.", tag: "RRHH", meta: "PDF · 2.0 MB", views: 178 },
+      { title: "Política de despeses", desc: "Procediment per a la justificació de despeses professionals.", tag: "Viatges", meta: "PDF · 0.5 MB", views: 244 },
+    ],
+  },
+  {
+    icon: BookOpen, iconColor: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-950/20",
+    title: "Manuals tècnics", desc: "Documentació de producte, seguretat i procediments tècnics", docs: 3,
+    filters: ['Tots', 'Sistemes', 'Producte'],
+    documents: [
+      { title: "Manual de connexió a la xarxa interna", desc: "Guia pas a pas per connectar-se a la VPN, el correu corporatiu i les eines internes.", tag: "Sistemes", meta: "PDF · 1.3 MB", views: 467 },
+      { title: "Manual d'ús de l'ERP", desc: "Guia d'usuari del sistema ERP per a la gestió de comandes, inventari i facturació.", tag: "Sistemes", meta: "PDF · 4.2 MB", views: 234 },
+      { title: "Guia tècnica de producte: ancoratges", desc: "Especificacions tècniques, aplicacions i normativa dels ancoratges TAVIL.", tag: "Producte", meta: "PDF · 5.8 MB", views: 178 },
+    ],
+  },
+  {
+    icon: Building2, iconColor: "text-green-500", bg: "bg-green-50 dark:bg-green-950/20",
+    title: "Identitat corporativa i plantilles", desc: "Recursos gràfics, plantilles de presentació i dossiers", docs: 5,
+    filters: ['Tots', 'Plantilles', 'Marca'],
+    documents: [
+      { title: "Plantilla de presentació corporativa", desc: "Plantilla PowerPoint amb la identitat visual de TAVIL per a presentacions.", tag: "Plantilles", meta: "PPTX · 3.5 MB", views: 534 },
+      { title: "Plantilla de dossier comercial", desc: "Plantilla Word per a la creació de dossiers i propostes comercials.", tag: "Plantilles", meta: "DOCX · 2.1 MB", views: 298 },
+      { title: "Manual d'identitat visual", desc: "Guia d'ús del logotip, colors, tipografia i aplicacions de la marca TAVIL.", tag: "Marca", meta: "PDF · 6.2 MB", views: 412 },
+      { title: "Pack de recursos gràfics", desc: "Logotips en diversos formats, icones, fotografies corporatives i elements gràfics.", tag: "Marca", meta: "ZIP · 45 MB", views: 189 },
+      { title: "Signatura i plantilla de correu", desc: "Signatura oficial electrònica i plantilla per a comunicats interns.", tag: "Plantilles", meta: "HTML · 0.2 MB", views: 378 },
+    ],
+  },
+];
+
+function EspaiCorporatiuTab() {
+  const [selectedCat, setSelectedCat] = useState<number | null>(null);
+  const [catFilter, setCatFilter] = useState('Tots');
+
+  const handleSelectCat = (i: number) => {
+    if (selectedCat === i) { setSelectedCat(null); setCatFilter('Tots'); }
+    else { setSelectedCat(i); setCatFilter('Tots'); }
+  };
+
+  const cat = selectedCat !== null ? ESPAI_CATS[selectedCat] : null;
+  const visibleDocs = cat
+    ? (catFilter === 'Tots' ? cat.documents : cat.documents.filter(d => d.tag === catFilter))
+    : [];
+
+  return (
+    <div className="animate-in fade-in duration-300">
+      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-6">Base de coneixement intern, documentació i recursos corporatius</p>
+      <div className="relative mb-6">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+        <input type="text" placeholder="Cercar documents, polítiques, plantilles..." className="w-full max-w-lg bg-gray-100 dark:bg-zinc-800 rounded-xl py-3 pl-11 pr-4 text-sm outline-none dark:text-white" />
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {ESPAI_CATS.map((c, i) => (
+          <div
+            key={i}
+            onClick={() => handleSelectCat(i)}
+            className={cn(
+              "bg-white dark:bg-zinc-900 rounded-xl border-2 p-5 cursor-pointer transition-all hover:shadow-md group",
+              selectedCat === i ? "border-red-500 shadow-md" : "border-gray-100 dark:border-zinc-800"
+            )}
+          >
+            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-4", c.bg)}>
+              <c.icon size={20} className={c.iconColor} />
+            </div>
+            <h3 className={cn("font-semibold text-sm mb-2 transition-colors", selectedCat === i ? "text-red-600" : "text-gray-900 dark:text-white group-hover:text-red-600")}>{c.title}</h3>
+            <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed">{c.desc}</p>
+            <p className="text-[11px] text-gray-400 font-medium">{c.docs} documents</p>
+          </div>
+        ))}
+      </div>
+
+      {cat ? (
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+          <div className="flex items-center gap-3 mb-4">
+            {cat.filters.map(f => (
+              <FilterChip key={f} label={f} active={catFilter === f} onClick={() => setCatFilter(f)} />
+            ))}
+            <span className="ml-auto text-sm text-gray-500 dark:text-zinc-400">{visibleDocs.length} documents trobats</span>
+          </div>
+          <div className="space-y-1">
+            {visibleDocs.map((doc, i) => (
+              <div key={i} className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-700 flex items-center justify-center flex-shrink-0">
+                  <FileText size={15} className="text-gray-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-red-600 transition-colors">{doc.title}</p>
+                  <p className="text-xs text-gray-400 truncate">{doc.desc}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{doc.meta} · {doc.views} visualitzacions</p>
+                </div>
+                <span className="text-[10px] font-bold bg-gray-100 dark:bg-zinc-700 text-gray-500 px-2 py-0.5 rounded">{doc.tag}</span>
+                <Download size={14} className="text-gray-300 group-hover:text-red-600 transition-colors flex-shrink-0" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Star size={15} className="text-amber-500" />
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm">Documents destacats</h3>
+          </div>
+          <div className="space-y-1">
+            {[
+              { icon: FileText, color: "text-blue-500", title: "Protocol d'acollida (onboarding)", desc: "Guia completa per als nous treballadors...", meta: "PDF · 2.4 MB · 342 visualitzacions" },
+              { icon: Shield, color: "text-purple-500", title: "Reglament de règim intern", desc: "Normativa interna que regula la convivència, els horaris i els permisos...", meta: "PDF · 1.8 MB · 518 visualitzacions" },
+              { icon: AlertTriangle, color: "text-red-500", title: "Guia de seguretat i prevenció de riscos", desc: "Manual de prevenció de riscos laborals per a TAVIL.", meta: "PDF · 3.1 MB · 287 visualitzacions" },
+              { icon: Building2, color: "text-green-500", title: "Política de viatges corporatius", desc: "Normes per a la reserva de viatges, allotjaments i dietes.", meta: "PDF · 890 KB · 195 visualitzacions" },
+              { icon: Mail, color: "text-amber-500", title: "Manual de connexió a la xarxa interna", desc: "Pas a pas per connectar-se a la VPN i el correu corporatiu.", meta: "PDF · 1.2 MB · 421 visualitzacions" },
+            ].map((doc, i) => (
+              <div key={i} className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-700 flex items-center justify-center flex-shrink-0">
+                  <doc.icon size={15} className={doc.color} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-red-600 transition-colors">{doc.title}</p>
+                  <p className="text-xs text-gray-400 truncate">{doc.desc}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{doc.meta}</p>
+                </div>
+                <Download size={14} className="text-gray-300 group-hover:text-red-600 transition-colors flex-shrink-0" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Campus TAVIL Tab ──────────────────────────────────────────────────────────
+
+const CAMPUS_COURSES = [
+  { cat: "Seguretat", status: "En curs", title: "Prevenció i seguretat a planta", desc: "Formació obligatòria anual sobre prevenció de riscos laborals per a personal de planta.", hours: "8h", mandatory: true, progress: 62, cert: false },
+  { cat: "Qualitat", status: "Pendent", title: "Procediments de qualitat ISO 9001", desc: "Formació sobre el sistema de gestió de qualitat de TAVIL segons la norma ISO 9001.", hours: "6h", mandatory: true, progress: 0, cert: false },
+  { cat: "Sistemes", status: "En curs", title: "Introducció a l'ERP (SAP Business One)", desc: "Curs bàsic per aprendre a navegar i utilitzar les funcions principals de l'ERP corporatiu.", hours: "10h", mandatory: false, progress: 40, cert: false },
+  { cat: "Comercial", status: "Pendent", title: "Bones pràctiques comercials", desc: "Tècniques de venda consultiva i gestió de clients adaptades al sector industrial.", hours: "12h", mandatory: false, progress: 0, cert: false },
+  { cat: "Compliance", status: "Completat", title: "Formació en protecció de dades (RGPD)", desc: "Formació obligatòria sobre la normativa de protecció de dades personals.", hours: "4h", mandatory: true, progress: 100, cert: true },
+  { cat: "Acollida", status: "Completat", title: "Manual d'acollida per a noves incorporacions", desc: "Curs introductori per als nous treballadors amb tota la informació corporativa.", hours: "5h", mandatory: true, progress: 100, cert: true },
+  { cat: "Idiomes", status: "En curs", title: "Anglès B2 per a entorn professional", desc: "Millorar el nivell d'anglès per a comunicació professional escrita i oral.", hours: "40h", mandatory: false, progress: 25, cert: false },
+];
+
+const STATUS_COLORS: Record<string, string> = {
+  "En curs":   "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300",
+  "Pendent":   "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300",
+  "Completat": "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-300",
+};
+
+function CampusTavilTab() {
+  const [activeTab, setActiveTab] = useState('Resum');
+  const [topicFilter, setTopicFilter] = useState('Tots els temes');
+  const [statusFilter, setStatusFilter] = useState('Tots els estats');
+
+  const topics = ['Tots els temes', 'Seguretat', 'Qualitat', 'Sistemes', 'Comercial', 'Compliance', 'Acollida', 'Producció', 'Habilitats', 'Idiomes'];
+  const statuses = ['Tots els estats', 'Pendent', 'En curs', 'Completat'];
+
+  const filteredCourses = CAMPUS_COURSES.filter(c => {
+    const matchTopic = topicFilter === 'Tots els temes' || c.cat === topicFilter;
+    const matchStatus = statusFilter === 'Tots els estats' || c.status === statusFilter;
+    return matchTopic && matchStatus;
+  });
+
+  return (
+    <div className="animate-in fade-in duration-300">
+      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Plataforma de formació interna i desenvolupament professional</p>
+      <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
+        {['Resum', 'Catàleg', 'El meu progrés', 'Recursos'].map(tab => (
+          <UnderlineTab key={tab} label={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)} />
+        ))}
+      </div>
+
+      {activeTab === 'Resum' && (
+        <>
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            {[
+              { label: "Cursos completats", value: "2", icon: CheckCircle, color: "text-green-500" },
+              { label: "En curs", value: "3", icon: TrendingUp, color: "text-blue-500" },
+              { label: "Pendents", value: "4", icon: Clock, color: "text-orange-500" },
+              { label: "Hores completades", value: "9h", icon: Activity, color: "text-purple-500" },
+            ].map((stat, i) => (
+              <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
+                <div className="flex items-center justify-between mb-2"><p className="text-xs text-gray-500 dark:text-zinc-400">{stat.label}</p><stat.icon size={15} className={stat.color} /></div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 mb-5">
+            <div className="flex items-center gap-2 mb-3"><AlertTriangle size={15} className="text-orange-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">Formació obligatòria pendent</h3></div>
+            <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 rounded-xl">
+              <div>
+                <p className="font-semibold text-gray-900 dark:text-white text-sm">Procediments de qualitat ISO 9001</p>
+                <div className="flex items-center gap-3 mt-1"><span className="text-xs text-gray-500">6h · Qualitat</span><span className="text-[10px] font-bold bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded">Obligatòria</span></div>
+              </div>
+              <button className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">Fer curs</button>
+            </div>
+          </div>
+          <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4 flex items-center gap-2"><TrendingUp size={15} className="text-blue-500" /> Cursos en curs</h3>
+          <div className="grid grid-cols-2 gap-4">
+            {CAMPUS_COURSES.filter(c => c.status === 'En curs').map((course, i) => (
+              <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <span className="text-[11px] font-bold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{course.cat}</span>
+                  <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded", STATUS_COLORS[course.status])}>{course.status}</span>
+                </div>
+                <h4 className="font-bold text-gray-900 dark:text-white mb-2">{course.title}</h4>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed">{course.desc}</p>
+                <div className="flex items-center gap-2 text-xs text-gray-500 mb-3"><Clock size={12} /><span>{course.hours}</span>{course.mandatory && <span className="text-[10px] bg-orange-100 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400 px-1.5 py-0.5 rounded font-bold">Obligatòria</span>}</div>
+                <div className="flex justify-between text-xs text-gray-500 mb-1.5"><span>Progrés</span><span className="font-medium">{course.progress}%</span></div>
+                <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-2"><div className="bg-red-500 h-2 rounded-full" style={{ width: `${course.progress}%` }} /></div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {activeTab === 'Catàleg' && (
+        <>
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input type="text" placeholder="Cercar cursos..." className="w-full max-w-md bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white" />
+          </div>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {topics.map(t => <FilterChip key={t} label={t} active={topicFilter === t} onClick={() => setTopicFilter(t)} />)}
+          </div>
+          <div className="flex flex-wrap gap-2 mb-6">
+            {statuses.map(s => <FilterChip key={s} label={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />)}
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            {filteredCourses.map((course, i) => (
+              <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between mb-3">
+                  <span className="text-[11px] font-bold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{course.cat}</span>
+                  <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded", STATUS_COLORS[course.status])}>{course.status}</span>
+                </div>
+                <h4 className="font-bold text-gray-900 dark:text-white mb-2 text-sm">{course.title}</h4>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed line-clamp-2">{course.desc}</p>
+                <div className="flex items-center gap-2 text-xs text-gray-500 mb-2"><Clock size={12} /><span>{course.hours}</span>{course.mandatory && <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-bold">Obligatòria</span>}</div>
+                {course.cert && <div className="flex items-center gap-1 text-[11px] text-green-600"><Award size={12} /><span>Certificat disponible</span></div>}
+                {course.progress > 0 && course.progress < 100 && (
+                  <><div className="flex justify-between text-xs text-gray-500 mt-3 mb-1"><span>Progrés</span><span>{course.progress}%</span></div><div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${course.progress}%` }} /></div></>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {activeTab === 'El meu progrés' && (
+        <>
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 mb-6">
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Resum del meu progrés</h3>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              {[{ label: "Completats", value: "2", icon: CheckCircle, color: "text-green-500" }, { label: "En curs", value: "3", icon: TrendingUp, color: "text-blue-500" }, { label: "Hores formació", value: "9h", icon: Clock, color: "text-purple-500" }].map((s, i) => (
+                <div key={i}><p className="text-3xl font-bold text-gray-900 dark:text-white">{s.value}</p><p className="text-xs text-gray-500 mt-1">{s.label}</p></div>
+              ))}
+            </div>
+          </div>
+          {['En curs', 'Pendents', 'Completats'].map(group => {
+            const items = CAMPUS_COURSES.filter(c => {
+              if (group === 'Pendents') return c.status === 'Pendent';
+              if (group === 'Completats') return c.status === 'Completat';
+              return c.status === 'En curs';
+            });
+            if (items.length === 0) return null;
+            return (
+              <div key={group} className="mb-6">
+                <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3">{group}</h3>
+                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 divide-y divide-gray-50 dark:divide-zinc-800">
+                  {items.map((c, i) => (
+                    <div key={i} className="flex items-center gap-4 p-4">
+                      <GraduationCap size={16} className="text-gray-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm">{c.title}</p>
+                        <p className="text-xs text-gray-500">{c.hours} · {c.cat}{c.mandatory ? ' · ' : ''}{c.mandatory && <span className="text-orange-500 font-medium">Obligatòria</span>}</p>
+                        {c.progress > 0 && c.progress < 100 && <div className="flex items-center gap-2 mt-1.5"><div className="flex-1 bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${c.progress}%` }} /></div><span className="text-[10px] text-gray-500">{c.progress}%</span></div>}
+                      </div>
+                      <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded flex-shrink-0", STATUS_COLORS[c.status])}>{c.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </>
+      )}
+
+      {activeTab === 'Recursos' && (
+        <>
+          <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Biblioteca de recursos complementaris per a l'aprenentatge.</p>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { type: "pdf", title: "Guia ràpida d'EPI", desc: "Referència visual dels equips de protecció individual.", tags: ["Seguretat", "Infografia"] },
+              { type: "video", title: "Vídeo: procediment d'evacuació", desc: "Simulacre d'evacuació de la planta de Mollet enregistrat.", tags: ["Seguretat", "Vídeo"] },
+              { type: "pdf", title: "Checklist d'auditoria interna", desc: "Llista de verificació per a auditories internes ISO 9001.", tags: ["Qualitat", "PDF"] },
+              { type: "pdf", title: "Guia ràpida SAP: comandes de venda", desc: "Pas a pas per crear una comanda de venda a l'ERP.", tags: ["Sistemes", "PDF"] },
+              { type: "pdf", title: "Glossari de termes comercials", desc: "Termes habituals en la relació amb clients i distribuïdors.", tags: ["Comercial", "PDF"] },
+              { type: "pdf", title: "Infografia RGPD: drets dels treballadors", desc: "Resum visual dels drets en matèria de protecció de dades.", tags: ["Compliance", "Infografia"] },
+              { type: "video", title: "Vídeo: benvinguda a TAVIL", desc: "Vídeo corporatiu de presentació per a noves incorporacions.", tags: ["Acollida", "Vídeo"] },
+              { type: "pdf", title: "Metodologia 5S – resum", desc: "Resum dels principis 5S aplicats a la planta de TAVIL.", tags: ["Producció", "PDF"] },
+            ].map((r, i) => (
+              <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 hover:shadow-md transition-shadow cursor-pointer group">
+                <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/20 flex items-center justify-center mb-4">
+                  {r.type === 'video' ? <Video size={18} className="text-red-500" /> : <FileText size={18} className="text-red-500" />}
+                </div>
+                <h4 className="font-bold text-gray-900 dark:text-white text-sm mb-2 group-hover:text-red-600 transition-colors">{r.title}</h4>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed">{r.desc}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {r.tags.map((t, j) => <span key={j} className="text-[10px] font-bold bg-gray-100 dark:bg-zinc-800 text-gray-500 px-2 py-0.5 rounded">{t}</span>)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Veu de l'Empleat Tab ──────────────────────────────────────────────────────
+
+function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button onClick={onToggle} className={cn("relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0", on ? "bg-red-600" : "bg-gray-200 dark:bg-zinc-700")}>
+      <span className="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform" style={{ transform: on ? 'translateX(18px)' : 'translateX(2px)' }} />
+    </button>
+  );
+}
+
+function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
+  const [activeTab, setActiveTab] = useState('Suggeriments');
+
+  // Suggestions state
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [newCat, setNewCat] = useState('');
+  const [isAnon, setIsAnon] = useState(true);
+  const [suggSubmitting, setSuggSubmitting] = useState(false);
+  const [suggSuccess, setSuggSuccess] = useState(false);
+
+  // Incidències state
+  const [incidencies, setIncidencies] = useState<Incidencia[]>([]);
+  const [incTitle, setIncTitle] = useState('');
+  const [incDesc, setIncDesc] = useState('');
+  const [incArea, setIncArea] = useState('');
+  const [incPriority, setIncPriority] = useState('');
+  const [incSubmitting, setIncSubmitting] = useState(false);
+  const [incSuccess, setIncSuccess] = useState(false);
+
+  // Enquestes state
+  const [enquestes, setEnquestes] = useState<Enquesta[]>([]);
+
+  const userEmail = currentUser?.email ?? '';
+  const userName = currentUser?.name ?? 'Anònim';
+
+  useEffect(() => {
+    setSuggestions(getSuggestions());
+    setIncidencies(getIncidencies());
+    setEnquestes(getEnquestes(userEmail));
+  }, [userEmail]);
+
+  const statusTagColor = (label: string) => {
+    if (label === 'Acceptada') return 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400';
+    if (label === 'En revisió') return 'bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400';
+    if (label === 'Pendent') return 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400';
+    return 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400';
+  };
+
+  const catTagColor = () => 'bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400';
+
+  const incStatusColor = (s: string) =>
+    s === 'Resolta' ? 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400'
+    : s === 'En gestió' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400'
+    : s === 'Oberta' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
+    : 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400';
+
+  const formatDate = (iso: string) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString('ca-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  const handleVote = (id: number) => {
+    voteSuggestion(id);
+    setSuggestions(getSuggestions());
+  };
+
+  const handleSuggSubmit = () => {
+    if (!newTitle.trim() || !newCat) return;
+    setSuggSubmitting(true);
+    addSuggestion(newTitle.trim(), newDesc.trim(), newCat, isAnon, userName);
+    setSuggestions(getSuggestions());
+    setNewTitle(''); setNewDesc(''); setNewCat(''); setIsAnon(true);
+    setSuggSubmitting(false);
+    setSuggSuccess(true);
+    setTimeout(() => setSuggSuccess(false), 3000);
+  };
+
+  const handleIncSubmit = () => {
+    if (!incTitle.trim() || !incArea || !incPriority) return;
+    setIncSubmitting(true);
+    addIncidencia(incTitle.trim(), incDesc.trim(), incArea, incPriority, userName);
+    setIncidencies(getIncidencies());
+    setIncTitle(''); setIncDesc(''); setIncArea(''); setIncPriority('');
+    setIncSubmitting(false);
+    setIncSuccess(true);
+    setTimeout(() => setIncSuccess(false), 3000);
+  };
+
+  const handleRespondre = (id: number) => {
+    respondreEnquesta(id, userEmail);
+    setEnquestes(getEnquestes(userEmail));
+  };
+
+  return (
+    <div className="animate-in fade-in duration-300">
+      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Suggeriments, incidències i enquestes internes</p>
+      <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
+        {['Suggeriments', 'Incidències', 'Enquestes'].map(tab => (
+          <UnderlineTab key={tab} label={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)} />
+        ))}
+      </div>
+
+      {/* ── Suggeriments ── */}
+      {activeTab === 'Suggeriments' && (
+        <div className="grid grid-cols-3 gap-6">
+          <div className="col-span-2">
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Suggeriments recents ({suggestions.length})</h3>
+            <div className="space-y-3">
+              {suggestions.map(sug => (
+                <div key={sug.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="flex flex-col items-center gap-1 flex-shrink-0 pt-1">
+                      <button onClick={() => handleVote(sug.id)} className="p-1 hover:text-red-600 transition-colors text-gray-400"><ThumbsUp size={14} /></button>
+                      <span className="text-sm font-bold text-gray-700 dark:text-zinc-300">{sug.votes}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{sug.title}</p>
+                      {sug.description && <p className="text-xs text-gray-500 dark:text-zinc-400 mb-2">{sug.description}</p>}
+                      <div className="flex items-center gap-2 flex-wrap mb-2">
+                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", catTagColor())}>{sug.category}</span>
+                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusTagColor(sug.status))}>{sug.status}</span>
+                      </div>
+                      {sug.response && (
+                        <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-3">
+                          <p className="text-xs text-gray-600 dark:text-zinc-400"><span className="font-semibold">Resposta:</span> {sug.response}</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-shrink-0 flex items-center self-center">
+                      <span className="text-xs text-gray-400 dark:text-zinc-500 italic">{sug.anonymous ? 'Anònim' : sug.author}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 h-fit">
+            <div className="flex items-center gap-2 mb-4">
+              <MessageSquare size={15} className="text-gray-500" />
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Nou suggeriment</h3>
+            </div>
+            {suggSuccess && (
+              <div className="mb-3 flex items-center gap-2 text-green-600 bg-green-50 dark:bg-green-950/20 rounded-lg px-3 py-2 text-xs font-medium">
+                <CheckCircle size={13} /> Suggeriment enviat correctament.
+              </div>
+            )}
+            <div className="space-y-3">
+              <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Títol del suggeriment" className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+              <div>
+                <textarea value={newDesc} onChange={e => setNewDesc(e.target.value.slice(0, 1000))} placeholder="Descriu la teva proposta amb detall..." rows={5} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none" />
+                <p className="text-[10px] text-gray-400 text-right">{newDesc.length}/1000</p>
+              </div>
+              <select value={newCat} onChange={e => setNewCat(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none dark:bg-zinc-800 dark:text-white">
+                <option value="">Categoria</option>
+                <option>Instal·lacions</option>
+                <option>Sostenibilitat</option>
+                <option>Benestar</option>
+                <option>Organització</option>
+              </select>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-700 dark:text-zinc-300 font-medium">Enviar de forma anònima</span>
+                <button onClick={() => setIsAnon(!isAnon)} className={cn("relative inline-flex h-5 w-9 items-center rounded-full transition-colors", isAnon ? "bg-red-600" : "bg-gray-200 dark:bg-zinc-700")}>
+                  <span className="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform" style={{ transform: isAnon ? 'translateX(18px)' : 'translateX(2px)' }} />
+                </button>
+              </div>
+              <p className="text-[11px] text-red-600">L'equip de persones revisa els suggeriments setmanalment.</p>
+              <button onClick={handleSuggSubmit} disabled={!newTitle.trim() || !newCat || suggSubmitting} className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                <Send size={14} /> Enviar suggeriment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Incidències ── */}
+      {activeTab === 'Incidències' && (
+        <div className="grid grid-cols-3 gap-6">
+          <div className="col-span-2">
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Incidències registrades ({incidencies.length})</h3>
+            <div className="space-y-3">
+              {incidencies.map(inc => (
+                <div key={inc.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle size={15} className="text-orange-500 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{inc.title}</p>
+                      <p className="text-xs text-gray-400 mb-2">
+                        {formatDate(inc.created_at)} · Prioritat: {inc.priority}
+                        {inc.assigned_to && ` · Assignat a: ${inc.assigned_to}`}
+                      </p>
+                      <div className="flex gap-2 flex-wrap">
+                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400')}>{inc.area}</span>
+                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", incStatusColor(inc.status))}>{inc.status}</span>
+                      </div>
+                      {inc.resolution && <div className="mt-2 bg-gray-50 dark:bg-zinc-800 rounded-lg p-3 text-xs text-gray-600 dark:text-zinc-400"><span className="font-semibold">Resolució:</span> {inc.resolution}</div>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 h-fit">
+            <div className="flex items-center gap-2 mb-4"><AlertTriangle size={15} className="text-orange-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">Nova incidència</h3></div>
+            {incSuccess && (
+              <div className="mb-3 flex items-center gap-2 text-green-600 bg-green-50 dark:bg-green-950/20 rounded-lg px-3 py-2 text-xs font-medium">
+                <CheckCircle size={13} /> Incidència registrada correctament.
+              </div>
+            )}
+            <div className="space-y-3">
+              <input type="text" value={incTitle} onChange={e => setIncTitle(e.target.value)} placeholder="Títol de la incidència" className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+              <textarea value={incDesc} onChange={e => setIncDesc(e.target.value)} placeholder="Descriu la incidència, ubicació i detalls rellevants..." rows={4} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none" />
+              <select value={incArea} onChange={e => setIncArea(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none dark:bg-zinc-800 dark:text-white">
+                <option value="">Àrea afectada</option>
+                <option>Instal·lacions</option>
+                <option>Equipament</option>
+                <option>Sistemes</option>
+                <option>Seguretat</option>
+              </select>
+              <select value={incPriority} onChange={e => setIncPriority(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none dark:bg-zinc-800 dark:text-white">
+                <option value="">Prioritat</option>
+                <option>Baixa</option>
+                <option>Mitjana</option>
+                <option>Alta</option>
+              </select>
+              <p className="text-[11px] text-gray-400">Les incidències s'identifiquen amb el teu perfil per facilitar-ne el seguiment.</p>
+              <button onClick={handleIncSubmit} disabled={!incTitle.trim() || !incArea || !incPriority || incSubmitting} className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                <Send size={14} /> Registrar incidència
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Enquestes ── */}
+      {activeTab === 'Enquestes' && (
+        <div className="space-y-4">
+          {enquestes.map(enc => {
+            const isCompleted = enc.userCompleted || enc.status === 'Completada';
+            const isClosed = enc.status === 'Tancada';
+            const isAvailable = enc.status === 'Disponible' && !isCompleted;
+            const pct = enc.total > 0 ? Math.round((enc.responses / enc.total) * 100) : 0;
+            const scColor = isCompleted ? 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400'
+              : isClosed ? 'bg-gray-100 text-gray-500 dark:bg-zinc-800 dark:text-zinc-400'
+              : 'bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400';
+            const displayStatus = isCompleted && enc.status !== 'Tancada' ? 'Completada' : enc.status;
+            return (
+              <div key={enc.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-1">
+                      <FileText size={15} className="text-gray-400 flex-shrink-0" />
+                      <h4 className="font-bold text-gray-900 dark:text-white text-sm">{enc.title}</h4>
+                    </div>
+                    <p className="text-xs text-gray-400 mb-3">
+                      {enc.questions} preguntes · Termini: {formatDate(enc.deadline)} · Creada per: {enc.creator} · <span className="font-medium">{enc.responses}/{enc.total} respostes ({pct}%)</span>
+                    </p>
+                    <div className="w-full max-w-xs bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5">
+                      <div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className={cn("text-[11px] font-bold px-2.5 py-1 rounded", scColor)}>{displayStatus}</span>
+                    {isAvailable && (
+                      <button onClick={() => handleRespondre(enc.id)} className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-1">
+                        Respondre <ArrowRight size={13} />
+                      </button>
+                    )}
+                    {isCompleted && !isClosed && (
+                      <div className="flex items-center gap-1 text-green-600 text-sm">
+                        <CheckCircle size={14} /><span>Resposta enviada</span>
+                      </div>
+                    )}
+                    {isClosed && (
+                      <div className="flex items-center gap-1 text-gray-400 text-sm">
+                        <Clock size={14} /><span>Tancada</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Solicituds Tab ────────────────────────────────────────────────────────────
+
+type DiaNoOrdinari = {
+  id: number;
+  date: string;
+  comments: string;
+  status: 'Pendent' | 'Aprovada' | 'Denegada';
+  motive: string;
+  author: string;
+  created_at: string;
+};
+
+function getDiesNoOrdinaris(): DiaNoOrdinari[] {
+  try { return JSON.parse(localStorage.getItem('tavil_dies_no_ord') ?? '[]'); } catch { return []; }
+}
+
+function addDiaNoOrdinari(date: string, comments: string, author: string): void {
+  const list = getDiesNoOrdinaris();
+  list.unshift({ id: Date.now(), date, comments, status: 'Pendent', motive: '', author, created_at: new Date().toISOString() });
+  localStorage.setItem('tavil_dies_no_ord', JSON.stringify(list));
+}
+
+function updateDiaNoOrdinariStatus(id: number, status: 'Aprovada' | 'Denegada', motive: string = ''): void {
+  const list = getDiesNoOrdinaris().map(d => d.id === id ? { ...d, status, motive } : d);
+  localStorage.setItem('tavil_dies_no_ord', JSON.stringify(list));
+}
+
+function SolicitudsTab({ currentUser }: { currentUser: User | null }) {
+  const [activeTab, setActiveTab] = useState('Dies no ordinaris');
+  const [diesNoOrdinaris, setDiesNoOrdinaris] = useState<DiaNoOrdinari[]>([]);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [comments, setComments] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [denyingId, setDenyingId] = useState<number | null>(null);
+  const [denyMotive, setDenyMotive] = useState('');
+
+  const userName = currentUser?.name ?? 'Anònim';
+  const isRRHH = currentUser?.role === 'Recursos humans';
+
+  useEffect(() => {
+    setDiesNoOrdinaris(getDiesNoOrdinaris());
+  }, []);
+
+  const formatDate = (iso: string) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString('ca-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  const statusColor = (s: string) =>
+    s === 'Aprovada' ? 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400'
+    : s === 'Denegada' ? 'bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400'
+    : 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400';
+
+  const handleApprove = (id: number) => {
+    updateDiaNoOrdinariStatus(id, 'Aprovada');
+    setDiesNoOrdinaris(getDiesNoOrdinaris());
+  };
+
+  const handleDenyConfirm = (id: number) => {
+    updateDiaNoOrdinariStatus(id, 'Denegada', denyMotive.trim());
+    setDiesNoOrdinaris(getDiesNoOrdinaris());
+    setDenyingId(null);
+    setDenyMotive('');
+  };
+
+  const handleSubmit = () => {
+    if (!selectedDate) return;
+    setSubmitting(true);
+    addDiaNoOrdinari(selectedDate, comments.trim(), userName);
+    setDiesNoOrdinaris(getDiesNoOrdinaris());
+    setSelectedDate('');
+    setComments('');
+    setSubmitting(false);
+    setSuccess(true);
+    setTimeout(() => setSuccess(false), 3000);
+  };
+
+  const today = new Date().toISOString().split('T')[0];
+
+  return (
+    <div className="animate-in fade-in duration-300">
+      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Gestió de sol·licituds i peticions personals</p>
+      <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
+        {['Dies no ordinaris'].map(tab => (
+          <UnderlineTab key={tab} label={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)} />
+        ))}
+      </div>
+
+      {activeTab === 'Dies no ordinaris' && (
+        <div className="grid grid-cols-3 gap-6">
+          <div className={isRRHH ? 'col-span-3' : 'col-span-2'}>
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Sol·licituds enviades ({diesNoOrdinaris.length})</h3>
+            {diesNoOrdinaris.length === 0 ? (
+              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-8 text-center">
+                <Calendar size={32} className="text-gray-300 dark:text-zinc-600 mx-auto mb-3" />
+                <p className="text-sm text-gray-400 dark:text-zinc-500">No hi ha sol·licituds encara.</p>
+                <p className="text-xs text-gray-300 dark:text-zinc-600 mt-1">Fes servir el formulari per enviar la primera.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {diesNoOrdinaris.map(d => (
+                  <div key={d.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
+                    <div className="flex items-start gap-3">
+                      <Calendar size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{formatDate(d.date)}</p>
+                        <p className="text-xs text-gray-400 mb-2">Sol·licitat el {formatDate(d.created_at)} · Per: {d.author}</p>
+                        {d.comments && <p className="text-xs text-gray-600 dark:text-zinc-400 bg-gray-50 dark:bg-zinc-800 rounded-lg px-3 py-2 mb-2">{d.comments}</p>}
+                        {d.status === 'Denegada' && d.motive && (
+                          <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2"><span className="font-semibold">Motiu:</span> {d.motive}</p>
+                        )}
+                        {isRRHH && d.status === 'Pendent' && denyingId === d.id && (
+                          <div className="mt-3 space-y-2">
+                            <textarea
+                              value={denyMotive}
+                              onChange={e => setDenyMotive(e.target.value)}
+                              placeholder="Motiu de la denegació..."
+                              rows={2}
+                              className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none"
+                            />
+                            <div className="flex gap-2">
+                              <button onClick={() => handleDenyConfirm(d.id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">Confirmar denegació</button>
+                              <button onClick={() => { setDenyingId(null); setDenyMotive(''); }} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">Cancel·lar</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(d.status))}>{d.status}</span>
+                        {isRRHH && d.status === 'Pendent' && denyingId !== d.id && (
+                          <>
+                            <button onClick={() => handleApprove(d.id)} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-950/50 transition-colors">Aprovar</button>
+                            <button onClick={() => { setDenyingId(d.id); setDenyMotive(''); }} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 transition-colors">Denegar</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {!isRRHH && <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 h-fit">
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar size={15} className="text-gray-500" />
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Nova sol·licitud</h3>
+            </div>
+            {success && (
+              <div className="mb-3 flex items-center gap-2 text-green-600 bg-green-50 dark:bg-green-950/20 rounded-lg px-3 py-2 text-xs font-medium">
+                <CheckCircle size={13} /> Sol·licitud enviada correctament.
+              </div>
+            )}
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Dia sol·licitat</label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  min={today}
+                  onChange={e => setSelectedDate(e.target.value)}
+                  className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Comentaris</label>
+                <textarea
+                  value={comments}
+                  onChange={e => setComments(e.target.value.slice(0, 500))}
+                  placeholder="Explica el motiu o qualsevol detall rellevant..."
+                  rows={5}
+                  className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none"
+                />
+                <p className="text-[10px] text-gray-400 text-right">{comments.length}/500</p>
+              </div>
+              <p className="text-[11px] text-red-600">L'equip de RRHH revisarà la sol·licitud en un termini de 48 hores.</p>
+              <button
+                onClick={handleSubmit}
+                disabled={!selectedDate || submitting}
+                className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
+              >
+                <Send size={14} /> Enviar sol·licitud
+              </button>
+            </div>
+          </div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Perfil Tab ────────────────────────────────────────────────────────────────
+
+function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; onUserUpdate: (u: User) => void }) {
+  const [activeTab, setActiveTab] = useState('Informació');
+  const [notifCorreu, setNotifCorreu] = useState(true);
+  const [notifPortal, setNotifPortal] = useState(true);
+
+  const extrasKey = `tavil_profile_extras_${currentUser?.id ?? 0}`;
+  const loadExtras = () => {
+    try { return JSON.parse(localStorage.getItem(extrasKey) ?? '{}'); } catch { return {}; }
+  };
+
+  const [editing, setEditing] = useState(false);
+  const [nameInput, setNameInput] = useState(currentUser?.name ?? '');
+  const [phoneInput, setPhoneInput] = useState(() => loadExtras().phone ?? '934 12 00 00');
+  const [extInput, setExtInput] = useState(() => loadExtras().ext ?? 'Ext. 100');
+  const [locationInput, setLocationInput] = useState(() => loadExtras().location ?? 'Planta de Mollet del Vallès');
+  const [saved, setSaved] = useState(false);
+
+  const initials = (currentUser?.name ?? '?').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
+
+  const handleSave = () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed || !currentUser) return;
+    updateUserName(currentUser.id, trimmed);
+    const updated = { ...currentUser, name: trimmed };
+    localStorage.setItem('tavil_session', JSON.stringify(updated));
+    localStorage.setItem(extrasKey, JSON.stringify({ phone: phoneInput.trim(), ext: extInput.trim(), location: locationInput.trim() }));
+    onUserUpdate(updated);
+    setEditing(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
+
+  const handleCancel = () => {
+    setEditing(false);
+    setNameInput(currentUser?.name ?? '');
+    const extras = loadExtras();
+    setPhoneInput(extras.phone ?? '934 12 00 00');
+    setExtInput(extras.ext ?? 'Ext. 100');
+    setLocationInput(extras.location ?? 'Planta de Mollet del Vallès');
+  };
+
+  const profileCourses = [
+    { title: "Prevenció i seguretat a planta", status: "En curs", progress: 62 },
+    { title: "Introducció a l'ERP", status: "En curs", progress: 40 },
+    { title: "Protecció de dades (RGPD)", status: "Completat", progress: 100 },
+    { title: "Manual d'acollida", status: "Completat", progress: 100 },
+  ];
+
+  return (
+    <div className="animate-in fade-in duration-300">
+      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Informació personal, formació, beneficis i configuració</p>
+      <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
+        {['Informació', 'Formació', 'Beneficis socials', 'Configuració'].map(tab => (
+          <UnderlineTab key={tab} label={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)} />
+        ))}
+      </div>
+
+      {activeTab === 'Informació' && (
+        <div className="grid grid-cols-3 gap-5">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-6 relative">
+
+            {/* Edit / Save button — top right, always visible */}
+            {editing ? (
+              <div className="absolute top-4 right-4 flex gap-1.5">
+                <button onClick={handleSave} disabled={!nameInput.trim()} className="text-xs bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg font-medium transition-colors">Desar</button>
+                <button onClick={handleCancel} className="text-xs border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">Cancel·lar</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setEditing(true); setNameInput(currentUser?.name ?? ''); }}
+                className="absolute top-4 right-4 flex items-center gap-1.5 text-xs text-gray-500 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 border border-gray-200 dark:border-zinc-700 hover:border-red-300 dark:hover:border-red-700 px-2.5 py-1.5 rounded-lg transition-colors"
+                title="Editar perfil"
+              >
+                <Settings size={13} /> Editar
+              </button>
+            )}
+
+            {/* Avatar + name */}
+            <div className="flex flex-col items-center mb-6 pt-2">
+              <div className="w-20 h-20 rounded-full bg-red-600 flex items-center justify-center text-white text-2xl font-bold mb-4">{initials}</div>
+
+              {editing ? (
+                <input
+                  autoFocus
+                  value={nameInput}
+                  onChange={e => setNameInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') handleCancel(); }}
+                  className="w-full text-center font-bold text-gray-900 dark:text-white text-base border border-red-400 rounded-lg px-3 py-1.5 outline-none dark:bg-zinc-800 mb-1"
+                />
+              ) : (
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white text-center">{currentUser?.name ?? '—'}</h3>
+              )}
+
+              {saved && <p className="text-[11px] text-green-600 mt-1">Canvis desats.</p>}
+
+              <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">{currentUser?.dept ?? '—'}</p>
+              <div className="flex gap-2 mt-2">
+                <span className="text-[11px] bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400 px-2 py-0.5 rounded font-medium">{currentUser?.dept ?? '—'}</span>
+                <span className="text-[11px] bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400 px-2 py-0.5 rounded font-medium">{currentUser?.role ?? '—'}</span>
+              </div>
+            </div>
+
+            {/* Contact info */}
+            <div className="space-y-3">
+              {/* Email — read only */}
+              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-zinc-400">
+                <Mail size={14} className="text-gray-400 flex-shrink-0" />
+                <span className="truncate">{currentUser?.email ?? '—'}</span>
+              </div>
+
+              {/* Phone — editable */}
+              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-zinc-400">
+                <Phone size={14} className="text-gray-400 flex-shrink-0" />
+                {editing
+                  ? <input value={phoneInput} onChange={e => setPhoneInput(e.target.value)} className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+                  : <span>{phoneInput}</span>}
+              </div>
+
+              {/* Ext — editable */}
+              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-zinc-400">
+                <Building2 size={14} className="text-gray-400 flex-shrink-0" />
+                {editing
+                  ? <input value={extInput} onChange={e => setExtInput(e.target.value)} className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+                  : <span>{extInput}</span>}
+              </div>
+
+              {/* Location — editable */}
+              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-zinc-400">
+                <MapPin size={14} className="text-gray-400 flex-shrink-0" />
+                {editing
+                  ? <input value={locationInput} onChange={e => setLocationInput(e.target.value)} className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+                  : <span>{locationInput}</span>}
+              </div>
+
+              {/* ID — read only */}
+              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-zinc-400">
+                <CreditCard size={14} className="text-gray-400 flex-shrink-0" />
+                <span>{`ID: TAV-0${String(currentUser?.id ?? 0).padStart(3, '0')}`}</span>
+              </div>
+
+              {/* Start date — read only */}
+              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-zinc-400">
+                <Calendar size={14} className="text-gray-400 flex-shrink-0" />
+                <span>Des de 15 setembre 2019</span>
+              </div>
+            </div>
+          </div>
+          <div className="col-span-2 space-y-5">
+            <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Resum de vacances</h3>
+              <div className="grid grid-cols-4 gap-3">
+                {[{ label: "Total", value: "23", red: false }, { label: "Gaudits", value: "8", red: false }, { label: "Pendents d'aprovar", value: "2", red: false }, { label: "Restants", value: "13", red: true }].map((stat, i) => (
+                  <div key={i} className="border border-gray-100 dark:border-zinc-800 rounded-xl p-3 text-center">
+                    <p className={cn("text-2xl font-bold", stat.red ? "text-red-600" : "text-gray-900 dark:text-white")}>{stat.value}</p>
+                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Accessos ràpids</h3>
+              <div className="grid grid-cols-3 gap-3">
+                {[{ icon: Mail, label: "Correu corporatiu" }, { icon: ExternalLink, label: "Portal de nòmines" }, { icon: Calendar, label: "Sol·licitud de vacances" }, { icon: Database, label: "ERP (SAP)" }, { icon: Users, label: "Directori intern" }, { icon: GraduationCap, label: "Campus TAVIL" }].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 p-3 border border-gray-100 dark:border-zinc-800 rounded-xl hover:border-red-200 dark:hover:border-red-900 cursor-pointer hover:bg-red-50/50 dark:hover:bg-red-950/10 transition-colors group">
+                    <item.icon size={14} className="text-red-500 flex-shrink-0" />
+                    <span className="text-xs text-gray-700 dark:text-zinc-300 group-hover:text-red-600 transition-colors">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'Formació' && (
+        <>
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            {[{ label: "Completats", value: "2", icon: Award, color: "text-green-500" }, { label: "En curs", value: "2", icon: Clock, color: "text-blue-500" }, { label: "Hores totals", value: "27h", icon: GraduationCap, color: "text-purple-500" }].map((s, i) => (
+              <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+                <div className="flex items-center justify-between mb-2"><p className="text-xs text-gray-500 dark:text-zinc-400">{s.label}</p><s.icon size={15} className={s.color} /></div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{s.value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 divide-y divide-gray-50 dark:divide-zinc-800">
+            {profileCourses.map((c, i) => (
+              <div key={i} className="flex items-center gap-4 p-4">
+                <GraduationCap size={16} className="text-gray-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900 dark:text-white text-sm">{c.title}</p>
+                  {c.progress > 0 && c.progress < 100 && (
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <div className="flex-1 max-w-xs bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${c.progress}%` }} /></div>
+                      <span className="text-[10px] text-gray-500">{c.progress}%</span>
+                    </div>
+                  )}
+                </div>
+                <span className={cn("text-[11px] font-bold px-2.5 py-1 rounded flex-shrink-0", STATUS_COLORS[c.status])}>{c.status}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {activeTab === 'Beneficis socials' && (
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { icon: Heart, color: "text-red-500", bg: "bg-red-50 dark:bg-red-950/20", title: "Assegurança mèdica", desc: "Cobertura mèdica privada Adeslas per al treballador i familiars directes. Copagament reduït." },
+            { icon: Activity, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/20", title: "Descompte gimnàs", desc: "30% de descompte a la xarxa de gimnasos DIR amb accés iHimitat." },
+            { icon: Gift, color: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-950/20", title: "Club d'avantatges TAVIL", desc: "Descomptes en comerços locals, tecnologia, viatges i oci a través de la plataforma Cobee." },
+            { icon: Shield, color: "text-green-500", bg: "bg-green-50 dark:bg-green-950/20", title: "Assegurança de vida", desc: "Pòlissa d'assegurança de vida i accidents amb cobertura de 2x el salari anual." },
+            { icon: GraduationCap, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-950/20", title: "Formació subvencionada", desc: "L'empresa subvenciona fins al 100% de la formació relacionada amb el lloc de treball." },
+            { icon: Calendar, color: "text-pink-500", bg: "bg-pink-50 dark:bg-pink-950/20", title: "Dia lliure d'aniversari", desc: "Dia lliure retribuït el dia del teu aniversari o el dia laborable més proper." },
+          ].map((b, i) => (
+            <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+              <div className="flex items-start justify-between mb-3">
+                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", b.bg)}><b.icon size={20} className={b.color} /></div>
+                <span className="text-[11px] font-bold bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400 px-2 py-0.5 rounded">Actiu</span>
+              </div>
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-2">{b.title}</h3>
+              <p className="text-xs text-gray-500 dark:text-zinc-400 leading-relaxed">{b.desc}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTab === 'Configuració' && (
+        <div className="max-w-lg space-y-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+            <div className="flex items-center gap-2 mb-4"><Bell size={15} className="text-gray-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">Notificacions</h3></div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between"><span className="text-sm text-gray-700 dark:text-zinc-300">Notificacions per correu</span><Toggle on={notifCorreu} onToggle={() => setNotifCorreu(!notifCorreu)} /></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-gray-700 dark:text-zinc-300">Notificacions al portal</span><Toggle on={notifPortal} onToggle={() => setNotifPortal(!notifPortal)} /></div>
+            </div>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+            <div className="flex items-center gap-2 mb-4"><Settings size={15} className="text-gray-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">Preferències</h3></div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between"><span className="text-sm text-gray-700 dark:text-zinc-300 flex items-center gap-2"><Globe size={14} />Idioma</span><span className="text-sm text-gray-500">Català</span></div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Auth pages ────────────────────────────────────────────────────────────────
+
+function TavilLogo() {
+  return (
+    <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`} alt="TAVIL" className="h-12 mb-2" />
+  );
+}
+
+function LoginPage({ onLogin, onRegister, isDarkMode, toggleDarkMode }: {
+  onLogin: (user: User) => void;
+  onRegister: () => void;
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
+}) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!EMAIL_RE.test(email.trim())) { setError('Format de correu no vàlid.'); return; }
+    setLoading(true);
+    const user = findUser(email.trim().toLowerCase(), password);
+    setLoading(false);
+    if (!user) { setError('Correu o contrasenya incorrectes.'); return; }
+    onLogin(user);
+  };
+
+  return (
+    <div className={cn("min-h-screen bg-gray-100 dark:bg-zinc-950 flex flex-col transition-colors", isDarkMode && "dark")}>
+      <div className="flex justify-end p-4">
+        <button onClick={toggleDarkMode} className="p-2 hover:bg-gray-200 dark:hover:bg-zinc-800 rounded-lg text-gray-500 dark:text-zinc-400 transition-colors">
+          {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
+      </div>
+      <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-10">
+        <TavilLogo />
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-8">Portal intern del treballador</p>
+        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-8 shadow-sm">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-1">Inicia sessió</h1>
+          <p className="text-sm text-red-500 text-center mb-6">Introdueix les teves credencials corporatives</p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Correu electrònic</label>
+              <div className="relative">
+                <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nom@tavil.com" required
+                  className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg py-3 pl-9 pr-4 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Contrasenya</label>
+              <div className="relative">
+                <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="········" required
+                  className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg py-3 pl-9 pr-10 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+                <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            <button type="submit" disabled={loading}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-60 mt-2">
+              Accedir
+            </button>
+          </form>
+          <div className="flex items-center justify-between mt-4 text-sm">
+            <span className="text-gray-500 dark:text-zinc-400">Has oblidat la contrasenya?</span>
+            <button onClick={onRegister} className="text-red-500 font-medium hover:underline">Crea un compte</button>
+          </div>
+        </div>
+      </div>
+      <div className="py-4 text-center text-xs text-gray-400 border-t border-gray-200 dark:border-zinc-800">
+        © 2026 TAVIL · Portal intern
+      </div>
+    </div>
+  );
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function RegisterPage({ onBack, onRegistered, isDarkMode, toggleDarkMode }: {
+  onBack: () => void;
+  onRegistered: () => void;
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const passwordsMatch = confirmPassword === '' || password === confirmPassword;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!EMAIL_RE.test(email.trim())) { setError('El correu ha de tenir el format nom@domini.ext'); return; }
+    if (password.length < 6) { setError('La contrasenya ha de tenir mínim 6 caràcters.'); return; }
+    if (password !== confirmPassword) { setError('Les contrasenyes no coincideixen.'); return; }
+    setLoading(true);
+    const result = createUser(name.trim(), email.trim().toLowerCase(), password);
+    setLoading(false);
+    if (!result.ok) { setError(result.error || 'Error desconegut.'); return; }
+    onRegistered();
+  };
+
+  return (
+    <div className={cn("min-h-screen bg-gray-100 dark:bg-zinc-950 flex flex-col transition-colors", isDarkMode && "dark")}>
+      <div className="flex justify-end p-4">
+        <button onClick={toggleDarkMode} className="p-2 hover:bg-gray-200 dark:hover:bg-zinc-800 rounded-lg text-gray-500 dark:text-zinc-400 transition-colors">
+          {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
+      </div>
+      <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-10">
+        <TavilLogo />
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-8">Portal intern del treballador</p>
+        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-8 shadow-sm">
+          <button onClick={onBack} className="flex items-center gap-1 text-sm text-red-500 hover:underline mb-4">
+            <ChevronLeft size={15} /> Tornar
+          </button>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Crea un compte</h1>
+          <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">Registra't amb el teu correu corporatiu</p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Nom complet</label>
+              <div className="relative">
+                <UserCircle size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Marta García" required
+                  className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg py-3 pl-9 pr-4 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Correu electrònic</label>
+              <div className="relative">
+                <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input type="text" value={email} onChange={e => setEmail(e.target.value)} placeholder="nom@tavil.com" required
+                  className={cn("w-full border rounded-lg py-3 pl-9 pr-4 text-sm outline-none dark:bg-zinc-800 dark:text-white",
+                    email && !EMAIL_RE.test(email) ? "border-red-400 focus:border-red-500" : "border-gray-200 dark:border-zinc-700 focus:border-red-400")} />
+              </div>
+              {email && !EMAIL_RE.test(email) && (
+                <p className="text-red-400 text-xs mt-1">Format: nom@domini.ext</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Contrasenya</label>
+              <div className="relative">
+                <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínim 6 caràcters" required
+                  className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg py-3 pl-9 pr-10 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+                <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Confirma la contrasenya</label>
+              <div className="relative">
+                <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input type={showConfirm ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Repeteix la contrasenya" required
+                  className={cn("w-full border rounded-lg py-3 pl-9 pr-10 text-sm outline-none dark:bg-zinc-800 dark:text-white",
+                    !passwordsMatch ? "border-red-400 focus:border-red-500" : "border-gray-200 dark:border-zinc-700 focus:border-red-400")} />
+                <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+              {!passwordsMatch && (
+                <p className="text-red-400 text-xs mt-1">Les contrasenyes no coincideixen.</p>
+              )}
+            </div>
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+            <button type="submit" disabled={loading || !passwordsMatch}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-60 mt-2">
+              Registrar-se
+            </button>
+          </form>
+        </div>
+      </div>
+      <div className="py-4 text-center text-xs text-gray-400 border-t border-gray-200 dark:border-zinc-800">
+        © 2026 TAVIL · Portal intern
+      </div>
+    </div>
+  );
+}
+
+// ── Sidebar data ──────────────────────────────────────────────────────────────
+
+const SIDEBAR_SECTIONS = [
+  {
+    title: "General",
+    items: [
+      { id: 'Inici', label: "Inici", icon: Home },
+      { id: 'Notícies', label: "Notícies", icon: Newspaper },
+      { id: 'Activitats', label: "Activitats", icon: Activity },
+      { id: 'Agenda', label: "Agenda", icon: Calendar },
+      { id: 'Directori', label: "Directori", icon: Users },
+    ]
+  },
+  {
+    title: "Empresa",
+    items: [
+      { id: 'Espai', label: "Espai corporatiu", icon: Building2 },
+      { id: 'Campus', label: "Campus TAVIL", icon: GraduationCap },
+      { id: 'Veu', label: "Veu de l'empleat", icon: MessageSquare },
+      { id: 'Solicituds', label: "Solicituds", icon: FileText },
+    ]
+  },
+  {
+    title: "Personal",
+    items: [
+      { id: 'Perfil', label: "El meu perfil", icon: UserCircle },
+    ]
+  }
+];
+
+// ── App ───────────────────────────────────────────────────────────────────────
+
+function App() {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [dbReady, setDbReady] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authView, setAuthView] = useState<'login' | 'register'>('login');
+
+  const [activeTab, setActiveTab] = useState('Inici');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [demoRole, setDemoRole] = useState('Treballador/a');
+  const [noticeIndex, setNoticeIndex] = useState(0);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const userInitials = currentUser?.name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() ?? 'CH';
+
+  const handleLogin = (user: User) => {
+    localStorage.setItem('tavil_session', JSON.stringify(user));
+    setCurrentUser(user);
+    setDemoRole(user.role);
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('tavil_session');
+    setCurrentUser(null);
+    setIsLoggedIn(false);
+    setAuthView('login');
+    setIsProfileMenuOpen(false);
+  };
+
+  const currentSection = SIDEBAR_SECTIONS.flatMap(s => s.items).find(i => i.id === activeTab);
+
+  useEffect(() => {
+    const session = localStorage.getItem('tavil_session');
+    if (session) {
+      try {
+        const user: User = JSON.parse(session);
+        setCurrentUser(user);
+        setDemoRole(user.role);
+        setIsLoggedIn(true);
+      } catch {}
+    }
+    const savedDark = localStorage.getItem('tavil_dark') === 'true';
+    setIsDarkMode(savedDark);
+    if (savedDark) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+    initDB().then(() => setDbReady(true));
+  }, []);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('tavil_dark', 'true');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('tavil_dark', 'false');
+    }
+  }, [isDarkMode]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('search-input')?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'Inici': return <InicialTab noticeIndex={noticeIndex} setNoticeIndex={setNoticeIndex} />;
+      case 'Notícies': return <NoticiesTab />;
+      case 'Activitats': return <ActivitatsTab />;
+      case 'Agenda': return <AgendaTab />;
+      case 'Directori': return <DirectoriTab />;
+      case 'Espai': return <EspaiCorporatiuTab />;
+      case 'Campus': return <CampusTavilTab />;
+      case 'Veu': return <VeuEmpleatTab currentUser={currentUser} />;
+      case 'Solicituds': return <SolicitudsTab currentUser={currentUser} />;
+      case 'Perfil': return <PerfilTab currentUser={currentUser} onUserUpdate={u => { setCurrentUser(u); }} />;
+      default: return null;
+    }
+  };
+
+  if (!dbReady) {
+    return (
+      <div className={cn("min-h-screen bg-gray-100 dark:bg-zinc-950 flex items-center justify-center transition-colors", isDarkMode && "dark")}>
+        <div className="text-center">
+          <img src={`${process.env.PUBLIC_URL}/assets/images/${isDarkMode ? 'tavilLogoDark' : 'tavilLogo'}.png`} alt="TAVIL" className="h-8 mx-auto mb-3 animate-pulse" />
+          <p className="text-sm text-gray-400">Carregant portal...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return authView === 'login'
+      ? <LoginPage onLogin={handleLogin} onRegister={() => setAuthView('register')} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} />
+      : <RegisterPage onBack={() => setAuthView('login')} onRegistered={() => { setAuthView('login'); }} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} />;
+  }
+
+  return (
+    <div className={cn("flex min-h-screen bg-gray-50 dark:bg-[#121212] font-sans text-gray-900 dark:text-zinc-100 transition-colors duration-300", isDarkMode && "dark")}>
+      {/* Sidebar */}
+      <aside className={cn("bg-white dark:bg-[#1a1a1a] border-r border-gray-200 dark:border-zinc-800 flex flex-col fixed inset-y-0 z-30 transition-all duration-300", sidebarCollapsed ? "w-16" : "w-60")}>
+        <div className={cn("p-5 pb-4", sidebarCollapsed && "px-2")}>
+          <div className={cn("mb-7 cursor-pointer", sidebarCollapsed && "flex justify-center")} onClick={() => setActiveTab('Inici')}>
+            {sidebarCollapsed
+              ? <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoCollapsed.png`} alt="TAVIL" className="h-7" />
+              : isDarkMode
+                ? <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoDark.png`} alt="TAVIL" className="h-7" />
+                : <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`} alt="TAVIL" className="h-7" />
+            }
+          </div>
+          {SIDEBAR_SECTIONS.map((section) => (
+            <SidebarSection key={section.title} title={section.title} collapsed={sidebarCollapsed}>
+              {section.items.map((item) => (
+                <SidebarItem key={item.id} icon={item.icon} label={item.label} active={activeTab === item.id} onClick={() => setActiveTab(item.id)} collapsed={sidebarCollapsed} />
+              ))}
+            </SidebarSection>
+          ))}
+        </div>
+
+        <div className="mt-auto border-t border-gray-100 dark:border-zinc-800">
+          <div className={cn("flex items-center p-4 gap-3", sidebarCollapsed && "justify-center p-3")}>
+            <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{userInitials}</div>
+            {!sidebarCollapsed && (
+              <>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{currentUser?.name ?? 'Usuari'}</p>
+                  <p className="text-[10px] text-gray-400 truncate">{currentUser?.dept ?? 'General'}</p>
+                </div>
+                <button onClick={handleLogout} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-gray-400">
+                  <LogOut size={14} />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* Main */}
+      <main className={cn("flex-1 min-h-screen transition-all duration-300", sidebarCollapsed ? "ml-16" : "ml-60")}>
+        {/* Header */}
+        <header className="h-16 bg-white dark:bg-[#1a1a1a] border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between px-8 sticky top-0 z-20">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-gray-500 dark:text-zinc-400"
+              title={sidebarCollapsed ? 'Expandir menú' : 'Reduir menú'}
+            >
+              {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            </button>
+            <span className="text-gray-300 dark:text-zinc-600">|</span>
+            <span className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">Portal Intern</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="relative hidden lg:block">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+              <input
+                id="search-input"
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cercar..."
+                className="bg-gray-100 dark:bg-zinc-800 rounded-lg py-2 pl-9 pr-14 text-sm w-56 outline-none dark:text-white"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 bg-gray-200 dark:bg-zinc-700 px-1.5 py-0.5 rounded font-mono">⌘K</span>
+            </div>
+
+            <div className="relative">
+              <button onClick={() => { setIsNotifOpen(!isNotifOpen); setIsProfileMenuOpen(false); }} className="relative p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500 transition-colors">
+                <Bell size={18} />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-600 rounded-full ring-2 ring-white dark:ring-zinc-900"></span>
+              </button>
+              {isNotifOpen && (
+                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-100 dark:border-zinc-800 z-50">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
+                    <h3 className="font-bold text-gray-900 dark:text-white text-sm">Notificacions</h3>
+                    <span className="text-xs bg-red-600 text-white px-2 py-0.5 rounded-full font-bold">3</span>
+                  </div>
+                  <div className="divide-y divide-gray-50 dark:divide-zinc-800">
+                    {[
+                      { icon: Activity, unread: true,  title: "Nova activitat disponible",     desc: "Torneig de pàdel TAVIL — Inscripció oberta fins al 2 d'abril", time: "Fa 5 min" },
+                      { icon: AlertTriangle, unread: true,  title: "Avís: tall elèctric diumenge",  desc: "Afecta les plantes 1 i 2, de 06:00 a 14:00.", time: "Fa 2 h" },
+                      { icon: FileText, unread: true,  title: "Enquesta de clima laboral",       desc: "Tens fins al 31 de març per respondre.", time: "Ahir" },
+                      { icon: CheckCircle, unread: false, title: "Formació completada",             desc: "Has completat 'Prevenció de riscos laborals'.", time: "Fa 3 dies" },
+                    ].map((n, i) => (
+                      <div key={i} className={cn("flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors", n.unread && "bg-red-50/40 dark:bg-red-950/10")}>
+                        <div className={cn("w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5", n.unread ? "bg-red-100 dark:bg-red-950/30" : "bg-gray-100 dark:bg-zinc-800")}>
+                          <n.icon size={14} className={n.unread ? "text-red-600" : "text-gray-400"} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={cn("text-sm font-semibold", n.unread ? "text-gray-900 dark:text-white" : "text-gray-600 dark:text-zinc-400")}>{n.title}</p>
+                          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5 line-clamp-1">{n.desc}</p>
+                          <p className="text-[10px] text-gray-400 mt-1">{n.time}</p>
+                        </div>
+                        {n.unread && <span className="w-2 h-2 bg-red-600 rounded-full flex-shrink-0 mt-2"></span>}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="px-4 py-3 border-t border-gray-100 dark:border-zinc-800">
+                    <button className="text-red-600 text-xs font-medium hover:underline w-full text-center">Veure totes les notificacions</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500 dark:text-zinc-400 transition-colors">
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+
+            <div className="relative">
+              <button
+                onClick={() => { setIsProfileMenuOpen(!isProfileMenuOpen); setIsNotifOpen(false); }}
+                className="flex items-center gap-2 p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+              >
+                <div className="w-7 h-7 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold">{userInitials}</div>
+                <div className="hidden lg:block text-left">
+                  <p className="text-xs font-semibold text-gray-900 dark:text-white leading-none">{currentUser?.name ?? 'Usuari'}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{demoRole}</p>
+                </div>
+                <ChevronLeft size={14} className="text-gray-400 rotate-[-90deg] hidden lg:block" />
+              </button>
+              {isProfileMenuOpen && (
+                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-100 dark:border-zinc-800 p-3 z-50">
+                  <div className="px-3 py-2 border-b border-gray-50 dark:border-zinc-800 mb-2">
+                    <p className="text-sm font-bold dark:text-white">{currentUser?.name ?? 'Usuari'}</p>
+                    <p className="text-[10px] text-gray-400">{currentUser?.email ?? ''}</p>
+                    <p className="text-[10px] text-gray-400">{currentUser?.dept ?? 'General'} · {demoRole}</p>
+                  </div>
+                  <button onClick={() => { setActiveTab('Perfil'); setIsProfileMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-lg transition-colors">
+                    <UserCircle size={14} /> El meu perfil
+                  </button>
+                  <button onClick={() => { setActiveTab('Perfil'); setIsProfileMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-lg transition-colors">
+                    <Settings size={14} /> Configuració
+                  </button>
+                  <div className="border-t border-gray-100 dark:border-zinc-800 mt-2 pt-2">
+                    <p className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Rol de demostració</p>
+                    {['Treballador/a', 'Responsable de departament', 'Recursos humans', 'Administrador/a'].map(role => (
+                      <button
+                        key={role}
+                        onClick={() => {
+                          setDemoRole(role);
+                          if (currentUser) {
+                            updateUserRole(currentUser.id, role);
+                            const updated = { ...currentUser, role };
+                            setCurrentUser(updated);
+                            localStorage.setItem('tavil_session', JSON.stringify(updated));
+                          }
+                        }}
+                        className={cn(
+                          "w-full text-left flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors",
+                          demoRole === role
+                            ? "bg-red-50 dark:bg-red-950/20 text-red-600 font-medium"
+                            : "text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800"
+                        )}
+                      >
+                        {role}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border-t border-gray-100 dark:border-zinc-800 mt-2 pt-2">
+                    <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors">
+                      <LogOut size={14} /> Tancar sessió
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="p-8 max-w-7xl mx-auto">
+          {/* Breadcrumb + Title */}
+          <div className="mb-6">
+            {activeTab !== 'Inici' && (
+              <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
+                <button onClick={() => setActiveTab('Inici')} className="hover:text-red-600 flex items-center gap-1 transition-colors">
+                  <Home size={11} /> Inici
+                </button>
+                <ChevronRight size={11} />
+                <span className="text-gray-700 dark:text-zinc-300">{currentSection?.label}</span>
+              </div>
+            )}
+            <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{currentSection?.label}</h1>
+          </div>
+
+          {renderContent()}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default App;
