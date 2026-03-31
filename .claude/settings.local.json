@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(timeout 15 npm start)"
+      "Bash(timeout 15 npm start)",
+      "Bash(find /c/UNAI/portalWeb -name *.sql -o -name *.db -o -name *.sqlite*)",
+      "Bash(find /c/UNAI/portalWeb -type f \\\\\\(-name *.sql -o -name *.db -o -name *.sqlite \\\\\\))",
+      "Bash(python -m venv venv)",
+      "Bash(venv/Scripts/python seed.py)",
+      "Bash(curl:*)",
+      "Bash(taskkill /F /IM uvicorn.exe)",
+      "Bash(taskkill /F /IM python.exe /FI \"WINDOWTITLE eq uvicorn*\")",
+      "Bash(venv/Scripts/python -c \":*)",
+      "Bash(taskkill /F /IM python.exe)",
+      "Bash(wmic process:*)",
+      "Bash(netstat -ano)"
     ]
   }
 }

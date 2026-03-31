@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Home, Newspaper, Activity, Calendar, Users, Building2,
+  Home, Newspaper, Activity as ActivityIcon, Calendar, Users, Building2,
   GraduationCap, MessageSquare, UserCircle, Search, Bell,
   Moon, ChevronLeft, ChevronRight, Mail, Database, FolderOpen,
   AlertTriangle, ArrowRight, Sun, MapPin, Clock, Phone, FileText,
@@ -11,14 +11,33 @@ import {
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import {
-  initDB, findUser, createUser, updateUserName, updateUserRole, User,
-  getSuggestions, addSuggestion, voteSuggestion, Suggestion,
-  getIncidencies, addIncidencia, Incidencia,
-  getEnquestes, respondreEnquesta, Enquesta,
-} from './db';
+  User, TokenOut,
+  apiLogin, apiRegister, apiGetMe, apiUpdateMe, apiUpdateMyRole,
+  setToken, clearToken, getToken, registerUnauthorizedHandler,
+  apiGetSuggestions, apiCreateSuggestion, apiVoteSuggestion, Suggestion,
+  apiGetIncidencies, apiCreateIncidencia, Incidencia,
+  apiGetEnquestes, apiRespondreEnquesta, Enquesta,
+  apiGetSolicituds, apiCreateSolicitud, apiUpdateSolicitud, Solicitud,
+  Notice, apiGetNotices,
+  NewsArticle, apiGetNews,
+  Activity, apiGetActivities,
+  AgendaEvent, apiGetAgendaEvents,
+  Employee, apiGetEmployees,
+  Course, apiGetCourses,
+  Notification, apiGetNotifications, apiMarkNotifRead, apiMarkAllNotifsRead,
+} from './api';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+function timeAgo(isoStr: string): string {
+  const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
+  if (diff < 60) return 'Fa un moment';
+  if (diff < 3600) return `Fa ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `Fa ${Math.floor(diff / 3600)} h`;
+  if (diff < 172800) return 'Ahir';
+  return `Fa ${Math.floor(diff / 86400)} dies`;
 }
 
 // ── Sidebar ──────────────────────────────────────────────────────────────────
@@ -84,38 +103,62 @@ const UnderlineTab = ({ label, active, onClick }: { label: string; active: boole
 
 // ── Inici Tab ─────────────────────────────────────────────────────────────────
 
-const NOTICES = [
-  { title: "Tall de subministrament elèctric previst", content: "Diumenge 23 de març, de 06:00 a 14:00. Afecta les plantes 1 i 2. Reviseu el protocol d'aturada.", link: "Veure protocol" },
-  { title: "Nova normativa de teletreball 2026", content: "S'han actualitzat les condicions per als dies de treball remot. Consulteu els canvis a la secció de RRHH.", link: "Llegir més" },
-  { title: "Campus TAVIL: Obertes inscripcions", content: "Ja pots apuntar-te als cursos d'automatització industrial per al segon trimestre.", link: "Inscriure'm" },
-];
+const NEWS_CAT_COLORS: Record<string, string> = {
+  "Notícies corporatives": "bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400",
+  "Recursos humans":       "bg-pink-100 text-pink-600 dark:bg-pink-950/30 dark:text-pink-400",
+  "Seguretat":             "bg-orange-100 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400",
+  "Comunicats interns":    "bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400",
+  "Esdeveniments":         "bg-green-100 text-green-600 dark:bg-green-950/30 dark:text-green-400",
+  "Innovació":             "bg-violet-100 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400",
+};
+const NEWS_CAT_SHORT: Record<string, string> = {
+  "Notícies corporatives": "Corporatives",
+  "Recursos humans":       "RRHH",
+  "Seguretat":             "Seguretat",
+  "Comunicats interns":    "Interns",
+  "Esdeveniments":         "Esdeveniments",
+  "Innovació":             "Innovació",
+};
 
-function InicialTab({ noticeIndex, setNoticeIndex }: { noticeIndex: number; setNoticeIndex: (i: number) => void }) {
+function InicialTab() {
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [news, setNews] = useState<NewsArticle[]>([]);
+  const [noticeIndex, setNoticeIndex] = useState(0);
+
+  useEffect(() => {
+    apiGetNotices().then(setNotices).catch(console.error);
+    apiGetNews().then(setNews).catch(console.error);
+  }, []);
+
+  const notice = notices[noticeIndex];
+
   return (
     <div className="animate-in fade-in duration-300">
       {/* Compact urgent notice */}
+      {notice && (
       <div className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl p-4 mb-6 flex items-start gap-3">
         <AlertTriangle size={16} className="text-red-600 mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">AVÍS URGENT</span>
           </div>
-          <p className="font-semibold text-gray-900 dark:text-white text-sm">{NOTICES[noticeIndex].title}</p>
-          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">{NOTICES[noticeIndex].content}</p>
+          <p className="font-semibold text-gray-900 dark:text-white text-sm">{notice.title}</p>
+          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">{notice.content}</p>
           <button className="text-red-600 text-xs font-medium mt-1 flex items-center gap-1 hover:underline">
-            {NOTICES[noticeIndex].link} <ArrowRight size={11} />
+            {notice.link} <ArrowRight size={11} />
           </button>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-          <span className="text-xs text-gray-400">{noticeIndex + 1}/{NOTICES.length}</span>
-          <button onClick={() => setNoticeIndex((noticeIndex - 1 + NOTICES.length) % NOTICES.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
+          <span className="text-xs text-gray-400">{noticeIndex + 1}/{notices.length}</span>
+          <button onClick={() => setNoticeIndex((noticeIndex - 1 + notices.length) % notices.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
             <ChevronLeft size={14} className="text-gray-500" />
           </button>
-          <button onClick={() => setNoticeIndex((noticeIndex + 1) % NOTICES.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
+          <button onClick={() => setNoticeIndex((noticeIndex + 1) % notices.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
             <ChevronRight size={14} className="text-gray-500" />
           </button>
         </div>
       </div>
+      )}
 
       <div className="grid grid-cols-3 gap-5 mb-6">
         {/* Agenda */}
@@ -176,18 +219,13 @@ function InicialTab({ noticeIndex, setNoticeIndex }: { noticeIndex: number; setN
           <button className="text-red-600 text-xs font-medium flex items-center gap-1 hover:underline">Totes les notícies <ArrowRight size={11} /></button>
         </div>
         <div className="divide-y divide-gray-50 dark:divide-zinc-800">
-          {[
-            { cat: "Corporatives", catColor: "bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400", title: "Nova línia de producció inaugurada a la planta de Mollet", date: "20 mar 2026" },
-            { cat: "Corporatives", catColor: "bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400", title: "Resultats del primer trimestre: creixement del 8%", date: "18 mar 2026" },
-            { cat: "RRHH", catColor: "bg-pink-100 text-pink-600 dark:bg-pink-950/30 dark:text-pink-400", title: "Convocatòria oberta per al programa de mentoria interna", date: "15 mar 2026" },
-            { cat: "Seguretat", catColor: "bg-orange-100 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400", title: "Actualització del protocol de seguretat en zones de càrrega", date: "12 mar 2026" },
-          ].map((news, i) => (
+          {news.slice(0, 4).map((item, i) => (
             <div key={i} className="flex items-center justify-between py-3 group cursor-pointer">
               <div className="flex items-center gap-3 min-w-0">
-                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded uppercase flex-shrink-0", news.catColor)}>{news.cat}</span>
-                <p className="text-sm text-gray-800 dark:text-zinc-200 group-hover:text-red-600 transition-colors truncate">{news.title}</p>
+                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded uppercase flex-shrink-0", NEWS_CAT_COLORS[item.category] ?? "bg-gray-100 text-gray-600")}>{NEWS_CAT_SHORT[item.category] ?? item.category}</span>
+                <p className="text-sm text-gray-800 dark:text-zinc-200 group-hover:text-red-600 transition-colors truncate">{item.title}</p>
               </div>
-              <span className="text-xs text-gray-400 flex-shrink-0 ml-4">{news.date}</span>
+              <span className="text-xs text-gray-400 flex-shrink-0 ml-4">{item.date}</span>
             </div>
           ))}
         </div>
@@ -199,7 +237,16 @@ function InicialTab({ noticeIndex, setNoticeIndex }: { noticeIndex: number; setN
 // ── Notícies Tab ──────────────────────────────────────────────────────────────
 
 function NoticiesTab() {
+  const [news, setNews] = useState<NewsArticle[]>([]);
   const [activeFilter, setActiveFilter] = useState('Totes');
+
+  useEffect(() => {
+    apiGetNews().then(setNews).catch(console.error);
+  }, []);
+
+  const filtered = activeFilter === 'Totes' ? news : news.filter(n => n.category === activeFilter);
+  const featured = filtered.find(n => n.featured === 1) ?? filtered[0];
+  const grid = filtered.filter(n => n !== featured).slice(0, 3);
 
   return (
     <div className="animate-in fade-in duration-300">
@@ -216,38 +263,36 @@ function NoticiesTab() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden flex flex-col md:flex-row mb-8 min-h-[360px]">
-        <div className="md:w-1/2 h-56 md:h-auto overflow-hidden bg-gray-100 dark:bg-zinc-800">
-          <img src="/assets/images/img_4.png" alt="Featured" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
-        </div>
-        <div className="md:w-1/2 p-8 flex flex-col justify-center">
-          <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider w-fit mb-4">Notícies corporatives</span>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">Nova línia de producció inaugurada a la planta de Mollet</h2>
-          <p className="text-gray-500 dark:text-zinc-400 text-sm mb-6 leading-relaxed">La inversió de 2,3 milions d'euros permetrà augmentar la capacitat productiva un 15% durant el segon semestre de 2026.</p>
-          <div className="flex items-center gap-4 text-xs text-gray-400">
-            <div className="flex items-center gap-1.5"><UserCircle size={14} /><span>Jordi Fàbrega</span></div>
-            <div className="flex items-center gap-1.5"><Calendar size={14} /><span>20 mar 2026</span></div>
+      {featured && (
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden flex flex-col md:flex-row mb-8 min-h-[360px]">
+          <div className="md:w-1/2 h-56 md:h-auto overflow-hidden bg-gray-100 dark:bg-zinc-800">
+            <img src={featured.image || '/assets/images/img_4.png'} alt="Featured" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+          </div>
+          <div className="md:w-1/2 p-8 flex flex-col justify-center">
+            <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider w-fit mb-4">{featured.category}</span>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">{featured.title}</h2>
+            <p className="text-gray-500 dark:text-zinc-400 text-sm mb-6 leading-relaxed">{featured.summary}</p>
+            <div className="flex items-center gap-4 text-xs text-gray-400">
+              <div className="flex items-center gap-1.5"><UserCircle size={14} /><span>{featured.author}</span></div>
+              <div className="flex items-center gap-1.5"><Calendar size={14} /><span>{featured.date}</span></div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          { image: "/assets/images/img_7.png", cat: "Notícies corporatives", title: "Resultats del primer trimestre: creixement del 8%", desc: "Les vendes internacionals han impulsat els resultats per sobre de les previsions.", author: "Carme Martinez", date: "18 mar 2026" },
-          { image: "/assets/images/img_3.png", cat: "Recursos humans", title: "Convocatòria oberta per al programa de mentoria interna", desc: "Els treballadors interessats poden inscriure's fins al 31 de març.", author: "Laura Martí", date: "15 mar 2026" },
-          { image: "/assets/images/img_8.png", cat: "Seguretat", title: "Actualització del protocol de seguretat en zones de càrrega", desc: "A partir de l'1 d'abril s'aplicaran noves mesures de seguretat.", author: "Xavier Casals", date: "12 mar 2026" },
-        ].map((news, i) => (
+        {grid.map((item, i) => (
           <div key={i} className="group bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden hover:shadow-lg transition-shadow">
             <div className="aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-zinc-800">
-              <img src={news.image} alt={news.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <img src={item.image || '/assets/images/img_7.png'} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             </div>
             <div className="p-5">
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">{news.cat}</p>
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-red-600 transition-colors">{news.title}</h3>
-              <p className="text-xs text-gray-500 dark:text-zinc-400 mb-4 line-clamp-2 leading-relaxed">{news.desc}</p>
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">{item.category}</p>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-red-600 transition-colors">{item.title}</h3>
+              <p className="text-xs text-gray-500 dark:text-zinc-400 mb-4 line-clamp-2 leading-relaxed">{item.summary}</p>
               <div className="flex items-center justify-between text-[10px] text-gray-400">
-                <div className="flex items-center gap-1"><UserCircle size={12} /><span>{news.author}</span></div>
-                <span>{news.date}</span>
+                <div className="flex items-center gap-1"><UserCircle size={12} /><span>{item.author}</span></div>
+                <span>{item.date}</span>
               </div>
             </div>
           </div>
@@ -259,33 +304,26 @@ function NoticiesTab() {
 
 // ── Activitats Tab ────────────────────────────────────────────────────────────
 
-const ACTIVITATS_PROPERES = [
-  { cat: "Esport", title: "Torneig de pàdel TAVIL", desc: "Competició amistosa per parelles, oberta a tots els nivells. Inclou berenar i premi als finalistes.", date: "5 abr 2026", time: "10:00 – 14:00", location: "Club esportiu Mollet", total: 32, enrolled: 24, available: 8 },
-  { cat: "Esport", title: "Partit de futbol interempresa", desc: "Partit amistós contra l'equip de Fixaciones Ibéricas. Veniu a animar o a jugar!", date: "12 abr 2026", time: "18:00 – 20:00", location: "Camp municipal de Mollet", total: 22, enrolled: 18, available: 4 },
-  { cat: "Cultura", title: "Sortida cultural al MNAC", desc: "Visita guiada a l'exposició temporal «Art i indústria» amb transport des de la planta.", date: "19 abr 2026", time: "09:30 – 14:00", location: "Museu Nacional d'Art de Catalunya", total: 25, enrolled: 20, available: 5 },
-  { cat: "RSC", title: "Cursa solidària 5K", desc: "Corre per una bona causa. Recaptació destinada al Banc dels Aliments.", date: "26 abr 2026", time: "09:00 – 12:00", location: "Passeig marítim de Barcelona", total: 50, enrolled: 38, available: 12 },
-  { cat: "Benestar", title: "Sessió de ioga al parc", desc: "Sessió de ioga per a tots els nivells al parc annex a la planta. Porta roba còmoda.", date: "3 mai 2026", time: "08:00 – 09:00", location: "Parc exterior planta", total: 20, enrolled: 12, available: 8 },
-  { cat: "Social", title: "Sopar d'equip primavera 2026", desc: "Sopar de convivència per a tots els treballadors de TAVIL. Inclou menú i activitat de team building.", date: "15 mai 2026", time: "20:00 – 23:30", location: "Restaurant Can Mollet", total: 120, enrolled: 87, available: 33 },
-];
-
-const ACTIVITATS_PASSADES = [
-  { cat: "RSC", title: "Jornada de voluntariat ambiental", desc: "Plantada d'arbres i neteja forestal als voltants de la planta. Activitat per a totes les edats.", date: "22 mar 2026", time: "09:00 – 13:00", location: "Bosc periurbà de Mollet", total: 40, enrolled: 40 },
-  { cat: "Benestar", title: "Taller de cuina saludable", desc: "Sessió pràctica amb un nutricionista per aprendre a preparar àpats equilibrats al dia a dia.", date: "15 mar 2026", time: "13:00 – 15:00", location: "Menjador de planta", total: 20, enrolled: 20 },
-];
-
 function ActivitatsTab() {
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [activeTab, setActiveTab] = useState('Properes');
   const [activeFilter, setActiveFilter] = useState('Totes');
 
-  const source = activeTab === 'Properes' ? ACTIVITATS_PROPERES : ACTIVITATS_PASSADES;
-  const filtered = activeFilter === 'Totes' ? source : source.filter(a => a.cat === activeFilter);
+  useEffect(() => {
+    apiGetActivities().then(setActivities).catch(console.error);
+  }, []);
+
+  const upcoming = activities.filter(a => a.past === 0);
+  const past = activities.filter(a => a.past === 1);
+  const source = activeTab === 'Properes' ? upcoming : past;
+  const filtered = activeFilter === 'Totes' ? source : source.filter(a => a.category === activeFilter);
   const isProperes = activeTab === 'Properes';
 
   return (
     <div className="animate-in fade-in duration-300">
       <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Esdeveniments socials, esportius i culturals per als treballadors de TAVIL</p>
       <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-5">
-        {[`Properes (6)`, `Passades (2)`].map(tab => {
+        {[`Properes (${upcoming.length})`, `Passades (${past.length})`].map(tab => {
           const key = tab.split(' ')[0];
           return <UnderlineTab key={tab} label={tab} active={activeTab === key} onClick={() => { setActiveTab(key); setActiveFilter('Totes'); }} />;
         })}
@@ -302,16 +340,18 @@ function ActivitatsTab() {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {filtered.map((act, i) => (
+        {filtered.map((act, i) => {
+          const available = act.capacity > 0 ? act.capacity - act.enrolled : 0;
+          return (
           <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between mb-3">
-              <span className="text-[11px] font-bold text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{act.cat}</span>
+              <span className="text-[11px] font-bold text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{act.category}</span>
               {isProperes
                 ? <span className="text-[11px] font-bold text-white bg-red-600 px-2.5 py-0.5 rounded">Inscripció oberta</span>
                 : <span className="text-[11px] font-bold text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 px-2.5 py-0.5 rounded">Finalitzada</span>}
             </div>
             <h3 className="font-bold text-gray-900 dark:text-white mb-2">{act.title}</h3>
-            <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4 leading-relaxed">{act.desc}</p>
+            <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4 leading-relaxed">{act.description}</p>
             <div className="space-y-1.5 mb-4">
               <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><Calendar size={13} /><span>{act.date}</span></div>
               <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><Clock size={13} /><span>{act.time}</span></div>
@@ -319,11 +359,11 @@ function ActivitatsTab() {
             </div>
             <div className={isProperes ? "mb-4" : ""}>
               <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
-                <span className="flex items-center gap-1"><Users size={11} />{act.enrolled} / {act.total} places</span>
-                {isProperes && 'available' in act && <span className="text-green-600 font-medium">{(act as any).available} disponibles</span>}
+                <span className="flex items-center gap-1"><Users size={11} />{act.enrolled} / {act.capacity} places</span>
+                {isProperes && act.capacity > 0 && <span className="text-green-600 font-medium">{available} disponibles</span>}
               </div>
               <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5">
-                <div className={cn("h-1.5 rounded-full", isProperes ? "bg-red-500" : "bg-gray-400 dark:bg-zinc-600")} style={{ width: `${(act.enrolled / act.total) * 100}%` }} />
+                <div className={cn("h-1.5 rounded-full", isProperes ? "bg-red-500" : "bg-gray-400 dark:bg-zinc-600")} style={{ width: `${act.capacity > 0 ? (act.enrolled / act.capacity) * 100 : 0}%` }} />
               </div>
             </div>
             {isProperes && (
@@ -332,26 +372,14 @@ function ActivitatsTab() {
               </button>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
 // ── Agenda Tab ────────────────────────────────────────────────────────────────
-
-const AGENDA_EVENTS = [
-  { day: 24, month: 3, title: "Comitè de direcció", time: "09:00 – 11:00", location: "Sala de reunions", type: "Sessió interna" },
-  { day: 25, month: 3, title: "Reunió general trimestral", time: "10:00 – 12:00", location: "Auditori de planta", type: "Sessió interna" },
-  { day: 26, month: 3, title: "Revisió de projectes R+D", time: "15:00 – 16:30", location: "Sala d'enginyeria", type: "Sessió interna" },
-  { day: 27, month: 3, title: "Taller de seguretat laboral", time: "09:00 – 13:00", location: "Sala de formació", type: "Sessió interna" },
-  { day: 3, month: 4, title: "Divendres Sant", time: "", location: "", type: "Festiu" },
-  { day: 3, month: 4, title: "Formació Excel avançat", time: "10:00 – 12:00", location: "Sala de formació", type: "Sessió interna" },
-  { day: 5, month: 4, title: "Torneig de pàdel TAVIL", time: "10:00 – 14:00", location: "Club esportiu Mollet", type: "Activitat empresa" },
-  { day: 6, month: 4, title: "Dilluns de Pasqua", time: "", location: "", type: "Festiu" },
-  { day: 8, month: 4, title: "Visita client Grupo Aldesa", time: "10:00 – 13:00", location: "Planta Mollet", type: "Visita comercial" },
-  { day: 15, month: 4, title: "Fira Hispack Barcelona", time: "09:00 – 18:00", location: "Fira de Barcelona", type: "Fira" },
-];
 
 const EVENT_COLORS: Record<string, string> = {
   "Sessió interna":    "bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300",
@@ -361,25 +389,50 @@ const EVENT_COLORS: Record<string, string> = {
   "Fira":              "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300",
 };
 
+const MONTH_NAMES = ['', 'Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre'];
+const MONTH_ABBR: Record<number, string> = { 1: 'GEN', 2: 'FEB', 3: 'MAR', 4: 'ABR', 5: 'MAI', 6: 'JUN', 7: 'JUL', 8: 'AGO', 9: 'SET', 10: 'OCT', 11: 'NOV', 12: 'DES' };
+
 function AgendaTab() {
+  const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>([]);
   const [view, setView] = useState<'calendar' | 'list'>('calendar');
   const [activeFilter, setActiveFilter] = useState('Tots');
+  const [currentMonth, setCurrentMonth] = useState(3);
+  const [currentYear, setCurrentYear] = useState(2026);
+
+  useEffect(() => {
+    apiGetAgendaEvents().then(setAgendaEvents).catch(console.error);
+  }, []);
+
+  const navigateMonth = (dir: 1 | -1) => {
+    setCurrentMonth(m => {
+      const nm = m + dir;
+      if (nm > 12) { setCurrentYear(y => y + 1); return 1; }
+      if (nm < 1) { setCurrentYear(y => y - 1); return 12; }
+      return nm;
+    });
+  };
 
   const filters = ['Tots', 'Festiu', 'Fira', 'Visita comercial', 'Sessió interna', 'Activitat empresa'];
 
   const filteredEvents = activeFilter === 'Tots'
-    ? AGENDA_EVENTS
-    : AGENDA_EVENTS.filter(e => e.type === activeFilter);
+    ? agendaEvents
+    : agendaEvents.filter(e => e.type === activeFilter);
 
-  // Build calendar cell events map (month 3 only for the March calendar)
-  const calendarEvents: Record<number, typeof AGENDA_EVENTS> = {};
-  filteredEvents.filter(e => e.month === 3).forEach(e => {
+  // Build calendar cell events map for the current month
+  const calendarEvents: Record<number, AgendaEvent[]> = {};
+  filteredEvents.filter(e => e.month === currentMonth && e.id !== undefined).forEach(e => {
     if (!calendarEvents[e.day]) calendarEvents[e.day] = [];
     calendarEvents[e.day].push(e);
   });
 
+  const today = new Date();
+  const isToday = (day: number) => day === today.getDate() && currentMonth === today.getMonth() + 1 && currentYear === today.getFullYear();
+
+  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+  const firstDayOfWeek = new Date(currentYear, currentMonth - 1, 1).getDay();
+  const mondayOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
   const days = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'];
-  const cells: (number | null)[] = [...Array(6).fill(null), ...Array.from({ length: 31 }, (_, i) => i + 1)];
+  const cells: (number | null)[] = [...Array(mondayOffset).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
   return (
     <div className="animate-in fade-in duration-300">
@@ -403,19 +456,19 @@ function AgendaTab() {
       {view === 'calendar' ? (
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-6">
           <div className="flex items-center justify-between mb-6">
-            <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><ChevronLeft size={18} className="text-gray-500" /></button>
-            <h3 className="font-bold text-gray-900 dark:text-white">Març 2026</h3>
-            <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><ChevronRight size={18} className="text-gray-500" /></button>
+            <button onClick={() => navigateMonth(-1)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><ChevronLeft size={18} className="text-gray-500" /></button>
+            <h3 className="font-bold text-gray-900 dark:text-white">{MONTH_NAMES[currentMonth]} {currentYear}</h3>
+            <button onClick={() => navigateMonth(1)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><ChevronRight size={18} className="text-gray-500" /></button>
           </div>
           <div className="grid grid-cols-7">
             {days.map(d => (
               <div key={d} className="px-2 py-2 text-center text-xs font-semibold text-gray-500 dark:text-zinc-400 border-b border-gray-100 dark:border-zinc-800">{d}</div>
             ))}
             {cells.map((day, i) => (
-              <div key={i} className={cn("min-h-[80px] p-1.5 border-b border-r border-gray-50 dark:border-zinc-800/50", day === 25 && "bg-red-50/50 dark:bg-red-950/10")}>
+              <div key={i} className={cn("min-h-[80px] p-1.5 border-b border-r border-gray-50 dark:border-zinc-800/50", day !== null && isToday(day) && "bg-red-50/50 dark:bg-red-950/10")}>
                 {day && (
                   <>
-                    <span className={cn("text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1", day === 25 ? "bg-red-600 text-white" : "text-gray-700 dark:text-zinc-300")}>{day}</span>
+                    <span className={cn("text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1", isToday(day) ? "bg-red-600 text-white" : "text-gray-700 dark:text-zinc-300")}>{day}</span>
                     {(calendarEvents[day] || []).map((ev, j) => (
                       <div key={j} className={cn("text-[10px] px-1.5 py-0.5 rounded truncate mb-0.5 font-medium", EVENT_COLORS[ev.type])}>{ev.title}</div>
                     ))}
@@ -434,7 +487,7 @@ function AgendaTab() {
             <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 flex items-center gap-4">
               <div className="flex flex-col items-center justify-center w-14 h-14 rounded-xl bg-red-50 dark:bg-red-950/20 flex-shrink-0">
                 <span className="text-red-600 font-bold text-lg leading-none">{ev.day}</span>
-                <span className="text-red-400 text-[10px] font-bold uppercase">{ev.month === 3 ? 'MAR' : 'ABR'}</span>
+                <span className="text-red-400 text-[10px] font-bold uppercase">{MONTH_ABBR[ev.month] ?? ev.month}</span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-gray-900 dark:text-white text-sm">{ev.title}</p>
@@ -456,43 +509,24 @@ function AgendaTab() {
 
 // ── Directori Tab ─────────────────────────────────────────────────────────────
 
-const EMPLOYEES = [
-  { initials: "AF", color: "bg-red-400",    name: "Àlex Font",       role: "Director comercial",        dept: "Comercial",       email: "a.font@tavil.com",      phone: "934 12 00 10", ext: "801" },
-  { initials: "MT", color: "bg-pink-500",   name: "Marina Torres",   role: "Executiva de comptes",      dept: "Comercial",       email: "m.torres@tavil.com",    phone: "934 12 00 11", ext: "802" },
-  { initials: "NC", color: "bg-orange-500", name: "Núria Camps",     role: "Responsable de compres",    dept: "Compres",         email: "n.camps@tavil.com",     phone: "934 12 00 20", ext: "701" },
-  { initials: "JB", color: "bg-blue-500",   name: "Jordi Bellmunt",  role: "Director general",          dept: "Direcció",        email: "j.bellmunt@tavil.com",  phone: "934 12 00 01", ext: "101" },
-  { initials: "CM", color: "bg-emerald-500",name: "Carme Martínez",  role: "Directora financera",       dept: "Direcció",        email: "c.martinez@tavil.com",  phone: "934 12 00 02", ext: "102" },
-  { initials: "CV", color: "bg-teal-500",   name: "Carla Vidal",     role: "Comptable sènior",          dept: "Direcció",        email: "c.vidal@tavil.com",     phone: "934 12 00 03", ext: "103" },
-  { initials: "MF", color: "bg-violet-500", name: "Marc Ferrer",     role: "Enginyer de processos",     dept: "Enginyeria",      email: "m.ferrer@tavil.com",    phone: "934 12 34 80", ext: "601" },
-  { initials: "SR", color: "bg-indigo-400", name: "Sílvia Roca",     role: "Dissenyadora de producte",  dept: "Enginyeria",      email: "s.roca@tavil.com",      phone: "934 12 34 81", ext: "602" },
-  { initials: "GC", color: "bg-blue-400",   name: "Gerard Costa",    role: "Enginyer mecànic",          dept: "Enginyeria",      email: "g.costa@tavil.com",     phone: "934 12 34 82", ext: "603" },
-  { initials: "JF", color: "bg-rose-500",   name: "Jordi Fàbrega",   role: "Responsable de màrqueting", dept: "Màrqueting",      email: "j.fabrega@tavil.com",   phone: "934 12 34 90", ext: "901" },
-  { initials: "MG", color: "bg-red-500",    name: "Marta García",    role: "Responsable d'operacions",  dept: "Operacions",      email: "m.garcia@tavil.com",    phone: "934 12 34 56", ext: "301" },
-  { initials: "PS", color: "bg-amber-500",  name: "Pere Soler",      role: "Cap de logística",          dept: "Operacions",      email: "p.soler@tavil.com",     phone: "934 12 34 58", ext: "302" },
-  { initials: "DL", color: "bg-orange-400", name: "David López",     role: "Tècnic de manteniment",     dept: "Operacions",      email: "d.lopez@tavil.com",     phone: "934 12 34 59", ext: "303" },
-  { initials: "JP", color: "bg-amber-600",  name: "Joan Puig",       role: "Director de producció",     dept: "Producció",       email: "j.puig@tavil.com",      phone: "934 12 34 57", ext: "401" },
-  { initials: "RB", color: "bg-cyan-500",   name: "Roger Bosch",     role: "Cap de torn – matí",        dept: "Producció",       email: "r.bosch@tavil.com",     phone: "934 12 34 70", ext: "402" },
-  { initials: "SV", color: "bg-indigo-500", name: "Sandra Vila",     role: "Cap de torn – tarda",       dept: "Producció",       email: "s.vila@tavil.com",      phone: "934 12 34 71", ext: "403" },
-  { initials: "LM", color: "bg-violet-400", name: "Laura Martí",     role: "Responsable de RRHH",       dept: "Recursos humans", email: "l.marti@tavil.com",     phone: "934 12 34 60", ext: "201" },
-  { initials: "EP", color: "bg-pink-500",   name: "Elena Pujol",     role: "Tècnica de selecció",       dept: "Recursos humans", email: "e.pujol@tavil.com",     phone: "934 12 34 61", ext: "202" },
-  { initials: "PT", color: "bg-sky-500",    name: "Pau Torrent",     role: "Cap de sistemes",           dept: "Sistemes",        email: "p.torrent@tavil.com",   phone: "934 12 34 50", ext: "501" },
-  { initials: "IM", color: "bg-cyan-600",   name: "Irene Molina",    role: "Tècnica de sistemes",       dept: "Sistemes",        email: "i.molina@tavil.com",    phone: "934 12 34 51", ext: "502" },
-  { initials: "BC", color: "bg-green-500",  name: "Bernat Camps",    role: "Responsable de qualitat",   dept: "Qualitat",        email: "b.camps@tavil.com",     phone: "934 12 34 40", ext: "1001" },
-];
-
 const DEPT_ORDER = ['Comercial', 'Compres', 'Direcció', 'Enginyeria', 'Màrqueting', 'Operacions', 'Producció', 'Recursos humans', 'Sistemes', 'Qualitat'];
 
 function DirectoriTab() {
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [activeFilter, setActiveFilter] = useState('Tots');
   const [view, setView] = useState<'graella' | 'departaments'>('departaments');
 
-  const filtered = activeFilter === 'Tots' ? EMPLOYEES : EMPLOYEES.filter(e => e.dept === activeFilter);
+  useEffect(() => {
+    apiGetEmployees().then(setEmployees).catch(console.error);
+  }, []);
+
+  const filtered = activeFilter === 'Tots' ? employees : employees.filter(e => e.dept === activeFilter);
 
   const grouped = DEPT_ORDER.reduce((acc, dept) => {
     const members = filtered.filter(e => e.dept === dept);
     if (members.length > 0) acc[dept] = members;
     return acc;
-  }, {} as Record<string, typeof EMPLOYEES>);
+  }, {} as Record<string, Employee[]>);
 
   return (
     <div className="animate-in fade-in duration-300">
@@ -720,16 +754,6 @@ function EspaiCorporatiuTab() {
 
 // ── Campus TAVIL Tab ──────────────────────────────────────────────────────────
 
-const CAMPUS_COURSES = [
-  { cat: "Seguretat", status: "En curs", title: "Prevenció i seguretat a planta", desc: "Formació obligatòria anual sobre prevenció de riscos laborals per a personal de planta.", hours: "8h", mandatory: true, progress: 62, cert: false },
-  { cat: "Qualitat", status: "Pendent", title: "Procediments de qualitat ISO 9001", desc: "Formació sobre el sistema de gestió de qualitat de TAVIL segons la norma ISO 9001.", hours: "6h", mandatory: true, progress: 0, cert: false },
-  { cat: "Sistemes", status: "En curs", title: "Introducció a l'ERP (SAP Business One)", desc: "Curs bàsic per aprendre a navegar i utilitzar les funcions principals de l'ERP corporatiu.", hours: "10h", mandatory: false, progress: 40, cert: false },
-  { cat: "Comercial", status: "Pendent", title: "Bones pràctiques comercials", desc: "Tècniques de venda consultiva i gestió de clients adaptades al sector industrial.", hours: "12h", mandatory: false, progress: 0, cert: false },
-  { cat: "Compliance", status: "Completat", title: "Formació en protecció de dades (RGPD)", desc: "Formació obligatòria sobre la normativa de protecció de dades personals.", hours: "4h", mandatory: true, progress: 100, cert: true },
-  { cat: "Acollida", status: "Completat", title: "Manual d'acollida per a noves incorporacions", desc: "Curs introductori per als nous treballadors amb tota la informació corporativa.", hours: "5h", mandatory: true, progress: 100, cert: true },
-  { cat: "Idiomes", status: "En curs", title: "Anglès B2 per a entorn professional", desc: "Millorar el nivell d'anglès per a comunicació professional escrita i oral.", hours: "40h", mandatory: false, progress: 25, cert: false },
-];
-
 const STATUS_COLORS: Record<string, string> = {
   "En curs":   "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300",
   "Pendent":   "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300",
@@ -737,16 +761,27 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function CampusTavilTab() {
+  const [courses, setCourses] = useState<Course[]>([]);
   const [activeTab, setActiveTab] = useState('Resum');
   const [topicFilter, setTopicFilter] = useState('Tots els temes');
   const [statusFilter, setStatusFilter] = useState('Tots els estats');
 
+  useEffect(() => {
+    apiGetCourses().then(setCourses).catch(console.error);
+  }, []);
+
+  const completed = courses.filter(c => c.user_status === 'Completat');
+  const inProgress = courses.filter(c => c.user_status === 'En curs');
+  const pending = courses.filter(c => c.user_status === 'Pendent');
+  const completedHours = completed.reduce((s, c) => s + (parseInt(c.hours) || 0), 0);
+  const mandatoryPending = courses.find(c => !!c.mandatory && c.user_status === 'Pendent');
+
   const topics = ['Tots els temes', 'Seguretat', 'Qualitat', 'Sistemes', 'Comercial', 'Compliance', 'Acollida', 'Producció', 'Habilitats', 'Idiomes'];
   const statuses = ['Tots els estats', 'Pendent', 'En curs', 'Completat'];
 
-  const filteredCourses = CAMPUS_COURSES.filter(c => {
-    const matchTopic = topicFilter === 'Tots els temes' || c.cat === topicFilter;
-    const matchStatus = statusFilter === 'Tots els estats' || c.status === statusFilter;
+  const filteredCourses = courses.filter(c => {
+    const matchTopic = topicFilter === 'Tots els temes' || c.category === topicFilter;
+    const matchStatus = statusFilter === 'Tots els estats' || c.user_status === statusFilter;
     return matchTopic && matchStatus;
   });
 
@@ -763,10 +798,10 @@ function CampusTavilTab() {
         <>
           <div className="grid grid-cols-4 gap-4 mb-6">
             {[
-              { label: "Cursos completats", value: "2", icon: CheckCircle, color: "text-green-500" },
-              { label: "En curs", value: "3", icon: TrendingUp, color: "text-blue-500" },
-              { label: "Pendents", value: "4", icon: Clock, color: "text-orange-500" },
-              { label: "Hores completades", value: "9h", icon: Activity, color: "text-purple-500" },
+              { label: "Cursos completats", value: String(completed.length), icon: CheckCircle, color: "text-green-500" },
+              { label: "En curs", value: String(inProgress.length), icon: TrendingUp, color: "text-blue-500" },
+              { label: "Pendents", value: String(pending.length), icon: Clock, color: "text-orange-500" },
+              { label: "Hores completades", value: `${completedHours}h`, icon: ActivityIcon, color: "text-purple-500" },
             ].map((stat, i) => (
               <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
                 <div className="flex items-center justify-between mb-2"><p className="text-xs text-gray-500 dark:text-zinc-400">{stat.label}</p><stat.icon size={15} className={stat.color} /></div>
@@ -774,29 +809,31 @@ function CampusTavilTab() {
               </div>
             ))}
           </div>
-          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 mb-5">
-            <div className="flex items-center gap-2 mb-3"><AlertTriangle size={15} className="text-orange-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">Formació obligatòria pendent</h3></div>
-            <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 rounded-xl">
-              <div>
-                <p className="font-semibold text-gray-900 dark:text-white text-sm">Procediments de qualitat ISO 9001</p>
-                <div className="flex items-center gap-3 mt-1"><span className="text-xs text-gray-500">6h · Qualitat</span><span className="text-[10px] font-bold bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded">Obligatòria</span></div>
+          {mandatoryPending && (
+            <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 mb-5">
+              <div className="flex items-center gap-2 mb-3"><AlertTriangle size={15} className="text-orange-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">Formació obligatòria pendent</h3></div>
+              <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 rounded-xl">
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white text-sm">{mandatoryPending.title}</p>
+                  <div className="flex items-center gap-3 mt-1"><span className="text-xs text-gray-500">{mandatoryPending.hours} · {mandatoryPending.category}</span><span className="text-[10px] font-bold bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded">Obligatòria</span></div>
+                </div>
+                <button className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">Fer curs</button>
               </div>
-              <button className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">Fer curs</button>
             </div>
-          </div>
+          )}
           <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4 flex items-center gap-2"><TrendingUp size={15} className="text-blue-500" /> Cursos en curs</h3>
           <div className="grid grid-cols-2 gap-4">
-            {CAMPUS_COURSES.filter(c => c.status === 'En curs').map((course, i) => (
+            {inProgress.map((course, i) => (
               <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
                 <div className="flex items-start justify-between mb-3">
-                  <span className="text-[11px] font-bold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{course.cat}</span>
-                  <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded", STATUS_COLORS[course.status])}>{course.status}</span>
+                  <span className="text-[11px] font-bold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{course.category}</span>
+                  <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded", STATUS_COLORS[course.user_status])}>{course.user_status}</span>
                 </div>
                 <h4 className="font-bold text-gray-900 dark:text-white mb-2">{course.title}</h4>
-                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed">{course.desc}</p>
-                <div className="flex items-center gap-2 text-xs text-gray-500 mb-3"><Clock size={12} /><span>{course.hours}</span>{course.mandatory && <span className="text-[10px] bg-orange-100 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400 px-1.5 py-0.5 rounded font-bold">Obligatòria</span>}</div>
-                <div className="flex justify-between text-xs text-gray-500 mb-1.5"><span>Progrés</span><span className="font-medium">{course.progress}%</span></div>
-                <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-2"><div className="bg-red-500 h-2 rounded-full" style={{ width: `${course.progress}%` }} /></div>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed">{course.description}</p>
+                <div className="flex items-center gap-2 text-xs text-gray-500 mb-3"><Clock size={12} /><span>{course.hours}</span>{!!course.mandatory && <span className="text-[10px] bg-orange-100 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400 px-1.5 py-0.5 rounded font-bold">Obligatòria</span>}</div>
+                <div className="flex justify-between text-xs text-gray-500 mb-1.5"><span>Progrés</span><span className="font-medium">{course.user_progress}%</span></div>
+                <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-2"><div className="bg-red-500 h-2 rounded-full" style={{ width: `${course.user_progress}%` }} /></div>
               </div>
             ))}
           </div>
@@ -819,15 +856,15 @@ function CampusTavilTab() {
             {filteredCourses.map((course, i) => (
               <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3">
-                  <span className="text-[11px] font-bold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{course.cat}</span>
-                  <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded", STATUS_COLORS[course.status])}>{course.status}</span>
+                  <span className="text-[11px] font-bold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{course.category}</span>
+                  <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded", STATUS_COLORS[course.user_status])}>{course.user_status}</span>
                 </div>
                 <h4 className="font-bold text-gray-900 dark:text-white mb-2 text-sm">{course.title}</h4>
-                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed line-clamp-2">{course.desc}</p>
-                <div className="flex items-center gap-2 text-xs text-gray-500 mb-2"><Clock size={12} /><span>{course.hours}</span>{course.mandatory && <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-bold">Obligatòria</span>}</div>
-                {course.cert && <div className="flex items-center gap-1 text-[11px] text-green-600"><Award size={12} /><span>Certificat disponible</span></div>}
-                {course.progress > 0 && course.progress < 100 && (
-                  <><div className="flex justify-between text-xs text-gray-500 mt-3 mb-1"><span>Progrés</span><span>{course.progress}%</span></div><div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${course.progress}%` }} /></div></>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed line-clamp-2">{course.description}</p>
+                <div className="flex items-center gap-2 text-xs text-gray-500 mb-2"><Clock size={12} /><span>{course.hours}</span>{!!course.mandatory && <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-bold">Obligatòria</span>}</div>
+                {!!course.cert && <div className="flex items-center gap-1 text-[11px] text-green-600"><Award size={12} /><span>Certificat disponible</span></div>}
+                {course.user_progress > 0 && course.user_progress < 100 && (
+                  <><div className="flex justify-between text-xs text-gray-500 mt-3 mb-1"><span>Progrés</span><span>{course.user_progress}%</span></div><div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${course.user_progress}%` }} /></div></>
                 )}
               </div>
             ))}
@@ -840,16 +877,16 @@ function CampusTavilTab() {
           <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 mb-6">
             <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Resum del meu progrés</h3>
             <div className="grid grid-cols-3 gap-4 text-center">
-              {[{ label: "Completats", value: "2", icon: CheckCircle, color: "text-green-500" }, { label: "En curs", value: "3", icon: TrendingUp, color: "text-blue-500" }, { label: "Hores formació", value: "9h", icon: Clock, color: "text-purple-500" }].map((s, i) => (
+              {[{ label: "Completats", value: String(completed.length), icon: CheckCircle, color: "text-green-500" }, { label: "En curs", value: String(inProgress.length), icon: TrendingUp, color: "text-blue-500" }, { label: "Hores formació", value: `${completedHours}h`, icon: Clock, color: "text-purple-500" }].map((s, i) => (
                 <div key={i}><p className="text-3xl font-bold text-gray-900 dark:text-white">{s.value}</p><p className="text-xs text-gray-500 mt-1">{s.label}</p></div>
               ))}
             </div>
           </div>
           {['En curs', 'Pendents', 'Completats'].map(group => {
-            const items = CAMPUS_COURSES.filter(c => {
-              if (group === 'Pendents') return c.status === 'Pendent';
-              if (group === 'Completats') return c.status === 'Completat';
-              return c.status === 'En curs';
+            const items = courses.filter(c => {
+              if (group === 'Pendents') return c.user_status === 'Pendent';
+              if (group === 'Completats') return c.user_status === 'Completat';
+              return c.user_status === 'En curs';
             });
             if (items.length === 0) return null;
             return (
@@ -861,10 +898,10 @@ function CampusTavilTab() {
                       <GraduationCap size={16} className="text-gray-400 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900 dark:text-white text-sm">{c.title}</p>
-                        <p className="text-xs text-gray-500">{c.hours} · {c.cat}{c.mandatory ? ' · ' : ''}{c.mandatory && <span className="text-orange-500 font-medium">Obligatòria</span>}</p>
-                        {c.progress > 0 && c.progress < 100 && <div className="flex items-center gap-2 mt-1.5"><div className="flex-1 bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${c.progress}%` }} /></div><span className="text-[10px] text-gray-500">{c.progress}%</span></div>}
+                        <p className="text-xs text-gray-500">{c.hours} · {c.category}{!!c.mandatory ? ' · ' : ''}{!!c.mandatory && <span className="text-orange-500 font-medium">Obligatòria</span>}</p>
+                        {c.user_progress > 0 && c.user_progress < 100 && <div className="flex items-center gap-2 mt-1.5"><div className="flex-1 bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${c.user_progress}%` }} /></div><span className="text-[10px] text-gray-500">{c.user_progress}%</span></div>}
                       </div>
-                      <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded flex-shrink-0", STATUS_COLORS[c.status])}>{c.status}</span>
+                      <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded flex-shrink-0", STATUS_COLORS[c.user_status])}>{c.user_status}</span>
                     </div>
                   ))}
                 </div>
@@ -940,14 +977,15 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
   // Enquestes state
   const [enquestes, setEnquestes] = useState<Enquesta[]>([]);
 
-  const userEmail = currentUser?.email ?? '';
-  const userName = currentUser?.name ?? 'Anònim';
+  const fetchAll = () => {
+    apiGetSuggestions().then(setSuggestions).catch(console.error);
+    apiGetIncidencies().then(setIncidencies).catch(console.error);
+    apiGetEnquestes().then(setEnquestes).catch(console.error);
+  };
 
   useEffect(() => {
-    setSuggestions(getSuggestions());
-    setIncidencies(getIncidencies());
-    setEnquestes(getEnquestes(userEmail));
-  }, [userEmail]);
+    fetchAll();
+  }, []);
 
   const statusTagColor = (label: string) => {
     if (label === 'Acceptada') return 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400';
@@ -971,36 +1009,59 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
     return d.toLocaleDateString('ca-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-  const handleVote = (id: number) => {
-    voteSuggestion(id);
-    setSuggestions(getSuggestions());
+  const handleVote = async (id: number) => {
+    try {
+      await apiVoteSuggestion(id);
+      const updated = await apiGetSuggestions();
+      setSuggestions(updated);
+    } catch (e) {
+      console.error('Error voting:', e);
+    }
   };
 
-  const handleSuggSubmit = () => {
+  const handleSuggSubmit = async () => {
     if (!newTitle.trim() || !newCat) return;
     setSuggSubmitting(true);
-    addSuggestion(newTitle.trim(), newDesc.trim(), newCat, isAnon, userName);
-    setSuggestions(getSuggestions());
-    setNewTitle(''); setNewDesc(''); setNewCat(''); setIsAnon(true);
-    setSuggSubmitting(false);
-    setSuggSuccess(true);
-    setTimeout(() => setSuggSuccess(false), 3000);
+    try {
+      await apiCreateSuggestion(newTitle.trim(), newDesc.trim(), newCat, isAnon);
+      const updated = await apiGetSuggestions();
+      setSuggestions(updated);
+      setNewTitle(''); setNewDesc(''); setNewCat(''); setIsAnon(true);
+      setSuggSuccess(true);
+      setTimeout(() => setSuggSuccess(false), 3000);
+    } catch (e) {
+      console.error('Error creating suggestion:', e);
+    } finally {
+      setSuggSubmitting(false);
+    }
   };
 
-  const handleIncSubmit = () => {
+  const handleIncSubmit = async () => {
     if (!incTitle.trim() || !incArea || !incPriority) return;
     setIncSubmitting(true);
-    addIncidencia(incTitle.trim(), incDesc.trim(), incArea, incPriority, userName);
-    setIncidencies(getIncidencies());
-    setIncTitle(''); setIncDesc(''); setIncArea(''); setIncPriority('');
-    setIncSubmitting(false);
-    setIncSuccess(true);
-    setTimeout(() => setIncSuccess(false), 3000);
+    try {
+      await apiCreateIncidencia(incTitle.trim(), incDesc.trim(), incArea, incPriority);
+      const updated = await apiGetIncidencies();
+      setIncidencies(updated);
+      setIncTitle(''); setIncDesc(''); setIncArea(''); setIncPriority('');
+      setIncSuccess(true);
+      setTimeout(() => setIncSuccess(false), 3000);
+    } catch (e) {
+      console.error('Error creating incidencia:', e);
+    } finally {
+      setIncSubmitting(false);
+    }
   };
 
-  const handleRespondre = (id: number) => {
-    respondreEnquesta(id, userEmail);
-    setEnquestes(getEnquestes(userEmail));
+  const handleRespondre = async (id: number) => {
+    try {
+      await apiRespondreEnquesta(id);
+      const updated = await apiGetEnquestes();
+      setEnquestes(updated);
+    } catch (e) {
+      console.error('Error responding enquesta:', e);
+      alert(e instanceof Error ? e.message : 'Error en respondre l\'enquesta');
+    }
   };
 
   return (
@@ -1147,7 +1208,7 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
       {activeTab === 'Enquestes' && (
         <div className="space-y-4">
           {enquestes.map(enc => {
-            const isCompleted = enc.userCompleted || enc.status === 'Completada';
+            const isCompleted = enc.user_completed || enc.status === 'Completada';
             const isClosed = enc.status === 'Tancada';
             const isAvailable = enc.status === 'Disponible' && !isCompleted;
             const pct = enc.total > 0 ? Math.round((enc.responses / enc.total) * 100) : 0;
@@ -1200,34 +1261,10 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
 
 // ── Solicituds Tab ────────────────────────────────────────────────────────────
 
-type DiaNoOrdinari = {
-  id: number;
-  date: string;
-  comments: string;
-  status: 'Pendent' | 'Aprovada' | 'Denegada';
-  motive: string;
-  author: string;
-  created_at: string;
-};
 
-function getDiesNoOrdinaris(): DiaNoOrdinari[] {
-  try { return JSON.parse(localStorage.getItem('tavil_dies_no_ord') ?? '[]'); } catch { return []; }
-}
-
-function addDiaNoOrdinari(date: string, comments: string, author: string): void {
-  const list = getDiesNoOrdinaris();
-  list.unshift({ id: Date.now(), date, comments, status: 'Pendent', motive: '', author, created_at: new Date().toISOString() });
-  localStorage.setItem('tavil_dies_no_ord', JSON.stringify(list));
-}
-
-function updateDiaNoOrdinariStatus(id: number, status: 'Aprovada' | 'Denegada', motive: string = ''): void {
-  const list = getDiesNoOrdinaris().map(d => d.id === id ? { ...d, status, motive } : d);
-  localStorage.setItem('tavil_dies_no_ord', JSON.stringify(list));
-}
-
-function SolicitudsTab({ currentUser }: { currentUser: User | null }) {
+function SolicitudsTab({ currentUser, onNotifChange }: { currentUser: User | null; onNotifChange?: () => void }) {
   const [activeTab, setActiveTab] = useState('Dies no ordinaris');
-  const [diesNoOrdinaris, setDiesNoOrdinaris] = useState<DiaNoOrdinari[]>([]);
+  const [diesNoOrdinaris, setDiesNoOrdinaris] = useState<Solicitud[]>([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [comments, setComments] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -1235,12 +1272,15 @@ function SolicitudsTab({ currentUser }: { currentUser: User | null }) {
   const [denyingId, setDenyingId] = useState<number | null>(null);
   const [denyMotive, setDenyMotive] = useState('');
 
-  const userName = currentUser?.name ?? 'Anònim';
   const isRRHH = currentUser?.role === 'Recursos humans';
 
+  const fetchSolicituds = () => {
+    apiGetSolicituds().then(setDiesNoOrdinaris).catch(console.error);
+  };
+
   useEffect(() => {
-    setDiesNoOrdinaris(getDiesNoOrdinaris());
-  }, []);
+    fetchSolicituds();
+  }, [currentUser?.role]);
 
   const formatDate = (iso: string) => {
     if (!iso) return '';
@@ -1254,28 +1294,42 @@ function SolicitudsTab({ currentUser }: { currentUser: User | null }) {
     : s === 'Denegada' ? 'bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400'
     : 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400';
 
-  const handleApprove = (id: number) => {
-    updateDiaNoOrdinariStatus(id, 'Aprovada');
-    setDiesNoOrdinaris(getDiesNoOrdinaris());
+  const handleApprove = async (id: number) => {
+    try {
+      await apiUpdateSolicitud(id, 'Aprovada');
+      fetchSolicituds();
+    } catch (e) {
+      console.error('Error approving:', e);
+    }
   };
 
-  const handleDenyConfirm = (id: number) => {
-    updateDiaNoOrdinariStatus(id, 'Denegada', denyMotive.trim());
-    setDiesNoOrdinaris(getDiesNoOrdinaris());
-    setDenyingId(null);
-    setDenyMotive('');
+  const handleDenyConfirm = async (id: number) => {
+    try {
+      await apiUpdateSolicitud(id, 'Denegada', denyMotive.trim());
+      fetchSolicituds();
+      setDenyingId(null);
+      setDenyMotive('');
+    } catch (e) {
+      console.error('Error denying:', e);
+    }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedDate) return;
     setSubmitting(true);
-    addDiaNoOrdinari(selectedDate, comments.trim(), userName);
-    setDiesNoOrdinaris(getDiesNoOrdinaris());
-    setSelectedDate('');
-    setComments('');
-    setSubmitting(false);
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
+    try {
+      await apiCreateSolicitud(selectedDate, comments.trim());
+      fetchSolicituds();
+      onNotifChange?.();
+      setSelectedDate('');
+      setComments('');
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (e) {
+      console.error('Error submitting solicitud:', e);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const today = new Date().toISOString().split('T')[0];
@@ -1399,48 +1453,50 @@ function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; on
   const [notifCorreu, setNotifCorreu] = useState(true);
   const [notifPortal, setNotifPortal] = useState(true);
 
-  const extrasKey = `tavil_profile_extras_${currentUser?.id ?? 0}`;
-  const loadExtras = () => {
-    try { return JSON.parse(localStorage.getItem(extrasKey) ?? '{}'); } catch { return {}; }
-  };
-
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(currentUser?.name ?? '');
-  const [phoneInput, setPhoneInput] = useState(() => loadExtras().phone ?? '934 12 00 00');
-  const [extInput, setExtInput] = useState(() => loadExtras().ext ?? 'Ext. 100');
-  const [locationInput, setLocationInput] = useState(() => loadExtras().location ?? 'Planta de Mollet del Vallès');
+  const [phoneInput, setPhoneInput] = useState(currentUser?.phone ?? '');
+  const [extInput, setExtInput] = useState(currentUser?.ext ?? '');
+  const [locationInput, setLocationInput] = useState(currentUser?.location ?? '');
   const [saved, setSaved] = useState(false);
+
+  const [courses, setCourses] = useState<Course[]>([]);
+
+  useEffect(() => {
+    apiGetCourses().then(setCourses).catch(console.error);
+  }, []);
+
+  const profileCourses = courses.filter(c => c.user_status !== 'Pendent');
+  const completedCount = courses.filter(c => c.user_status === 'Completat').length;
+  const inProgressCount = courses.filter(c => c.user_status === 'En curs').length;
+  const totalHoursStr = `${profileCourses.reduce((s, c) => s + (parseInt(c.hours) || 0), 0)}h`;
 
   const initials = (currentUser?.name ?? '?').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmed = nameInput.trim();
     if (!trimmed || !currentUser) return;
-    updateUserName(currentUser.id, trimmed);
-    const updated = { ...currentUser, name: trimmed };
-    localStorage.setItem('tavil_session', JSON.stringify(updated));
-    localStorage.setItem(extrasKey, JSON.stringify({ phone: phoneInput.trim(), ext: extInput.trim(), location: locationInput.trim() }));
-    onUserUpdate(updated);
-    setEditing(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    try {
+      const updated = await apiUpdateMe({
+        name: trimmed,
+        phone: phoneInput.trim(),
+        ext: extInput.trim(),
+        location: locationInput.trim(),
+      });
+      onUserUpdate(updated);
+      setEditing(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch {}
   };
 
   const handleCancel = () => {
     setEditing(false);
     setNameInput(currentUser?.name ?? '');
-    const extras = loadExtras();
-    setPhoneInput(extras.phone ?? '934 12 00 00');
-    setExtInput(extras.ext ?? 'Ext. 100');
-    setLocationInput(extras.location ?? 'Planta de Mollet del Vallès');
+    setPhoneInput(currentUser?.phone ?? '');
+    setExtInput(currentUser?.ext ?? '');
+    setLocationInput(currentUser?.location ?? '');
   };
-
-  const profileCourses = [
-    { title: "Prevenció i seguretat a planta", status: "En curs", progress: 62 },
-    { title: "Introducció a l'ERP", status: "En curs", progress: 40 },
-    { title: "Protecció de dades (RGPD)", status: "Completat", progress: 100 },
-    { title: "Manual d'acollida", status: "Completat", progress: 100 },
-  ];
 
   return (
     <div className="animate-in fade-in duration-300">
@@ -1571,7 +1627,7 @@ function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; on
       {activeTab === 'Formació' && (
         <>
           <div className="grid grid-cols-3 gap-4 mb-6">
-            {[{ label: "Completats", value: "2", icon: Award, color: "text-green-500" }, { label: "En curs", value: "2", icon: Clock, color: "text-blue-500" }, { label: "Hores totals", value: "27h", icon: GraduationCap, color: "text-purple-500" }].map((s, i) => (
+            {[{ label: "Completats", value: String(completedCount), icon: Award, color: "text-green-500" }, { label: "En curs", value: String(inProgressCount), icon: Clock, color: "text-blue-500" }, { label: "Hores totals", value: totalHoursStr, icon: GraduationCap, color: "text-purple-500" }].map((s, i) => (
               <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
                 <div className="flex items-center justify-between mb-2"><p className="text-xs text-gray-500 dark:text-zinc-400">{s.label}</p><s.icon size={15} className={s.color} /></div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{s.value}</p>
@@ -1584,14 +1640,14 @@ function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; on
                 <GraduationCap size={16} className="text-gray-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-900 dark:text-white text-sm">{c.title}</p>
-                  {c.progress > 0 && c.progress < 100 && (
+                  {c.user_progress > 0 && c.user_progress < 100 && (
                     <div className="flex items-center gap-2 mt-1.5">
-                      <div className="flex-1 max-w-xs bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${c.progress}%` }} /></div>
-                      <span className="text-[10px] text-gray-500">{c.progress}%</span>
+                      <div className="flex-1 max-w-xs bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${c.user_progress}%` }} /></div>
+                      <span className="text-[10px] text-gray-500">{c.user_progress}%</span>
                     </div>
                   )}
                 </div>
-                <span className={cn("text-[11px] font-bold px-2.5 py-1 rounded flex-shrink-0", STATUS_COLORS[c.status])}>{c.status}</span>
+                <span className={cn("text-[11px] font-bold px-2.5 py-1 rounded flex-shrink-0", STATUS_COLORS[c.user_status])}>{c.user_status}</span>
               </div>
             ))}
           </div>
@@ -1602,7 +1658,7 @@ function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; on
         <div className="grid grid-cols-3 gap-4">
           {[
             { icon: Heart, color: "text-red-500", bg: "bg-red-50 dark:bg-red-950/20", title: "Assegurança mèdica", desc: "Cobertura mèdica privada Adeslas per al treballador i familiars directes. Copagament reduït." },
-            { icon: Activity, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/20", title: "Descompte gimnàs", desc: "30% de descompte a la xarxa de gimnasos DIR amb accés iHimitat." },
+            { icon: ActivityIcon, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/20", title: "Descompte gimnàs", desc: "30% de descompte a la xarxa de gimnasos DIR amb accés iHimitat." },
             { icon: Gift, color: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-950/20", title: "Club d'avantatges TAVIL", desc: "Descomptes en comerços locals, tecnologia, viatges i oci a través de la plataforma Cobee." },
             { icon: Shield, color: "text-green-500", bg: "bg-green-50 dark:bg-green-950/20", title: "Assegurança de vida", desc: "Pòlissa d'assegurança de vida i accidents amb cobertura de 2x el salari anual." },
             { icon: GraduationCap, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-950/20", title: "Formació subvencionada", desc: "L'empresa subvenciona fins al 100% de la formació relacionada amb el lloc de treball." },
@@ -1661,15 +1717,20 @@ function LoginPage({ onLogin, onRegister, isDarkMode, toggleDarkMode }: {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!EMAIL_RE.test(email.trim())) { setError('Format de correu no vàlid.'); return; }
     setLoading(true);
-    const user = findUser(email.trim().toLowerCase(), password);
-    setLoading(false);
-    if (!user) { setError('Correu o contrasenya incorrectes.'); return; }
-    onLogin(user);
+    try {
+      const data: TokenOut = await apiLogin(email.trim().toLowerCase(), password);
+      setToken(data.access_token);
+      onLogin(data.user);
+    } catch (err: any) {
+      setError(err.message ?? 'Correu o contrasenya incorrectes.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -1743,17 +1804,22 @@ function RegisterPage({ onBack, onRegistered, isDarkMode, toggleDarkMode }: {
 
   const passwordsMatch = confirmPassword === '' || password === confirmPassword;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!EMAIL_RE.test(email.trim())) { setError('El correu ha de tenir el format nom@domini.ext'); return; }
     if (password.length < 6) { setError('La contrasenya ha de tenir mínim 6 caràcters.'); return; }
     if (password !== confirmPassword) { setError('Les contrasenyes no coincideixen.'); return; }
     setLoading(true);
-    const result = createUser(name.trim(), email.trim().toLowerCase(), password);
-    setLoading(false);
-    if (!result.ok) { setError(result.error || 'Error desconegut.'); return; }
-    onRegistered();
+    try {
+      const data: TokenOut = await apiRegister(name.trim(), email.trim().toLowerCase(), password);
+      setToken(data.access_token);
+      onRegistered();
+    } catch (err: any) {
+      setError(err.message ?? 'Error desconegut.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -1842,7 +1908,7 @@ const SIDEBAR_SECTIONS = [
     items: [
       { id: 'Inici', label: "Inici", icon: Home },
       { id: 'Notícies', label: "Notícies", icon: Newspaper },
-      { id: 'Activitats', label: "Activitats", icon: Activity },
+      { id: 'Activitats', label: "Activitats", icon: ActivityIcon },
       { id: 'Agenda', label: "Agenda", icon: Calendar },
       { id: 'Directori', label: "Directori", icon: Users },
     ]
@@ -1868,53 +1934,63 @@ const SIDEBAR_SECTIONS = [
 
 function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [dbReady, setDbReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
 
-  const [activeTab, setActiveTab] = useState('Inici');
+  const [activeTab, setActiveTabState] = useState(() => localStorage.getItem('tavil_active_tab') ?? 'Inici');
+  const setActiveTab = (tab: string) => { localStorage.setItem('tavil_active_tab', tab); setActiveTabState(tab); };
   const [searchQuery, setSearchQuery] = useState('');
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [demoRole, setDemoRole] = useState('Treballador/a');
-  const [noticeIndex, setNoticeIndex] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const userInitials = currentUser?.name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() ?? 'CH';
 
+  const refreshNotifications = () => {
+    apiGetNotifications().then(setNotifications).catch(() => {});
+  };
+
   const handleLogin = (user: User) => {
-    localStorage.setItem('tavil_session', JSON.stringify(user));
     setCurrentUser(user);
     setDemoRole(user.role);
     setIsLoggedIn(true);
+    apiGetNotifications().then(setNotifications).catch(() => {});
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('tavil_session');
+    clearToken();
+    localStorage.removeItem('tavil_active_tab');
     setCurrentUser(null);
     setIsLoggedIn(false);
     setAuthView('login');
     setIsProfileMenuOpen(false);
+    setActiveTabState('Inici');
+    setNotifications([]);
   };
 
   const currentSection = SIDEBAR_SECTIONS.flatMap(s => s.items).find(i => i.id === activeTab);
 
   useEffect(() => {
-    const session = localStorage.getItem('tavil_session');
-    if (session) {
-      try {
-        const user: User = JSON.parse(session);
-        setCurrentUser(user);
-        setDemoRole(user.role);
-        setIsLoggedIn(true);
-      } catch {}
-    }
+    registerUnauthorizedHandler(handleLogout);
+
     const savedDark = localStorage.getItem('tavil_dark') === 'true';
     setIsDarkMode(savedDark);
     if (savedDark) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
-    initDB().then(() => setDbReady(true));
+
+    if (getToken()) {
+      apiGetMe()
+        .then(user => {
+          setCurrentUser(user);
+          setDemoRole(user.role);
+          setIsLoggedIn(true);
+          apiGetNotifications().then(setNotifications).catch(() => {});
+        })
+        .catch(() => clearToken());
+    }
   }, []);
 
   useEffect(() => {
@@ -1940,7 +2016,7 @@ function App() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'Inici': return <InicialTab noticeIndex={noticeIndex} setNoticeIndex={setNoticeIndex} />;
+      case 'Inici': return <InicialTab />;
       case 'Notícies': return <NoticiesTab />;
       case 'Activitats': return <ActivitatsTab />;
       case 'Agenda': return <AgendaTab />;
@@ -1948,22 +2024,11 @@ function App() {
       case 'Espai': return <EspaiCorporatiuTab />;
       case 'Campus': return <CampusTavilTab />;
       case 'Veu': return <VeuEmpleatTab currentUser={currentUser} />;
-      case 'Solicituds': return <SolicitudsTab currentUser={currentUser} />;
+      case 'Solicituds': return <SolicitudsTab currentUser={currentUser} onNotifChange={refreshNotifications} />;
       case 'Perfil': return <PerfilTab currentUser={currentUser} onUserUpdate={u => { setCurrentUser(u); }} />;
       default: return null;
     }
   };
-
-  if (!dbReady) {
-    return (
-      <div className={cn("min-h-screen bg-gray-100 dark:bg-zinc-950 flex items-center justify-center transition-colors", isDarkMode && "dark")}>
-        <div className="text-center">
-          <img src={`${process.env.PUBLIC_URL}/assets/images/${isDarkMode ? 'tavilLogoDark' : 'tavilLogo'}.png`} alt="TAVIL" className="h-8 mx-auto mb-3 animate-pulse" />
-          <p className="text-sm text-gray-400">Carregant portal...</p>
-        </div>
-      </div>
-    );
-  }
 
   if (!isLoggedIn) {
     return authView === 'login'
@@ -2042,39 +2107,61 @@ function App() {
             </div>
 
             <div className="relative">
-              <button onClick={() => { setIsNotifOpen(!isNotifOpen); setIsProfileMenuOpen(false); }} className="relative p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500 transition-colors">
+              <button
+                onClick={() => { setIsNotifOpen(!isNotifOpen); setIsProfileMenuOpen(false); if (!isNotifOpen) refreshNotifications(); }}
+                className="relative p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500 transition-colors"
+              >
                 <Bell size={18} />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-600 rounded-full ring-2 ring-white dark:ring-zinc-900"></span>
+                {notifications.some(n => !n.read) && (
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-600 rounded-full ring-2 ring-white dark:ring-zinc-900"></span>
+                )}
               </button>
               {isNotifOpen && (
                 <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-100 dark:border-zinc-800 z-50">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
                     <h3 className="font-bold text-gray-900 dark:text-white text-sm">Notificacions</h3>
-                    <span className="text-xs bg-red-600 text-white px-2 py-0.5 rounded-full font-bold">3</span>
+                    {notifications.some(n => !n.read) && (
+                      <span className="text-xs bg-red-600 text-white px-2 py-0.5 rounded-full font-bold">
+                        {notifications.filter(n => !n.read).length}
+                      </span>
+                    )}
                   </div>
-                  <div className="divide-y divide-gray-50 dark:divide-zinc-800">
-                    {[
-                      { icon: Activity, unread: true,  title: "Nova activitat disponible",     desc: "Torneig de pàdel TAVIL — Inscripció oberta fins al 2 d'abril", time: "Fa 5 min" },
-                      { icon: AlertTriangle, unread: true,  title: "Avís: tall elèctric diumenge",  desc: "Afecta les plantes 1 i 2, de 06:00 a 14:00.", time: "Fa 2 h" },
-                      { icon: FileText, unread: true,  title: "Enquesta de clima laboral",       desc: "Tens fins al 31 de març per respondre.", time: "Ahir" },
-                      { icon: CheckCircle, unread: false, title: "Formació completada",             desc: "Has completat 'Prevenció de riscos laborals'.", time: "Fa 3 dies" },
-                    ].map((n, i) => (
-                      <div key={i} className={cn("flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors", n.unread && "bg-red-50/40 dark:bg-red-950/10")}>
-                        <div className={cn("w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5", n.unread ? "bg-red-100 dark:bg-red-950/30" : "bg-gray-100 dark:bg-zinc-800")}>
-                          <n.icon size={14} className={n.unread ? "text-red-600" : "text-gray-400"} />
+                  <div className="divide-y divide-gray-50 dark:divide-zinc-800 max-h-72 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <p className="px-4 py-6 text-sm text-gray-400 text-center">No hi ha notificacions</p>
+                    ) : notifications.map(n => (
+                      <div
+                        key={n.id}
+                        onClick={() => {
+                          if (!n.read) {
+                            apiMarkNotifRead(n.id).then(refreshNotifications).catch(() => {});
+                          }
+                          if (n.tab) { setActiveTab(n.tab); setIsNotifOpen(false); }
+                        }}
+                        className={cn("flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors", !n.read && "bg-red-50/40 dark:bg-red-950/10")}
+                      >
+                        <div className={cn("w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5", !n.read ? "bg-red-100 dark:bg-red-950/30" : "bg-gray-100 dark:bg-zinc-800")}>
+                          <FileText size={14} className={!n.read ? "text-red-600" : "text-gray-400"} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={cn("text-sm font-semibold", n.unread ? "text-gray-900 dark:text-white" : "text-gray-600 dark:text-zinc-400")}>{n.title}</p>
-                          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5 line-clamp-1">{n.desc}</p>
-                          <p className="text-[10px] text-gray-400 mt-1">{n.time}</p>
+                          <p className={cn("text-sm font-semibold", !n.read ? "text-gray-900 dark:text-white" : "text-gray-600 dark:text-zinc-400")}>{n.title}</p>
+                          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5 line-clamp-2">{n.body}</p>
+                          <p className="text-[10px] text-gray-400 mt-1">{timeAgo(n.created_at)}</p>
                         </div>
-                        {n.unread && <span className="w-2 h-2 bg-red-600 rounded-full flex-shrink-0 mt-2"></span>}
+                        {!n.read && <span className="w-2 h-2 bg-red-600 rounded-full flex-shrink-0 mt-2"></span>}
                       </div>
                     ))}
                   </div>
-                  <div className="px-4 py-3 border-t border-gray-100 dark:border-zinc-800">
-                    <button className="text-red-600 text-xs font-medium hover:underline w-full text-center">Veure totes les notificacions</button>
-                  </div>
+                  {notifications.some(n => !n.read) && (
+                    <div className="px-4 py-3 border-t border-gray-100 dark:border-zinc-800">
+                      <button
+                        onClick={() => apiMarkAllNotifsRead().then(refreshNotifications).catch(() => {})}
+                        className="text-red-600 text-xs font-medium hover:underline w-full text-center"
+                      >
+                        Marcar totes com a llegides
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -2116,10 +2203,9 @@ function App() {
                         onClick={() => {
                           setDemoRole(role);
                           if (currentUser) {
-                            updateUserRole(currentUser.id, role);
                             const updated = { ...currentUser, role };
                             setCurrentUser(updated);
-                            localStorage.setItem('tavil_session', JSON.stringify(updated));
+                            apiUpdateMyRole(role).then(u => setCurrentUser(u)).catch(console.error);
                           }
                         }}
                         className={cn(
