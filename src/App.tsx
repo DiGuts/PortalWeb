@@ -514,7 +514,7 @@ const DEPT_ORDER = ['Comercial', 'Compres', 'Direcció', 'Enginyeria', 'Màrquet
 function DirectoriTab() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [activeFilter, setActiveFilter] = useState('Tots');
-  const [view, setView] = useState<'graella' | 'departaments'>('departaments');
+  const [view, setView] = useState<'graella' | 'departaments'>('graella');
 
   useEffect(() => {
     apiGetEmployees().then(setEmployees).catch(console.error);

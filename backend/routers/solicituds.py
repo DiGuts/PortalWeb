@@ -57,7 +57,6 @@ async def create_solicitud(
             db, s["id"],
             "Nova petició rebuda",
             f"{current_user['name']} ha enviat una nova petició per al {body.date}.",
-            tab="Solicituds",
         )
 
     await db.commit()
@@ -96,7 +95,7 @@ async def update_solicitud(
             notif_body = f"La teva petició ha estat {status_label}."
             if body.motive:
                 notif_body += f" Motiu: {body.motive}"
-            await _notify(db, author["id"], f"Petició {body.status}", notif_body, tab="Solicituds")
+            await _notify(db, author["id"], f"Petició {body.status}", notif_body)
 
     await db.commit()
     return {"ok": True}
