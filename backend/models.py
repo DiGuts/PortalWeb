@@ -88,6 +88,19 @@ class EnquestaIn(BaseModel):
     total: int = 140
 
 
+# ── News ──────────────────────────────────────────────────────────────────────
+
+class NewsIn(BaseModel):
+    category: str
+    title: str
+    summary: str = ""
+    content: str = ""
+    author: str = ""
+    date: str = ""
+    image: str = ""
+    featured: int = 0
+
+
 # ── Activities ────────────────────────────────────────────────────────────────
 
 class ActivityIn(BaseModel):
@@ -98,6 +111,17 @@ class ActivityIn(BaseModel):
     time: str = ""
     location: str = ""
     capacity: int = 0
+
+
+# ── Agenda ────────────────────────────────────────────────────────────────────
+
+class AgendaEventIn(BaseModel):
+    title: str
+    day: int
+    month: int
+    time: str = ""
+    location: str = ""
+    type: str = "Sessió interna"
 
 
 # ── Courses ───────────────────────────────────────────────────────────────────

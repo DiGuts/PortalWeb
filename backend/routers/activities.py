@@ -4,9 +4,31 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from database import get_db
-from auth import get_current_user
+from auth import get_current_user, require_admin
+from models import ActivityIn
 
 router = APIRouter(prefix="/api/activities", tags=["activities"])
+
+
+@router.post("", status_code=201)
+async def create_activity(
+    body: ActivityIn,
+    _admin: dict = Depends(require_admin),
+    db: AsyncConnection = Depends(get_db),
+):
+    result = await db.execute(
+        text("""
+            INSERT INTO activities (title, category, description, date, time, location, capacity, enrolled, past)
+            VALUES (:title, :category, :description, :date, :time, :location, :capacity, 0, 0)
+        """),
+        {"title": body.title, "category": body.category, "description": body.description,
+         "date": body.date, "time": body.time, "location": body.location, "capacity": body.capacity},
+    )
+    await db.commit()
+    row = (await db.execute(
+        text("SELECT * FROM activities WHERE id = :id"), {"id": result.lastrowid}
+    )).mappings().first()
+    return dict(row)
 
 
 @router.get("")

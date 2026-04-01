@@ -285,6 +285,13 @@ export interface Activity {
   past: number;
 }
 
+export async function apiCreateActivity(fields: {
+  title: string; category: string; description: string;
+  date: string; time: string; location: string; capacity: number;
+}): Promise<Activity> {
+  return apiFetch<Activity>('/api/activities', { method: 'POST', body: JSON.stringify(fields) });
+}
+
 export async function apiGetActivities(past?: 0 | 1): Promise<Activity[]> {
   const qs = past !== undefined ? `?past=${past}` : '';
   return apiFetch<Activity[]>(`/api/activities${qs}`);
@@ -300,6 +307,12 @@ export interface AgendaEvent {
   time: string;
   location: string;
   type: string;
+}
+
+export async function apiCreateAgendaEvent(fields: {
+  title: string; day: number; month: number; time: string; location: string; type: string;
+}): Promise<AgendaEvent> {
+  return apiFetch<AgendaEvent>('/api/agenda', { method: 'POST', body: JSON.stringify(fields) });
 }
 
 export async function apiGetAgendaEvents(month?: number): Promise<AgendaEvent[]> {
@@ -338,6 +351,13 @@ export interface NewsArticle {
 
 export async function apiGetNews(): Promise<NewsArticle[]> {
   return apiFetch<NewsArticle[]>('/api/news');
+}
+
+export async function apiCreateNews(fields: {
+  category: string; title: string; summary: string; content: string;
+  author: string; date: string; image: string; featured: number;
+}): Promise<NewsArticle> {
+  return apiFetch<NewsArticle>('/api/news', { method: 'POST', body: JSON.stringify(fields) });
 }
 
 export async function apiGetNewsArticle(id: number): Promise<NewsArticle> {

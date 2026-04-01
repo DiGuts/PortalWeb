@@ -19,9 +19,9 @@ import {
   apiGetEnquestes, apiRespondreEnquesta, Enquesta,
   apiGetSolicituds, apiCreateSolicitud, apiUpdateSolicitud, Solicitud,
   Notice, apiGetNotices,
-  NewsArticle, apiGetNews,
-  Activity, apiGetActivities,
-  AgendaEvent, apiGetAgendaEvents,
+  NewsArticle, apiGetNews, apiCreateNews,
+  Activity, apiGetActivities, apiCreateActivity,
+  AgendaEvent, apiGetAgendaEvents, apiCreateAgendaEvent,
   Employee, apiGetEmployees,
   Course, apiGetCourses,
   Notification, apiGetNotifications, apiMarkNotifRead, apiMarkAllNotifsRead,
@@ -236,9 +236,36 @@ function InicialTab() {
 
 // ── Notícies Tab ──────────────────────────────────────────────────────────────
 
-function NoticiesTab() {
+function NoticiesTab({ currentUser }: { currentUser: User | null }) {
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [activeFilter, setActiveFilter] = useState('Totes');
+  const isAdmin = currentUser?.role === 'Administrador/a';
+
+  // New news form state
+  const [showNewsForm, setShowNewsForm] = useState(false);
+  const [nCategory, setNCategory] = useState('Comunicats interns');
+  const [nTitle, setNTitle] = useState('');
+  const [nSummary, setNSummary] = useState('');
+  const [nContent, setNContent] = useState('');
+  const [nAuthor, setNAuthor] = useState('');
+  const [nDate, setNDate] = useState('');
+  const [nImage, setNImage] = useState('');
+  const [nFeatured, setNFeatured] = useState(false);
+  const [nSaving, setNSaving] = useState(false);
+
+  const handleCreateNews = async () => {
+    if (!nTitle.trim()) return;
+    setNSaving(true);
+    try {
+      await apiCreateNews({ category: nCategory, title: nTitle.trim(), summary: nSummary.trim(),
+        content: nContent.trim(), author: nAuthor.trim(), date: nDate.trim(),
+        image: nImage.trim(), featured: nFeatured ? 1 : 0 });
+      setNews(await apiGetNews());
+      setShowNewsForm(false);
+      setNTitle(''); setNSummary(''); setNContent(''); setNAuthor(''); setNDate(''); setNImage(''); setNFeatured(false);
+    } catch (e) { console.error(e); }
+    finally { setNSaving(false); }
+  };
 
   useEffect(() => {
     apiGetNews().then(setNews).catch(console.error);
@@ -250,7 +277,32 @@ function NoticiesTab() {
 
   return (
     <div className="animate-in fade-in duration-300">
-      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Informació, comunicats i novetats de l'empresa</p>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-gray-500 dark:text-zinc-400 text-sm">Informació, comunicats i novetats de l'empresa</p>
+        {isAdmin && <button onClick={() => setShowNewsForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">+ Nova notícia</button>}
+      </div>
+      {isAdmin && showNewsForm && (
+        <div className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-xl p-5 mb-6 grid grid-cols-2 gap-3">
+          <select value={nCategory} onChange={e => setNCategory(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white">
+            {['Comunicats interns','Notícies corporatives','Recursos humans','Esdeveniments','Innovació','Seguretat'].map(c => <option key={c}>{c}</option>)}
+          </select>
+          <input type="text" value={nTitle} onChange={e => setNTitle(e.target.value)} placeholder="Títol *" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+          <textarea value={nSummary} onChange={e => setNSummary(e.target.value)} placeholder="Resum" rows={2} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white resize-none" />
+          <input type="text" value={nAuthor} onChange={e => setNAuthor(e.target.value)} placeholder="Autor" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+          <input type="text" value={nDate} onChange={e => setNDate(e.target.value)} placeholder="Data (ex: 1 abril 2026)" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+          <input type="text" value={nImage} onChange={e => setNImage(e.target.value)} placeholder="URL de la imatge" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+          <div className="flex items-center gap-2">
+            <button onClick={() => setNFeatured(v => !v)} className={cn("relative inline-flex h-5 w-9 items-center rounded-full transition-colors", nFeatured ? "bg-red-600" : "bg-gray-200 dark:bg-zinc-700")}>
+              <span className="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform" style={{ transform: nFeatured ? 'translateX(18px)' : 'translateX(2px)' }} />
+            </button>
+            <span className="text-xs text-gray-600 dark:text-zinc-400">Destacada</span>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setShowNewsForm(false)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800">Cancel·lar</button>
+            <button onClick={handleCreateNews} disabled={!nTitle.trim() || nSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">{nSaving ? 'Desant...' : 'Crear notícia'}</button>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -304,10 +356,35 @@ function NoticiesTab() {
 
 // ── Activitats Tab ────────────────────────────────────────────────────────────
 
-function ActivitatsTab() {
+function ActivitatsTab({ currentUser }: { currentUser: User | null }) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activeTab, setActiveTab] = useState('Properes');
   const [activeFilter, setActiveFilter] = useState('Totes');
+  const isAdmin = currentUser?.role === 'Administrador/a';
+
+  // New activity form state
+  const [showActForm, setShowActForm] = useState(false);
+  const [aTitle, setATitle] = useState('');
+  const [aCategory, setACategory] = useState('Esport');
+  const [aDesc, setADesc] = useState('');
+  const [aDate, setADate] = useState('');
+  const [aTime, setATime] = useState('');
+  const [aLocation, setALocation] = useState('');
+  const [aCapacity, setACapacity] = useState('');
+  const [aSaving, setASaving] = useState(false);
+
+  const handleCreateActivity = async () => {
+    if (!aTitle.trim()) return;
+    setASaving(true);
+    try {
+      await apiCreateActivity({ title: aTitle.trim(), category: aCategory, description: aDesc.trim(),
+        date: aDate.trim(), time: aTime.trim(), location: aLocation.trim(), capacity: parseInt(aCapacity) || 0 });
+      setActivities(await apiGetActivities());
+      setShowActForm(false);
+      setATitle(''); setADesc(''); setADate(''); setATime(''); setALocation(''); setACapacity('');
+    } catch (e) { console.error(e); }
+    finally { setASaving(false); }
+  };
 
   useEffect(() => {
     apiGetActivities().then(setActivities).catch(console.error);
@@ -321,7 +398,27 @@ function ActivitatsTab() {
 
   return (
     <div className="animate-in fade-in duration-300">
-      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Esdeveniments socials, esportius i culturals per als treballadors de TAVIL</p>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-gray-500 dark:text-zinc-400 text-sm">Esdeveniments socials, esportius i culturals per als treballadors de TAVIL</p>
+        {isAdmin && <button onClick={() => setShowActForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">+ Nova activitat</button>}
+      </div>
+      {isAdmin && showActForm && (
+        <div className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-xl p-5 mb-6 grid grid-cols-2 gap-3">
+          <input type="text" value={aTitle} onChange={e => setATitle(e.target.value)} placeholder="Títol *" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+          <select value={aCategory} onChange={e => setACategory(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white">
+            {['Esport','Cultura','Social','RSC','Benestar'].map(c => <option key={c}>{c}</option>)}
+          </select>
+          <input type="text" value={aDate} onChange={e => setADate(e.target.value)} placeholder="Data" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+          <input type="text" value={aTime} onChange={e => setATime(e.target.value)} placeholder="Hora (ex: 10:00)" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+          <input type="text" value={aLocation} onChange={e => setALocation(e.target.value)} placeholder="Lloc" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+          <textarea value={aDesc} onChange={e => setADesc(e.target.value)} placeholder="Descripció" rows={2} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white resize-none" />
+          <input type="number" value={aCapacity} onChange={e => setACapacity(e.target.value)} placeholder="Aforament (0 = il·limitat)" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+          <div className="flex justify-end gap-2 items-center">
+            <button onClick={() => setShowActForm(false)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800">Cancel·lar</button>
+            <button onClick={handleCreateActivity} disabled={!aTitle.trim() || aSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">{aSaving ? 'Desant...' : 'Crear activitat'}</button>
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-5">
         {[`Properes (${upcoming.length})`, `Passades (${past.length})`].map(tab => {
           const key = tab.split(' ')[0];
@@ -392,12 +489,36 @@ const EVENT_COLORS: Record<string, string> = {
 const MONTH_NAMES = ['', 'Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre'];
 const MONTH_ABBR: Record<number, string> = { 1: 'GEN', 2: 'FEB', 3: 'MAR', 4: 'ABR', 5: 'MAI', 6: 'JUN', 7: 'JUL', 8: 'AGO', 9: 'SET', 10: 'OCT', 11: 'NOV', 12: 'DES' };
 
-function AgendaTab() {
+function AgendaTab({ currentUser }: { currentUser: User | null }) {
   const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>([]);
   const [view, setView] = useState<'calendar' | 'list'>('calendar');
   const [activeFilter, setActiveFilter] = useState('Tots');
   const [currentMonth, setCurrentMonth] = useState(3);
   const [currentYear, setCurrentYear] = useState(2026);
+  const isAdmin = currentUser?.role === 'Administrador/a';
+
+  // New event form state
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [eTitle, setETitle] = useState('');
+  const [eDay, setEDay] = useState('');
+  const [eMonth, setEMonth] = useState('4');
+  const [eTime, setETime] = useState('');
+  const [eLocation, setELocation] = useState('');
+  const [eType, setEType] = useState('Sessió interna');
+  const [eSaving, setESaving] = useState(false);
+
+  const handleCreateEvent = async () => {
+    if (!eTitle.trim() || !eDay) return;
+    setESaving(true);
+    try {
+      await apiCreateAgendaEvent({ title: eTitle.trim(), day: parseInt(eDay), month: parseInt(eMonth),
+        time: eTime.trim(), location: eLocation.trim(), type: eType });
+      setAgendaEvents(await apiGetAgendaEvents());
+      setShowEventForm(false);
+      setETitle(''); setEDay(''); setETime(''); setELocation('');
+    } catch (e) { console.error(e); }
+    finally { setESaving(false); }
+  };
 
   useEffect(() => {
     apiGetAgendaEvents().then(setAgendaEvents).catch(console.error);
@@ -436,7 +557,28 @@ function AgendaTab() {
 
   return (
     <div className="animate-in fade-in duration-300">
-      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Calendari d'esdeveniments i dates importants</p>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-gray-500 dark:text-zinc-400 text-sm">Calendari d'esdeveniments i dates importants</p>
+        {isAdmin && <button onClick={() => setShowEventForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">+ Nou event</button>}
+      </div>
+      {isAdmin && showEventForm && (
+        <div className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-xl p-5 mb-6 grid grid-cols-2 gap-3">
+          <input type="text" value={eTitle} onChange={e => setETitle(e.target.value)} placeholder="Títol *" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+          <input type="number" value={eDay} onChange={e => setEDay(e.target.value)} placeholder="Dia (1-31)" min={1} max={31} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+          <select value={eMonth} onChange={e => setEMonth(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white">
+            {MONTH_NAMES.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
+          </select>
+          <input type="text" value={eTime} onChange={e => setETime(e.target.value)} placeholder="Hora (ex: 10:00)" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+          <input type="text" value={eLocation} onChange={e => setELocation(e.target.value)} placeholder="Lloc" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+          <select value={eType} onChange={e => setEType(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white">
+            {Object.keys(EVENT_COLORS).map(t => <option key={t}>{t}</option>)}
+          </select>
+          <div className="flex justify-end gap-2 items-center">
+            <button onClick={() => setShowEventForm(false)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800">Cancel·lar</button>
+            <button onClick={handleCreateEvent} disabled={!eTitle.trim() || !eDay || eSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">{eSaving ? 'Desant...' : 'Crear event'}</button>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div className="flex gap-2 flex-wrap">
           {filters.map(f => (
@@ -2101,9 +2243,9 @@ function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'Inici': return <InicialTab />;
-      case 'Notícies': return <NoticiesTab />;
-      case 'Activitats': return <ActivitatsTab />;
-      case 'Agenda': return <AgendaTab />;
+      case 'Notícies': return <NoticiesTab currentUser={currentUser} />;
+      case 'Activitats': return <ActivitatsTab currentUser={currentUser} />;
+      case 'Agenda': return <AgendaTab currentUser={currentUser} />;
       case 'Directori': return <DirectoriTab />;
       case 'Espai': return <EspaiCorporatiuTab />;
       case 'Campus': return <CampusTavilTab />;
