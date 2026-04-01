@@ -11,6 +11,64 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ── TAVIL Light Mode Palette ──────────────────────────────────────────────────
+   Porcelain    #f7f7f2  backgrounds & cards
+   Dusty Olive  #788475  secondary/muted text
+   Mahogany Red #bf211e  primary accent
+   Carbon Black #222725  primary text
+   Ink Black    #040f0f  deepest
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Backgrounds ── */
+html:not(.dark) .bg-white          { background-color: #f7f7f2; }
+html:not(.dark) .bg-gray-50        { background-color: #eeeee9; }
+html:not(.dark) .bg-gray-100       { background-color: #e5e5e0; }
+html:not(.dark) .bg-gray-200       { background-color: #d6d6d1; }
+
+html:not(.dark) .hover\:bg-gray-50:hover  { background-color: #eeeee9; }
+html:not(.dark) .hover\:bg-gray-100:hover { background-color: #e5e5e0; }
+
+/* ── Text ── */
+html:not(.dark) .text-gray-900 { color: #222725; }
+html:not(.dark) .text-gray-800 { color: #2d312e; }
+html:not(.dark) .text-gray-700 { color: #3b3f3c; }
+html:not(.dark) .text-gray-600 { color: #4e524f; }
+html:not(.dark) .text-gray-500 { color: #788475; }
+html:not(.dark) .text-gray-400 { color: #9da89a; }
+html:not(.dark) .text-gray-300 { color: #b8c0b5; }
+
+/* ── Borders ── */
+html:not(.dark) .border-gray-50  { border-color: #eeeee9; }
+html:not(.dark) .border-gray-100 { border-color: #deded9; }
+html:not(.dark) .border-gray-200 { border-color: #cecec9; }
+
+html:not(.dark) .divide-gray-50 > * + * { border-color: #eeeee9; }
+
+/* ── Accent — Mahogany Red ── */
+html:not(.dark) .bg-red-600               { background-color: #bf211e; }
+html:not(.dark) .bg-red-700               { background-color: #a21b18; }
+html:not(.dark) .bg-red-50                { background-color: #f9eceb; }
+html:not(.dark) .bg-red-100               { background-color: #f1d7d6; }
+
+html:not(.dark) .hover\:bg-red-600:hover  { background-color: #bf211e; }
+html:not(.dark) .hover\:bg-red-700:hover  { background-color: #a21b18; }
+html:not(.dark) .hover\:bg-red-50:hover   { background-color: #f9eceb; }
+
+html:not(.dark) .text-red-600  { color: #bf211e; }
+html:not(.dark) .text-red-700  { color: #a21b18; }
+html:not(.dark) .text-red-400  { color: #d44442; }
+
+html:not(.dark) .border-red-400 { border-color: #d44442; }
+html:not(.dark) .border-red-600 { border-color: #bf211e; }
+
+html:not(.dark) .focus\:border-red-400:focus { border-color: #d44442; }
+
+/* ring on white (used in notification dot) */
+html:not(.dark) .ring-white { --tw-ring-color: #f7f7f2; }
+
+/* ── Page root bg ── */
+html:not(.dark) { background-color: #eeeee9; }
+
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
