@@ -33,6 +33,18 @@ async def mark_all_read(
     return {"ok": True}
 
 
+@router.delete("/clear-all", status_code=204)
+async def clear_all_notifications(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncConnection = Depends(get_db),
+):
+    await db.execute(
+        text("DELETE FROM notifications WHERE user_id = :uid"),
+        {"uid": current_user["id"]},
+    )
+    await db.commit()
+
+
 @router.patch("/{notif_id}/read")
 async def mark_read(
     notif_id: int,

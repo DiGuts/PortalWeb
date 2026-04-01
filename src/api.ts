@@ -437,6 +437,10 @@ export async function apiMarkAllNotifsRead(): Promise<void> {
   await apiFetch('/api/notifications/read-all', { method: 'PATCH' });
 }
 
+export async function apiClearAllNotifications(): Promise<void> {
+  await apiFetch('/api/notifications/clear-all', { method: 'DELETE' });
+}
+
 // ── Courses ───────────────────────────────────────────────────────────────────
 
 export interface Course {

@@ -25,7 +25,7 @@ import {
   apiUploadImage, API_BASE,
   Employee, apiGetEmployees,
   Course, apiGetCourses,
-  Notification, apiGetNotifications, apiMarkNotifRead, apiMarkAllNotifsRead,
+  Notification, apiGetNotifications, apiMarkNotifRead, apiMarkAllNotifsRead, apiClearAllNotifications,
 } from './api';
 
 function cn(...inputs: ClassValue[]) {
@@ -2599,11 +2599,22 @@ function App() {
               {isNotifOpen && (
                 <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-100 dark:border-zinc-800 z-50">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
-                    <h3 className="font-bold text-gray-900 dark:text-white text-sm">Notificacions</h3>
-                    {notifications.some(n => !n.read) && (
-                      <span className="text-xs bg-red-600 text-white px-2 py-0.5 rounded-full font-bold">
-                        {notifications.filter(n => !n.read).length}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-gray-900 dark:text-white text-sm">Notificacions</h3>
+                      {notifications.some(n => !n.read) && (
+                        <span className="text-xs bg-red-600 text-white px-2 py-0.5 rounded-full font-bold">
+                          {notifications.filter(n => !n.read).length}
+                        </span>
+                      )}
+                    </div>
+                    {notifications.length > 0 && (
+                      <button
+                        onClick={() => apiClearAllNotifications().then(refreshNotifications).catch(() => {})}
+                        className="text-gray-400 hover:text-red-600 transition-colors p-1 rounded"
+                        title="Eliminar totes"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     )}
                   </div>
                   <div className="divide-y divide-gray-50 dark:divide-zinc-800 max-h-72 overflow-y-auto">
