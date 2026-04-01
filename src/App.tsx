@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Home, Newspaper, Activity as ActivityIcon, Calendar, Users, Building2,
   GraduationCap, MessageSquare, UserCircle, Search, Bell,
@@ -2421,11 +2421,17 @@ function App() {
   const [activeTab, setActiveTabState] = useState(() => localStorage.getItem('tavil_active_tab') ?? 'Inici');
   const setActiveTab = (tab: string) => { localStorage.setItem('tavil_active_tab', tab); setActiveTabState(tab); };
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchData, setSearchData] = useState<{ news: NewsArticle[], activities: Activity[], events: AgendaEvent[], employees: Employee[] } | null>(null);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [demoRole, setDemoRole] = useState('Treballador/a');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const notifRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const userInitials = currentUser?.name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() ?? 'CH';
 
@@ -2489,10 +2495,51 @@ function App() {
         e.preventDefault();
         document.getElementById('search-input')?.focus();
       }
+      if (e.key === 'Escape') {
+        setIsNotifOpen(false);
+        setIsProfileMenuOpen(false);
+        setSearchOpen(false);
+        setSearchQuery('');
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setIsNotifOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setIsProfileMenuOpen(false);
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) { setSearchOpen(false); setSearchQuery(''); }
+    };
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => document.removeEventListener('mousedown', handleMouseDown);
+  }, []);
+
+  const loadSearchData = async () => {
+    if (searchData) return;
+    try {
+      const [news, activities, events, employees] = await Promise.all([
+        apiGetNews(), apiGetActivities(), apiGetAgendaEvents(), apiGetEmployees(),
+      ]);
+      setSearchData({ news, activities, events, employees });
+    } catch {}
+  };
+
+  const searchResults = (() => {
+    if (!searchQuery.trim() || !searchData) return [];
+    const q = searchQuery.toLowerCase();
+    const results: { label: string; sub: string; tab: string; badge: string }[] = [];
+    searchData.news.filter(n => n.title.toLowerCase().includes(q) || n.category.toLowerCase().includes(q))
+      .slice(0, 3).forEach(n => results.push({ label: n.title, sub: n.category, tab: 'Notícies', badge: 'Notícia' }));
+    searchData.activities.filter(a => a.title.toLowerCase().includes(q) || a.category.toLowerCase().includes(q))
+      .slice(0, 3).forEach(a => results.push({ label: a.title, sub: a.category, tab: 'Activitats', badge: 'Activitat' }));
+    searchData.events.filter(e => e.title.toLowerCase().includes(q) || e.type.toLowerCase().includes(q))
+      .slice(0, 2).forEach(e => results.push({ label: e.title, sub: e.type, tab: 'Agenda', badge: 'Agenda' }));
+    searchData.employees.filter(e => e.name.toLowerCase().includes(q) || e.dept.toLowerCase().includes(q))
+      .slice(0, 3).forEach(e => results.push({ label: e.name, sub: e.dept, tab: 'Directori', badge: 'Directori' }));
+    return results.slice(0, 8);
+  })();
 
   const renderContent = () => {
     switch (activeTab) {
@@ -2573,20 +2620,44 @@ function App() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="relative hidden lg:block">
+            <div className="relative hidden lg:block" ref={searchRef}>
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
               <input
                 id="search-input"
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); if (e.target.value) setSearchOpen(true); }}
+                onFocus={() => { loadSearchData(); if (searchQuery) setSearchOpen(true); }}
                 placeholder="Cercar..."
                 className="bg-gray-100 dark:bg-zinc-800 rounded-lg py-2 pl-9 pr-14 text-sm w-56 outline-none dark:text-white"
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 bg-gray-200 dark:bg-zinc-700 px-1.5 py-0.5 rounded font-mono">⌘K</span>
+              {!searchQuery && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 bg-gray-200 dark:bg-zinc-700 px-1.5 py-0.5 rounded font-mono">⌘K</span>}
+              {searchOpen && searchQuery && (
+                <div className="absolute top-full mt-2 left-0 w-80 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-100 dark:border-zinc-800 z-50 overflow-hidden">
+                  {searchResults.length === 0 ? (
+                    <p className="px-4 py-5 text-sm text-gray-400 text-center">Sense resultats per "{searchQuery}"</p>
+                  ) : (
+                    <div className="divide-y divide-gray-50 dark:divide-zinc-800">
+                      {searchResults.map((r, i) => (
+                        <button
+                          key={i}
+                          onClick={() => { setActiveTab(r.tab); setSearchOpen(false); setSearchQuery(''); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-800 text-left transition-colors"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-900 dark:text-white font-medium truncate">{r.label}</p>
+                            <p className="text-xs text-gray-400 truncate">{r.sub}</p>
+                          </div>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 flex-shrink-0">{r.badge}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="relative">
+            <div className="relative" ref={notifRef}>
               <button
                 onClick={() => { setIsNotifOpen(!isNotifOpen); setIsProfileMenuOpen(false); if (!isNotifOpen) refreshNotifications(); }}
                 className="relative p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500 transition-colors"
@@ -2661,7 +2732,7 @@ function App() {
               {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
-            <div className="relative">
+            <div className="relative" ref={profileRef}>
               <button
                 onClick={() => { setIsProfileMenuOpen(!isProfileMenuOpen); setIsNotifOpen(false); }}
                 className="flex items-center gap-2 p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
