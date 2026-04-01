@@ -6,7 +6,7 @@ import {
   AlertTriangle, ArrowRight, Sun, MapPin, Clock, Phone, FileText,
   BookOpen, Shield, ThumbsUp, Send, ExternalLink, CreditCard,
   TrendingUp, CheckCircle, Star, LogOut, LayoutGrid, List,
-  Heart, Gift, Globe, Download, Video, Award, Settings, Eye, EyeOff, Lock
+  Heart, Gift, Globe, Download, Video, Award, Settings, Eye, EyeOff, Lock, Pencil, Trash2
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -19,9 +19,10 @@ import {
   apiGetEnquestes, apiRespondreEnquesta, Enquesta,
   apiGetSolicituds, apiCreateSolicitud, apiUpdateSolicitud, Solicitud,
   Notice, apiGetNotices,
-  NewsArticle, apiGetNews, apiCreateNews,
-  Activity, apiGetActivities, apiCreateActivity,
-  AgendaEvent, apiGetAgendaEvents, apiCreateAgendaEvent,
+  NewsArticle, apiGetNews, apiCreateNews, apiUpdateNews, apiDeleteNews,
+  Activity, apiGetActivities, apiCreateActivity, apiUpdateActivity, apiDeleteActivity,
+  AgendaEvent, apiGetAgendaEvents, apiCreateAgendaEvent, apiUpdateAgendaEvent, apiDeleteAgendaEvent,
+  apiUploadImage, API_BASE,
   Employee, apiGetEmployees,
   Course, apiGetCourses,
   Notification, apiGetNotifications, apiMarkNotifRead, apiMarkAllNotifsRead,
@@ -236,12 +237,43 @@ function InicialTab() {
 
 // ── Notícies Tab ──────────────────────────────────────────────────────────────
 
+function NewsEditForm({ neCategory, setNeCategory, neTitle, setNeTitle, neSummary, setNeSummary,
+  neAuthor, setNeAuthor, neDate, setNeDate, neImage, neImageFile, setNeImageFile,
+  neFeatured, setNeFeatured, neSaving, onSave, onCancel }: any) {
+  return (
+    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-zinc-800 grid grid-cols-2 gap-2">
+      <select value={neCategory} onChange={(e: any) => setNeCategory(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white">
+        {['Comunicats interns','Notícies corporatives','Recursos humans','Esdeveniments','Innovació','Seguretat'].map((c: string) => <option key={c}>{c}</option>)}
+      </select>
+      <input type="text" value={neTitle} onChange={(e: any) => setNeTitle(e.target.value)} placeholder="Títol *" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+      <textarea value={neSummary} onChange={(e: any) => setNeSummary(e.target.value)} placeholder="Resum" rows={2} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white resize-none" />
+      <input type="text" value={neAuthor} onChange={(e: any) => setNeAuthor(e.target.value)} placeholder="Autor" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+      <input type="text" value={neDate} onChange={(e: any) => setNeDate(e.target.value)} placeholder="Data" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+      <div className="col-span-2">
+        {neImage && !neImageFile && <img src={neImage} alt="" className="h-12 rounded mb-1 object-cover" />}
+        <input type="file" accept="image/*" onChange={(e: any) => setNeImageFile(e.target.files?.[0] ?? null)} className="w-full text-xs text-gray-600 dark:text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-red-50 file:text-red-700" />
+        {neImageFile && <p className="text-[10px] text-gray-400 mt-0.5">{neImageFile.name}</p>}
+      </div>
+      <div className="flex items-center gap-2">
+        <button onClick={() => setNeFeatured((v: boolean) => !v)} className={cn("relative inline-flex h-4 w-8 items-center rounded-full transition-colors", neFeatured ? "bg-red-600" : "bg-gray-200 dark:bg-zinc-700")}>
+          <span className="inline-block h-3 w-3 transform rounded-full bg-white shadow-sm transition-transform" style={{ transform: neFeatured ? 'translateX(16px)' : 'translateX(2px)' }} />
+        </button>
+        <span className="text-xs text-gray-600 dark:text-zinc-400">Destacada</span>
+      </div>
+      <div className="flex justify-end gap-2">
+        <button onClick={onCancel} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400">Cancel·lar</button>
+        <button onClick={onSave} disabled={!neTitle.trim() || neSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">{neSaving ? 'Desant...' : 'Desar'}</button>
+      </div>
+    </div>
+  );
+}
+
 function NoticiesTab({ currentUser }: { currentUser: User | null }) {
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [activeFilter, setActiveFilter] = useState('Totes');
   const isAdmin = currentUser?.role === 'Administrador/a';
 
-  // New news form state
+  // Create news form state
   const [showNewsForm, setShowNewsForm] = useState(false);
   const [nCategory, setNCategory] = useState('Comunicats interns');
   const [nTitle, setNTitle] = useState('');
@@ -249,22 +281,67 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
   const [nContent, setNContent] = useState('');
   const [nAuthor, setNAuthor] = useState('');
   const [nDate, setNDate] = useState('');
-  const [nImage, setNImage] = useState('');
+  const [nImageFile, setNImageFile] = useState<File | null>(null);
   const [nFeatured, setNFeatured] = useState(false);
   const [nSaving, setNSaving] = useState(false);
+
+  // Edit news state
+  const [newsEditId, setNewsEditId] = useState<number | null>(null);
+  const [neCategory, setNeCategory] = useState('');
+  const [neTitle, setNeTitle] = useState('');
+  const [neSummary, setNeSummary] = useState('');
+  const [neContent, setNeContent] = useState('');
+  const [neAuthor, setNeAuthor] = useState('');
+  const [neDate, setNeDate] = useState('');
+  const [neImage, setNeImage] = useState('');
+  const [neImageFile, setNeImageFile] = useState<File | null>(null);
+  const [neFeatured, setNeFeatured] = useState(false);
+  const [neSaving, setNeSaving] = useState(false);
+
+  const openNewsEdit = (item: NewsArticle) => {
+    setNewsEditId(item.id);
+    setNeCategory(item.category); setNeTitle(item.title); setNeSummary(item.summary);
+    setNeContent(item.content); setNeAuthor(item.author); setNeDate(item.date);
+    setNeImage(item.image || ''); setNeImageFile(null); setNeFeatured(item.featured === 1);
+  };
 
   const handleCreateNews = async () => {
     if (!nTitle.trim()) return;
     setNSaving(true);
     try {
+      let imageUrl = '';
+      if (nImageFile) imageUrl = await apiUploadImage(nImageFile);
       await apiCreateNews({ category: nCategory, title: nTitle.trim(), summary: nSummary.trim(),
         content: nContent.trim(), author: nAuthor.trim(), date: nDate.trim(),
-        image: nImage.trim(), featured: nFeatured ? 1 : 0 });
+        image: imageUrl, featured: nFeatured ? 1 : 0 });
       setNews(await apiGetNews());
       setShowNewsForm(false);
-      setNTitle(''); setNSummary(''); setNContent(''); setNAuthor(''); setNDate(''); setNImage(''); setNFeatured(false);
+      setNTitle(''); setNSummary(''); setNContent(''); setNAuthor(''); setNDate(''); setNImageFile(null); setNFeatured(false);
     } catch (e) { console.error(e); }
     finally { setNSaving(false); }
+  };
+
+  const handleSaveNewsEdit = async () => {
+    if (!newsEditId || !neTitle.trim()) return;
+    setNeSaving(true);
+    try {
+      let imageUrl = neImage;
+      if (neImageFile) imageUrl = await apiUploadImage(neImageFile);
+      await apiUpdateNews(newsEditId, { category: neCategory, title: neTitle.trim(), summary: neSummary.trim(),
+        content: neContent.trim(), author: neAuthor.trim(), date: neDate.trim(),
+        image: imageUrl, featured: neFeatured ? 1 : 0 });
+      setNews(await apiGetNews());
+      setNewsEditId(null); setNeImageFile(null);
+    } catch (e) { console.error(e); }
+    finally { setNeSaving(false); }
+  };
+
+  const handleDeleteNews = async (id: number) => {
+    if (!window.confirm('Segur que vols eliminar aquesta notícia?')) return;
+    try {
+      await apiDeleteNews(id);
+      setNews(await apiGetNews());
+    } catch (e) { console.error(e); }
   };
 
   useEffect(() => {
@@ -290,7 +367,11 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
           <textarea value={nSummary} onChange={e => setNSummary(e.target.value)} placeholder="Resum" rows={2} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white resize-none" />
           <input type="text" value={nAuthor} onChange={e => setNAuthor(e.target.value)} placeholder="Autor" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
           <input type="text" value={nDate} onChange={e => setNDate(e.target.value)} placeholder="Data (ex: 1 abril 2026)" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-          <input type="text" value={nImage} onChange={e => setNImage(e.target.value)} placeholder="URL de la imatge" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+          <div className="col-span-2">
+            <label className="text-xs text-gray-500 dark:text-zinc-400 mb-1 block">Imatge</label>
+            <input type="file" accept="image/*" onChange={e => setNImageFile(e.target.files?.[0] ?? null)} className="w-full text-sm text-gray-600 dark:text-zinc-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100" />
+            {nImageFile && <p className="text-[10px] text-gray-400 mt-1">{nImageFile.name}</p>}
+          </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setNFeatured(v => !v)} className={cn("relative inline-flex h-5 w-9 items-center rounded-full transition-colors", nFeatured ? "bg-red-600" : "bg-gray-200 dark:bg-zinc-700")}>
               <span className="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform" style={{ transform: nFeatured ? 'translateX(18px)' : 'translateX(2px)' }} />
@@ -324,10 +405,19 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
             <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider w-fit mb-4">{featured.category}</span>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">{featured.title}</h2>
             <p className="text-gray-500 dark:text-zinc-400 text-sm mb-6 leading-relaxed">{featured.summary}</p>
-            <div className="flex items-center gap-4 text-xs text-gray-400">
-              <div className="flex items-center gap-1.5"><UserCircle size={14} /><span>{featured.author}</span></div>
-              <div className="flex items-center gap-1.5"><Calendar size={14} /><span>{featured.date}</span></div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4 text-xs text-gray-400">
+                <div className="flex items-center gap-1.5"><UserCircle size={14} /><span>{featured.author}</span></div>
+                <div className="flex items-center gap-1.5"><Calendar size={14} /><span>{featured.date}</span></div>
+              </div>
+              {isAdmin && (
+                <div className="flex gap-2">
+                  <button onClick={() => newsEditId === featured.id ? setNewsEditId(null) : openNewsEdit(featured)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 hover:text-red-600 transition-colors"><Pencil size={14} /></button>
+                  <button onClick={() => handleDeleteNews(featured.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-400 hover:text-red-600 transition-colors"><Trash2 size={14} /></button>
+                </div>
+              )}
             </div>
+            {isAdmin && newsEditId === featured.id && <NewsEditForm {...{neCategory,setNeCategory,neTitle,setNeTitle,neSummary,setNeSummary,neAuthor,setNeAuthor,neDate,setNeDate,neImage,neImageFile,setNeImageFile,neFeatured,setNeFeatured,neSaving,onSave:handleSaveNewsEdit,onCancel:()=>setNewsEditId(null)}} />}
           </div>
         </div>
       )}
@@ -346,6 +436,13 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
                 <div className="flex items-center gap-1"><UserCircle size={12} /><span>{item.author}</span></div>
                 <span>{item.date}</span>
               </div>
+              {isAdmin && (
+                <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-zinc-800">
+                  <button onClick={() => newsEditId === item.id ? setNewsEditId(null) : openNewsEdit(item)} className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-red-600 transition-colors"><Pencil size={12} /> Editar</button>
+                  <button onClick={() => handleDeleteNews(item.id)} className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-red-600 transition-colors"><Trash2 size={12} /> Eliminar</button>
+                </div>
+              )}
+              {isAdmin && newsEditId === item.id && <NewsEditForm {...{neCategory,setNeCategory,neTitle,setNeTitle,neSummary,setNeSummary,neAuthor,setNeAuthor,neDate,setNeDate,neImage,neImageFile,setNeImageFile,neFeatured,setNeFeatured,neSaving,onSave:handleSaveNewsEdit,onCancel:()=>setNewsEditId(null)}} />}
             </div>
           </div>
         ))}
@@ -384,6 +481,45 @@ function ActivitatsTab({ currentUser }: { currentUser: User | null }) {
       setATitle(''); setADesc(''); setADate(''); setATime(''); setALocation(''); setACapacity('');
     } catch (e) { console.error(e); }
     finally { setASaving(false); }
+  };
+
+  // Edit activity state
+  const [actEditId, setActEditId] = useState<number | null>(null);
+  const [aeTitle, setAeTitle] = useState('');
+  const [aeCategory, setAeCategory] = useState('Esport');
+  const [aeDesc, setAeDesc] = useState('');
+  const [aeDate, setAeDate] = useState('');
+  const [aeTime, setAeTime] = useState('');
+  const [aeLocation, setAeLocation] = useState('');
+  const [aeCapacity, setAeCapacity] = useState('');
+  const [aeSaving, setAeSaving] = useState(false);
+
+  const openActEdit = (act: Activity) => {
+    setActEditId(act.id);
+    setAeTitle(act.title); setAeCategory(act.category); setAeDesc(act.description);
+    setAeDate(act.date); setAeTime(act.time); setAeLocation(act.location);
+    setAeCapacity(String(act.capacity));
+  };
+
+  const handleSaveActEdit = async () => {
+    if (!actEditId || !aeTitle.trim()) return;
+    setAeSaving(true);
+    try {
+      await apiUpdateActivity(actEditId, { title: aeTitle.trim(), category: aeCategory,
+        description: aeDesc.trim(), date: aeDate.trim(), time: aeTime.trim(),
+        location: aeLocation.trim(), capacity: parseInt(aeCapacity) || 0 });
+      setActivities(await apiGetActivities());
+      setActEditId(null);
+    } catch (e) { console.error(e); }
+    finally { setAeSaving(false); }
+  };
+
+  const handleDeleteActivity = async (id: number) => {
+    if (!window.confirm('Segur que vols eliminar aquesta activitat?')) return;
+    try {
+      await apiDeleteActivity(id);
+      setActivities(await apiGetActivities());
+    } catch (e) { console.error(e); }
   };
 
   useEffect(() => {
@@ -468,6 +604,29 @@ function ActivitatsTab({ currentUser }: { currentUser: User | null }) {
                 Veure detalls i inscriure's <ArrowRight size={14} />
               </button>
             )}
+            {isAdmin && (
+              <div className="flex gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-zinc-800">
+                <button onClick={() => actEditId === act.id ? setActEditId(null) : openActEdit(act)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-600 transition-colors"><Pencil size={12} /> Editar</button>
+                <button onClick={() => handleDeleteActivity(act.id)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-600 transition-colors"><Trash2 size={12} /> Eliminar</button>
+              </div>
+            )}
+            {isAdmin && actEditId === act.id && (
+              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-zinc-800 grid grid-cols-2 gap-2">
+                <input type="text" value={aeTitle} onChange={e => setAeTitle(e.target.value)} placeholder="Títol *" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+                <select value={aeCategory} onChange={e => setAeCategory(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white">
+                  {['Esport','Cultura','Social','RSC','Benestar'].map(c => <option key={c}>{c}</option>)}
+                </select>
+                <input type="number" value={aeCapacity} onChange={e => setAeCapacity(e.target.value)} placeholder="Aforament" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+                <input type="text" value={aeDate} onChange={e => setAeDate(e.target.value)} placeholder="Data" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+                <input type="text" value={aeTime} onChange={e => setAeTime(e.target.value)} placeholder="Hora" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+                <input type="text" value={aeLocation} onChange={e => setAeLocation(e.target.value)} placeholder="Lloc" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+                <textarea value={aeDesc} onChange={e => setAeDesc(e.target.value)} placeholder="Descripció" rows={2} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white resize-none" />
+                <div className="col-span-2 flex justify-end gap-2">
+                  <button onClick={() => setActEditId(null)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400">Cancel·lar</button>
+                  <button onClick={handleSaveActEdit} disabled={!aeTitle.trim() || aeSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">{aeSaving ? 'Desant...' : 'Desar'}</button>
+                </div>
+              </div>
+            )}
           </div>
           );
         })}
@@ -518,6 +677,42 @@ function AgendaTab({ currentUser }: { currentUser: User | null }) {
       setETitle(''); setEDay(''); setETime(''); setELocation('');
     } catch (e) { console.error(e); }
     finally { setESaving(false); }
+  };
+
+  // Edit event state
+  const [evEditId, setEvEditId] = useState<number | null>(null);
+  const [eeTitle, setEeTitle] = useState('');
+  const [eeDay, setEeDay] = useState('');
+  const [eeMonth, setEeMonth] = useState('1');
+  const [eeTime, setEeTime] = useState('');
+  const [eeLocation, setEeLocation] = useState('');
+  const [eeType, setEeType] = useState('Sessió interna');
+  const [eeSaving, setEeSaving] = useState(false);
+
+  const openEvEdit = (ev: AgendaEvent) => {
+    setEvEditId(ev.id); setEeTitle(ev.title); setEeDay(String(ev.day));
+    setEeMonth(String(ev.month)); setEeTime(ev.time || '');
+    setEeLocation(ev.location || ''); setEeType(ev.type);
+  };
+
+  const handleSaveEvEdit = async () => {
+    if (!evEditId || !eeTitle.trim() || !eeDay) return;
+    setEeSaving(true);
+    try {
+      await apiUpdateAgendaEvent(evEditId, { title: eeTitle.trim(), day: parseInt(eeDay),
+        month: parseInt(eeMonth), time: eeTime.trim(), location: eeLocation.trim(), type: eeType });
+      setAgendaEvents(await apiGetAgendaEvents());
+      setEvEditId(null);
+    } catch (e) { console.error(e); }
+    finally { setEeSaving(false); }
+  };
+
+  const handleDeleteEvent = async (id: number) => {
+    if (!window.confirm('Segur que vols eliminar aquest event?')) return;
+    try {
+      await apiDeleteAgendaEvent(id);
+      setAgendaEvents(await apiGetAgendaEvents());
+    } catch (e) { console.error(e); }
   };
 
   useEffect(() => {
@@ -626,21 +821,47 @@ function AgendaTab({ currentUser }: { currentUser: User | null }) {
             <p className="text-gray-400 text-sm text-center py-12">No hi ha esdeveniments per a aquest filtre.</p>
           )}
           {filteredEvents.map((ev, i) => (
-            <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 flex items-center gap-4">
-              <div className="flex flex-col items-center justify-center w-14 h-14 rounded-xl bg-red-50 dark:bg-red-950/20 flex-shrink-0">
-                <span className="text-red-600 font-bold text-lg leading-none">{ev.day}</span>
-                <span className="text-red-400 text-[10px] font-bold uppercase">{MONTH_ABBR[ev.month] ?? ev.month}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900 dark:text-white text-sm">{ev.title}</p>
-                {ev.time && (
-                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-zinc-400">
-                    <span className="flex items-center gap-1"><Clock size={11} />{ev.time}</span>
-                    {ev.location && <span className="flex items-center gap-1"><MapPin size={11} />{ev.location}</span>}
+            <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col items-center justify-center w-14 h-14 rounded-xl bg-red-50 dark:bg-red-950/20 flex-shrink-0">
+                  <span className="text-red-600 font-bold text-lg leading-none">{ev.day}</span>
+                  <span className="text-red-400 text-[10px] font-bold uppercase">{MONTH_ABBR[ev.month] ?? ev.month}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900 dark:text-white text-sm">{ev.title}</p>
+                  {ev.time && (
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-zinc-400">
+                      <span className="flex items-center gap-1"><Clock size={11} />{ev.time}</span>
+                      {ev.location && <span className="flex items-center gap-1"><MapPin size={11} />{ev.location}</span>}
+                    </div>
+                  )}
+                </div>
+                <span className={cn("text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0", EVENT_COLORS[ev.type])}>{ev.type}</span>
+                {isAdmin && (
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button onClick={() => evEditId === ev.id ? setEvEditId(null) : openEvEdit(ev)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 hover:text-red-600 transition-colors"><Pencil size={13} /></button>
+                    <button onClick={() => handleDeleteEvent(ev.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-400 hover:text-red-600 transition-colors"><Trash2 size={13} /></button>
                   </div>
                 )}
               </div>
-              <span className={cn("text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0", EVENT_COLORS[ev.type])}>{ev.type}</span>
+              {isAdmin && evEditId === ev.id && (
+                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-zinc-800 grid grid-cols-2 gap-2">
+                  <input type="text" value={eeTitle} onChange={e => setEeTitle(e.target.value)} placeholder="Títol *" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+                  <input type="number" value={eeDay} onChange={e => setEeDay(e.target.value)} placeholder="Dia" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+                  <select value={eeMonth} onChange={e => setEeMonth(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white">
+                    {MONTH_NAMES.slice(1).map((m, idx) => <option key={idx+1} value={idx+1}>{m}</option>)}
+                  </select>
+                  <input type="text" value={eeTime} onChange={e => setEeTime(e.target.value)} placeholder="Hora" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+                  <input type="text" value={eeLocation} onChange={e => setEeLocation(e.target.value)} placeholder="Lloc" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+                  <select value={eeType} onChange={e => setEeType(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white">
+                    {Object.keys(EVENT_COLORS).map(t => <option key={t}>{t}</option>)}
+                  </select>
+                  <div className="col-span-2 flex justify-end gap-2">
+                    <button onClick={() => setEvEditId(null)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400">Cancel·lar</button>
+                    <button onClick={handleSaveEvEdit} disabled={!eeTitle.trim() || !eeDay || eeSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">{eeSaving ? 'Desant...' : 'Desar'}</button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

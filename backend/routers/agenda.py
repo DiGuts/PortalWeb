@@ -31,6 +31,35 @@ async def create_agenda_event(
     return dict(row)
 
 
+@router.put("/{event_id}")
+async def update_agenda_event(
+    event_id: int,
+    body: AgendaEventIn,
+    _admin: dict = Depends(require_admin),
+    db: AsyncConnection = Depends(get_db),
+):
+    await db.execute(
+        text("""
+            UPDATE agenda_events SET title=:title, day=:day, month=:month,
+            time=:time, location=:location, type=:type WHERE id=:id
+        """),
+        {"title": body.title, "day": body.day, "month": body.month,
+         "time": body.time, "location": body.location, "type": body.type, "id": event_id},
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/{event_id}", status_code=204)
+async def delete_agenda_event(
+    event_id: int,
+    _admin: dict = Depends(require_admin),
+    db: AsyncConnection = Depends(get_db),
+):
+    await db.execute(text("DELETE FROM agenda_events WHERE id=:id"), {"id": event_id})
+    await db.commit()
+
+
 @router.get("")
 async def list_agenda(
     month: Optional[int] = None,

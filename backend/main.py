@@ -1,10 +1,12 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from database import init_db
 from routers import auth, users, suggestions, incidencies, enquestes
-from routers import employees, activities, agenda, notices, news, courses, solicituds, notifications
+from routers import employees, activities, agenda, notices, news, courses, solicituds, notifications, upload
 
 
 @asynccontextmanager
@@ -38,3 +40,8 @@ app.include_router(news.router)
 app.include_router(courses.router)
 app.include_router(solicituds.router)
 app.include_router(notifications.router)
+app.include_router(upload.router)
+
+UPLOADS_DIR = Path(__file__).parent / "uploads"
+UPLOADS_DIR.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")

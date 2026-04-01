@@ -1,4 +1,4 @@
-const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:8000' : '';
+export const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:8000' : '';
 
 export interface User {
   id: number;
@@ -70,6 +70,22 @@ export async function apiFetch<T>(
   }
 
   return res.json() as Promise<T>;
+}
+
+// ── Image upload ──────────────────────────────────────────────────────────────
+
+export async function apiUploadImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const token = getToken();
+  const res = await fetch(`${API_BASE}/api/upload`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) throw new Error('Error pujant la imatge');
+  const data = await res.json();
+  return API_BASE + data.url;
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -292,6 +308,17 @@ export async function apiCreateActivity(fields: {
   return apiFetch<Activity>('/api/activities', { method: 'POST', body: JSON.stringify(fields) });
 }
 
+export async function apiUpdateActivity(id: number, fields: {
+  title: string; category: string; description: string;
+  date: string; time: string; location: string; capacity: number;
+}): Promise<void> {
+  await apiFetch(`/api/activities/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
+}
+
+export async function apiDeleteActivity(id: number): Promise<void> {
+  await apiFetch(`/api/activities/${id}`, { method: 'DELETE' });
+}
+
 export async function apiGetActivities(past?: 0 | 1): Promise<Activity[]> {
   const qs = past !== undefined ? `?past=${past}` : '';
   return apiFetch<Activity[]>(`/api/activities${qs}`);
@@ -313,6 +340,16 @@ export async function apiCreateAgendaEvent(fields: {
   title: string; day: number; month: number; time: string; location: string; type: string;
 }): Promise<AgendaEvent> {
   return apiFetch<AgendaEvent>('/api/agenda', { method: 'POST', body: JSON.stringify(fields) });
+}
+
+export async function apiUpdateAgendaEvent(id: number, fields: {
+  title: string; day: number; month: number; time: string; location: string; type: string;
+}): Promise<void> {
+  await apiFetch(`/api/agenda/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
+}
+
+export async function apiDeleteAgendaEvent(id: number): Promise<void> {
+  await apiFetch(`/api/agenda/${id}`, { method: 'DELETE' });
 }
 
 export async function apiGetAgendaEvents(month?: number): Promise<AgendaEvent[]> {
@@ -362,6 +399,17 @@ export async function apiCreateNews(fields: {
 
 export async function apiGetNewsArticle(id: number): Promise<NewsArticle> {
   return apiFetch<NewsArticle>(`/api/news/${id}`);
+}
+
+export async function apiUpdateNews(id: number, fields: {
+  category: string; title: string; summary: string; content: string;
+  author: string; date: string; image: string; featured: number;
+}): Promise<void> {
+  await apiFetch(`/api/news/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
+}
+
+export async function apiDeleteNews(id: number): Promise<void> {
+  await apiFetch(`/api/news/${id}`, { method: 'DELETE' });
 }
 
 // ── Notifications ─────────────────────────────────────────────────────────────

@@ -62,3 +62,34 @@ async def get_news(
     if row is None:
         raise HTTPException(status_code=404, detail="Notícia no trobada")
     return dict(row)
+
+
+@router.put("/{news_id}")
+async def update_news(
+    news_id: int,
+    body: NewsIn,
+    _admin: dict = Depends(require_admin),
+    db: AsyncConnection = Depends(get_db),
+):
+    await db.execute(
+        text("""
+            UPDATE news SET category=:category, title=:title, summary=:summary,
+            content=:content, author=:author, date=:date, image=:image, featured=:featured
+            WHERE id=:id
+        """),
+        {"category": body.category, "title": body.title, "summary": body.summary,
+         "content": body.content, "author": body.author, "date": body.date,
+         "image": body.image, "featured": body.featured, "id": news_id},
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/{news_id}", status_code=204)
+async def delete_news(
+    news_id: int,
+    _admin: dict = Depends(require_admin),
+    db: AsyncConnection = Depends(get_db),
+):
+    await db.execute(text("DELETE FROM news WHERE id=:id"), {"id": news_id})
+    await db.commit()

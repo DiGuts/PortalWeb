@@ -71,3 +71,34 @@ async def enroll(
     )
     await db.commit()
     return {"ok": True}
+
+
+@router.put("/{activity_id}")
+async def update_activity(
+    activity_id: int,
+    body: ActivityIn,
+    _admin: dict = Depends(require_admin),
+    db: AsyncConnection = Depends(get_db),
+):
+    await db.execute(
+        text("""
+            UPDATE activities SET title=:title, category=:category, description=:description,
+            date=:date, time=:time, location=:location, capacity=:capacity
+            WHERE id=:id
+        """),
+        {"title": body.title, "category": body.category, "description": body.description,
+         "date": body.date, "time": body.time, "location": body.location,
+         "capacity": body.capacity, "id": activity_id},
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/{activity_id}", status_code=204)
+async def delete_activity(
+    activity_id: int,
+    _admin: dict = Depends(require_admin),
+    db: AsyncConnection = Depends(get_db),
+):
+    await db.execute(text("DELETE FROM activities WHERE id=:id"), {"id": activity_id})
+    await db.commit()
