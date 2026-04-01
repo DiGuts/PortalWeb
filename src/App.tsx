@@ -14,8 +14,8 @@ import {
   User, TokenOut,
   apiLogin, apiRegister, apiGetMe, apiUpdateMe, apiUpdateMyRole,
   setToken, clearToken, getToken, registerUnauthorizedHandler,
-  apiGetSuggestions, apiCreateSuggestion, apiVoteSuggestion, Suggestion,
-  apiGetIncidencies, apiCreateIncidencia, Incidencia,
+  apiGetSuggestions, apiCreateSuggestion, apiVoteSuggestion, apiUpdateSuggestionStatus, apiAddSuggestionResponse, Suggestion,
+  apiGetIncidencies, apiCreateIncidencia, apiUpdateIncidenciaStatus, Incidencia,
   apiGetEnquestes, apiRespondreEnquesta, Enquesta,
   apiGetSolicituds, apiCreateSolicitud, apiUpdateSolicitud, Solicitud,
   Notice, apiGetNotices,
@@ -974,6 +974,55 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
   const [incSubmitting, setIncSubmitting] = useState(false);
   const [incSuccess, setIncSuccess] = useState(false);
 
+  // RRHH admin state — suggestions
+  const [suggAdminOpen, setSuggAdminOpen] = useState<number | null>(null);
+  const [suggAdminStatus, setSuggAdminStatus] = useState('');
+  const [suggAdminResponse, setSuggAdminResponse] = useState('');
+  const [suggAdminSaving, setSuggAdminSaving] = useState(false);
+
+  // RRHH admin state — incidencies
+  const [incAdminOpen, setIncAdminOpen] = useState<number | null>(null);
+  const [incAdminStatus, setIncAdminStatus] = useState('');
+  const [incAdminAssigned, setIncAdminAssigned] = useState('');
+  const [incAdminResolution, setIncAdminResolution] = useState('');
+  const [incAdminSaving, setIncAdminSaving] = useState(false);
+
+  const isRrhhOrAdmin = currentUser?.role === 'Administrador/a' || currentUser?.role === 'Recursos humans';
+
+  const openSuggAdmin = (sug: Suggestion) => {
+    setSuggAdminOpen(sug.id);
+    setSuggAdminStatus(sug.status);
+    setSuggAdminResponse(sug.response || '');
+  };
+
+  const saveSuggAdmin = async (id: number) => {
+    setSuggAdminSaving(true);
+    try {
+      await apiUpdateSuggestionStatus(id, suggAdminStatus);
+      if (suggAdminResponse.trim()) await apiAddSuggestionResponse(id, suggAdminResponse.trim());
+      setSuggestions(await apiGetSuggestions());
+      setSuggAdminOpen(null);
+    } catch (e) { console.error(e); }
+    finally { setSuggAdminSaving(false); }
+  };
+
+  const openIncAdmin = (inc: Incidencia) => {
+    setIncAdminOpen(inc.id);
+    setIncAdminStatus(inc.status);
+    setIncAdminAssigned(inc.assigned_to || '');
+    setIncAdminResolution(inc.resolution || '');
+  };
+
+  const saveIncAdmin = async (id: number) => {
+    setIncAdminSaving(true);
+    try {
+      await apiUpdateIncidenciaStatus(id, incAdminStatus, incAdminAssigned, incAdminResolution);
+      setIncidencies(await apiGetIncidencies());
+      setIncAdminOpen(null);
+    } catch (e) { console.error(e); }
+    finally { setIncAdminSaving(false); }
+  };
+
   // Enquestes state
   const [enquestes, setEnquestes] = useState<Enquesta[]>([]);
 
@@ -1099,10 +1148,27 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
                         </div>
                       )}
                     </div>
-                    <div className="flex-shrink-0 flex items-center self-center">
+                    <div className="flex-shrink-0 flex items-center self-center gap-2">
                       <span className="text-xs text-gray-400 dark:text-zinc-500 italic">{sug.anonymous ? 'Anònim' : sug.author}</span>
+                      {isRrhhOrAdmin && (
+                        <button onClick={() => suggAdminOpen === sug.id ? setSuggAdminOpen(null) : openSuggAdmin(sug)} className="text-[10px] px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-red-50 hover:text-red-600 transition-colors">Gestionar</button>
+                      )}
                     </div>
                   </div>
+                  {isRrhhOrAdmin && suggAdminOpen === sug.id && (
+                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-zinc-800 space-y-2">
+                      <select value={suggAdminStatus} onChange={e => setSuggAdminStatus(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white">
+                        <option>Pendent</option>
+                        <option>En revisió</option>
+                        <option>Acceptada</option>
+                        <option>Denegada</option>
+                      </select>
+                      <textarea value={suggAdminResponse} onChange={e => setSuggAdminResponse(e.target.value)} placeholder="Resposta (opcional)" rows={2} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white resize-none" />
+                      <button onClick={() => saveSuggAdmin(sug.id)} disabled={suggAdminSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">
+                        {suggAdminSaving ? 'Desant...' : 'Desar'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1166,6 +1232,24 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
                         <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", incStatusColor(inc.status))}>{inc.status}</span>
                       </div>
                       {inc.resolution && <div className="mt-2 bg-gray-50 dark:bg-zinc-800 rounded-lg p-3 text-xs text-gray-600 dark:text-zinc-400"><span className="font-semibold">Resolució:</span> {inc.resolution}</div>}
+                      {isRrhhOrAdmin && (
+                        <button onClick={() => incAdminOpen === inc.id ? setIncAdminOpen(null) : openIncAdmin(inc)} className="mt-2 text-[10px] px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-red-50 hover:text-red-600 transition-colors">Gestionar</button>
+                      )}
+                      {isRrhhOrAdmin && incAdminOpen === inc.id && (
+                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-zinc-800 space-y-2">
+                          <select value={incAdminStatus} onChange={e => setIncAdminStatus(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white">
+                            <option>Oberta</option>
+                            <option>En gestió</option>
+                            <option>Resolta</option>
+                            <option>Tancada</option>
+                          </select>
+                          <input type="text" value={incAdminAssigned} onChange={e => setIncAdminAssigned(e.target.value)} placeholder="Assignat a (nom)" className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+                          <textarea value={incAdminResolution} onChange={e => setIncAdminResolution(e.target.value)} placeholder="Resolució (opcional)" rows={2} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white resize-none" />
+                          <button onClick={() => saveIncAdmin(inc.id)} disabled={incAdminSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">
+                            {incAdminSaving ? 'Desant...' : 'Desar'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

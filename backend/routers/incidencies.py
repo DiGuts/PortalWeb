@@ -3,7 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from database import get_db
-from auth import get_current_user, require_admin
+from auth import get_current_user, require_rrhh_or_admin
 from models import IncidenciaIn, IncidenciaStatusIn
 
 router = APIRouter(prefix="/api/incidencies", tags=["incidencies"])
@@ -45,7 +45,7 @@ async def create_incidencia(
 async def update_status(
     incidencia_id: int,
     body: IncidenciaStatusIn,
-    _admin: dict = Depends(require_admin),
+    _admin: dict = Depends(require_rrhh_or_admin),
     db: AsyncConnection = Depends(get_db),
 ):
     await db.execute(

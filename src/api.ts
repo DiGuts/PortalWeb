@@ -177,6 +177,14 @@ export async function apiVoteSuggestion(id: number): Promise<void> {
   await apiFetch('/api/suggestions/' + id + '/vote', { method: 'POST' });
 }
 
+export async function apiUpdateSuggestionStatus(id: number, status: string): Promise<void> {
+  await apiFetch('/api/suggestions/' + id + '/status', { method: 'PATCH', body: JSON.stringify({ status }) });
+}
+
+export async function apiAddSuggestionResponse(id: number, response: string): Promise<void> {
+  await apiFetch('/api/suggestions/' + id + '/response', { method: 'PATCH', body: JSON.stringify({ response }) });
+}
+
 // ── Incidències ───────────────────────────────────────────────────────────────
 
 export interface Incidencia {
@@ -205,6 +213,18 @@ export async function apiCreateIncidencia(
   return apiFetch<Incidencia>('/api/incidencies', {
     method: 'POST',
     body: JSON.stringify({ title, description, area, priority }),
+  });
+}
+
+export async function apiUpdateIncidenciaStatus(
+  id: number,
+  status: string,
+  assigned_to: string,
+  resolution: string
+): Promise<void> {
+  await apiFetch('/api/incidencies/' + id + '/status', {
+    method: 'PATCH',
+    body: JSON.stringify({ status, assigned_to, resolution }),
   });
 }
 

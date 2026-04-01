@@ -3,7 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from database import get_db
-from auth import get_current_user, require_admin
+from auth import get_current_user, require_rrhh_or_admin
 from models import SuggestionIn, SuggestionStatusIn, SuggestionResponseIn
 
 router = APIRouter(prefix="/api/suggestions", tags=["suggestions"])
@@ -60,7 +60,7 @@ async def vote_suggestion(
 async def update_status(
     suggestion_id: int,
     body: SuggestionStatusIn,
-    _admin: dict = Depends(require_admin),
+    _admin: dict = Depends(require_rrhh_or_admin),
     db: AsyncConnection = Depends(get_db),
 ):
     await db.execute(
@@ -75,7 +75,7 @@ async def update_status(
 async def add_response(
     suggestion_id: int,
     body: SuggestionResponseIn,
-    _admin: dict = Depends(require_admin),
+    _admin: dict = Depends(require_rrhh_or_admin),
     db: AsyncConnection = Depends(get_db),
 ):
     await db.execute(
