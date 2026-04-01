@@ -25,7 +25,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "backend": "backend/venv/Scripts/python -m uvicorn main:app --reload --app-dir backend",
+    "backend": "cd backend && venv\\Scripts\\python -m uvicorn main:app --reload",
     "dev": "concurrently -n frontend,backend -c cyan,yellow \"npm start\" \"npm run backend\"",
     "build": "react-scripts build",
     "test": "react-scripts test",

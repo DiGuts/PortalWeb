@@ -3,6 +3,9 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncConnection
 from sqlalchemy import text
 
 import os
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).parent / ".env")
 
 _DEFAULT_DB = "sqlite+aiosqlite:///" + (Path(__file__).parent / "tavil_portal.db").as_posix()
 DATABASE_URL = os.getenv("DB_URL", _DEFAULT_DB)

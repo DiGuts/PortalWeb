@@ -9,7 +9,9 @@ from routers import employees, activities, agenda, notices, news, courses, solic
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
+    from database import DATABASE_URL
+    if DATABASE_URL.startswith("sqlite"):
+        await init_db()
     yield
 
 
