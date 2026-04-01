@@ -237,6 +237,21 @@ function InicialTab() {
 
 // ── Notícies Tab ──────────────────────────────────────────────────────────────
 
+function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 border border-gray-100 dark:border-zinc-800">
+        <h3 className="font-bold text-gray-900 dark:text-white mb-2">Confirmar eliminació</h3>
+        <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">{message}</p>
+        <div className="flex gap-3 justify-end">
+          <button onClick={onCancel} className="px-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">Cancel·lar</button>
+          <button onClick={onConfirm} className="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors">Eliminar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NewsEditForm({ neCategory, setNeCategory, neTitle, setNeTitle, neSummary, setNeSummary,
   neAuthor, setNeAuthor, neDate, setNeDate, neImage, neImageFile, setNeImageFile,
   neFeatured, setNeFeatured, neSaving, onSave, onCancel }: any) {
@@ -336,12 +351,17 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
     finally { setNeSaving(false); }
   };
 
-  const handleDeleteNews = async (id: number) => {
-    if (!window.confirm('Segur que vols eliminar aquesta notícia?')) return;
-    try {
-      await apiDeleteNews(id);
-      setNews(await apiGetNews());
-    } catch (e) { console.error(e); }
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+
+  const handleDeleteNews = (id: number) => {
+    setConfirmModal({
+      message: 'Segur que vols eliminar aquesta notícia? Aquesta acció no es pot desfer.',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try { await apiDeleteNews(id); setNews(await apiGetNews()); }
+        catch (e) { console.error(e); }
+      },
+    });
   };
 
   useEffect(() => {
@@ -447,6 +467,7 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
           </div>
         ))}
       </div>
+      {confirmModal && <ConfirmModal message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} />}
     </div>
   );
 }
@@ -514,12 +535,17 @@ function ActivitatsTab({ currentUser }: { currentUser: User | null }) {
     finally { setAeSaving(false); }
   };
 
-  const handleDeleteActivity = async (id: number) => {
-    if (!window.confirm('Segur que vols eliminar aquesta activitat?')) return;
-    try {
-      await apiDeleteActivity(id);
-      setActivities(await apiGetActivities());
-    } catch (e) { console.error(e); }
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+
+  const handleDeleteActivity = (id: number) => {
+    setConfirmModal({
+      message: 'Segur que vols eliminar aquesta activitat? Aquesta acció no es pot desfer.',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try { await apiDeleteActivity(id); setActivities(await apiGetActivities()); }
+        catch (e) { console.error(e); }
+      },
+    });
   };
 
   useEffect(() => {
@@ -631,6 +657,7 @@ function ActivitatsTab({ currentUser }: { currentUser: User | null }) {
           );
         })}
       </div>
+      {confirmModal && <ConfirmModal message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} />}
     </div>
   );
 }
@@ -707,12 +734,17 @@ function AgendaTab({ currentUser }: { currentUser: User | null }) {
     finally { setEeSaving(false); }
   };
 
-  const handleDeleteEvent = async (id: number) => {
-    if (!window.confirm('Segur que vols eliminar aquest event?')) return;
-    try {
-      await apiDeleteAgendaEvent(id);
-      setAgendaEvents(await apiGetAgendaEvents());
-    } catch (e) { console.error(e); }
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+
+  const handleDeleteEvent = (id: number) => {
+    setConfirmModal({
+      message: 'Segur que vols eliminar aquest event? Aquesta acció no es pot desfer.',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try { await apiDeleteAgendaEvent(id); setAgendaEvents(await apiGetAgendaEvents()); }
+        catch (e) { console.error(e); }
+      },
+    });
   };
 
   useEffect(() => {
@@ -866,6 +898,7 @@ function AgendaTab({ currentUser }: { currentUser: User | null }) {
           ))}
         </div>
       )}
+      {confirmModal && <ConfirmModal message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} />}
     </div>
   );
 }
