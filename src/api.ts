@@ -69,6 +69,7 @@ export async function apiFetch<T>(
     throw new Error(detail);
   }
 
+  if (res.status === 204) return undefined as unknown as T;
   return res.json() as Promise<T>;
 }
 
