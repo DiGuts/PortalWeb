@@ -1,9 +1,6 @@
 Options -MultiViews
 RewriteEngine On
 
-# Route all /api/* requests through the PHP front-controller
-RewriteRule ^api/.*$ api/index.php [QSA,L]
-
-# React SPA fallback for everything else
+# React SPA fallback — skip if file exists (lets .php files be served directly)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^ index.html [QSA,L]

@@ -1,4 +1,4 @@
-// PHP backend — served from the same origin, no port needed
+// PHP backend — files served directly, no URL rewriting needed
 export const API_BASE = process.env.PUBLIC_URL || '';
 
 export interface User {
@@ -80,20 +80,20 @@ export async function apiUploadImage(file: File): Promise<string> {
   const formData = new FormData();
   formData.append('file', file);
   const token = getToken();
-  const res = await fetch(`${API_BASE}/api/upload`, {
+  const res = await fetch(`${API_BASE}/api/upload/index.php`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
   });
   if (!res.ok) throw new Error('Error pujant la imatge');
   const data = await res.json();
-  return API_BASE + data.url;
+  return data.url;
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export async function apiLogin(email: string, password: string): Promise<TokenOut> {
-  return apiFetch<TokenOut>('/api/auth/login', {
+  return apiFetch<TokenOut>('/api/auth/login.php', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
@@ -104,25 +104,25 @@ export async function apiRegister(
   email: string,
   password: string
 ): Promise<TokenOut> {
-  return apiFetch<TokenOut>('/api/auth/register', {
+  return apiFetch<TokenOut>('/api/auth/register.php', {
     method: 'POST',
     body: JSON.stringify({ name, email, password }),
   });
 }
 
 export async function apiGetMe(): Promise<User> {
-  return apiFetch<User>('/api/users/me');
+  return apiFetch<User>('/api/users/me.php');
 }
 
 export async function apiUpdateMyRole(role: string): Promise<User> {
-  return apiFetch<User>('/api/users/me/role', {
+  return apiFetch<User>('/api/users/me_role.php', {
     method: 'PATCH',
     body: JSON.stringify({ role }),
   });
 }
 
 export async function apiUpdateMe(fields: Partial<Pick<User, 'name' | 'phone' | 'ext' | 'location'>>): Promise<User> {
-  return apiFetch<User>('/api/users/me', {
+  return apiFetch<User>('/api/users/me.php', {
     method: 'PATCH',
     body: JSON.stringify(fields),
   });
@@ -141,18 +141,18 @@ export interface Solicitud {
 }
 
 export async function apiGetSolicituds(): Promise<Solicitud[]> {
-  return apiFetch<Solicitud[]>('/api/solicituds');
+  return apiFetch<Solicitud[]>('/api/solicituds/index.php');
 }
 
 export async function apiCreateSolicitud(date: string, comments: string): Promise<Solicitud> {
-  return apiFetch<Solicitud>('/api/solicituds', {
+  return apiFetch<Solicitud>('/api/solicituds/index.php', {
     method: 'POST',
     body: JSON.stringify({ date, motive: '', comments }),
   });
 }
 
 export async function apiUpdateSolicitud(id: number, status: 'Aprovada' | 'Denegada', motive: string = ''): Promise<void> {
-  await apiFetch<{ ok: boolean }>(`/api/solicituds/${id}`, {
+  await apiFetch<{ ok: boolean }>(`/api/solicituds/index.php?id=${id}`, {
     method: 'PATCH',
     body: JSON.stringify({ status, motive }),
   });
@@ -174,7 +174,7 @@ export interface Suggestion {
 }
 
 export async function apiGetSuggestions(): Promise<Suggestion[]> {
-  const data = await apiFetch<any[]>('/api/suggestions');
+  const data = await apiFetch<any[]>('/api/suggestions/index.php');
   return data.map(s => ({ ...s, anonymous: !!s.anonymous }));
 }
 
@@ -184,7 +184,7 @@ export async function apiCreateSuggestion(
   category: string,
   anonymous: boolean
 ): Promise<Suggestion> {
-  const s = await apiFetch<any>('/api/suggestions', {
+  const s = await apiFetch<any>('/api/suggestions/index.php', {
     method: 'POST',
     body: JSON.stringify({ title, description, category, anonymous }),
   });
@@ -192,15 +192,15 @@ export async function apiCreateSuggestion(
 }
 
 export async function apiVoteSuggestion(id: number): Promise<void> {
-  await apiFetch('/api/suggestions/' + id + '/vote', { method: 'POST' });
+  await apiFetch(`/api/suggestions/vote.php?id=${id}`, { method: 'POST' });
 }
 
 export async function apiUpdateSuggestionStatus(id: number, status: string): Promise<void> {
-  await apiFetch('/api/suggestions/' + id + '/status', { method: 'PATCH', body: JSON.stringify({ status }) });
+  await apiFetch(`/api/suggestions/status.php?id=${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
 }
 
 export async function apiAddSuggestionResponse(id: number, response: string): Promise<void> {
-  await apiFetch('/api/suggestions/' + id + '/response', { method: 'PATCH', body: JSON.stringify({ response }) });
+  await apiFetch(`/api/suggestions/response.php?id=${id}`, { method: 'PATCH', body: JSON.stringify({ response }) });
 }
 
 // ── Incidències ───────────────────────────────────────────────────────────────
@@ -219,7 +219,7 @@ export interface Incidencia {
 }
 
 export async function apiGetIncidencies(): Promise<Incidencia[]> {
-  return apiFetch<Incidencia[]>('/api/incidencies');
+  return apiFetch<Incidencia[]>('/api/incidencies/index.php');
 }
 
 export async function apiCreateIncidencia(
@@ -228,7 +228,7 @@ export async function apiCreateIncidencia(
   area: string,
   priority: string
 ): Promise<Incidencia> {
-  return apiFetch<Incidencia>('/api/incidencies', {
+  return apiFetch<Incidencia>('/api/incidencies/index.php', {
     method: 'POST',
     body: JSON.stringify({ title, description, area, priority }),
   });
@@ -240,7 +240,7 @@ export async function apiUpdateIncidenciaStatus(
   assigned_to: string,
   resolution: string
 ): Promise<void> {
-  await apiFetch('/api/incidencies/' + id + '/status', {
+  await apiFetch(`/api/incidencies/status.php?id=${id}`, {
     method: 'PATCH',
     body: JSON.stringify({ status, assigned_to, resolution }),
   });
@@ -262,11 +262,11 @@ export interface Enquesta {
 }
 
 export async function apiGetEnquestes(): Promise<Enquesta[]> {
-  return apiFetch<Enquesta[]>('/api/enquestes');
+  return apiFetch<Enquesta[]>('/api/enquestes/index.php');
 }
 
 export async function apiRespondreEnquesta(id: number): Promise<void> {
-  await apiFetch(`/api/enquestes/${id}/respond`, { method: 'POST' });
+  await apiFetch(`/api/enquestes/respond.php?id=${id}`, { method: 'POST' });
 }
 
 // ── Employees ─────────────────────────────────────────────────────────────────
@@ -285,7 +285,7 @@ export interface Employee {
 
 export async function apiGetEmployees(dept?: string): Promise<Employee[]> {
   const qs = dept ? `?dept=${encodeURIComponent(dept)}` : '';
-  return apiFetch<Employee[]>(`/api/employees${qs}`);
+  return apiFetch<Employee[]>(`/api/employees/index.php${qs}`);
 }
 
 // ── Activities ────────────────────────────────────────────────────────────────
@@ -307,23 +307,23 @@ export async function apiCreateActivity(fields: {
   title: string; category: string; description: string;
   date: string; time: string; location: string; capacity: number;
 }): Promise<Activity> {
-  return apiFetch<Activity>('/api/activities', { method: 'POST', body: JSON.stringify(fields) });
+  return apiFetch<Activity>('/api/activities/index.php', { method: 'POST', body: JSON.stringify(fields) });
 }
 
 export async function apiUpdateActivity(id: number, fields: {
   title: string; category: string; description: string;
   date: string; time: string; location: string; capacity: number;
 }): Promise<void> {
-  await apiFetch(`/api/activities/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
+  await apiFetch(`/api/activities/index.php?id=${id}`, { method: 'PUT', body: JSON.stringify(fields) });
 }
 
 export async function apiDeleteActivity(id: number): Promise<void> {
-  await apiFetch(`/api/activities/${id}`, { method: 'DELETE' });
+  await apiFetch(`/api/activities/index.php?id=${id}`, { method: 'DELETE' });
 }
 
 export async function apiGetActivities(past?: 0 | 1): Promise<Activity[]> {
   const qs = past !== undefined ? `?past=${past}` : '';
-  return apiFetch<Activity[]>(`/api/activities${qs}`);
+  return apiFetch<Activity[]>(`/api/activities/index.php${qs}`);
 }
 
 // ── Agenda ────────────────────────────────────────────────────────────────────
@@ -341,22 +341,22 @@ export interface AgendaEvent {
 export async function apiCreateAgendaEvent(fields: {
   title: string; day: number; month: number; time: string; location: string; type: string;
 }): Promise<AgendaEvent> {
-  return apiFetch<AgendaEvent>('/api/agenda', { method: 'POST', body: JSON.stringify(fields) });
+  return apiFetch<AgendaEvent>('/api/agenda/index.php', { method: 'POST', body: JSON.stringify(fields) });
 }
 
 export async function apiUpdateAgendaEvent(id: number, fields: {
   title: string; day: number; month: number; time: string; location: string; type: string;
 }): Promise<void> {
-  await apiFetch(`/api/agenda/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
+  await apiFetch(`/api/agenda/index.php?id=${id}`, { method: 'PUT', body: JSON.stringify(fields) });
 }
 
 export async function apiDeleteAgendaEvent(id: number): Promise<void> {
-  await apiFetch(`/api/agenda/${id}`, { method: 'DELETE' });
+  await apiFetch(`/api/agenda/index.php?id=${id}`, { method: 'DELETE' });
 }
 
 export async function apiGetAgendaEvents(month?: number): Promise<AgendaEvent[]> {
   const qs = month !== undefined ? `?month=${month}` : '';
-  return apiFetch<AgendaEvent[]>(`/api/agenda${qs}`);
+  return apiFetch<AgendaEvent[]>(`/api/agenda/index.php${qs}`);
 }
 
 // ── Notices ───────────────────────────────────────────────────────────────────
@@ -370,7 +370,7 @@ export interface Notice {
 }
 
 export async function apiGetNotices(): Promise<Notice[]> {
-  return apiFetch<Notice[]>('/api/notices');
+  return apiFetch<Notice[]>('/api/notices/index.php');
 }
 
 // ── News ──────────────────────────────────────────────────────────────────────
@@ -389,29 +389,29 @@ export interface NewsArticle {
 }
 
 export async function apiGetNews(): Promise<NewsArticle[]> {
-  return apiFetch<NewsArticle[]>('/api/news');
+  return apiFetch<NewsArticle[]>('/api/news/index.php');
 }
 
 export async function apiCreateNews(fields: {
   category: string; title: string; summary: string; content: string;
   author: string; date: string; image: string; featured: number;
 }): Promise<NewsArticle> {
-  return apiFetch<NewsArticle>('/api/news', { method: 'POST', body: JSON.stringify(fields) });
+  return apiFetch<NewsArticle>('/api/news/index.php', { method: 'POST', body: JSON.stringify(fields) });
 }
 
 export async function apiGetNewsArticle(id: number): Promise<NewsArticle> {
-  return apiFetch<NewsArticle>(`/api/news/${id}`);
+  return apiFetch<NewsArticle>(`/api/news/index.php?id=${id}`);
 }
 
 export async function apiUpdateNews(id: number, fields: {
   category: string; title: string; summary: string; content: string;
   author: string; date: string; image: string; featured: number;
 }): Promise<void> {
-  await apiFetch(`/api/news/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
+  await apiFetch(`/api/news/index.php?id=${id}`, { method: 'PUT', body: JSON.stringify(fields) });
 }
 
 export async function apiDeleteNews(id: number): Promise<void> {
-  await apiFetch(`/api/news/${id}`, { method: 'DELETE' });
+  await apiFetch(`/api/news/index.php?id=${id}`, { method: 'DELETE' });
 }
 
 // ── Notifications ─────────────────────────────────────────────────────────────
@@ -427,19 +427,19 @@ export interface Notification {
 }
 
 export async function apiGetNotifications(): Promise<Notification[]> {
-  return apiFetch<Notification[]>('/api/notifications');
+  return apiFetch<Notification[]>('/api/notifications/index.php');
 }
 
 export async function apiMarkNotifRead(id: number): Promise<void> {
-  await apiFetch(`/api/notifications/${id}/read`, { method: 'PATCH' });
+  await apiFetch(`/api/notifications/read_one.php?id=${id}`, { method: 'PATCH' });
 }
 
 export async function apiMarkAllNotifsRead(): Promise<void> {
-  await apiFetch('/api/notifications/read-all', { method: 'PATCH' });
+  await apiFetch('/api/notifications/read_all.php', { method: 'PATCH' });
 }
 
 export async function apiClearAllNotifications(): Promise<void> {
-  await apiFetch('/api/notifications/clear-all', { method: 'DELETE' });
+  await apiFetch('/api/notifications/clear_all.php', { method: 'DELETE' });
 }
 
 // ── Courses ───────────────────────────────────────────────────────────────────
@@ -457,11 +457,11 @@ export interface Course {
 }
 
 export async function apiGetCourses(): Promise<Course[]> {
-  return apiFetch<Course[]>('/api/courses');
+  return apiFetch<Course[]>('/api/courses/index.php');
 }
 
 export async function apiUpdateCourseProgress(id: number, status: string, progress: number): Promise<void> {
-  await apiFetch(`/api/courses/${id}/progress`, {
+  await apiFetch(`/api/courses/progress.php?id=${id}`, {
     method: 'PATCH',
     body: JSON.stringify({ status, progress }),
   });
