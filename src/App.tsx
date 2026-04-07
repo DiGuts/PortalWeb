@@ -2652,7 +2652,7 @@ function App() {
   }
 
   return (
-    <div className={cn("flex min-h-screen bg-gray-50 dark:bg-[#2d2d2d] font-sans text-gray-900 dark:text-zinc-100 transition-colors duration-300", isDarkMode && "dark")}>
+    <div className={cn("flex flex-col h-full md:flex-row bg-gray-50 dark:bg-[#2d2d2d] font-sans text-gray-900 dark:text-zinc-100 transition-colors duration-300", isDarkMode && "dark")}>
       {/* Sidebar */}
       <aside className={cn("bg-white dark:bg-[#252525] border-r border-gray-200 dark:border-zinc-800 flex-col fixed inset-y-0 z-30 transition-all duration-300", "hidden md:flex", sidebarCollapsed ? "w-16" : "w-60")}>
         <div className={cn("p-5 pb-4", sidebarCollapsed && "px-2")}>
@@ -2740,7 +2740,7 @@ function App() {
       )}
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 inset-x-0 h-16 bg-white dark:bg-[#252525] border-t border-gray-200 dark:border-zinc-800 flex md:hidden z-30">
+      <nav className="flex-shrink-0 h-16 bg-white dark:bg-[#252525] border-t border-gray-200 dark:border-zinc-800 flex md:hidden z-30 order-last">
         {[
           { id: 'Inici', label: 'Inici', icon: Home },
           { id: 'Notícies', label: 'Notícies', icon: Newspaper },
@@ -2763,9 +2763,9 @@ function App() {
       </nav>
 
       {/* Main */}
-      <main className={cn("flex-1 min-h-screen transition-all duration-300 pb-16 md:pb-0", sidebarCollapsed ? "md:ml-16" : "md:ml-60")}>
+      <main className={cn("flex-1 flex flex-col min-h-0 transition-all duration-300", sidebarCollapsed ? "md:ml-16" : "md:ml-60")}>
         {/* Header */}
-        <header className="h-16 bg-white dark:bg-[#252525] border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20">
+        <header className="flex-shrink-0 h-16 bg-white dark:bg-[#252525] border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between px-4 md:px-8 z-20">
           <div className="flex items-center gap-3">
             {/* Mobile hamburger */}
             <button
@@ -2960,22 +2960,25 @@ function App() {
         </header>
 
         {/* Content */}
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">
-          {/* Breadcrumb + Title */}
-          <div className="mb-6">
-            {activeTab !== 'Inici' && (
-              <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
-                <button onClick={() => setActiveTab('Inici')} className="hover:text-red-600 flex items-center gap-1 transition-colors">
-                  <Home size={11} /> Inici
-                </button>
-                <ChevronRight size={11} />
-                <span className="text-gray-700 dark:text-zinc-300">{currentSection?.label}</span>
-              </div>
-            )}
-            <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{currentSection?.label}</h1>
-          </div>
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="p-4 md:p-8 max-w-7xl mx-auto">
+            {/* Breadcrumb + Title */}
+            <div className="mb-6">
+              {activeTab !== 'Inici' && (
+                <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
+                  <button onClick={() => setActiveTab('Inici')} className="hover:text-red-600 flex items-center gap-1 transition-colors">
+                    <Home size={11} /> Inici
+                  </button>
+                  <ChevronRight size={11} />
+                  <span className="text-gray-700 dark:text-zinc-300">{currentSection?.label}</span>
+                </div>
+              )}
+              <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{currentSection?.label}</h1>
+            </div>
 
-          {renderContent()}
+            {renderContent()}
+          </div>
         </div>
       </main>
     </div>
