@@ -1,6 +1,10 @@
 <?php
 // ── TAVIL Portal — PHP API shared config ─────────────────────────────────────
 
+// Suppress PHP warnings/notices so they never corrupt JSON output
+ini_set('display_errors', '0');
+error_reporting(0);
+
 define('DB_HOST', '192.168.10.168');
 define('DB_PORT', 3306);
 define('DB_NAME', 'app_db');
@@ -15,12 +19,15 @@ function db(): PDO {
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         ]);
-        // Ensure tokens table exists
-        $pdo->exec("CREATE TABLE IF NOT EXISTS tokens (
-            token      VARCHAR(64) PRIMARY KEY,
-            user_id    INT NOT NULL,
-            created_at DATETIME NOT NULL DEFAULT NOW()
-        )");
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS tokens (
+                token      VARCHAR(64) PRIMARY KEY,
+                user_id    INT NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT NOW()
+            )");
+        } catch (\PDOException $e) {
+            // No CREATE privilege — admin must create the table manually (see docs)
+        }
     }
     return $pdo;
 }
