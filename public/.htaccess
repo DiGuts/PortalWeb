@@ -1,6 +1,9 @@
-AddType application/wasm .wasm
-
 Options -MultiViews
 RewriteEngine On
+
+# Pass /api/ requests to PHP — do not rewrite to index.html
+RewriteRule ^api/ - [L]
+
+# React SPA fallback
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^ index.html [QSA,L]

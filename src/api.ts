@@ -1,4 +1,5 @@
-export const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:8000' : '';
+// PHP backend — served from the same origin, no port needed
+export const API_BASE = process.env.PUBLIC_URL || '';
 
 export interface User {
   id: number;

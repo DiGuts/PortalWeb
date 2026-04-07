@@ -121,10 +121,11 @@ const NEWS_CAT_SHORT: Record<string, string> = {
   "Innovació":             "Innovació",
 };
 
-function InicialTab() {
+function InicialTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [noticeIndex, setNoticeIndex] = useState(0);
+  const [comingSoon, setComingSoon] = useState<string | null>(null);
 
   useEffect(() => {
     apiGetNotices().then(setNotices).catch(console.error);
@@ -166,7 +167,7 @@ function InicialTab() {
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-gray-900 dark:text-white text-sm">Pròxims a l'agenda</h3>
-            <button className="text-red-600 text-xs font-medium flex items-center gap-1 hover:underline">Veure <ArrowRight size={11} /></button>
+            <button onClick={() => onNavigate('Agenda')} className="text-red-600 text-xs font-medium flex items-center gap-1 hover:underline">Veure <ArrowRight size={11} /></button>
           </div>
           <div className="space-y-3">
             {[
@@ -194,14 +195,14 @@ function InicialTab() {
           <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Accés ràpid</h3>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { icon: Mail, title: "Correu corporatiu", desc: "Outlook Web", color: "bg-blue-50 dark:bg-blue-950/20" },
-              { icon: Database, title: "ERP", desc: "SAP / Gestió", color: "bg-green-50 dark:bg-green-950/20" },
-              { icon: FolderOpen, title: "Gestor documental", desc: "Normatives i ISO", color: "bg-amber-50 dark:bg-amber-950/20" },
-              { icon: GraduationCap, title: "Campus TAVIL", desc: "Formació interna", color: "bg-violet-50 dark:bg-violet-950/20" },
-              { icon: AlertTriangle, title: "Comunicar incidència", desc: "Manteniment / IT", color: "bg-orange-50 dark:bg-orange-950/20" },
-              { icon: Users, title: "Directori", desc: "Persones / contactes", color: "bg-red-50 dark:bg-red-950/20" },
+              { icon: Mail, title: "Correu corporatiu", desc: "Outlook Web", color: "bg-blue-50 dark:bg-blue-950/20", tab: null },
+              { icon: Database, title: "ERP", desc: "SAP / Gestió", color: "bg-green-50 dark:bg-green-950/20", tab: null },
+              { icon: FolderOpen, title: "Gestor documental", desc: "Normatives i ISO", color: "bg-amber-50 dark:bg-amber-950/20", tab: null },
+              { icon: GraduationCap, title: "Campus TAVIL", desc: "Formació interna", color: "bg-violet-50 dark:bg-violet-950/20", tab: 'Campus' },
+              { icon: AlertTriangle, title: "Comunicar incidència", desc: "Manteniment / IT", color: "bg-orange-50 dark:bg-orange-950/20", tab: 'Veu' },
+              { icon: Users, title: "Directori", desc: "Persones / contactes", color: "bg-red-50 dark:bg-red-950/20", tab: 'Directori' },
             ].map((item, i) => (
-              <div key={i} className={cn("flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:opacity-80 transition-opacity", item.color)}>
+              <div key={i} onClick={() => item.tab ? onNavigate(item.tab) : setComingSoon(item.title)} className={cn("flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:opacity-80 transition-opacity", item.color)}>
                 <item.icon size={18} className="text-gray-600 dark:text-zinc-300 flex-shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-gray-800 dark:text-zinc-200 leading-tight">{item.title}</p>
@@ -217,7 +218,7 @@ function InicialTab() {
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-gray-900 dark:text-white text-sm">Últimes notícies</h3>
-          <button className="text-red-600 text-xs font-medium flex items-center gap-1 hover:underline">Totes les notícies <ArrowRight size={11} /></button>
+          <button onClick={() => onNavigate('Notícies')} className="text-red-600 text-xs font-medium flex items-center gap-1 hover:underline">Totes les notícies <ArrowRight size={11} /></button>
         </div>
         <div className="divide-y divide-gray-50 dark:divide-zinc-800">
           {news.slice(0, 4).map((item, i) => (
@@ -231,11 +232,27 @@ function InicialTab() {
           ))}
         </div>
       </div>
+      {comingSoon && <ComingSoonModal title={comingSoon} onClose={() => setComingSoon(null)} />}
     </div>
   );
 }
 
 // ── Notícies Tab ──────────────────────────────────────────────────────────────
+
+function ComingSoonModal({ title, onClose }: { title: string; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 border border-gray-100 dark:border-zinc-800 text-center">
+        <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/20 flex items-center justify-center mx-auto mb-4">
+          <ExternalLink size={22} className="text-red-500" />
+        </div>
+        <h3 className="font-bold text-gray-900 dark:text-white mb-1">{title}</h3>
+        <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">Aquesta funcionalitat estarà disponible pròximament.</p>
+        <button onClick={onClose} className="px-5 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors">Entesos</button>
+      </div>
+    </div>
+  );
+}
 
 function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
   return (
@@ -474,11 +491,59 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
 
 // ── Activitats Tab ────────────────────────────────────────────────────────────
 
+function ActivityEnrollModal({ activity, userName, onClose }: { activity: Activity; userName: string; onClose: () => void }) {
+  const [comment, setComment] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  if (submitted) return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 border border-gray-100 dark:border-zinc-800 text-center">
+        <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-950/20 flex items-center justify-center mx-auto mb-4">
+          <CheckCircle size={22} className="text-green-500" />
+        </div>
+        <h3 className="font-bold text-gray-900 dark:text-white mb-1">Inscripció enviada</h3>
+        <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">La teva sol·licitud d'inscripció a <span className="font-semibold text-gray-700 dark:text-zinc-300">{activity.title}</span> s'ha enviat correctament.</p>
+        <button onClick={onClose} className="px-5 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors">Tancar</button>
+      </div>
+    </div>
+  );
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-6 w-full max-w-md mx-4 border border-gray-100 dark:border-zinc-800">
+        <h3 className="font-bold text-gray-900 dark:text-white mb-1">Inscripció a l'activitat</h3>
+        <p className="text-sm text-red-600 font-medium mb-4">{activity.title}</p>
+        <div className="space-y-3 mb-5">
+          <div>
+            <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Nom</label>
+            <input type="text" readOnly value={userName} className="w-full mt-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 outline-none" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Data i hora</label>
+            <input type="text" readOnly value={`${activity.date} · ${activity.time}`} className="w-full mt-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 outline-none" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Lloc</label>
+            <input type="text" readOnly value={activity.location} className="w-full mt-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 outline-none" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Comentari (opcional)</label>
+            <textarea value={comment} onChange={e => setComment(e.target.value)} rows={3} placeholder="Afegeix un comentari o observació..." className="w-full mt-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white resize-none" />
+          </div>
+        </div>
+        <div className="flex gap-3 justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">Cancel·lar</button>
+          <button onClick={() => setSubmitted(true)} className="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors">Confirmar inscripció</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ActivitatsTab({ currentUser }: { currentUser: User | null }) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activeTab, setActiveTab] = useState('Properes');
   const [activeFilter, setActiveFilter] = useState('Totes');
   const isAdmin = currentUser?.role === 'Administrador/a';
+  const [enrollActivity, setEnrollActivity] = useState<Activity | null>(null);
 
   // New activity form state
   const [showActForm, setShowActForm] = useState(false);
@@ -626,7 +691,7 @@ function ActivitatsTab({ currentUser }: { currentUser: User | null }) {
               </div>
             </div>
             {isProperes && (
-              <button className="text-red-600 text-sm font-medium flex items-center gap-1 hover:underline mt-4">
+              <button onClick={() => setEnrollActivity(act)} className="text-red-600 text-sm font-medium flex items-center gap-1 hover:underline mt-4">
                 Veure detalls i inscriure's <ArrowRight size={14} />
               </button>
             )}
@@ -658,6 +723,7 @@ function ActivitatsTab({ currentUser }: { currentUser: User | null }) {
         })}
       </div>
       {confirmModal && <ConfirmModal message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} />}
+      {enrollActivity && <ActivityEnrollModal activity={enrollActivity} userName={currentUser?.name ?? 'Usuari'} onClose={() => setEnrollActivity(null)} />}
     </div>
   );
 }
@@ -1051,6 +1117,8 @@ const ESPAI_CATS = [
 function EspaiCorporatiuTab() {
   const [selectedCat, setSelectedCat] = useState<number | null>(null);
   const [catFilter, setCatFilter] = useState('Tots');
+  const [espaiSearch, setEspaiSearch] = useState('');
+  const [docModal, setDocModal] = useState<string | null>(null);
 
   const handleSelectCat = (i: number) => {
     if (selectedCat === i) { setSelectedCat(null); setCatFilter('Tots'); }
@@ -1058,16 +1126,23 @@ function EspaiCorporatiuTab() {
   };
 
   const cat = selectedCat !== null ? ESPAI_CATS[selectedCat] : null;
-  const visibleDocs = cat
-    ? (catFilter === 'Tots' ? cat.documents : cat.documents.filter(d => d.tag === catFilter))
-    : [];
+  const visibleDocs = (() => {
+    let docs = cat
+      ? (catFilter === 'Tots' ? cat.documents : cat.documents.filter(d => d.tag === catFilter))
+      : [];
+    if (espaiSearch.trim()) {
+      const q = espaiSearch.toLowerCase();
+      docs = docs.filter(d => d.title.toLowerCase().includes(q) || d.desc.toLowerCase().includes(q) || d.tag.toLowerCase().includes(q));
+    }
+    return docs;
+  })();
 
   return (
     <div className="animate-in fade-in duration-300">
       <p className="text-gray-500 dark:text-zinc-400 text-sm mb-6">Base de coneixement intern, documentació i recursos corporatius</p>
       <div className="relative mb-6">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-        <input type="text" placeholder="Cercar documents, polítiques, plantilles..." className="w-full max-w-lg bg-gray-100 dark:bg-zinc-800 rounded-xl py-3 pl-11 pr-4 text-sm outline-none dark:text-white" />
+        <input type="text" value={espaiSearch} onChange={e => setEspaiSearch(e.target.value)} placeholder="Cercar documents, polítiques, plantilles..." className="w-full max-w-lg bg-gray-100 dark:bg-zinc-800 rounded-xl py-3 pl-11 pr-4 text-sm outline-none dark:text-white" />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -1100,7 +1175,7 @@ function EspaiCorporatiuTab() {
           </div>
           <div className="space-y-1">
             {visibleDocs.map((doc, i) => (
-              <div key={i} className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors">
+              <div key={i} onClick={() => setDocModal(doc.title)} className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors">
                 <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-700 flex items-center justify-center flex-shrink-0">
                   <FileText size={15} className="text-gray-500" />
                 </div>
@@ -1129,7 +1204,7 @@ function EspaiCorporatiuTab() {
               { icon: Building2, color: "text-green-500", title: "Política de viatges corporatius", desc: "Normes per a la reserva de viatges, allotjaments i dietes.", meta: "PDF · 890 KB · 195 visualitzacions" },
               { icon: Mail, color: "text-amber-500", title: "Manual de connexió a la xarxa interna", desc: "Pas a pas per connectar-se a la VPN i el correu corporatiu.", meta: "PDF · 1.2 MB · 421 visualitzacions" },
             ].map((doc, i) => (
-              <div key={i} className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors">
+              <div key={i} onClick={() => setDocModal(doc.title)} className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors">
                 <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-700 flex items-center justify-center flex-shrink-0">
                   <doc.icon size={15} className={doc.color} />
                 </div>
@@ -1144,6 +1219,7 @@ function EspaiCorporatiuTab() {
           </div>
         </div>
       )}
+      {docModal && <ComingSoonModal title={docModal} onClose={() => setDocModal(null)} />}
     </div>
   );
 }
@@ -1161,6 +1237,7 @@ function CampusTavilTab() {
   const [activeTab, setActiveTab] = useState('Resum');
   const [topicFilter, setTopicFilter] = useState('Tots els temes');
   const [statusFilter, setStatusFilter] = useState('Tots els estats');
+  const [comingSoon, setComingSoon] = useState<string | null>(null);
 
   useEffect(() => {
     apiGetCourses().then(setCourses).catch(console.error);
@@ -1213,7 +1290,7 @@ function CampusTavilTab() {
                   <p className="font-semibold text-gray-900 dark:text-white text-sm">{mandatoryPending.title}</p>
                   <div className="flex items-center gap-3 mt-1"><span className="text-xs text-gray-500">{mandatoryPending.hours} · {mandatoryPending.category}</span><span className="text-[10px] font-bold bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded">Obligatòria</span></div>
                 </div>
-                <button className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">Fer curs</button>
+                <button onClick={() => setComingSoon(mandatoryPending?.title ?? 'Curs')} className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">Fer curs</button>
               </div>
             </div>
           )}
@@ -1335,6 +1412,7 @@ function CampusTavilTab() {
           </div>
         </>
       )}
+      {comingSoon && <ComingSoonModal title={comingSoon} onClose={() => setComingSoon(null)} />}
     </div>
   );
 }
@@ -1928,8 +2006,9 @@ function SolicitudsTab({ currentUser, onNotifChange }: { currentUser: User | nul
 
 // ── Perfil Tab ────────────────────────────────────────────────────────────────
 
-function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; onUserUpdate: (u: User) => void }) {
+function PerfilTab({ currentUser, onUserUpdate, onNavigate }: { currentUser: User | null; onUserUpdate: (u: User) => void; onNavigate: (tab: string) => void }) {
   const [activeTab, setActiveTab] = useState('Informació');
+  const [comingSoon, setComingSoon] = useState<string | null>(null);
   const [notifCorreu, setNotifCorreu] = useState(true);
   const [notifPortal, setNotifPortal] = useState(true);
 
@@ -2092,8 +2171,15 @@ function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; on
             <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
               <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Accessos ràpids</h3>
               <div className="grid grid-cols-3 gap-3">
-                {[{ icon: Mail, label: "Correu corporatiu" }, { icon: ExternalLink, label: "Portal de nòmines" }, { icon: Calendar, label: "Sol·licitud de vacances" }, { icon: Database, label: "ERP (SAP)" }, { icon: Users, label: "Directori intern" }, { icon: GraduationCap, label: "Campus TAVIL" }].map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 p-3 border border-gray-100 dark:border-zinc-800 rounded-xl hover:border-red-200 dark:hover:border-red-900 cursor-pointer hover:bg-red-50/50 dark:hover:bg-red-950/10 transition-colors group">
+                {[
+                  { icon: Mail, label: "Correu corporatiu", tab: null },
+                  { icon: ExternalLink, label: "Portal de nòmines", tab: null },
+                  { icon: Calendar, label: "Sol·licitud de vacances", tab: 'Solicituds' },
+                  { icon: Database, label: "ERP (SAP)", tab: null },
+                  { icon: Users, label: "Directori intern", tab: 'Directori' },
+                  { icon: GraduationCap, label: "Campus TAVIL", tab: 'Campus' },
+                ].map((item, i) => (
+                  <div key={i} onClick={() => item.tab ? onNavigate(item.tab) : setComingSoon(item.label)} className="flex items-center gap-2 p-3 border border-gray-100 dark:border-zinc-800 rounded-xl hover:border-red-200 dark:hover:border-red-900 cursor-pointer hover:bg-red-50/50 dark:hover:bg-red-950/10 transition-colors group">
                     <item.icon size={14} className="text-red-500 flex-shrink-0" />
                     <span className="text-xs text-gray-700 dark:text-zinc-300 group-hover:text-red-600 transition-colors">{item.label}</span>
                   </div>
@@ -2173,6 +2259,7 @@ function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; on
           </div>
         </div>
       )}
+      {comingSoon && <ComingSoonModal title={comingSoon} onClose={() => setComingSoon(null)} />}
     </div>
   );
 }
@@ -2543,7 +2630,7 @@ function App() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'Inici': return <InicialTab />;
+      case 'Inici': return <InicialTab onNavigate={setActiveTab} />;
       case 'Notícies': return <NoticiesTab currentUser={currentUser} />;
       case 'Activitats': return <ActivitatsTab currentUser={currentUser} />;
       case 'Agenda': return <AgendaTab currentUser={currentUser} />;
@@ -2552,7 +2639,7 @@ function App() {
       case 'Campus': return <CampusTavilTab />;
       case 'Veu': return <VeuEmpleatTab currentUser={currentUser} />;
       case 'Solicituds': return <SolicitudsTab currentUser={currentUser} onNotifChange={refreshNotifications} />;
-      case 'Perfil': return <PerfilTab currentUser={currentUser} onUserUpdate={u => { setCurrentUser(u); }} />;
+      case 'Perfil': return <PerfilTab currentUser={currentUser} onUserUpdate={u => { setCurrentUser(u); }} onNavigate={setActiveTab} />;
       default: return null;
     }
   };
@@ -2564,9 +2651,9 @@ function App() {
   }
 
   return (
-    <div className={cn("flex min-h-screen bg-gray-50 dark:bg-[#121212] font-sans text-gray-900 dark:text-zinc-100 transition-colors duration-300", isDarkMode && "dark")}>
+    <div className={cn("flex min-h-screen bg-gray-50 dark:bg-[#2d2d2d] font-sans text-gray-900 dark:text-zinc-100 transition-colors duration-300", isDarkMode && "dark")}>
       {/* Sidebar */}
-      <aside className={cn("bg-white dark:bg-[#1a1a1a] border-r border-gray-200 dark:border-zinc-800 flex flex-col fixed inset-y-0 z-30 transition-all duration-300", sidebarCollapsed ? "w-16" : "w-60")}>
+      <aside className={cn("bg-white dark:bg-[#252525] border-r border-gray-200 dark:border-zinc-800 flex flex-col fixed inset-y-0 z-30 transition-all duration-300", sidebarCollapsed ? "w-16" : "w-60")}>
         <div className={cn("p-5 pb-4", sidebarCollapsed && "px-2")}>
           <div className={cn("mb-7 cursor-pointer", sidebarCollapsed && "flex justify-center")} onClick={() => setActiveTab('Inici')}>
             {sidebarCollapsed
@@ -2606,7 +2693,7 @@ function App() {
       {/* Main */}
       <main className={cn("flex-1 min-h-screen transition-all duration-300", sidebarCollapsed ? "ml-16" : "ml-60")}>
         {/* Header */}
-        <header className="h-16 bg-white dark:bg-[#1a1a1a] border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between px-8 sticky top-0 z-20">
+        <header className="h-16 bg-white dark:bg-[#252525] border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between px-8 sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}

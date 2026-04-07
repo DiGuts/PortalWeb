@@ -73,3 +73,33 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* ── TAVIL Dark Mode — Brighter Grey Palette ───────────────────────────────
+   Page bg     #2d2d2d   (main area)
+   Sidebar/Bar #252525   (inline in JSX)
+   Cards       #363636   zinc-900 override
+   Inputs      #424242   zinc-800 override
+   Borders     #4a4a4a   zinc-800 border override
+   ─────────────────────────────────────────────────────────────────────────*/
+
+/* Cards / panels */
+html.dark .dark\:bg-zinc-900  { background-color: #363636; }
+
+/* Inputs, search boxes, tag cells, hover cells */
+html.dark .dark\:bg-zinc-800  { background-color: #424242; }
+
+/* Hover states */
+html.dark .dark\:hover\:bg-zinc-800:hover { background-color: #424242; }
+
+/* Subtle bg (e.g. empty calendar cells, etc.) */
+html.dark .dark\:bg-zinc-950  { background-color: #282828; }
+
+/* Borders */
+html.dark .dark\:border-zinc-800 { border-color: #4a4a4a; }
+html.dark .dark\:border-zinc-700 { border-color: #565656; }
+
+/* Divide */
+html.dark .dark\:divide-zinc-800 > * + * { border-color: #4a4a4a; }
+
+/* Inline hover bg for zinc-700 borders */
+html.dark .dark\:hover\:border-zinc-600:hover { border-color: #606060; }

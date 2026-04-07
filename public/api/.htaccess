@@ -1,0 +1,59 @@
+Options -Indexes
+RewriteEngine On
+
+# Auth
+RewriteRule ^auth/login$    auth/login.php    [QSA,L]
+RewriteRule ^auth/register$ auth/register.php [QSA,L]
+
+# Users
+RewriteRule ^users/me/role$ users/me_role.php [QSA,L]
+RewriteRule ^users/me$      users/me.php      [QSA,L]
+
+# Solicituds
+RewriteRule ^solicituds/([0-9]+)$ solicituds/index.php?id=$1 [QSA,L]
+RewriteRule ^solicituds$          solicituds/index.php       [QSA,L]
+
+# Suggestions
+RewriteRule ^suggestions/([0-9]+)/vote$     suggestions/vote.php?id=$1     [QSA,L]
+RewriteRule ^suggestions/([0-9]+)/status$   suggestions/status.php?id=$1   [QSA,L]
+RewriteRule ^suggestions/([0-9]+)/response$ suggestions/response.php?id=$1 [QSA,L]
+RewriteRule ^suggestions$                   suggestions/index.php           [QSA,L]
+
+# Incidencies
+RewriteRule ^incidencies/([0-9]+)/status$ incidencies/status.php?id=$1 [QSA,L]
+RewriteRule ^incidencies$                 incidencies/index.php         [QSA,L]
+
+# Enquestes
+RewriteRule ^enquestes/([0-9]+)/respond$ enquestes/respond.php?id=$1 [QSA,L]
+RewriteRule ^enquestes$                  enquestes/index.php          [QSA,L]
+
+# Employees
+RewriteRule ^employees$ employees/index.php [QSA,L]
+
+# Activities
+RewriteRule ^activities/([0-9]+)$ activities/index.php?id=$1 [QSA,L]
+RewriteRule ^activities$          activities/index.php        [QSA,L]
+
+# Agenda
+RewriteRule ^agenda/([0-9]+)$ agenda/index.php?id=$1 [QSA,L]
+RewriteRule ^agenda$          agenda/index.php        [QSA,L]
+
+# Notices
+RewriteRule ^notices$ notices/index.php [QSA,L]
+
+# News
+RewriteRule ^news/([0-9]+)$ news/index.php?id=$1 [QSA,L]
+RewriteRule ^news$          news/index.php        [QSA,L]
+
+# Notifications
+RewriteRule ^notifications/([0-9]+)/read$ notifications/read_one.php?id=$1 [QSA,L]
+RewriteRule ^notifications/read-all$      notifications/read_all.php        [QSA,L]
+RewriteRule ^notifications/clear-all$     notifications/clear_all.php       [QSA,L]
+RewriteRule ^notifications$               notifications/index.php            [QSA,L]
+
+# Courses
+RewriteRule ^courses/([0-9]+)/progress$ courses/progress.php?id=$1 [QSA,L]
+RewriteRule ^courses$                   courses/index.php           [QSA,L]
+
+# Upload
+RewriteRule ^upload$ upload/index.php [QSA,L]
