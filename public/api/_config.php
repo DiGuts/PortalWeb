@@ -18,6 +18,8 @@ function db(): PDO {
         $pdo = new PDO($dsn, DB_USER, DB_PASS, [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_STRINGIFY_FETCHES  => false,  // return ints/floats as native types
+            PDO::ATTR_EMULATE_PREPARES   => false,  // use native prepared statements
         ]);
         try {
             $pdo->exec("CREATE TABLE IF NOT EXISTS tokens (
