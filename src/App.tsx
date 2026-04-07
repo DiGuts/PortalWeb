@@ -18,7 +18,7 @@ import {
   apiGetIncidencies, apiCreateIncidencia, apiUpdateIncidenciaStatus, Incidencia,
   apiGetEnquestes, apiRespondreEnquesta, Enquesta,
   apiGetSolicituds, apiCreateSolicitud, apiUpdateSolicitud, Solicitud,
-  Notice, apiGetNotices,
+  Notice, apiGetNotices, apiCreateNotice, apiUpdateNotice, apiDeleteNotice,
   NewsArticle, apiGetNews, apiCreateNews, apiUpdateNews, apiDeleteNews,
   Activity, apiGetActivities, apiCreateActivity, apiUpdateActivity, apiDeleteActivity,
   AgendaEvent, apiGetAgendaEvents, apiCreateAgendaEvent, apiUpdateAgendaEvent, apiDeleteAgendaEvent,
@@ -121,46 +121,211 @@ const NEWS_CAT_SHORT: Record<string, string> = {
   "Innovació":             "Innovació",
 };
 
-function InicialTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
+function NoticesAdminModal({ onClose, onChanged }: { onClose: () => void; onChanged: () => void }) {
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [editing, setEditing] = useState<Notice | null>(null);
+  const [isNew, setIsNew] = useState(false);
+  const [form, setForm] = useState({ title: '', content: '', link: '', active: 1 });
+  const [saving, setSaving] = useState(false);
+
+  const load = () => apiGetNotices().then(setNotices).catch(() => {});
+  useEffect(() => { load(); }, []);
+
+  const openNew = () => {
+    setForm({ title: '', content: '', link: '', active: 1 });
+    setEditing(null);
+    setIsNew(true);
+  };
+
+  const openEdit = (n: Notice) => {
+    setForm({ title: n.title, content: n.content, link: n.link, active: n.active });
+    setEditing(n);
+    setIsNew(false);
+  };
+
+  const handleSave = async () => {
+    if (!form.title.trim()) return;
+    setSaving(true);
+    try {
+      if (isNew) {
+        await apiCreateNotice(form);
+      } else if (editing) {
+        await apiUpdateNotice(editing.id, form);
+      }
+      setIsNew(false);
+      setEditing(null);
+      load();
+      onChanged();
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id: number) => {
+    await apiDeleteNotice(id);
+    load();
+    onChanged();
+  };
+
+  const handleToggleActive = async (n: Notice) => {
+    await apiUpdateNotice(n.id, { title: n.title, content: n.content, link: n.link, active: n.active ? 0 : 1 });
+    load();
+    onChanged();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl w-full max-w-lg mx-4 border border-gray-100 dark:border-zinc-800 flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800">
+          <h3 className="font-bold text-gray-900 dark:text-white">Gestionar avisos urgents</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-400"><X size={16} /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-3">
+          {notices.length === 0 && !isNew && (
+            <p className="text-sm text-gray-400 text-center py-4">No hi ha avisos. Afegeix-ne un.</p>
+          )}
+          {notices.map(n => (
+            <div key={n.id} className={cn("border rounded-xl p-4", n.active ? "border-red-200 dark:border-red-900/40 bg-red-50/40 dark:bg-red-950/10" : "border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/40")}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{n.title}</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5 line-clamp-2">{n.content}</p>
+                  {n.link && <p className="text-[10px] text-red-600 mt-1 truncate">{n.link}</p>}
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => handleToggleActive(n)}
+                    title={n.active ? 'Desactivar' : 'Activar'}
+                    className={cn("text-[10px] font-bold px-2 py-1 rounded-full border transition-colors", n.active ? "border-green-400 text-green-600 bg-green-50 dark:bg-green-950/20" : "border-gray-300 dark:border-zinc-600 text-gray-400")}
+                  >
+                    {n.active ? 'Actiu' : 'Inactiu'}
+                  </button>
+                  <button onClick={() => openEdit(n)} className="p-1.5 hover:bg-gray-200 dark:hover:bg-zinc-700 rounded-lg text-gray-500"><Pencil size={13} /></button>
+                  <button onClick={() => handleDelete(n.id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-red-400"><Trash2 size={13} /></button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {(isNew || editing) && (
+          <div className="px-6 pb-4 border-t border-gray-100 dark:border-zinc-800 pt-4 space-y-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">{isNew ? 'Nou avís' : 'Editar avís'}</p>
+            <input
+              value={form.title}
+              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              placeholder="Títol *"
+              className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white"
+            />
+            <textarea
+              value={form.content}
+              onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
+              placeholder="Contingut"
+              rows={2}
+              className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none"
+            />
+            <input
+              value={form.link}
+              onChange={e => setForm(f => ({ ...f, link: e.target.value }))}
+              placeholder="Enllaç (https://... o text)"
+              className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white"
+            />
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300 cursor-pointer select-none">
+                <input type="checkbox" checked={!!form.active} onChange={e => setForm(f => ({ ...f, active: e.target.checked ? 1 : 0 }))} className="accent-red-600" />
+                Actiu (visible als usuaris)
+              </label>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => { setIsNew(false); setEditing(null); }} className="text-sm border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800">Cancel·lar</button>
+              <button onClick={handleSave} disabled={saving || !form.title.trim()} className="text-sm bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                {saving ? 'Desant...' : 'Desar'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="px-6 pb-4 pt-2 border-t border-gray-100 dark:border-zinc-800 flex justify-between items-center">
+          <button onClick={openNew} disabled={isNew} className="text-sm text-red-600 font-medium hover:underline disabled:opacity-40">+ Nou avís</button>
+          <button onClick={onClose} className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-zinc-300">Tancar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InicialTab({ onNavigate, currentUser }: { onNavigate: (tab: string) => void; currentUser: any }) {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [noticeIndex, setNoticeIndex] = useState(0);
   const [comingSoon, setComingSoon] = useState<string | null>(null);
+  const [manageNotices, setManageNotices] = useState(false);
+
+  const isAdmin = currentUser?.role === 'Administrador/a';
+
+  const loadNotices = () => apiGetNotices().then(n => { setNotices(n); setNoticeIndex(0); }).catch(console.error);
 
   useEffect(() => {
-    apiGetNotices().then(setNotices).catch(console.error);
+    loadNotices();
     apiGetNews().then(setNews).catch(console.error);
   }, []);
 
   const notice = notices[noticeIndex];
 
+  const handleNoticeLink = (link: string) => {
+    if (!link) return;
+    const url = /^https?:\/\//i.test(link) ? link : `https://${link}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div className="animate-in fade-in duration-300">
       {/* Compact urgent notice */}
-      {notice && (
+      {(notice || isAdmin) && (
       <div className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl p-4 mb-6 flex items-start gap-3">
         <AlertTriangle size={16} className="text-red-600 mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">AVÍS URGENT</span>
+            {isAdmin && (
+              <button
+                onClick={() => setManageNotices(true)}
+                className="flex items-center gap-1 text-[10px] font-medium text-gray-500 dark:text-zinc-400 hover:text-red-600 transition-colors border border-gray-200 dark:border-zinc-600 px-2 py-0.5 rounded"
+              >
+                <Settings size={10} /> Gestionar
+              </button>
+            )}
           </div>
-          <p className="font-semibold text-gray-900 dark:text-white text-sm">{notice.title}</p>
-          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">{notice.content}</p>
-          <button className="text-red-600 text-xs font-medium mt-1 flex items-center gap-1 hover:underline">
-            {notice.link} <ArrowRight size={11} />
-          </button>
+          {notice ? (
+            <>
+              <p className="font-semibold text-gray-900 dark:text-white text-sm">{notice.title}</p>
+              <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">{notice.content}</p>
+              {notice.link && (
+                <button
+                  onClick={() => handleNoticeLink(notice.link)}
+                  className="text-red-600 text-xs font-medium mt-1 flex items-center gap-1 hover:underline"
+                >
+                  {notice.link} <ArrowRight size={11} />
+                </button>
+              )}
+            </>
+          ) : (
+            <p className="text-xs text-gray-400 italic">No hi ha avisos actius. Fes clic a "Gestionar" per afegir-ne.</p>
+          )}
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-          <span className="text-xs text-gray-400">{noticeIndex + 1}/{notices.length}</span>
-          <button onClick={() => setNoticeIndex((noticeIndex - 1 + notices.length) % notices.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
-            <ChevronLeft size={14} className="text-gray-500" />
-          </button>
-          <button onClick={() => setNoticeIndex((noticeIndex + 1) % notices.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
-            <ChevronRight size={14} className="text-gray-500" />
-          </button>
-        </div>
+        {notices.length > 1 && (
+          <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+            <span className="text-xs text-gray-400">{noticeIndex + 1}/{notices.length}</span>
+            <button onClick={() => setNoticeIndex((noticeIndex - 1 + notices.length) % notices.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
+              <ChevronLeft size={14} className="text-gray-500" />
+            </button>
+            <button onClick={() => setNoticeIndex((noticeIndex + 1) % notices.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
+              <ChevronRight size={14} className="text-gray-500" />
+            </button>
+          </div>
+        )}
       </div>
       )}
+      {manageNotices && <NoticesAdminModal onClose={() => setManageNotices(false)} onChanged={loadNotices} />}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
         {/* Agenda */}
@@ -2631,7 +2796,7 @@ function App() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'Inici': return <InicialTab onNavigate={setActiveTab} />;
+      case 'Inici': return <InicialTab onNavigate={setActiveTab} currentUser={currentUser} />;
       case 'Notícies': return <NoticiesTab currentUser={currentUser} />;
       case 'Activitats': return <ActivitatsTab currentUser={currentUser} />;
       case 'Agenda': return <AgendaTab currentUser={currentUser} />;

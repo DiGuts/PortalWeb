@@ -373,6 +373,18 @@ export async function apiGetNotices(): Promise<Notice[]> {
   return apiFetch<Notice[]>('/api/notices/index.php');
 }
 
+export async function apiCreateNotice(fields: { title: string; content: string; link: string; active: number }): Promise<Notice> {
+  return apiFetch<Notice>('/api/notices/index.php', { method: 'POST', body: JSON.stringify(fields) });
+}
+
+export async function apiUpdateNotice(id: number, fields: { title: string; content: string; link: string; active: number }): Promise<void> {
+  await apiFetch(`/api/notices/index.php?id=${id}`, { method: 'PATCH', body: JSON.stringify(fields) });
+}
+
+export async function apiDeleteNotice(id: number): Promise<void> {
+  await apiFetch(`/api/notices/index.php?id=${id}`, { method: 'DELETE' });
+}
+
 // ── News ──────────────────────────────────────────────────────────────────────
 
 export interface NewsArticle {
