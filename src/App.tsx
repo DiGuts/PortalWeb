@@ -6,7 +6,7 @@ import {
   AlertTriangle, ArrowRight, Sun, MapPin, Clock, Phone, FileText,
   BookOpen, Shield, ThumbsUp, Send, ExternalLink, CreditCard,
   TrendingUp, CheckCircle, Star, LogOut, LayoutGrid, List,
-  Heart, Gift, Globe, Download, Video, Award, Settings, Eye, EyeOff, Lock, Pencil, Trash2
+  Heart, Gift, Globe, Download, Video, Award, Settings, Eye, EyeOff, Lock, Pencil, Trash2, Menu, X
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -162,7 +162,7 @@ function InicialTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
       </div>
       )}
 
-      <div className="grid grid-cols-3 gap-5 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
         {/* Agenda */}
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
           <div className="flex items-center justify-between mb-4">
@@ -191,9 +191,9 @@ function InicialTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
         </div>
 
         {/* Quick Access */}
-        <div className="col-span-2 bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+        <div className="md:col-span-2 bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
           <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Accés ràpid</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {[
               { icon: Mail, title: "Correu corporatiu", desc: "Outlook Web", color: "bg-blue-50 dark:bg-blue-950/20", tab: null },
               { icon: Database, title: "ERP", desc: "SAP / Gestió", color: "bg-green-50 dark:bg-green-950/20", tab: null },
@@ -889,13 +889,13 @@ function AgendaTab({ currentUser }: { currentUser: User | null }) {
       </div>
 
       {view === 'calendar' ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-6">
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-3 md:p-6 overflow-x-auto">
           <div className="flex items-center justify-between mb-6">
             <button onClick={() => navigateMonth(-1)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><ChevronLeft size={18} className="text-gray-500" /></button>
             <h3 className="font-bold text-gray-900 dark:text-white">{MONTH_NAMES[currentMonth]} {currentYear}</h3>
             <button onClick={() => navigateMonth(1)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><ChevronRight size={18} className="text-gray-500" /></button>
           </div>
-          <div className="grid grid-cols-7">
+          <div className="grid grid-cols-7 min-w-[480px]">
             {days.map(d => (
               <div key={d} className="px-2 py-2 text-center text-xs font-semibold text-gray-500 dark:text-zinc-400 border-b border-gray-100 dark:border-zinc-800">{d}</div>
             ))}
@@ -1269,7 +1269,7 @@ function CampusTavilTab() {
 
       {activeTab === 'Resum' && (
         <>
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             {[
               { label: "Cursos completats", value: String(completed.length), icon: CheckCircle, color: "text-green-500" },
               { label: "En curs", value: String(inProgress.length), icon: TrendingUp, color: "text-blue-500" },
@@ -1325,7 +1325,7 @@ function CampusTavilTab() {
           <div className="flex flex-wrap gap-2 mb-6">
             {statuses.map(s => <FilterChip key={s} label={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />)}
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {filteredCourses.map((course, i) => (
               <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3">
@@ -1349,7 +1349,7 @@ function CampusTavilTab() {
         <>
           <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 mb-6">
             <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Resum del meu progrés</h3>
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-3 gap-2 text-center">
               {[{ label: "Completats", value: String(completed.length), icon: CheckCircle, color: "text-green-500" }, { label: "En curs", value: String(inProgress.length), icon: TrendingUp, color: "text-blue-500" }, { label: "Hores formació", value: `${completedHours}h`, icon: Clock, color: "text-purple-500" }].map((s, i) => (
                 <div key={i}><p className="text-3xl font-bold text-gray-900 dark:text-white">{s.value}</p><p className="text-xs text-gray-500 mt-1">{s.label}</p></div>
               ))}
@@ -1387,7 +1387,7 @@ function CampusTavilTab() {
       {activeTab === 'Recursos' && (
         <>
           <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Biblioteca de recursos complementaris per a l'aprenentatge.</p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
               { type: "pdf", title: "Guia ràpida d'EPI", desc: "Referència visual dels equips de protecció individual.", tags: ["Seguretat", "Infografia"] },
               { type: "video", title: "Vídeo: procediment d'evacuació", desc: "Simulacre d'evacuació de la planta de Mollet enregistrat.", tags: ["Seguretat", "Vídeo"] },
@@ -1598,8 +1598,8 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
 
       {/* ── Suggeriments ── */}
       {activeTab === 'Suggeriments' && (
-        <div className="grid grid-cols-3 gap-6">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2">
             <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Suggeriments recents ({suggestions.length})</h3>
             <div className="space-y-3">
               {suggestions.map(sug => (
@@ -1687,8 +1687,8 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
 
       {/* ── Incidències ── */}
       {activeTab === 'Incidències' && (
-        <div className="grid grid-cols-3 gap-6">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2">
             <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Incidències registrades ({incidencies.length})</h3>
             <div className="space-y-3">
               {incidencies.map(inc => (
@@ -1902,8 +1902,8 @@ function SolicitudsTab({ currentUser, onNotifChange }: { currentUser: User | nul
       </div>
 
       {activeTab === 'Dies no ordinaris' && (
-        <div className="grid grid-cols-3 gap-6">
-          <div className={isRRHH ? 'col-span-3' : 'col-span-2'}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className={isRRHH ? 'md:col-span-3' : 'md:col-span-2'}>
             <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Sol·licituds enviades ({diesNoOrdinaris.length})</h3>
             {diesNoOrdinaris.length === 0 ? (
               <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-8 text-center">
@@ -2067,7 +2067,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate }: { currentUser: Use
       </div>
 
       {activeTab === 'Informació' && (
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-6 relative">
 
             {/* Edit / Save button — top right, always visible */}
@@ -2156,10 +2156,10 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate }: { currentUser: Use
               </div>
             </div>
           </div>
-          <div className="col-span-2 space-y-5">
+          <div className="md:col-span-2 space-y-5">
             <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
               <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Resum de vacances</h3>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[{ label: "Total", value: "23", red: false }, { label: "Gaudits", value: "8", red: false }, { label: "Pendents d'aprovar", value: "2", red: false }, { label: "Restants", value: "13", red: true }].map((stat, i) => (
                   <div key={i} className="border border-gray-100 dark:border-zinc-800 rounded-xl p-3 text-center">
                     <p className={cn("text-2xl font-bold", stat.red ? "text-red-600" : "text-gray-900 dark:text-white")}>{stat.value}</p>
@@ -2170,7 +2170,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate }: { currentUser: Use
             </div>
             <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
               <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Accessos ràpids</h3>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {[
                   { icon: Mail, label: "Correu corporatiu", tab: null },
                   { icon: ExternalLink, label: "Portal de nòmines", tab: null },
@@ -2192,7 +2192,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate }: { currentUser: Use
 
       {activeTab === 'Formació' && (
         <>
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {[{ label: "Completats", value: String(completedCount), icon: Award, color: "text-green-500" }, { label: "En curs", value: String(inProgressCount), icon: Clock, color: "text-blue-500" }, { label: "Hores totals", value: totalHoursStr, icon: GraduationCap, color: "text-purple-500" }].map((s, i) => (
               <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
                 <div className="flex items-center justify-between mb-2"><p className="text-xs text-gray-500 dark:text-zinc-400">{s.label}</p><s.icon size={15} className={s.color} /></div>
@@ -2221,7 +2221,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate }: { currentUser: Use
       )}
 
       {activeTab === 'Beneficis socials' && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
             { icon: Heart, color: "text-red-500", bg: "bg-red-50 dark:bg-red-950/20", title: "Assegurança mèdica", desc: "Cobertura mèdica privada Adeslas per al treballador i familiars directes. Copagament reduït." },
             { icon: ActivityIcon, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/20", title: "Descompte gimnàs", desc: "30% de descompte a la xarxa de gimnasos DIR amb accés iHimitat." },
@@ -2515,6 +2515,7 @@ function App() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [demoRole, setDemoRole] = useState('Treballador/a');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -2653,7 +2654,7 @@ function App() {
   return (
     <div className={cn("flex min-h-screen bg-gray-50 dark:bg-[#2d2d2d] font-sans text-gray-900 dark:text-zinc-100 transition-colors duration-300", isDarkMode && "dark")}>
       {/* Sidebar */}
-      <aside className={cn("bg-white dark:bg-[#252525] border-r border-gray-200 dark:border-zinc-800 flex flex-col fixed inset-y-0 z-30 transition-all duration-300", sidebarCollapsed ? "w-16" : "w-60")}>
+      <aside className={cn("bg-white dark:bg-[#252525] border-r border-gray-200 dark:border-zinc-800 flex-col fixed inset-y-0 z-30 transition-all duration-300", "hidden md:flex", sidebarCollapsed ? "w-16" : "w-60")}>
         <div className={cn("p-5 pb-4", sidebarCollapsed && "px-2")}>
           <div className={cn("mb-7 cursor-pointer", sidebarCollapsed && "flex justify-center")} onClick={() => setActiveTab('Inici')}>
             {sidebarCollapsed
@@ -2690,14 +2691,93 @@ function App() {
         </div>
       </aside>
 
+      {/* Mobile drawer overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setIsMobileMenuOpen(false)} />
+          <aside className="absolute inset-y-0 left-0 w-72 bg-white dark:bg-[#252525] flex flex-col z-50 overflow-y-auto">
+            <div className="p-5 pb-4">
+              <div className="flex items-center justify-between mb-7">
+                <div onClick={() => { setActiveTab('Inici'); setIsMobileMenuOpen(false); }} className="cursor-pointer">
+                  {isDarkMode
+                    ? <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoDark.png`} alt="TAVIL" className="h-7" />
+                    : <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`} alt="TAVIL" className="h-7" />
+                  }
+                </div>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500">
+                  <X size={18} />
+                </button>
+              </div>
+              {SIDEBAR_SECTIONS.map((section) => (
+                <SidebarSection key={section.title} title={section.title} collapsed={false}>
+                  {section.items.map((item) => (
+                    <SidebarItem
+                      key={item.id}
+                      icon={item.icon}
+                      label={item.label}
+                      active={activeTab === item.id}
+                      onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
+                      collapsed={false}
+                    />
+                  ))}
+                </SidebarSection>
+              ))}
+            </div>
+            <div className="mt-auto border-t border-gray-100 dark:border-zinc-800">
+              <div className="flex items-center p-4 gap-3">
+                <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{userInitials}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{currentUser?.name ?? 'Usuari'}</p>
+                  <p className="text-[10px] text-gray-400 truncate">{currentUser?.dept ?? 'General'}</p>
+                </div>
+                <button onClick={handleLogout} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-gray-400">
+                  <LogOut size={14} />
+                </button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* Mobile bottom nav */}
+      <nav className="fixed bottom-0 inset-x-0 h-16 bg-white dark:bg-[#252525] border-t border-gray-200 dark:border-zinc-800 flex md:hidden z-30">
+        {[
+          { id: 'Inici', label: 'Inici', icon: Home },
+          { id: 'Notícies', label: 'Notícies', icon: Newspaper },
+          { id: 'Agenda', label: 'Agenda', icon: Calendar },
+          { id: 'Veu', label: 'Veu', icon: MessageSquare },
+          { id: 'Perfil', label: 'Perfil', icon: UserCircle },
+        ].map(item => (
+          <button
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors",
+              activeTab === item.id ? "text-red-600" : "text-gray-400"
+            )}
+          >
+            <item.icon size={20} />
+            <span className="text-[10px] font-medium">{item.label}</span>
+          </button>
+        ))}
+      </nav>
+
       {/* Main */}
-      <main className={cn("flex-1 min-h-screen transition-all duration-300", sidebarCollapsed ? "ml-16" : "ml-60")}>
+      <main className={cn("flex-1 min-h-screen transition-all duration-300 pb-16 md:pb-0", sidebarCollapsed ? "md:ml-16" : "md:ml-60")}>
         {/* Header */}
-        <header className="h-16 bg-white dark:bg-[#252525] border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between px-8 sticky top-0 z-20">
+        <header className="h-16 bg-white dark:bg-[#252525] border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20">
           <div className="flex items-center gap-3">
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-gray-500 dark:text-zinc-400"
+            >
+              <Menu size={18} />
+            </button>
+            {/* Desktop collapse button */}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-gray-500 dark:text-zinc-400"
+              className="hidden md:block p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-gray-500 dark:text-zinc-400"
               title={sidebarCollapsed ? 'Expandir menú' : 'Reduir menú'}
             >
               {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
@@ -2880,7 +2960,7 @@ function App() {
         </header>
 
         {/* Content */}
-        <div className="p-8 max-w-7xl mx-auto">
+        <div className="p-4 md:p-8 max-w-7xl mx-auto">
           {/* Breadcrumb + Title */}
           <div className="mb-6">
             {activeTab !== 'Inici' && (
