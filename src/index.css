@@ -35,11 +35,26 @@
   100% { background-position:  200% 0; }
 }
 
-.anim-fade-in    { animation: tavil-fade-in    180ms var(--ease-out-cubic) both; }
-.anim-scale-in   { animation: tavil-scale-in   220ms var(--ease-out-quint) both; }
-.anim-slide-down { animation: tavil-slide-down 200ms var(--ease-out-quint) both; }
-.anim-slide-up   { animation: tavil-slide-up   260ms var(--ease-out-quint) both; }
+.anim-fade-in    { animation: tavil-fade-in    220ms var(--ease-out-cubic) both; }
+.anim-scale-in   { animation: tavil-scale-in   240ms var(--ease-out-quint) both; }
+.anim-slide-down { animation: tavil-slide-down 220ms var(--ease-out-quint) both; }
+.anim-slide-up   { animation: tavil-slide-up   280ms var(--ease-out-quint) both; }
 .anim-pulse-soft { animation: tavil-pulse-soft 2.2s  var(--ease-in-out-cubic) infinite; }
+
+/* Smooth tab/view transition — used when switching tabs, views, sub-tabs,
+   carousel slides. Longer fade + soft upward glide so swaps don't feel abrupt. */
+@keyframes tavil-tab-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.anim-tab { animation: tavil-tab-in 320ms var(--ease-out-quint) both; }
+
+/* Crossfade helper — absolute positioning with soft in/out */
+@keyframes tavil-crossfade-in {
+  from { opacity: 0; transform: scale(1.01); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.anim-crossfade { animation: tavil-crossfade-in 380ms var(--ease-out-quint) both; }
 
 /* Reusable interaction helpers */
 .hover-lift {
@@ -65,7 +80,9 @@
   .anim-scale-in,
   .anim-slide-down,
   .anim-slide-up,
-  .anim-pulse-soft {
+  .anim-pulse-soft,
+  .anim-tab,
+  .anim-crossfade {
     animation: none !important;
   }
   .hover-lift:hover { transform: none; }

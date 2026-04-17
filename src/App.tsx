@@ -193,7 +193,7 @@ function InicialTab({ onNavigate, onNavigateToDate }: { onNavigate?: (tab: strin
     .slice(0, 4);
 
   return (
-    <div className="animate-in fade-in duration-300">
+    <div>
       {/* Hero banner — edge-to-edge full viewport width, TAVIL building photo */}
       <div
         className="relative overflow-hidden mb-6 h-72 -mt-8 shadow-sm bg-gray-200 dark:bg-zinc-800"
@@ -293,22 +293,24 @@ function InicialTab({ onNavigate, onNavigateToDate }: { onNavigate?: (tab: strin
                 onClick={() => onNavigate?.('Notícies')}
                 className="relative rounded-xl overflow-hidden bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 cursor-pointer hover:border-red-200 dark:hover:border-red-900/40 hover-lift group"
               >
-                {featured.image ? (
-                  <img src={featured.image.startsWith('http') ? featured.image : `${API_BASE}${featured.image}`} alt="" className="w-full h-56 object-cover group-hover:scale-[1.03] transition-transform duration-[600ms] ease-out" />
-                ) : (
-                  <div className="w-full h-56 bg-gradient-to-br from-red-100 to-red-50 dark:from-red-950/30 dark:to-red-950/10 flex items-center justify-center">
-                    <Newspaper size={48} className="text-red-300" />
+                <div key={featuredIdx} className="anim-crossfade">
+                  {featured.image ? (
+                    <img src={featured.image.startsWith('http') ? featured.image : `${API_BASE}${featured.image}`} alt="" className="w-full h-56 object-cover group-hover:scale-[1.03] transition-transform duration-[600ms] ease-out" />
+                  ) : (
+                    <div className="w-full h-56 bg-gradient-to-br from-red-100 to-red-50 dark:from-red-950/30 dark:to-red-950/10 flex items-center justify-center">
+                      <Newspaper size={48} className="text-red-300" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded uppercase", NEWS_CAT_COLORS[featured.category] ?? "bg-gray-100 text-gray-600")}>{featured.category}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400/90 text-amber-900 uppercase flex items-center gap-0.5"><Star size={9} /> Destacada</span>
+                    </div>
+                    <h4 className="text-white text-lg font-bold leading-tight drop-shadow line-clamp-2">{featured.title}</h4>
+                    {featured.summary && <p className="text-white/85 text-xs mt-1 line-clamp-2 drop-shadow">{featured.summary}</p>}
+                    <p className="text-white/70 text-[10px] mt-2">{featured.date}</p>
                   </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded uppercase", NEWS_CAT_COLORS[featured.category] ?? "bg-gray-100 text-gray-600")}>{featured.category}</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400/90 text-amber-900 uppercase flex items-center gap-0.5"><Star size={9} /> Destacada</span>
-                  </div>
-                  <h4 className="text-white text-lg font-bold leading-tight drop-shadow line-clamp-2">{featured.title}</h4>
-                  {featured.summary && <p className="text-white/85 text-xs mt-1 line-clamp-2 drop-shadow">{featured.summary}</p>}
-                  <p className="text-white/70 text-[10px] mt-2">{featured.date}</p>
                 </div>
               </div>
               {/* Dots */}
@@ -621,7 +623,7 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
 
   if (selectedNews) {
     return (
-      <div className="animate-in fade-in duration-300 max-w-3xl mx-auto">
+      <div className="max-w-3xl mx-auto">
         <button
           onClick={() => setSelectedNews(null)}
           className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors mb-6"
@@ -651,7 +653,7 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
   }
 
   return (
-    <div className="animate-in fade-in duration-300">
+    <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-gray-500 dark:text-zinc-400 text-sm">{t('news.subtitle')}</p>
         {isAdmin && <button onClick={() => setShowNewsForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">{t('news.newArticle')}</button>}
@@ -697,12 +699,13 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
       {featured && (
         <div className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden flex flex-col md:flex-row mb-8 min-h-[360px]">
           <div
-            className="md:w-1/2 h-56 md:h-auto overflow-hidden bg-gray-100 dark:bg-zinc-800 cursor-pointer"
+            key={`img-${featuredIndex}`}
+            className="md:w-1/2 h-56 md:h-auto overflow-hidden bg-gray-100 dark:bg-zinc-800 cursor-pointer anim-crossfade"
             onClick={() => setSelectedNews(featured)}
           >
             <img src={featured.image || '/assets/images/img_4.png'} alt="Featured" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
           </div>
-          <div className="md:w-1/2 p-8 flex flex-col justify-center">
+          <div key={`txt-${featuredIndex}`} className="md:w-1/2 p-8 flex flex-col justify-center anim-crossfade">
             <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider w-fit mb-4">{featured.category}</span>
             <h2
               className="text-2xl font-bold text-gray-900 dark:text-white mb-4 leading-tight cursor-pointer hover:text-red-600 transition-colors"
@@ -867,7 +870,7 @@ function ActivitatsTab({ currentUser }: { currentUser: User | null }) {
   const isProperes = activeTab === 'Properes';
 
   return (
-    <div className="animate-in fade-in duration-300">
+    <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-gray-500 dark:text-zinc-400 text-sm">Esdeveniments socials, esportius i culturals per als treballadors de TAVIL</p>
         {isAdmin && <button onClick={() => setShowActForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">+ Nova activitat</button>}
@@ -906,7 +909,7 @@ function ActivitatsTab({ currentUser }: { currentUser: User | null }) {
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div key={`${activeTab}-${activeFilter}`} className="grid grid-cols-1 md:grid-cols-2 gap-5 anim-tab">
         {filtered.map((act, i) => {
           const available = act.capacity > 0 ? act.capacity - act.enrolled : 0;
           return (
@@ -1103,7 +1106,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed }: { currentUser:
   const cells: (number | null)[] = [...Array(mondayOffset).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
   return (
-    <div className="animate-in fade-in duration-300">
+    <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-gray-500 dark:text-zinc-400 text-sm">Calendari d'esdeveniments i dates importants</p>
         {isAdmin && <button onClick={() => setShowEventForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">+ Nou event</button>}
@@ -1142,6 +1145,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed }: { currentUser:
         </div>
       </div>
 
+      <div key={view} className="anim-tab">
       {view === 'calendar' ? (
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-6">
           <div className="flex items-center justify-between mb-6">
@@ -1260,6 +1264,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed }: { currentUser:
           ))}
         </div>
       )}
+      </div>
       {confirmModal && <ConfirmModal message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} />}
     </div>
   );
@@ -1288,7 +1293,7 @@ function DirectoriTab() {
   }, {} as Record<string, Employee[]>);
 
   return (
-    <div className="animate-in fade-in duration-300">
+    <div>
       <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">{t('directory.subtitle')}</p>
       <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
@@ -1312,6 +1317,7 @@ function DirectoriTab() {
         </div>
       </div>
 
+      <div key={view} className="anim-tab">
       {view === 'graella' ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {filtered.map((emp, i) => (
@@ -1357,6 +1363,7 @@ function DirectoriTab() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -1426,7 +1433,7 @@ function EspaiCorporatiuTab() {
     : [];
 
   return (
-    <div className="animate-in fade-in duration-300">
+    <div>
       <p className="text-gray-500 dark:text-zinc-400 text-sm mb-6">Base de coneixement intern, documentació i recursos corporatius</p>
       <div className="relative mb-6">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -1545,7 +1552,7 @@ function CampusTavilTab() {
   });
 
   return (
-    <div className="animate-in fade-in duration-300">
+    <div>
       <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Plataforma de formació interna i desenvolupament professional</p>
       <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
         {['Resum', 'Catàleg', 'El meu progrés', 'Recursos'].map(tab => (
@@ -1553,6 +1560,7 @@ function CampusTavilTab() {
         ))}
       </div>
 
+      <div key={activeTab} className="anim-tab">
       {activeTab === 'Resum' && (
         <>
           <div className="grid grid-cols-4 gap-4 mb-6">
@@ -1698,6 +1706,7 @@ function CampusTavilTab() {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }
@@ -1874,7 +1883,7 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
   };
 
   return (
-    <div className="animate-in fade-in duration-300">
+    <div>
       <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">{t('veu.subtitle')}</p>
       <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
         {[
@@ -1884,6 +1893,8 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
           <UnderlineTab key={tab.key} label={tab.label} active={activeTab === tab.key} onClick={() => setActiveTab(tab.key)} />
         ))}
       </div>
+
+      <div key={activeTab} className="anim-tab">
 
       {/* ── Suggeriments ── */}
       {activeTab === 'Suggeriments' && (
@@ -2111,6 +2122,7 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -2156,7 +2168,7 @@ const VAC_HOLIDAYS = [
 
 function VacancesInfo() {
   return (
-    <div className="space-y-5 animate-in fade-in duration-300">
+    <div className="space-y-5">
       {/* Períodes */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
         <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4 flex items-center gap-2">
@@ -2353,13 +2365,15 @@ function SolicitudsTab({ currentUser, onNotifChange }: { currentUser: User | nul
   const today = new Date().toISOString().split('T')[0];
 
   return (
-    <div className="animate-in fade-in duration-300">
+    <div>
       <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">{t('solicituds.subtitle')}</p>
       <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
         {['Dies no ordinaris', 'Vacances'].map(tab => (
           <UnderlineTab key={tab} label={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)} />
         ))}
       </div>
+
+      <div key={activeTab} className="anim-tab">
 
       {activeTab === 'Dies no ordinaris' && (
         <div className="grid grid-cols-3 gap-6">
@@ -2631,6 +2645,7 @@ function SolicitudsTab({ currentUser, onNotifChange }: { currentUser: User | nul
           </div>
         );
       })()}
+      </div>
     </div>
   );
 }
@@ -2688,7 +2703,7 @@ function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; on
   };
 
   return (
-    <div className="animate-in fade-in duration-300">
+    <div>
       <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Informació personal, formació, beneficis i configuració</p>
       <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
         {['Informació', 'Formació', 'Beneficis socials', 'Configuració'].map(tab => (
@@ -2696,6 +2711,7 @@ function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; on
         ))}
       </div>
 
+      <div key={activeTab} className="anim-tab">
       {activeTab === 'Informació' && (
         <div className="grid grid-cols-3 gap-5">
           <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-6 relative">
@@ -2882,6 +2898,7 @@ function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; on
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -3608,7 +3625,7 @@ function App() {
             </div>
           )}
 
-          <div key={activeTab} className="anim-fade-in">
+          <div key={activeTab} className="anim-tab">
             {renderContent()}
           </div>
         </div>
