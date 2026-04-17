@@ -54,16 +54,16 @@ const SidebarItem = ({ icon: Icon, label, active = false, onClick, collapsed = f
     onClick={onClick}
     title={collapsed ? label : undefined}
     className={cn(
-      "flex items-center gap-3 rounded-lg cursor-pointer transition-colors group relative",
+      "flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200 group relative",
       collapsed ? "justify-center px-0 py-2.5" : "px-4 py-2.5",
       active
         ? "text-red-600 bg-red-50 dark:bg-red-950/20"
-        : "text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-zinc-200"
+        : "text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-zinc-200 hover:translate-x-0.5"
     )}
   >
-    {active && !collapsed && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-red-600 rounded-r-full" />}
-    {active && collapsed && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-red-600 rounded-r-full" />}
-    <Icon size={18} className={cn(active ? "text-red-600" : "text-gray-400 group-hover:text-gray-500")} />
+    {active && !collapsed && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-red-600 rounded-r-full anim-fade-in" />}
+    {active && collapsed && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-red-600 rounded-r-full anim-fade-in" />}
+    <Icon size={18} className={cn("transition-colors duration-200", active ? "text-red-600" : "text-gray-400 group-hover:text-gray-500")} />
     {!collapsed && <span className="text-sm font-medium">{label}</span>}
   </div>
 );
@@ -82,9 +82,9 @@ const FilterChip = ({ label, active, onClick }: { label: string; active: boolean
   <button
     onClick={onClick}
     className={cn(
-      "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border",
+      "press px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 border",
       active
-        ? "bg-red-600 text-white border-red-600"
+        ? "bg-red-600 text-white border-red-600 shadow-sm"
         : "border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:border-gray-300 dark:hover:border-zinc-600 bg-white dark:bg-zinc-900"
     )}
   >
@@ -96,7 +96,7 @@ const UnderlineTab = ({ label, active, onClick }: { label: string; active: boole
   <button
     onClick={onClick}
     className={cn(
-      "px-5 py-3 text-sm font-medium border-b-2 transition-colors -mb-px",
+      "relative px-5 py-3 text-sm font-medium border-b-2 transition-colors duration-200 -mb-px",
       active
         ? "border-red-600 text-red-600"
         : "border-transparent text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300"
@@ -291,10 +291,10 @@ function InicialTab({ onNavigate, onNavigateToDate }: { onNavigate?: (tab: strin
               </div>
               <div
                 onClick={() => onNavigate?.('Notícies')}
-                className="relative rounded-xl overflow-hidden bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 cursor-pointer hover:border-red-200 dark:hover:border-red-900/40 transition-colors group"
+                className="relative rounded-xl overflow-hidden bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 cursor-pointer hover:border-red-200 dark:hover:border-red-900/40 hover-lift group"
               >
                 {featured.image ? (
-                  <img src={featured.image.startsWith('http') ? featured.image : `${API_BASE}${featured.image}`} alt="" className="w-full h-56 object-cover" />
+                  <img src={featured.image.startsWith('http') ? featured.image : `${API_BASE}${featured.image}`} alt="" className="w-full h-56 object-cover group-hover:scale-[1.03] transition-transform duration-[600ms] ease-out" />
                 ) : (
                   <div className="w-full h-56 bg-gradient-to-br from-red-100 to-red-50 dark:from-red-950/30 dark:to-red-950/10 flex items-center justify-center">
                     <Newspaper size={48} className="text-red-300" />
@@ -481,13 +481,13 @@ function InicialTab({ onNavigate, onNavigateToDate }: { onNavigate?: (tab: strin
 function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
   const { t } = useTranslation();
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 border border-gray-100 dark:border-zinc-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm anim-fade-in">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 border border-gray-100 dark:border-zinc-800 anim-scale-in">
         <h3 className="font-bold text-gray-900 dark:text-white mb-2">{t('confirm.deleteTitle')}</h3>
         <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">{message}</p>
         <div className="flex gap-3 justify-end">
-          <button onClick={onCancel} className="px-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">{t('confirm.cancel')}</button>
-          <button onClick={onConfirm} className="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors">{t('confirm.delete')}</button>
+          <button onClick={onCancel} className="press px-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">{t('confirm.cancel')}</button>
+          <button onClick={onConfirm} className="press px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors">{t('confirm.delete')}</button>
         </div>
       </div>
     </div>
@@ -752,9 +752,9 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {grid.map((item, i) => (
-          <div key={i} className="group bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden hover:shadow-lg transition-shadow">
+          <div key={i} className="group hover-lift bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
             <div className="aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-zinc-800 cursor-pointer" onClick={() => setSelectedNews(item)}>
-              <img src={item.image || '/assets/images/img_7.png'} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <img src={item.image || '/assets/images/img_7.png'} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[600ms] ease-out" />
             </div>
             <div className="p-5">
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">{item.category}</p>
@@ -910,7 +910,7 @@ function ActivitatsTab({ currentUser }: { currentUser: User | null }) {
         {filtered.map((act, i) => {
           const available = act.capacity > 0 ? act.capacity - act.enrolled : 0;
           return (
-          <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 hover:shadow-md transition-shadow">
+          <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
             <div className="flex items-start justify-between mb-3">
               <span className="text-[11px] font-bold text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{act.category}</span>
               {isProperes
@@ -1315,7 +1315,7 @@ function DirectoriTab() {
       {view === 'graella' ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {filtered.map((emp, i) => (
-            <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 hover:shadow-md transition-shadow">
+            <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
               <div className="flex items-center gap-3 mb-3">
                 <div className={cn("w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0", emp.color)}>{emp.initials}</div>
                 <div className="min-w-0">
@@ -1343,7 +1343,7 @@ function DirectoriTab() {
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {members.map((emp, i) => (
-                  <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-3 flex items-center gap-3 hover:shadow-sm transition-shadow">
+                  <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-3 flex items-center gap-3">
                     <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0", emp.color)}>{emp.initials}</div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{emp.name}</p>
@@ -1439,7 +1439,7 @@ function EspaiCorporatiuTab() {
             key={i}
             onClick={() => handleSelectCat(i)}
             className={cn(
-              "bg-white dark:bg-zinc-900 rounded-xl border-2 p-5 cursor-pointer transition-all hover:shadow-md group",
+              "hover-lift bg-white dark:bg-zinc-900 rounded-xl border-2 p-5 cursor-pointer group",
               selectedCat === i ? "border-red-500 shadow-md" : "border-gray-100 dark:border-zinc-800"
             )}
           >
@@ -1613,7 +1613,7 @@ function CampusTavilTab() {
           </div>
           <div className="grid grid-cols-3 gap-4">
             {filteredCourses.map((course, i) => (
-              <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 hover:shadow-md transition-shadow">
+              <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
                 <div className="flex items-start justify-between mb-3">
                   <span className="text-[11px] font-bold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{course.category}</span>
                   <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded", STATUS_COLORS[course.user_status])}>{course.user_status}</span>
@@ -1684,7 +1684,7 @@ function CampusTavilTab() {
               { type: "video", title: "Vídeo: benvinguda a TAVIL", desc: "Vídeo corporatiu de presentació per a noves incorporacions.", tags: ["Acollida", "Vídeo"] },
               { type: "pdf", title: "Metodologia 5S – resum", desc: "Resum dels principis 5S aplicats a la planta de TAVIL.", tags: ["Producció", "PDF"] },
             ].map((r, i) => (
-              <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 hover:shadow-md transition-shadow cursor-pointer group">
+              <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 cursor-pointer group">
                 <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/20 flex items-center justify-center mb-4">
                   {r.type === 'video' ? <Video size={18} className="text-red-500" /> : <FileText size={18} className="text-red-500" />}
                 </div>
@@ -2901,8 +2901,8 @@ function OnboardingModal({ onComplete }: { onComplete: (dept: string, isHead: bo
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-8 w-full max-w-sm shadow-xl">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 anim-fade-in">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-8 w-full max-w-sm shadow-xl anim-scale-in">
         <div className="text-center mb-6">
           <div className="w-12 h-12 bg-red-50 dark:bg-red-950/30 rounded-full flex items-center justify-center mx-auto mb-3">
             <Users size={22} className="text-red-600" />
@@ -2936,7 +2936,7 @@ function OnboardingModal({ onComplete }: { onComplete: (dept: string, isHead: bo
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold py-3 rounded-lg transition-colors mt-2"
+            className="press w-full bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold py-3 rounded-lg transition-colors mt-2"
           >
             Continuar
           </button>
@@ -2992,7 +2992,7 @@ function LoginPage({ onLogin, onRegister, isDarkMode, toggleDarkMode }: {
       <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-10">
         <TavilLogo />
         <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-8">Portal intern del treballador</p>
-        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-8 shadow-sm">
+        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-8 shadow-sm anim-scale-in">
           <h1 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-1">Inicia sessió</h1>
           <p className="text-sm text-red-500 text-center mb-6">Introdueix les teves credencials corporatives</p>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -3017,7 +3017,7 @@ function LoginPage({ onLogin, onRegister, isDarkMode, toggleDarkMode }: {
             </div>
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             <button type="submit" disabled={loading}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-60 mt-2">
+              className="press w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-60 mt-2">
               Accedir
             </button>
           </form>
@@ -3082,7 +3082,7 @@ function RegisterPage({ onBack, onRegistered, isDarkMode, toggleDarkMode }: {
       <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-10">
         <TavilLogo />
         <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-8">Portal intern del treballador</p>
-        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-8 shadow-sm">
+        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-8 shadow-sm anim-scale-in">
           <button onClick={onBack} className="flex items-center gap-1 text-sm text-red-500 hover:underline mb-4">
             <ChevronLeft size={15} /> Tornar
           </button>
@@ -3137,7 +3137,7 @@ function RegisterPage({ onBack, onRegistered, isDarkMode, toggleDarkMode }: {
             </div>
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button type="submit" disabled={loading || !passwordsMatch}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-60 mt-2">
+              className="press w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-60 mt-2">
               Registrar-se
             </button>
           </form>
@@ -3416,7 +3416,7 @@ function App() {
               />
               {!searchQuery && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 bg-gray-200 dark:bg-zinc-700 px-1.5 py-0.5 rounded font-mono">⌘K</span>}
               {searchOpen && searchQuery && (
-                <div className="absolute top-full mt-2 left-0 w-80 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-100 dark:border-zinc-800 z-50 overflow-hidden">
+                <div className="absolute top-full mt-2 left-0 w-80 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-100 dark:border-zinc-800 z-50 overflow-hidden anim-slide-down origin-top">
                   {searchResults.length === 0 ? (
                     <p className="px-4 py-5 text-sm text-gray-400 text-center">{t('common.noResults', { query: searchQuery })}</p>
                   ) : (
@@ -3447,11 +3447,11 @@ function App() {
               >
                 <Bell size={18} />
                 {notifications.some(n => !n.read) && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-600 rounded-full ring-2 ring-white dark:ring-zinc-900"></span>
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-600 rounded-full ring-2 ring-white dark:ring-zinc-900 anim-pulse-soft"></span>
                 )}
               </button>
               {isNotifOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-100 dark:border-zinc-800 z-50">
+                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-100 dark:border-zinc-800 z-50 anim-slide-down origin-top-right">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-gray-900 dark:text-white text-sm">{t('notifications.title')}</h3>
@@ -3545,7 +3545,7 @@ function App() {
                 <ChevronLeft size={14} className="text-gray-400 rotate-[-90deg] hidden lg:block" />
               </button>
               {isProfileMenuOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-100 dark:border-zinc-800 p-3 z-50">
+                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-100 dark:border-zinc-800 p-3 z-50 anim-slide-down origin-top-right">
                   <div className="px-3 py-2 border-b border-gray-50 dark:border-zinc-800 mb-2">
                     <p className="text-sm font-bold dark:text-white">{currentUser?.name ?? 'Usuari'}</p>
                     <p className="text-[10px] text-gray-400">{currentUser?.email ?? ''}</p>
@@ -3608,7 +3608,9 @@ function App() {
             </div>
           )}
 
-          {renderContent()}
+          <div key={activeTab} className="anim-fade-in">
+            {renderContent()}
+          </div>
         </div>
       </main>
 
