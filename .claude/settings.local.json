@@ -12,7 +12,10 @@
       "Bash(venv/Scripts/python -c \":*)",
       "Bash(taskkill /F /IM python.exe)",
       "Bash(wmic process:*)",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "Bash(grep -n \"^function.*\\(\\).*{$\\\\|^const.*=.*\\(\\).*=>.*{\" /c/UNAI/portalWeb/src/App.tsx)",
+      "Bash(npx tsc:*)",
+      "Bash(CI=true timeout 180 npx react-scripts build)"
     ]
   }
 }

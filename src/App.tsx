@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from './i18n';
 import {
   Home, Newspaper, Activity as ActivityIcon, Calendar, Users, Building2,
   GraduationCap, MessageSquare, UserCircle, Search, Bell,
   Moon, ChevronLeft, ChevronRight, Mail, Database, FolderOpen,
   AlertTriangle, ArrowRight, Sun, MapPin, Clock, Phone, FileText,
-  BookOpen, Shield, ThumbsUp, Send, ExternalLink, CreditCard,
+  BookOpen, Shield, ThumbsUp, ThumbsDown, Send, ExternalLink, CreditCard,
   TrendingUp, CheckCircle, Star, LogOut, LayoutGrid, List,
   Heart, Gift, Globe, Download, Video, Award, Settings, Eye, EyeOff, Lock, Pencil, Trash2
 } from 'lucide-react';
@@ -26,6 +28,8 @@ import {
   Employee, apiGetEmployees,
   Course, apiGetCourses,
   Notification, apiGetNotifications, apiMarkNotifRead, apiMarkAllNotifsRead, apiClearAllNotifications,
+  apiCompleteOnboarding,
+  Vacanca, apiGetVacances, apiCreateVacanca, apiUpdateVacancaHead, apiUpdateVacancaRrhh,
 } from './api';
 
 function cn(...inputs: ClassValue[]) {
@@ -112,123 +116,360 @@ const NEWS_CAT_COLORS: Record<string, string> = {
   "Esdeveniments":         "bg-green-100 text-green-600 dark:bg-green-950/30 dark:text-green-400",
   "Innovació":             "bg-violet-100 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400",
 };
-const NEWS_CAT_SHORT: Record<string, string> = {
-  "Notícies corporatives": "Corporatives",
-  "Recursos humans":       "RRHH",
-  "Seguretat":             "Seguretat",
-  "Comunicats interns":    "Interns",
-  "Esdeveniments":         "Esdeveniments",
-  "Innovació":             "Innovació",
-};
-
-function InicialTab() {
+function InicialTab({ onNavigate, onNavigateToDate }: { onNavigate?: (tab: string) => void; onNavigateToDate?: (day: number, month: number, year: number) => void }) {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [news, setNews] = useState<NewsArticle[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>([]);
   const [noticeIndex, setNoticeIndex] = useState(0);
+  const [featuredIdx, setFeaturedIdx] = useState(0);
+  const today = new Date();
+  const [calMonth, setCalMonth] = useState(today.getMonth() + 1);
+  const [calYear, setCalYear] = useState(today.getFullYear());
 
   useEffect(() => {
     apiGetNotices().then(setNotices).catch(console.error);
     apiGetNews().then(setNews).catch(console.error);
+    apiGetActivities(0).then(setActivities).catch(console.error);
+    apiGetAgendaEvents().then(setAgendaEvents).catch(console.error);
   }, []);
 
   const notice = notices[noticeIndex];
+  const comunicats = news.filter(n => n.category === 'Comunicats interns');
+  const featuredNews = news.filter(n => n.category !== 'Comunicats interns' && n.featured === 1);
+  const featured = featuredNews[featuredIdx];
+
+  // Auto-rotate featured carousel
+  useEffect(() => {
+    if (featuredNews.length < 2) return;
+    const id = setInterval(() => setFeaturedIdx(i => (i + 1) % featuredNews.length), 6000);
+    return () => clearInterval(id);
+  }, [featuredNews.length]);
+
+  // Grid: non-featured news (excl. comunicats) + activities, sort by date desc, cap 8
+  type NovetatItem = { kind: 'news' | 'activity'; id: number; title: string; summary: string; date: string; image?: string; category?: string };
+  const parseDate = (s: string): number => {
+    if (!s) return 0;
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+  };
+  const novetats: NovetatItem[] = [
+    ...news.filter(n => n.category !== 'Comunicats interns' && n.featured !== 1).map(n => ({
+      kind: 'news' as const, id: n.id, title: n.title, summary: n.summary, date: n.date, image: n.image, category: n.category,
+    })),
+    ...activities.map(a => ({
+      kind: 'activity' as const, id: a.id, title: a.title, summary: a.description, date: a.date, image: undefined, category: a.category,
+    })),
+  ].sort((a, b) => parseDate(b.date) - parseDate(a.date)).slice(0, 8);
+
+  // Mini calendar cells
+  const navigateCalMonth = (dir: 1 | -1) => {
+    setCalMonth(m => {
+      const nm = m + dir;
+      if (nm > 12) { setCalYear(y => y + 1); return 1; }
+      if (nm < 1) { setCalYear(y => y - 1); return 12; }
+      return nm;
+    });
+  };
+  const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+  const firstDayOfWeek = new Date(calYear, calMonth - 1, 1).getDay();
+  const mondayOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+  const miniCells: (number | null)[] = [...Array(mondayOffset).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  const miniEventDays = new Set(agendaEvents.filter(e => e.month === calMonth).map(e => e.day));
+  const isCalToday = (d: number) => d === today.getDate() && calMonth === today.getMonth() + 1 && calYear === today.getFullYear();
+
+  // Upcoming events this week (Mon-Sun)
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon,...
+  const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const weekStart = new Date(now); weekStart.setDate(now.getDate() + diffToMon); weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6); weekEnd.setHours(23, 59, 59, 999);
+  const upcomingThisWeek = agendaEvents
+    .filter(ev => {
+      const d = new Date(calYear, ev.month - 1, ev.day);
+      return d >= weekStart && d <= weekEnd;
+    })
+    .sort((a, b) => (a.month - b.month) || (a.day - b.day))
+    .slice(0, 4);
 
   return (
     <div className="animate-in fade-in duration-300">
-      {/* Compact urgent notice */}
-      {notice && (
-      <div className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl p-4 mb-6 flex items-start gap-3">
-        <AlertTriangle size={16} className="text-red-600 mt-0.5 flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">AVÍS URGENT</span>
-          </div>
-          <p className="font-semibold text-gray-900 dark:text-white text-sm">{notice.title}</p>
-          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">{notice.content}</p>
-          <button className="text-red-600 text-xs font-medium mt-1 flex items-center gap-1 hover:underline">
-            {notice.link} <ArrowRight size={11} />
-          </button>
-        </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-          <span className="text-xs text-gray-400">{noticeIndex + 1}/{notices.length}</span>
-          <button onClick={() => setNoticeIndex((noticeIndex - 1 + notices.length) % notices.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
-            <ChevronLeft size={14} className="text-gray-500" />
-          </button>
-          <button onClick={() => setNoticeIndex((noticeIndex + 1) % notices.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
-            <ChevronRight size={14} className="text-gray-500" />
-          </button>
+      {/* Hero banner — edge-to-edge full viewport width, TAVIL building photo */}
+      <div
+        className="relative overflow-hidden mb-6 h-72 -mt-8 shadow-sm bg-gray-200 dark:bg-zinc-800"
+        style={{ width: '100vw', marginLeft: 'calc(50% - 50vw)' }}
+      >
+        <img
+          src={`${process.env.PUBLIC_URL}/tavil-header.jpg`}
+          alt="TAVIL Headquarters"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ objectPosition: '70% 60%' }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
+        <div className="relative h-full flex flex-col justify-end px-10 pb-8 max-w-7xl mx-auto">
+          <h1 className="text-white text-4xl font-black tracking-tight drop-shadow-lg">TAVIL Hub</h1>
+          <p className="text-white/90 text-base mt-1 drop-shadow">Portal intern dels treballadors</p>
         </div>
       </div>
+
+      {/* Urgent notice (optional — only if notices exist) */}
+      {notice && (
+        <div className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl p-4 mb-6 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">AVÍS URGENT</span>
+            </div>
+            <p className="font-semibold text-gray-900 dark:text-white text-sm">{notice.title}</p>
+            <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">{notice.content}</p>
+            {notice.link && (
+              <button className="text-red-600 text-xs font-medium mt-1 flex items-center gap-1 hover:underline">
+                {notice.link} <ArrowRight size={11} />
+              </button>
+            )}
+          </div>
+          {notices.length > 1 && (
+            <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+              <span className="text-xs text-gray-400">{noticeIndex + 1}/{notices.length}</span>
+              <button onClick={() => setNoticeIndex((noticeIndex - 1 + notices.length) % notices.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
+                <ChevronLeft size={14} className="text-gray-500" />
+              </button>
+              <button onClick={() => setNoticeIndex((noticeIndex + 1) % notices.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
+                <ChevronRight size={14} className="text-gray-500" />
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
-      <div className="grid grid-cols-3 gap-5 mb-6">
-        {/* Agenda */}
-        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900 dark:text-white text-sm">Pròxims a l'agenda</h3>
-            <button className="text-red-600 text-xs font-medium flex items-center gap-1 hover:underline">Veure <ArrowRight size={11} /></button>
+      {/* Comunicats interns — horizontal banner */}
+      {comunicats.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
+              <FileText size={14} className="text-blue-600" /> Comunicats interns
+            </h3>
+            <button onClick={() => onNavigate?.('Notícies')} className="text-red-600 text-xs font-medium flex items-center gap-1 hover:underline">
+              Veure tots <ArrowRight size={11} />
+            </button>
           </div>
-          <div className="space-y-3">
-            {[
-              { date: "25", day: "DT", title: "Reunió general trimestral", time: "10:00 – 12:00" },
-              { date: "27", day: "DJ", title: "Taller de seguretat laboral", time: "09:00 – 13:00" },
-              { date: "01", day: "DT", title: "Presentació nous productes Q2", time: "11:30 – 13:00" },
-              { date: "03", day: "DJ", title: "Formació Excel avançat", time: "10:00 – 12:00" },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="flex flex-col items-center justify-center w-10 h-10 rounded-lg border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800 flex-shrink-0">
-                  <span className="text-red-600 font-bold text-sm leading-none">{item.date}</span>
-                  <span className="text-gray-400 text-[9px] font-medium uppercase">{item.day}</span>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-800 dark:text-zinc-200 leading-tight">{item.title}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">{item.time}</p>
-                </div>
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+            {comunicats.map(c => (
+              <div
+                key={c.id}
+                onClick={() => onNavigate?.('Notícies')}
+                className="min-w-[280px] max-w-[320px] bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 cursor-pointer hover:border-red-200 dark:hover:border-red-900/40 transition-colors flex-shrink-0"
+              >
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 uppercase">Comunicat</span>
+                <p className="font-semibold text-gray-900 dark:text-white text-sm mt-2 leading-snug line-clamp-2">{c.title}</p>
+                {c.summary && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1 line-clamp-2">{c.summary}</p>}
+                <p className="text-[10px] text-gray-400 mt-2">{c.date}</p>
               </div>
             ))}
           </div>
         </div>
+      )}
 
-        {/* Quick Access */}
-        <div className="col-span-2 bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
-          <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Accés ràpid</h3>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { icon: Mail, title: "Correu corporatiu", desc: "Outlook Web", color: "bg-blue-50 dark:bg-blue-950/20" },
-              { icon: Database, title: "ERP", desc: "SAP / Gestió", color: "bg-green-50 dark:bg-green-950/20" },
-              { icon: FolderOpen, title: "Gestor documental", desc: "Normatives i ISO", color: "bg-amber-50 dark:bg-amber-950/20" },
-              { icon: GraduationCap, title: "Campus TAVIL", desc: "Formació interna", color: "bg-violet-50 dark:bg-violet-950/20" },
-              { icon: AlertTriangle, title: "Comunicar incidència", desc: "Manteniment / IT", color: "bg-orange-50 dark:bg-orange-950/20" },
-              { icon: Users, title: "Directori", desc: "Persones / contactes", color: "bg-red-50 dark:bg-red-950/20" },
-            ].map((item, i) => (
-              <div key={i} className={cn("flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:opacity-80 transition-opacity", item.color)}>
-                <item.icon size={18} className="text-gray-600 dark:text-zinc-300 flex-shrink-0" />
-                <div>
-                  <p className="text-xs font-bold text-gray-800 dark:text-zinc-200 leading-tight">{item.title}</p>
-                  <p className="text-[10px] text-gray-400">{item.desc}</p>
+      {/* Main content: Novetats (left, 2 cols) + Right column */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Novetats */}
+        <div className="lg:col-span-2 space-y-5">
+          {/* Featured news carousel */}
+          {featured && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
+                  <Star size={14} className="text-amber-500" /> Notícies destacades
+                </h3>
+                {featuredNews.length > 1 && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-400">{featuredIdx + 1}/{featuredNews.length}</span>
+                    <button onClick={() => setFeaturedIdx((featuredIdx - 1 + featuredNews.length) % featuredNews.length)} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded"><ChevronLeft size={14} className="text-gray-500" /></button>
+                    <button onClick={() => setFeaturedIdx((featuredIdx + 1) % featuredNews.length)} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded"><ChevronRight size={14} className="text-gray-500" /></button>
+                  </div>
+                )}
+              </div>
+              <div
+                onClick={() => onNavigate?.('Notícies')}
+                className="relative rounded-xl overflow-hidden bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 cursor-pointer hover:border-red-200 dark:hover:border-red-900/40 transition-colors group"
+              >
+                {featured.image ? (
+                  <img src={featured.image.startsWith('http') ? featured.image : `${API_BASE}${featured.image}`} alt="" className="w-full h-56 object-cover" />
+                ) : (
+                  <div className="w-full h-56 bg-gradient-to-br from-red-100 to-red-50 dark:from-red-950/30 dark:to-red-950/10 flex items-center justify-center">
+                    <Newspaper size={48} className="text-red-300" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded uppercase", NEWS_CAT_COLORS[featured.category] ?? "bg-gray-100 text-gray-600")}>{featured.category}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400/90 text-amber-900 uppercase flex items-center gap-0.5"><Star size={9} /> Destacada</span>
+                  </div>
+                  <h4 className="text-white text-lg font-bold leading-tight drop-shadow line-clamp-2">{featured.title}</h4>
+                  {featured.summary && <p className="text-white/85 text-xs mt-1 line-clamp-2 drop-shadow">{featured.summary}</p>}
+                  <p className="text-white/70 text-[10px] mt-2">{featured.date}</p>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Latest News */}
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-gray-900 dark:text-white text-sm">Últimes notícies</h3>
-          <button className="text-red-600 text-xs font-medium flex items-center gap-1 hover:underline">Totes les notícies <ArrowRight size={11} /></button>
-        </div>
-        <div className="divide-y divide-gray-50 dark:divide-zinc-800">
-          {news.slice(0, 4).map((item, i) => (
-            <div key={i} className="flex items-center justify-between py-3 group cursor-pointer">
-              <div className="flex items-center gap-3 min-w-0">
-                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded uppercase flex-shrink-0", NEWS_CAT_COLORS[item.category] ?? "bg-gray-100 text-gray-600")}>{NEWS_CAT_SHORT[item.category] ?? item.category}</span>
-                <p className="text-sm text-gray-800 dark:text-zinc-200 group-hover:text-red-600 transition-colors truncate">{item.title}</p>
-              </div>
-              <span className="text-xs text-gray-400 flex-shrink-0 ml-4">{item.date}</span>
+              {/* Dots */}
+              {featuredNews.length > 1 && (
+                <div className="flex items-center justify-center gap-1.5 mt-3">
+                  {featuredNews.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setFeaturedIdx(i)}
+                      className={cn(
+                        "h-1.5 rounded-full transition-all",
+                        i === featuredIdx ? "w-6 bg-red-600" : "w-1.5 bg-gray-300 dark:bg-zinc-700 hover:bg-gray-400"
+                      )}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
+          )}
+
+          {/* Novetats grid */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Novetats</h3>
+            </div>
+            {novetats.length === 0 ? (
+              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-8 text-center">
+                <Newspaper size={28} className="text-gray-300 dark:text-zinc-600 mx-auto mb-2" />
+                <p className="text-sm text-gray-400 dark:text-zinc-500">Encara no hi ha novetats</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {novetats.map(item => (
+                  <div
+                    key={`${item.kind}-${item.id}`}
+                    onClick={() => onNavigate?.(item.kind === 'news' ? 'Notícies' : 'Activitats')}
+                    className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 overflow-hidden cursor-pointer hover:border-red-200 dark:hover:border-red-900/40 transition-colors flex flex-col"
+                  >
+                    {item.image ? (
+                      <img src={item.image.startsWith('http') ? item.image : `${API_BASE}${item.image}`} alt="" className="w-full h-28 object-cover" />
+                    ) : (
+                      <div className={cn("w-full h-28 flex items-center justify-center", item.kind === 'news' ? "bg-red-50 dark:bg-red-950/20" : "bg-green-50 dark:bg-green-950/20")}>
+                        {item.kind === 'news'
+                          ? <Newspaper size={28} className="text-red-400" />
+                          : <ActivityIcon size={28} className="text-green-500" />
+                        }
+                      </div>
+                    )}
+                    <div className="p-3 flex-1 flex flex-col">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span className={cn(
+                          "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase",
+                          item.kind === 'news' ? "bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400" : "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400"
+                        )}>
+                          {item.kind === 'news' ? 'Notícia' : 'Activitat'}
+                        </span>
+                        {item.category && (
+                          <span className="text-[9px] text-gray-400 truncate">{item.category}</span>
+                        )}
+                      </div>
+                      <p className="font-semibold text-gray-900 dark:text-white text-sm leading-snug line-clamp-2">{item.title}</p>
+                      {item.summary && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1 line-clamp-2">{item.summary}</p>}
+                      <p className="text-[10px] text-gray-400 mt-auto pt-2">{item.date}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right column: mini calendar + upcoming week + shortcuts */}
+        <div className="space-y-5">
+          {/* Mini calendar */}
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">{MONTH_NAMES[calMonth]} {calYear}</h3>
+              <div className="flex items-center gap-1">
+                <button onClick={() => navigateCalMonth(-1)} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded"><ChevronLeft size={14} className="text-gray-500" /></button>
+                <button onClick={() => navigateCalMonth(1)} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded"><ChevronRight size={14} className="text-gray-500" /></button>
+              </div>
+            </div>
+            <div className="grid grid-cols-7 gap-0.5 text-center">
+              {['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'].map(d => (
+                <div key={d} className="text-[10px] font-semibold text-gray-400 py-1">{d}</div>
+              ))}
+              {miniCells.map((d, i) => (
+                <div key={i} className="aspect-square flex items-center justify-center">
+                  {d && (
+                    <button
+                      onClick={() => onNavigateToDate?.(d, calMonth, calYear)}
+                      className={cn(
+                        "w-7 h-7 flex items-center justify-center rounded-full text-xs relative transition-colors",
+                        isCalToday(d)
+                          ? "bg-red-600 text-white font-bold hover:bg-red-700"
+                          : "text-gray-700 dark:text-zinc-300 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600 cursor-pointer"
+                      )}
+                    >
+                      {d}
+                      {miniEventDays.has(d) && !isCalToday(d) && (
+                        <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-red-500" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Upcoming this week */}
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Properes activitats</h3>
+              <button onClick={() => onNavigate?.('Agenda')} className="text-red-600 text-xs font-medium flex items-center gap-1 hover:underline">
+                Veure <ArrowRight size={11} />
+              </button>
+            </div>
+            {upcomingThisWeek.length === 0 ? (
+              <p className="text-xs text-gray-400 dark:text-zinc-500 py-2">Cap event aquesta setmana</p>
+            ) : (
+              <div className="space-y-3">
+                {upcomingThisWeek.map(ev => (
+                  <div key={ev.id} className="flex items-center gap-3">
+                    <div className="flex flex-col items-center justify-center w-10 h-10 rounded-lg border border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800 flex-shrink-0">
+                      <span className="text-red-600 font-bold text-sm leading-none">{String(ev.day).padStart(2, '0')}</span>
+                      <span className="text-gray-400 text-[9px] font-medium uppercase">{MONTH_ABBR[ev.month]}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-gray-800 dark:text-zinc-200 leading-tight truncate">{ev.title}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{ev.time || '—'}{ev.location ? ` · ${ev.location}` : ''}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Dreceres / Accés directe */}
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3">Dreceres</h3>
+            <div className="space-y-1.5">
+              {[
+                { icon: Mail, title: "Correu corporatiu", color: "text-blue-600" },
+                { icon: Database, title: "ERP — SAP / Gestió", color: "text-green-600" },
+                { icon: FolderOpen, title: "Gestor documental", color: "text-amber-600" },
+                { icon: GraduationCap, title: "Campus TAVIL", color: "text-violet-600", tab: "Campus" },
+                { icon: AlertTriangle, title: "Comunicar incidència", color: "text-orange-600", tab: "Veu" },
+                { icon: Users, title: "Directori", color: "text-red-600", tab: "Directori" },
+              ].map((item, i) => (
+                <div
+                  key={i}
+                  onClick={() => item.tab && onNavigate?.(item.tab)}
+                  className="flex items-center gap-2.5 px-2 py-2 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  <item.icon size={15} className={cn("flex-shrink-0", item.color)} />
+                  <p className="text-xs font-medium text-gray-700 dark:text-zinc-300 flex-1 truncate">{item.title}</p>
+                  <ArrowRight size={11} className="text-gray-300" />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -238,14 +479,15 @@ function InicialTab() {
 // ── Notícies Tab ──────────────────────────────────────────────────────────────
 
 function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 border border-gray-100 dark:border-zinc-800">
-        <h3 className="font-bold text-gray-900 dark:text-white mb-2">Confirmar eliminació</h3>
+        <h3 className="font-bold text-gray-900 dark:text-white mb-2">{t('confirm.deleteTitle')}</h3>
         <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">{message}</p>
         <div className="flex gap-3 justify-end">
-          <button onClick={onCancel} className="px-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">Cancel·lar</button>
-          <button onClick={onConfirm} className="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors">Eliminar</button>
+          <button onClick={onCancel} className="px-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">{t('confirm.cancel')}</button>
+          <button onClick={onConfirm} className="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors">{t('confirm.delete')}</button>
         </div>
       </div>
     </div>
@@ -284,8 +526,11 @@ function NewsEditForm({ neCategory, setNeCategory, neTitle, setNeTitle, neSummar
 }
 
 function NoticiesTab({ currentUser }: { currentUser: User | null }) {
+  const { t } = useTranslation();
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [activeFilter, setActiveFilter] = useState('Totes');
+  const [selectedNews, setSelectedNews] = useState<NewsArticle | null>(null);
+  const [featuredIndex, setFeaturedIndex] = useState(0);
   const isAdmin = currentUser?.role === 'Administrador/a';
 
   // Create news form state
@@ -369,14 +614,47 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
   }, []);
 
   const filtered = activeFilter === 'Totes' ? news : news.filter(n => n.category === activeFilter);
-  const featured = filtered.find(n => n.featured === 1) ?? filtered[0];
-  const grid = filtered.filter(n => n !== featured).slice(0, 3);
+  const featuredList = filtered.filter(n => n.featured === 1);
+  const featuredItems = featuredList.length > 0 ? featuredList : filtered.slice(0, 1);
+  const featured = featuredItems[featuredIndex % Math.max(featuredItems.length, 1)] ?? null;
+  const grid = filtered.filter(n => !featuredItems.includes(n));
+
+  if (selectedNews) {
+    return (
+      <div className="animate-in fade-in duration-300 max-w-3xl mx-auto">
+        <button
+          onClick={() => setSelectedNews(null)}
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors mb-6"
+        >
+          {t('news.detail.backToNews')}
+        </button>
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
+          {selectedNews.image && (
+            <img src={selectedNews.image} alt={selectedNews.title} className="w-full h-72 object-cover" />
+          )}
+          <div className="p-8">
+            <div className="flex items-center gap-3 mb-4">
+              <span className={cn("text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider", NEWS_CAT_COLORS[selectedNews.category] ?? "bg-gray-100 text-gray-600")}>{selectedNews.category}</span>
+              <span className="text-xs text-gray-400">{selectedNews.date}</span>
+            </div>
+            <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-4 leading-tight">{selectedNews.title}</h1>
+            <div className="flex items-center gap-4 text-xs text-gray-400 mb-6 pb-6 border-b border-gray-100 dark:border-zinc-800">
+              <div className="flex items-center gap-1.5"><UserCircle size={14} /><span>{selectedNews.author}</span></div>
+              <div className="flex items-center gap-1.5"><Calendar size={14} /><span>{selectedNews.date}</span></div>
+            </div>
+            {selectedNews.summary && <p className="text-gray-600 dark:text-zinc-300 text-base leading-relaxed mb-6 font-medium">{selectedNews.summary}</p>}
+            {selectedNews.content && <div className="text-gray-700 dark:text-zinc-400 text-sm leading-relaxed whitespace-pre-wrap">{selectedNews.content}</div>}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-in fade-in duration-300">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-gray-500 dark:text-zinc-400 text-sm">Informació, comunicats i novetats de l'empresa</p>
-        {isAdmin && <button onClick={() => setShowNewsForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">+ Nova notícia</button>}
+        <p className="text-gray-500 dark:text-zinc-400 text-sm">{t('news.subtitle')}</p>
+        {isAdmin && <button onClick={() => setShowNewsForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">{t('news.newArticle')}</button>}
       </div>
       {isAdmin && showNewsForm && (
         <div className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-xl p-5 mb-6 grid grid-cols-2 gap-3">
@@ -407,7 +685,7 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-          <input type="text" placeholder="Cercar notícies..." className="w-full bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white" />
+          <input type="text" placeholder={t('news.searchPlaceholder')} className="w-full bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white" />
         </div>
         <div className="flex flex-wrap gap-2">
           {['Totes', 'Comunicats interns', 'Notícies corporatives', 'Recursos humans', 'Esdeveniments', 'Innovació', 'Seguretat'].map(f => (
@@ -417,13 +695,19 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
       </div>
 
       {featured && (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden flex flex-col md:flex-row mb-8 min-h-[360px]">
-          <div className="md:w-1/2 h-56 md:h-auto overflow-hidden bg-gray-100 dark:bg-zinc-800">
+        <div className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden flex flex-col md:flex-row mb-8 min-h-[360px]">
+          <div
+            className="md:w-1/2 h-56 md:h-auto overflow-hidden bg-gray-100 dark:bg-zinc-800 cursor-pointer"
+            onClick={() => setSelectedNews(featured)}
+          >
             <img src={featured.image || '/assets/images/img_4.png'} alt="Featured" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
           </div>
           <div className="md:w-1/2 p-8 flex flex-col justify-center">
             <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider w-fit mb-4">{featured.category}</span>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">{featured.title}</h2>
+            <h2
+              className="text-2xl font-bold text-gray-900 dark:text-white mb-4 leading-tight cursor-pointer hover:text-red-600 transition-colors"
+              onClick={() => setSelectedNews(featured)}
+            >{featured.title}</h2>
             <p className="text-gray-500 dark:text-zinc-400 text-sm mb-6 leading-relaxed">{featured.summary}</p>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 text-xs text-gray-400">
@@ -438,6 +722,30 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
               )}
             </div>
             {isAdmin && newsEditId === featured.id && <NewsEditForm {...{neCategory,setNeCategory,neTitle,setNeTitle,neSummary,setNeSummary,neAuthor,setNeAuthor,neDate,setNeDate,neImage,neImageFile,setNeImageFile,neFeatured,setNeFeatured,neSaving,onSave:handleSaveNewsEdit,onCancel:()=>setNewsEditId(null)}} />}
+            {/* Carousel controls */}
+            {featuredItems.length > 1 && (
+              <div className="flex items-center gap-3 mt-5">
+                <button
+                  onClick={() => setFeaturedIndex(i => (i - 1 + featuredItems.length) % featuredItems.length)}
+                  className="p-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-500 hover:text-red-600 transition-colors"
+                  title={t('home.featuredPrev')}
+                ><ChevronLeft size={16} /></button>
+                <div className="flex gap-1.5">
+                  {featuredItems.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setFeaturedIndex(i)}
+                      className={cn("rounded-full transition-all", i === featuredIndex % featuredItems.length ? "w-5 h-2 bg-red-600" : "w-2 h-2 bg-gray-300 dark:bg-zinc-600 hover:bg-red-400")}
+                    />
+                  ))}
+                </div>
+                <button
+                  onClick={() => setFeaturedIndex(i => (i + 1) % featuredItems.length)}
+                  className="p-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-500 hover:text-red-600 transition-colors"
+                  title={t('home.featuredNext')}
+                ><ChevronRight size={16} /></button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -445,12 +753,12 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {grid.map((item, i) => (
           <div key={i} className="group bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-zinc-800">
+            <div className="aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-zinc-800 cursor-pointer" onClick={() => setSelectedNews(item)}>
               <img src={item.image || '/assets/images/img_7.png'} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             </div>
             <div className="p-5">
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">{item.category}</p>
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-red-600 transition-colors">{item.title}</h3>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-red-600 transition-colors cursor-pointer" onClick={() => setSelectedNews(item)}>{item.title}</h3>
               <p className="text-xs text-gray-500 dark:text-zinc-400 mb-4 line-clamp-2 leading-relaxed">{item.summary}</p>
               <div className="flex items-center justify-between text-[10px] text-gray-400">
                 <div className="flex items-center gap-1"><UserCircle size={12} /><span>{item.author}</span></div>
@@ -675,13 +983,25 @@ const EVENT_COLORS: Record<string, string> = {
 const MONTH_NAMES = ['', 'Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre'];
 const MONTH_ABBR: Record<number, string> = { 1: 'GEN', 2: 'FEB', 3: 'MAR', 4: 'ABR', 5: 'MAI', 6: 'JUN', 7: 'JUL', 8: 'AGO', 9: 'SET', 10: 'OCT', 11: 'NOV', 12: 'DES' };
 
-function AgendaTab({ currentUser }: { currentUser: User | null }) {
+function AgendaTab({ currentUser, initDate, onInitDateConsumed }: { currentUser: User | null; initDate: { day: number; month: number; year: number } | null; onInitDateConsumed: () => void }) {
   const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>([]);
   const [view, setView] = useState<'calendar' | 'list'>('calendar');
   const [activeFilter, setActiveFilter] = useState('Tots');
-  const [currentMonth, setCurrentMonth] = useState(3);
-  const [currentYear, setCurrentYear] = useState(2026);
+  const today0 = new Date();
+  const [currentMonth, setCurrentMonth] = useState(today0.getMonth() + 1);
+  const [currentYear, setCurrentYear] = useState(today0.getFullYear());
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const isAdmin = currentUser?.role === 'Administrador/a';
+
+  useEffect(() => {
+    if (initDate) {
+      setCurrentMonth(initDate.month);
+      setCurrentYear(initDate.year);
+      setSelectedDay(initDate.day);
+      setView('calendar');
+      onInitDateConsumed();
+    }
+  }, [initDate, onInitDateConsumed]);
 
   // New event form state
   const [showEventForm, setShowEventForm] = useState(false);
@@ -833,19 +1153,61 @@ function AgendaTab({ currentUser }: { currentUser: User | null }) {
             {days.map(d => (
               <div key={d} className="px-2 py-2 text-center text-xs font-semibold text-gray-500 dark:text-zinc-400 border-b border-gray-100 dark:border-zinc-800">{d}</div>
             ))}
-            {cells.map((day, i) => (
-              <div key={i} className={cn("min-h-[80px] p-1.5 border-b border-r border-gray-50 dark:border-zinc-800/50", day !== null && isToday(day) && "bg-red-50/50 dark:bg-red-950/10")}>
-                {day && (
-                  <>
-                    <span className={cn("text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1", isToday(day) ? "bg-red-600 text-white" : "text-gray-700 dark:text-zinc-300")}>{day}</span>
-                    {(calendarEvents[day] || []).map((ev, j) => (
-                      <div key={j} className={cn("text-[10px] px-1.5 py-0.5 rounded truncate mb-0.5 font-medium", EVENT_COLORS[ev.type])}>{ev.title}</div>
-                    ))}
-                  </>
-                )}
-              </div>
-            ))}
+            {cells.map((day, i) => {
+              const isSel = day !== null && selectedDay === day;
+              return (
+                <div
+                  key={i}
+                  onClick={() => day !== null && setSelectedDay(day === selectedDay ? null : day)}
+                  className={cn(
+                    "min-h-[80px] p-1.5 border-b border-r border-gray-50 dark:border-zinc-800/50 transition-colors",
+                    day !== null && "cursor-pointer hover:bg-red-50/60 dark:hover:bg-red-950/20",
+                    day !== null && isToday(day) && "bg-red-50/50 dark:bg-red-950/10",
+                    isSel && "ring-2 ring-inset ring-red-500 bg-red-50 dark:bg-red-950/30"
+                  )}
+                >
+                  {day && (
+                    <>
+                      <span className={cn("text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1", isToday(day) ? "bg-red-600 text-white" : isSel ? "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-bold" : "text-gray-700 dark:text-zinc-300")}>{day}</span>
+                      {(calendarEvents[day] || []).map((ev, j) => (
+                        <div key={j} className={cn("text-[10px] px-1.5 py-0.5 rounded truncate mb-0.5 font-medium", EVENT_COLORS[ev.type])}>{ev.title}</div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              );
+            })}
           </div>
+          {selectedDay !== null && (
+            <div className="mt-5 pt-5 border-t border-gray-100 dark:border-zinc-800">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-bold text-gray-900 dark:text-white text-sm">
+                  {selectedDay} {MONTH_NAMES[currentMonth]} {currentYear}
+                </h4>
+                <button onClick={() => setSelectedDay(null)} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300">Tancar</button>
+              </div>
+              {(calendarEvents[selectedDay] || []).length === 0 ? (
+                <p className="text-xs text-gray-400 dark:text-zinc-500 italic">No hi ha esdeveniments aquest dia.</p>
+              ) : (
+                <div className="space-y-2">
+                  {(calendarEvents[selectedDay] || []).map((ev, j) => (
+                    <div key={j} className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
+                      <span className={cn("text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0", EVENT_COLORS[ev.type])}>{ev.type}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm">{ev.title}</p>
+                        {(ev.time || ev.location) && (
+                          <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500 dark:text-zinc-400">
+                            {ev.time && <span className="flex items-center gap-1"><Clock size={11} />{ev.time}</span>}
+                            {ev.location && <span className="flex items-center gap-1"><MapPin size={11} />{ev.location}</span>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -908,6 +1270,7 @@ function AgendaTab({ currentUser }: { currentUser: User | null }) {
 const DEPT_ORDER = ['Comercial', 'Compres', 'Direcció', 'Enginyeria', 'Màrqueting', 'Operacions', 'Producció', 'Recursos humans', 'Sistemes', 'Qualitat'];
 
 function DirectoriTab() {
+  const { t } = useTranslation();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [activeFilter, setActiveFilter] = useState('Tots');
   const [view, setView] = useState<'graella' | 'departaments'>('graella');
@@ -926,7 +1289,7 @@ function DirectoriTab() {
 
   return (
     <div className="animate-in fade-in duration-300">
-      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Cerca treballadors per nom, departament, càrrec o extensió</p>
+      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">{t('directory.subtitle')}</p>
       <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative">
@@ -941,10 +1304,10 @@ function DirectoriTab() {
         </div>
         <div className="flex items-center border border-gray-200 dark:border-zinc-700 rounded-lg overflow-hidden flex-shrink-0">
           <button onClick={() => setView('graella')} className={cn("flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors", view === 'graella' ? "bg-red-600 text-white" : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
-            <LayoutGrid size={14} /> Graella
+            <LayoutGrid size={14} /> {t('directory.grid')}
           </button>
           <button onClick={() => setView('departaments')} className={cn("flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors", view === 'departaments' ? "bg-red-600 text-white" : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
-            <Users size={14} /> Departaments
+            <Users size={14} /> {t('directory.departments')}
           </button>
         </div>
       </div>
@@ -1173,7 +1536,7 @@ function CampusTavilTab() {
   const mandatoryPending = courses.find(c => !!c.mandatory && c.user_status === 'Pendent');
 
   const topics = ['Tots els temes', 'Seguretat', 'Qualitat', 'Sistemes', 'Comercial', 'Compliance', 'Acollida', 'Producció', 'Habilitats', 'Idiomes'];
-  const statuses = ['Tots els estats', 'Pendent', 'En curs', 'Completat'];
+  const statuses = ['Tots els estats', 'Pendent', 'Completat'];
 
   const filteredCourses = courses.filter(c => {
     const matchTopic = topicFilter === 'Tots els temes' || c.category === topicFilter;
@@ -1350,6 +1713,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 }
 
 function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('Suggeriments');
 
   // Suggestions state
@@ -1454,9 +1818,9 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
     return d.toLocaleDateString('ca-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-  const handleVote = async (id: number) => {
+  const handleVote = async (id: number, voteType: 'up' | 'down') => {
     try {
-      await apiVoteSuggestion(id);
+      await apiVoteSuggestion(id, voteType);
       const updated = await apiGetSuggestions();
       setSuggestions(updated);
     } catch (e) {
@@ -1511,10 +1875,13 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
 
   return (
     <div className="animate-in fade-in duration-300">
-      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Suggeriments, incidències i enquestes internes</p>
+      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">{t('veu.subtitle')}</p>
       <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
-        {['Suggeriments', 'Incidències', 'Enquestes'].map(tab => (
-          <UnderlineTab key={tab} label={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)} />
+        {[
+          { key: 'Suggeriments', label: t('veu.suggestions') },
+          { key: 'Incidències', label: t('veu.incidents') },
+        ].map(tab => (
+          <UnderlineTab key={tab.key} label={tab.label} active={activeTab === tab.key} onClick={() => setActiveTab(tab.key)} />
         ))}
       </div>
 
@@ -1522,14 +1889,23 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
       {activeTab === 'Suggeriments' && (
         <div className="grid grid-cols-3 gap-6">
           <div className="col-span-2">
-            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Suggeriments recents ({suggestions.length})</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">{t('veu.recentSuggestions', { count: suggestions.length })}</h3>
             <div className="space-y-3">
               {suggestions.map(sug => (
                 <div key={sug.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
                   <div className="flex items-start gap-4">
-                    <div className="flex flex-col items-center gap-1 flex-shrink-0 pt-1">
-                      <button onClick={() => handleVote(sug.id)} className="p-1 hover:text-red-600 transition-colors text-gray-400"><ThumbsUp size={14} /></button>
-                      <span className="text-sm font-bold text-gray-700 dark:text-zinc-300">{sug.votes}</span>
+                    <div className="flex flex-col items-center gap-0.5 flex-shrink-0 pt-1">
+                      <button
+                        onClick={() => handleVote(sug.id, 'up')}
+                        title={t('veu.upvote')}
+                        className={cn("p-1 rounded transition-colors", sug.user_vote === 'up' ? "text-red-600 bg-red-50 dark:bg-red-950/20" : "text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20")}
+                      ><ThumbsUp size={14} /></button>
+                      <span className={cn("text-sm font-bold leading-none", sug.votes > 0 ? "text-red-600" : sug.votes < 0 ? "text-blue-600" : "text-gray-500 dark:text-zinc-400")}>{sug.votes}</span>
+                      <button
+                        onClick={() => handleVote(sug.id, 'down')}
+                        title={t('veu.downvote')}
+                        className={cn("p-1 rounded transition-colors", sug.user_vote === 'down' ? "text-blue-600 bg-blue-50 dark:bg-blue-950/20" : "text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20")}
+                      ><ThumbsDown size={14} /></button>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{sug.title}</p>
@@ -1545,9 +1921,9 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
                       )}
                     </div>
                     <div className="flex-shrink-0 flex items-center self-center gap-2">
-                      <span className="text-xs text-gray-400 dark:text-zinc-500 italic">{sug.anonymous ? 'Anònim' : sug.author}</span>
+                      <span className="text-xs text-gray-400 dark:text-zinc-500 italic">{sug.anonymous ? t('veu.anonymous_label') : sug.author}</span>
                       {isRrhhOrAdmin && (
-                        <button onClick={() => suggAdminOpen === sug.id ? setSuggAdminOpen(null) : openSuggAdmin(sug)} className="text-[10px] px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-red-50 hover:text-red-600 transition-colors">Gestionar</button>
+                        <button onClick={() => suggAdminOpen === sug.id ? setSuggAdminOpen(null) : openSuggAdmin(sug)} className="text-[10px] px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-red-50 hover:text-red-600 transition-colors">{t('veu.manage')}</button>
                       )}
                     </div>
                   </div>
@@ -1741,8 +2117,152 @@ function VeuEmpleatTab({ currentUser }: { currentUser: User | null }) {
 
 // ── Solicituds Tab ────────────────────────────────────────────────────────────
 
+const VAC_PERIODS = [
+  { idx: 1, color: 'bg-pink-400',   dates: '01 Feb – 31 Maig',           dies: 'Mínim 8',  sol: '07 Gen – 30 Gen', conf: '13 Feb – 27 Feb' },
+  { idx: 2, color: 'bg-green-400',  dates: '01 Juny – 10 Set',           dies: 'Màxim 15', sol: '04 Maig – 18 Maig', conf: '25 Maig – 5 Juny' },
+  { idx: 3, color: 'bg-orange-400', dates: '14 Set – 30 Nov',            dies: 'Mínim 5',  sol: '01 Set – 10 Set',  conf: '21 Set – 5 Oct' },
+  { idx: 4, color: 'bg-yellow-400', dates: '7 Des · 21 Des – 31 Des',    dies: 'Màxim 5',  sol: '02 Nov – 13 Nov',  conf: '23 Nov – 04 Des' },
+];
+
+const VAC_CLARIFICATIONS = [
+  "Els dies sense marcar (en blanc) al calendari són dies que l'empresa ha decidit que NO es pot fer vacances.",
+  "El mes de gener-2026 es poden realitzar els dies pendents del 2025.",
+  "Durant les vacances de Nadal (període groc) s'han de fer setmanes completes: setmana de Nadal o setmana de Cap d'any (4 dies).",
+  "Les 2 hores restants es posen: 1 hora el 02/04 (dijous Sant) i l'altra hora el 24/12 o el 31/12.",
+  "Les vacances de l'any que ja estiguin entrades el mes de Febrer s'intentarà respectar-les.",
+  "El màxim de dies seguits per fer són 3 setmanes (15 dies laborals).",
+  "Les vacances del 2026 es poden realitzar fins al 31/01/2027.",
+  "No es poden agafar més de 2 divendres/dilluns solts seguits de vacances.",
+  "Si agafes vacances en una setmana, no pots agafar 4 dies de vacances i treballar només 1: has de fer la setmana complerta de vacances o treballar almenys 2 dies.",
+  "Dilluns 7 de desembre 2026, addicionalment, es podrà marcar com a vacances, procurant sempre que el departament quedi cobert.",
+];
+
+const VAC_HOLIDAYS = [
+  { date: '1 de Gener',    name: 'Any Nou',              weekday: 'dijous' },
+  { date: '6 de Gener',    name: 'Reis',                 weekday: 'dimarts' },
+  { date: '3 d\'Abril',    name: 'Divendres Sant',       weekday: 'divendres' },
+  { date: '6 d\'Abril',    name: 'Dilluns de Pasqua',    weekday: 'dilluns' },
+  { date: '1 de Maig',     name: 'Festa del treball',    weekday: 'divendres' },
+  { date: '24 de Juny',    name: 'Sant Joan',            weekday: 'dimecres' },
+  { date: '15 d\'Agost',   name: 'L\'Assumpció',         weekday: 'dissabte' },
+  { date: '11 de Setembre',name: 'Diada de Catalunya',   weekday: 'divendres' },
+  { date: '12 d\'Octubre', name: 'Festa Nacional d\'Espanya', weekday: 'dilluns' },
+  { date: '1 de Novembre', name: 'Tots Sants',           weekday: 'diumenge' },
+  { date: '6 de Desembre', name: 'La Constitució',       weekday: 'diumenge' },
+  { date: '8 de Desembre', name: 'La Puríssima',         weekday: 'dimarts' },
+  { date: '25 de Desembre',name: 'Nadal',                weekday: 'divendres' },
+  { date: '26 de Desembre',name: 'Sant Esteve',          weekday: 'dissabte' },
+];
+
+function VacancesInfo() {
+  return (
+    <div className="space-y-5 animate-in fade-in duration-300">
+      {/* Períodes */}
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+        <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4 flex items-center gap-2">
+          <Calendar size={15} className="text-red-600" /> Períodes de vacances 2026
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-left text-gray-400 border-b border-gray-100 dark:border-zinc-800">
+                <th className="py-2 pr-3 font-semibold">Període</th>
+                <th className="py-2 pr-3 font-semibold">Dates</th>
+                <th className="py-2 pr-3 font-semibold">Dies</th>
+                <th className="py-2 pr-3 font-semibold">Sol·licitud</th>
+                <th className="py-2 pr-3 font-semibold">Confirmació</th>
+              </tr>
+            </thead>
+            <tbody>
+              {VAC_PERIODS.map(p => (
+                <tr key={p.idx} className="border-b border-gray-50 dark:border-zinc-800/60 last:border-0">
+                  <td className="py-3 pr-3">
+                    <div className="flex items-center gap-2">
+                      <span className={cn("inline-block w-3 h-3 rounded-sm", p.color)} />
+                      <span className="font-bold text-gray-800 dark:text-zinc-200">{p.idx}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 pr-3 text-gray-700 dark:text-zinc-300 font-medium">{p.dates}</td>
+                  <td className="py-3 pr-3 text-gray-600 dark:text-zinc-400">{p.dies}</td>
+                  <td className="py-3 pr-3 text-gray-600 dark:text-zinc-400">{p.sol}</td>
+                  <td className="py-3 pr-3 text-gray-600 dark:text-zinc-400">{p.conf}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-zinc-400 mt-3 font-semibold">TOTAL DE DIES PER FER: 33 dies</p>
+      </div>
+
+      {/* Aclariments */}
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+        <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3 flex items-center gap-2">
+          <FileText size={15} className="text-red-600" /> Aclariments
+        </h3>
+        <ul className="space-y-2">
+          {VAC_CLARIFICATIONS.map((c, i) => (
+            <li key={i} className="flex gap-2 text-xs text-gray-700 dark:text-zinc-300 leading-relaxed">
+              <span className="text-red-500 mt-0.5 flex-shrink-0">•</span>
+              <span>{c}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Intensius */}
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+        <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3 flex items-center gap-2">
+          <Clock size={15} className="text-red-600" /> Intensius 2026
+        </h3>
+        <p className="text-xs text-gray-700 dark:text-zinc-300 leading-relaxed mb-2">
+          Els divendres intensius començaran a partir del <strong>26 de Juny</strong> i finalitzaran el <strong>4 de Setembre</strong>. Fora d'aquest període no està permès realitzar-ne.
+        </p>
+        <p className="text-xs text-gray-700 dark:text-zinc-300 leading-relaxed mb-2">
+          També es farà intensiu el <strong>2 d'abril</strong>, el <strong>23 de juny</strong>, el <strong>18 de desembre</strong>, el <strong>24 de desembre</strong>, el <strong>31 de desembre</strong> i el <strong>5 de gener 2027</strong>. El 18 de desembre està aprovat fer intensiu per assistir al dinar del departament; si es mou de dia, l'intensiu es pot canviar, però el dia 18 caldrà fer l'horari habitual.
+        </p>
+        <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-100 dark:border-yellow-900/40 rounded-lg px-3 py-2 text-xs text-yellow-800 dark:text-yellow-300 mt-2">
+          Si és necessari fer un dia intensiu fora de les dates preestablertes, haurà d'estar comunicat, justificat i acceptat per Recursos Humans com a mínim amb <strong>una setmana d'antelació</strong>.
+        </div>
+      </div>
+
+      {/* Novetat taviltime */}
+      <div className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl p-5">
+        <div className="flex items-start gap-3">
+          <Mail size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold text-gray-900 dark:text-white text-sm">Novetat — gestions</p>
+            <p className="text-xs text-gray-700 dark:text-zinc-300 mt-1 leading-relaxed">
+              A partir de l'1 de Gener de 2026, totes les gestions relacionades amb vacances, registre de jornada, justificants de visites mèdiques, etc., cal enviar-les a:
+            </p>
+            <a href="mailto:taviltime@tavil.net" className="inline-block mt-2 font-mono text-sm font-semibold text-red-600 hover:underline">taviltime@tavil.net</a>
+          </div>
+        </div>
+      </div>
+
+      {/* Dies festius */}
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+        <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3 flex items-center gap-2">
+          <Star size={15} className="text-red-600" /> Dies festius 2026
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {VAC_HOLIDAYS.map((h, i) => (
+            <div key={i} className="flex items-center gap-3 py-1.5 px-2 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
+              <div className="flex-shrink-0 w-1 h-8 rounded-full bg-red-500" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-gray-800 dark:text-zinc-200">{h.date}</p>
+                <p className="text-[10px] text-gray-500 dark:text-zinc-400">{h.name} <span className="text-gray-400">({h.weekday})</span></p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function SolicitudsTab({ currentUser, onNotifChange }: { currentUser: User | null; onNotifChange?: () => void }) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('Dies no ordinaris');
   const [diesNoOrdinaris, setDiesNoOrdinaris] = useState<Solicitud[]>([]);
   const [selectedDate, setSelectedDate] = useState('');
@@ -1752,14 +2272,32 @@ function SolicitudsTab({ currentUser, onNotifChange }: { currentUser: User | nul
   const [denyingId, setDenyingId] = useState<number | null>(null);
   const [denyMotive, setDenyMotive] = useState('');
 
-  const isRRHH = currentUser?.role === 'Recursos humans';
+  // Vacances state
+  const [vacSubTab, setVacSubTab] = useState<'sol' | 'info'>('sol');
+  const [vacances, setVacances] = useState<Vacanca[]>([]);
+  const [vacStartDate, setVacStartDate] = useState('');
+  const [vacEndDate, setVacEndDate] = useState('');
+  const [vacComments, setVacComments] = useState('');
+  const [vacSubmitting, setVacSubmitting] = useState(false);
+  const [vacSuccess, setVacSuccess] = useState(false);
+  const [vacDenyingId, setVacDenyingId] = useState<number | null>(null);
+  const [vacDenyStage, setVacDenyStage] = useState<'head' | 'rrhh'>('head');
+  const [vacDenyComment, setVacDenyComment] = useState('');
+
+  const isRRHH = currentUser?.role === 'Recursos humans' || currentUser?.role === 'Administrador/a';
+  const isHead = currentUser?.role === 'Responsable de departament';
 
   const fetchSolicituds = () => {
     apiGetSolicituds().then(setDiesNoOrdinaris).catch(console.error);
   };
 
+  const fetchVacances = () => {
+    apiGetVacances().then(setVacances).catch(console.error);
+  };
+
   useEffect(() => {
     fetchSolicituds();
+    fetchVacances();
   }, [currentUser?.role]);
 
   const formatDate = (iso: string) => {
@@ -1816,9 +2354,9 @@ function SolicitudsTab({ currentUser, onNotifChange }: { currentUser: User | nul
 
   return (
     <div className="animate-in fade-in duration-300">
-      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Gestió de sol·licituds i peticions personals</p>
+      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">{t('solicituds.subtitle')}</p>
       <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
-        {['Dies no ordinaris'].map(tab => (
+        {['Dies no ordinaris', 'Vacances'].map(tab => (
           <UnderlineTab key={tab} label={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)} />
         ))}
       </div>
@@ -1826,12 +2364,12 @@ function SolicitudsTab({ currentUser, onNotifChange }: { currentUser: User | nul
       {activeTab === 'Dies no ordinaris' && (
         <div className="grid grid-cols-3 gap-6">
           <div className={isRRHH ? 'col-span-3' : 'col-span-2'}>
-            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Sol·licituds enviades ({diesNoOrdinaris.length})</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">{t('solicituds.sentRequests', { count: diesNoOrdinaris.length })}</h3>
             {diesNoOrdinaris.length === 0 ? (
               <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-8 text-center">
                 <Calendar size={32} className="text-gray-300 dark:text-zinc-600 mx-auto mb-3" />
-                <p className="text-sm text-gray-400 dark:text-zinc-500">No hi ha sol·licituds encara.</p>
-                <p className="text-xs text-gray-300 dark:text-zinc-600 mt-1">Fes servir el formulari per enviar la primera.</p>
+                <p className="text-sm text-gray-400 dark:text-zinc-500">{t('solicituds.noRequests')}</p>
+                <p className="text-xs text-gray-300 dark:text-zinc-600 mt-1">{t('solicituds.noRequestsHint')}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -1856,8 +2394,8 @@ function SolicitudsTab({ currentUser, onNotifChange }: { currentUser: User | nul
                               className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none"
                             />
                             <div className="flex gap-2">
-                              <button onClick={() => handleDenyConfirm(d.id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">Confirmar denegació</button>
-                              <button onClick={() => { setDenyingId(null); setDenyMotive(''); }} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">Cancel·lar</button>
+                              <button onClick={() => handleDenyConfirm(d.id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">{t('solicituds.confirmDeny')}</button>
+                              <button onClick={() => { setDenyingId(null); setDenyMotive(''); }} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">{t('common.cancel')}</button>
                             </div>
                           </div>
                         )}
@@ -1866,8 +2404,8 @@ function SolicitudsTab({ currentUser, onNotifChange }: { currentUser: User | nul
                         <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(d.status))}>{d.status}</span>
                         {isRRHH && d.status === 'Pendent' && denyingId !== d.id && (
                           <>
-                            <button onClick={() => handleApprove(d.id)} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-950/50 transition-colors">Aprovar</button>
-                            <button onClick={() => { setDenyingId(d.id); setDenyMotive(''); }} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 transition-colors">Denegar</button>
+                            <button onClick={() => handleApprove(d.id)} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-950/50 transition-colors">{t('solicituds.approve')}</button>
+                            <button onClick={() => { setDenyingId(d.id); setDenyMotive(''); }} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 transition-colors">{t('solicituds.deny')}</button>
                           </>
                         )}
                       </div>
@@ -1881,16 +2419,16 @@ function SolicitudsTab({ currentUser, onNotifChange }: { currentUser: User | nul
           {!isRRHH && <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 h-fit">
             <div className="flex items-center gap-2 mb-4">
               <Calendar size={15} className="text-gray-500" />
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Nova sol·licitud</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">{t('solicituds.newRequest')}</h3>
             </div>
             {success && (
               <div className="mb-3 flex items-center gap-2 text-green-600 bg-green-50 dark:bg-green-950/20 rounded-lg px-3 py-2 text-xs font-medium">
-                <CheckCircle size={13} /> Sol·licitud enviada correctament.
+                <CheckCircle size={13} /> {t('solicituds.sent')}
               </div>
             )}
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Dia sol·licitat</label>
+                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">{t('solicituds.requestedDay')}</label>
                 <input
                   type="date"
                   value={selectedDate}
@@ -1900,28 +2438,199 @@ function SolicitudsTab({ currentUser, onNotifChange }: { currentUser: User | nul
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Comentaris</label>
+                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">{t('solicituds.comments')}</label>
                 <textarea
                   value={comments}
                   onChange={e => setComments(e.target.value.slice(0, 500))}
-                  placeholder="Explica el motiu o qualsevol detall rellevant..."
+                  placeholder={t('solicituds.commentsPlaceholder')}
                   rows={5}
                   className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none"
                 />
                 <p className="text-[10px] text-gray-400 text-right">{comments.length}/500</p>
               </div>
-              <p className="text-[11px] text-red-600">L'equip de RRHH revisarà la sol·licitud en un termini de 48 hores.</p>
+              <p className="text-[11px] text-red-600">{t('solicituds.reviewNote')}</p>
               <button
                 onClick={handleSubmit}
                 disabled={!selectedDate || submitting}
                 className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
               >
-                <Send size={14} /> Enviar sol·licitud
+                <Send size={14} /> {t('solicituds.send')}
               </button>
             </div>
           </div>}
         </div>
       )}
+
+      {activeTab === 'Vacances' && (
+        <div className="flex items-center gap-2 mb-5">
+          <button
+            onClick={() => setVacSubTab('sol')}
+            className={cn(
+              "px-4 py-1.5 rounded-full text-xs font-semibold transition-colors border",
+              vacSubTab === 'sol'
+                ? "bg-red-600 text-white border-red-600"
+                : "border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:border-gray-300 dark:hover:border-zinc-600 bg-white dark:bg-zinc-900"
+            )}
+          >Les meves sol·licituds</button>
+          <button
+            onClick={() => setVacSubTab('info')}
+            className={cn(
+              "px-4 py-1.5 rounded-full text-xs font-semibold transition-colors border",
+              vacSubTab === 'info'
+                ? "bg-red-600 text-white border-red-600"
+                : "border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:border-gray-300 dark:hover:border-zinc-600 bg-white dark:bg-zinc-900"
+            )}
+          >Informació</button>
+        </div>
+      )}
+
+      {activeTab === 'Vacances' && vacSubTab === 'info' && <VacancesInfo />}
+
+      {activeTab === 'Vacances' && vacSubTab === 'sol' && (() => {
+        const pendingHead = vacances.filter(v => v.head_status === 'Pendent');
+        const pendingRrhh = vacances.filter(v => v.head_status === 'Aprovada' && v.rrhh_status === 'Pendent');
+        const showForm = !isRRHH && !isHead;
+        const reviewList = isHead ? pendingHead : isRRHH ? pendingRrhh : vacances;
+        const showReviewPanel = isHead || isRRHH;
+
+        const handleVacApprove = async (id: number) => {
+          try {
+            if (isHead) await apiUpdateVacancaHead(id, 'Aprovada');
+            else await apiUpdateVacancaRrhh(id, 'Aprovada');
+            fetchVacances(); onNotifChange?.();
+          } catch {}
+        };
+        const handleVacDenyConfirm = async (id: number) => {
+          try {
+            if (vacDenyStage === 'head') await apiUpdateVacancaHead(id, 'Denegada', vacDenyComment.trim());
+            else await apiUpdateVacancaRrhh(id, 'Denegada', vacDenyComment.trim());
+            fetchVacances(); onNotifChange?.();
+            setVacDenyingId(null); setVacDenyComment('');
+          } catch {}
+        };
+        const handleVacSubmit = async () => {
+          if (!vacStartDate || !vacEndDate) return;
+          setVacSubmitting(true);
+          try {
+            await apiCreateVacanca(vacStartDate, vacEndDate, vacComments.trim());
+            fetchVacances(); onNotifChange?.();
+            setVacStartDate(''); setVacEndDate(''); setVacComments('');
+            setVacSuccess(true); setTimeout(() => setVacSuccess(false), 3000);
+          } catch {} finally { setVacSubmitting(false); }
+        };
+
+        return (
+          <div className={`grid gap-6 ${showForm ? 'grid-cols-3' : 'grid-cols-1'}`}>
+            <div className={showForm ? 'col-span-2' : 'col-span-1'}>
+              {showReviewPanel && reviewList.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3">
+                    {isHead ? 'Peticions pendents d\'aprovació' : 'Peticions aprovades pel cap — pendent RRHH'}
+                  </h3>
+                  <div className="space-y-3">
+                    {reviewList.map(v => (
+                      <div key={v.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
+                        <div className="flex items-start gap-3">
+                          <Calendar size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-900 dark:text-white text-sm">{v.author_name} <span className="text-gray-400 font-normal">— {v.author_dept}</span></p>
+                            <p className="text-xs text-gray-400 mb-1">Del {formatDate(v.start_date)} al {formatDate(v.end_date)}</p>
+                            {v.comments && <p className="text-xs text-gray-500 dark:text-zinc-400 italic mb-2">"{v.comments}"</p>}
+                            {vacDenyingId === v.id && (
+                              <div className="mt-2 space-y-2">
+                                <textarea value={vacDenyComment} onChange={e => setVacDenyComment(e.target.value)} placeholder="Motiu de la denegació..." rows={2}
+                                  className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none" />
+                                <div className="flex gap-2">
+                                  <button onClick={() => handleVacDenyConfirm(v.id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">Confirmar denegació</button>
+                                  <button onClick={() => { setVacDenyingId(null); setVacDenyComment(''); }} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">Cancel·lar</button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          {vacDenyingId !== v.id && (
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <button onClick={() => handleVacApprove(v.id)} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950/30 dark:text-green-400 transition-colors">Aprovar</button>
+                              <button onClick={() => { setVacDenyingId(v.id); setVacDenyStage(isHead ? 'head' : 'rrhh'); setVacDenyComment(''); }} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 transition-colors">Denegar</button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3">Sol·licituds de vacances ({vacances.length})</h3>
+              {vacances.length === 0 ? (
+                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-8 text-center">
+                  <Calendar size={32} className="text-gray-300 dark:text-zinc-600 mx-auto mb-3" />
+                  <p className="text-sm text-gray-400 dark:text-zinc-500">Cap sol·licitud de vacances</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {vacances.map(v => (
+                    <div key={v.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
+                      <div className="flex items-start gap-3">
+                        <Calendar size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          {(isRRHH || isHead) && <p className="font-semibold text-gray-900 dark:text-white text-sm mb-0.5">{v.author_name} <span className="text-gray-400 font-normal text-xs">— {v.author_dept}</span></p>}
+                          <p className="text-sm font-medium text-gray-700 dark:text-zinc-300">Del {formatDate(v.start_date)} al {formatDate(v.end_date)}</p>
+                          <p className="text-xs text-gray-400 mb-2">Sol·licitades el {formatDate(v.created_at)}</p>
+                          {v.comments && <p className="text-xs text-gray-500 dark:text-zinc-400 italic mb-2">"{v.comments}"</p>}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-semibold text-gray-500">Cap:</span>
+                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(v.head_status))}>{v.head_status}</span>
+                            <span className="text-[10px] font-semibold text-gray-500">RRHH:</span>
+                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(v.rrhh_status))}>{v.rrhh_status}</span>
+                          </div>
+                          {v.head_comment && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Comentari cap: {v.head_comment}</p>}
+                          {v.rrhh_comment && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">Comentari RRHH: {v.rrhh_comment}</p>}
+                        </div>
+                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded flex-shrink-0", statusColor(v.status))}>{v.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {showForm && (
+              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 h-fit">
+                <div className="flex items-center gap-2 mb-4">
+                  <Calendar size={15} className="text-gray-500" />
+                  <h3 className="font-bold text-gray-900 dark:text-white text-sm">Nova sol·licitud de vacances</h3>
+                </div>
+                {vacSuccess && (
+                  <div className="mb-3 flex items-center gap-2 text-green-600 bg-green-50 dark:bg-green-950/20 rounded-lg px-3 py-2 text-xs font-medium">
+                    <CheckCircle size={13} /> Sol·licitud enviada correctament
+                  </div>
+                )}
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Data d'inici</label>
+                    <input type="date" value={vacStartDate} min={today} onChange={e => setVacStartDate(e.target.value)}
+                      className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Data de fi</label>
+                    <input type="date" value={vacEndDate} min={vacStartDate || today} onChange={e => setVacEndDate(e.target.value)}
+                      className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Comentaris (opcional)</label>
+                    <textarea value={vacComments} onChange={e => setVacComments(e.target.value.slice(0, 500))} placeholder="Motiu o informació addicional..." rows={3}
+                      className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none" />
+                  </div>
+                  <p className="text-[11px] text-red-600">Requereix aprovació del cap i de RRHH</p>
+                  <button onClick={handleVacSubmit} disabled={!vacStartDate || !vacEndDate || vacSubmitting}
+                    className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                    <Send size={14} /> Enviar sol·licitud
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -1930,7 +2639,7 @@ function SolicitudsTab({ currentUser, onNotifChange }: { currentUser: User | nul
 
 function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; onUserUpdate: (u: User) => void }) {
   const [activeTab, setActiveTab] = useState('Informació');
-  const [notifCorreu, setNotifCorreu] = useState(true);
+  const [notifCorreu, setNotifCorreu] = useState(currentUser?.email_notifs !== 0);
   const [notifPortal, setNotifPortal] = useState(true);
 
   const [editing, setEditing] = useState(false);
@@ -2161,7 +2870,7 @@ function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; on
           <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
             <div className="flex items-center gap-2 mb-4"><Bell size={15} className="text-gray-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">Notificacions</h3></div>
             <div className="space-y-4">
-              <div className="flex items-center justify-between"><span className="text-sm text-gray-700 dark:text-zinc-300">Notificacions per correu</span><Toggle on={notifCorreu} onToggle={() => setNotifCorreu(!notifCorreu)} /></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-gray-700 dark:text-zinc-300">Notificacions per correu</span><Toggle on={notifCorreu} onToggle={async () => { const newVal = !notifCorreu; setNotifCorreu(newVal); try { const u = await apiUpdateMe({ email_notifs: newVal ? 1 : 0 }); onUserUpdate(u); } catch {} }} /></div>
               <div className="flex items-center justify-between"><span className="text-sm text-gray-700 dark:text-zinc-300">Notificacions al portal</span><Toggle on={notifPortal} onToggle={() => setNotifPortal(!notifPortal)} /></div>
             </div>
           </div>
@@ -2173,6 +2882,66 @@ function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; on
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Onboarding Modal ─────────────────────────────────────────────────────────
+
+function OnboardingModal({ onComplete }: { onComplete: (dept: string, isHead: boolean) => Promise<void> }) {
+  const [dept, setDept] = useState(DEPT_ORDER[0]);
+  const [isHead, setIsHead] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    await onComplete(dept, isHead);
+    setLoading(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-8 w-full max-w-sm shadow-xl">
+        <div className="text-center mb-6">
+          <div className="w-12 h-12 bg-red-50 dark:bg-red-950/30 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Users size={22} className="text-red-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Benvingut/da a TAVIL</h2>
+          <p className="text-sm text-gray-500 dark:text-zinc-400">Digues-nos una mica més sobre tu per configurar el teu espai.</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Departament</label>
+            <select
+              value={dept}
+              onChange={e => setDept(e.target.value)}
+              className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white"
+            >
+              {DEPT_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-gray-100 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
+            <input
+              type="checkbox"
+              checked={isHead}
+              onChange={e => setIsHead(e.target.checked)}
+              className="rounded text-red-600 focus:ring-red-400"
+            />
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">Sóc el/la responsable d'aquest departament</p>
+              <p className="text-xs text-gray-400">Se t'assignarà el rol de Responsable de departament</p>
+            </div>
+          </label>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold py-3 rounded-lg transition-colors mt-2"
+          >
+            Continuar
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -2231,7 +3000,7 @@ function LoginPage({ onLogin, onRegister, isDarkMode, toggleDarkMode }: {
               <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Correu electrònic</label>
               <div className="relative">
                 <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nom@tavil.com" required
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nom@tavil.net" required
                   className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg py-3 pl-9 pr-4 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
               </div>
             </div>
@@ -2288,6 +3057,7 @@ function RegisterPage({ onBack, onRegistered, isDarkMode, toggleDarkMode }: {
     e.preventDefault();
     setError('');
     if (!EMAIL_RE.test(email.trim())) { setError('El correu ha de tenir el format nom@domini.ext'); return; }
+    if (!email.trim().toLowerCase().endsWith('@tavil.net')) { setError('Només es permeten correus @tavil.net'); return; }
     if (password.length < 6) { setError('La contrasenya ha de tenir mínim 6 caràcters.'); return; }
     if (password !== confirmPassword) { setError('Les contrasenyes no coincideixen.'); return; }
     setLoading(true);
@@ -2331,7 +3101,7 @@ function RegisterPage({ onBack, onRegistered, isDarkMode, toggleDarkMode }: {
               <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Correu electrònic</label>
               <div className="relative">
                 <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type="text" value={email} onChange={e => setEmail(e.target.value)} placeholder="nom@tavil.com" required
+                <input type="text" value={email} onChange={e => setEmail(e.target.value)} placeholder="nom@tavil.net" required
                   className={cn("w-full border rounded-lg py-3 pl-9 pr-4 text-sm outline-none dark:bg-zinc-800 dark:text-white",
                     email && !EMAIL_RE.test(email) ? "border-red-400 focus:border-red-500" : "border-gray-200 dark:border-zinc-700 focus:border-red-400")} />
               </div>
@@ -2382,37 +3152,42 @@ function RegisterPage({ onBack, onRegistered, isDarkMode, toggleDarkMode }: {
 
 // ── Sidebar data ──────────────────────────────────────────────────────────────
 
-const SIDEBAR_SECTIONS = [
-  {
-    title: "General",
-    items: [
-      { id: 'Inici', label: "Inici", icon: Home },
-      { id: 'Notícies', label: "Notícies", icon: Newspaper },
-      { id: 'Activitats', label: "Activitats", icon: ActivityIcon },
-      { id: 'Agenda', label: "Agenda", icon: Calendar },
-      { id: 'Directori', label: "Directori", icon: Users },
-    ]
-  },
-  {
-    title: "Empresa",
-    items: [
-      { id: 'Espai', label: "Espai corporatiu", icon: Building2 },
-      { id: 'Campus', label: "Campus TAVIL", icon: GraduationCap },
-      { id: 'Veu', label: "Veu de l'empleat", icon: MessageSquare },
-      { id: 'Solicituds', label: "Solicituds", icon: FileText },
-    ]
-  },
-  {
-    title: "Personal",
-    items: [
-      { id: 'Perfil', label: "El meu perfil", icon: UserCircle },
-    ]
-  }
-];
+function useSidebarSections() {
+  const { t } = useTranslation();
+  return [
+    {
+      title: t('nav.general'),
+      items: [
+        { id: 'Inici', label: t('nav.inici'), icon: Home },
+        { id: 'Notícies', label: t('nav.noticies'), icon: Newspaper },
+        { id: 'Activitats', label: t('nav.activitats'), icon: ActivityIcon },
+        { id: 'Agenda', label: t('nav.agenda'), icon: Calendar },
+        { id: 'Directori', label: t('nav.directori'), icon: Users },
+      ]
+    },
+    {
+      title: t('nav.empresa'),
+      items: [
+        { id: 'Espai', label: t('nav.espai'), icon: Building2 },
+        { id: 'Campus', label: t('nav.campus'), icon: GraduationCap },
+        { id: 'Veu', label: t('nav.veu'), icon: MessageSquare },
+      ]
+    },
+    {
+      title: t('nav.personal'),
+      items: [
+        { id: 'Solicituds', label: t('nav.solicituds'), icon: FileText },
+        { id: 'Perfil', label: t('nav.perfil'), icon: UserCircle },
+      ]
+    }
+  ];
+}
 
 // ── App ───────────────────────────────────────────────────────────────────────
 
 function App() {
+  const { t } = useTranslation();
+  const SIDEBAR_SECTIONS = useSidebarSections();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -2420,6 +3195,11 @@ function App() {
 
   const [activeTab, setActiveTabState] = useState(() => localStorage.getItem('tavil_active_tab') ?? 'Inici');
   const setActiveTab = (tab: string) => { localStorage.setItem('tavil_active_tab', tab); setActiveTabState(tab); };
+  const [agendaInitDate, setAgendaInitDate] = useState<{ day: number; month: number; year: number } | null>(null);
+  const navigateToDate = (day: number, month: number, year: number) => {
+    setAgendaInitDate({ day, month, year });
+    setActiveTab('Agenda');
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchData, setSearchData] = useState<{ news: NewsArticle[], activities: Activity[], events: AgendaEvent[], employees: Employee[] } | null>(null);
@@ -2428,6 +3208,7 @@ function App() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [demoRole, setDemoRole] = useState('Treballador/a');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -2444,6 +3225,7 @@ function App() {
     setDemoRole(user.role);
     setIsLoggedIn(true);
     apiGetNotifications().then(setNotifications).catch(() => {});
+    if (!user.onboarded) setShowOnboarding(true);
   };
 
   const handleLogout = () => {
@@ -2474,6 +3256,7 @@ function App() {
           setDemoRole(user.role);
           setIsLoggedIn(true);
           apiGetNotifications().then(setNotifications).catch(() => {});
+          if (!user.onboarded) setShowOnboarding(true);
         })
         .catch(() => clearToken());
     }
@@ -2543,10 +3326,10 @@ function App() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'Inici': return <InicialTab />;
+      case 'Inici': return <InicialTab onNavigate={setActiveTab} onNavigateToDate={navigateToDate} />;
       case 'Notícies': return <NoticiesTab currentUser={currentUser} />;
       case 'Activitats': return <ActivitatsTab currentUser={currentUser} />;
-      case 'Agenda': return <AgendaTab currentUser={currentUser} />;
+      case 'Agenda': return <AgendaTab currentUser={currentUser} initDate={agendaInitDate} onInitDateConsumed={() => setAgendaInitDate(null)} />;
       case 'Directori': return <DirectoriTab />;
       case 'Espai': return <EspaiCorporatiuTab />;
       case 'Campus': return <CampusTavilTab />;
@@ -2611,12 +3394,12 @@ function App() {
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-gray-500 dark:text-zinc-400"
-              title={sidebarCollapsed ? 'Expandir menú' : 'Reduir menú'}
+              title={sidebarCollapsed ? t('common.expandMenu') : t('common.collapseMenu')}
             >
               {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
             <span className="text-gray-300 dark:text-zinc-600">|</span>
-            <span className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">Portal Intern</span>
+            <span className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">{t('common.portalIntern')}</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -2628,14 +3411,14 @@ function App() {
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); if (e.target.value) setSearchOpen(true); }}
                 onFocus={() => { loadSearchData(); if (searchQuery) setSearchOpen(true); }}
-                placeholder="Cercar..."
+                placeholder={t('common.search')}
                 className="bg-gray-100 dark:bg-zinc-800 rounded-lg py-2 pl-9 pr-14 text-sm w-56 outline-none dark:text-white"
               />
               {!searchQuery && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 bg-gray-200 dark:bg-zinc-700 px-1.5 py-0.5 rounded font-mono">⌘K</span>}
               {searchOpen && searchQuery && (
                 <div className="absolute top-full mt-2 left-0 w-80 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-100 dark:border-zinc-800 z-50 overflow-hidden">
                   {searchResults.length === 0 ? (
-                    <p className="px-4 py-5 text-sm text-gray-400 text-center">Sense resultats per "{searchQuery}"</p>
+                    <p className="px-4 py-5 text-sm text-gray-400 text-center">{t('common.noResults', { query: searchQuery })}</p>
                   ) : (
                     <div className="divide-y divide-gray-50 dark:divide-zinc-800">
                       {searchResults.map((r, i) => (
@@ -2671,7 +3454,7 @@ function App() {
                 <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-100 dark:border-zinc-800 z-50">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-gray-900 dark:text-white text-sm">Notificacions</h3>
+                      <h3 className="font-bold text-gray-900 dark:text-white text-sm">{t('notifications.title')}</h3>
                       {notifications.some(n => !n.read) && (
                         <span className="text-xs bg-red-600 text-white px-2 py-0.5 rounded-full font-bold">
                           {notifications.filter(n => !n.read).length}
@@ -2682,7 +3465,7 @@ function App() {
                       <button
                         onClick={() => apiClearAllNotifications().then(refreshNotifications).catch(() => {})}
                         className="text-gray-400 hover:text-red-600 transition-colors p-1 rounded"
-                        title="Eliminar totes"
+                        title={t('notifications.deleteAll')}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -2690,7 +3473,7 @@ function App() {
                   </div>
                   <div className="divide-y divide-gray-50 dark:divide-zinc-800 max-h-72 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <p className="px-4 py-6 text-sm text-gray-400 text-center">No hi ha notificacions</p>
+                      <p className="px-4 py-6 text-sm text-gray-400 text-center">{t('notifications.empty')}</p>
                     ) : notifications.map(n => (
                       <div
                         key={n.id}
@@ -2720,12 +3503,29 @@ function App() {
                         onClick={() => apiMarkAllNotifsRead().then(refreshNotifications).catch(() => {})}
                         className="text-red-600 text-xs font-medium hover:underline w-full text-center"
                       >
-                        Marcar totes com a llegides
+                        {t('notifications.markAllRead')}
                       </button>
                     </div>
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Language switcher */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  const langs = ['ca', 'es', 'en'];
+                  const next = langs[(langs.indexOf(i18n.language) + 1) % langs.length];
+                  i18n.changeLanguage(next);
+                  localStorage.setItem('tavil_lang', next);
+                }}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500 dark:text-zinc-400 transition-colors flex items-center gap-1"
+                title={t('common.language')}
+              >
+                <Globe size={18} />
+                <span className="text-[10px] font-bold uppercase">{i18n.language}</span>
+              </button>
             </div>
 
             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500 dark:text-zinc-400 transition-colors">
@@ -2752,14 +3552,14 @@ function App() {
                     <p className="text-[10px] text-gray-400">{currentUser?.dept ?? 'General'} · {demoRole}</p>
                   </div>
                   <button onClick={() => { setActiveTab('Perfil'); setIsProfileMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-lg transition-colors">
-                    <UserCircle size={14} /> El meu perfil
+                    <UserCircle size={14} /> {t('profile.myProfile')}
                   </button>
                   <button onClick={() => { setActiveTab('Perfil'); setIsProfileMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-lg transition-colors">
-                    <Settings size={14} /> Configuració
+                    <Settings size={14} /> {t('profile.settings')}
                   </button>
                   <div className="border-t border-gray-100 dark:border-zinc-800 mt-2 pt-2">
-                    <p className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Rol de demostració</p>
-                    {['Treballador/a', 'Responsable de departament', 'Recursos humans', 'Administrador/a'].map(role => (
+                    <p className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">{t('profile.demoRole')}</p>
+                    {['Treballador/a', 'Responsable de departament', 'Recursos humans', 'Administrador/a', 'Manteniment'].map(role => (
                       <button
                         key={role}
                         onClick={() => {
@@ -2783,7 +3583,7 @@ function App() {
                   </div>
                   <div className="border-t border-gray-100 dark:border-zinc-800 mt-2 pt-2">
                     <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors">
-                      <LogOut size={14} /> Tancar sessió
+                      <LogOut size={14} /> {t('auth.logout')}
                     </button>
                   </div>
                 </div>
@@ -2794,23 +3594,36 @@ function App() {
 
         {/* Content */}
         <div className="p-8 max-w-7xl mx-auto">
-          {/* Breadcrumb + Title */}
-          <div className="mb-6">
-            {activeTab !== 'Inici' && (
+          {/* Breadcrumb + Title — hidden on Inici (hero banner acts as title) */}
+          {activeTab !== 'Inici' && (
+            <div className="mb-6">
               <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
                 <button onClick={() => setActiveTab('Inici')} className="hover:text-red-600 flex items-center gap-1 transition-colors">
-                  <Home size={11} /> Inici
+                  <Home size={11} /> {t('breadcrumb.home')}
                 </button>
                 <ChevronRight size={11} />
                 <span className="text-gray-700 dark:text-zinc-300">{currentSection?.label}</span>
               </div>
-            )}
-            <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{currentSection?.label}</h1>
-          </div>
+              <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{currentSection?.label}</h1>
+            </div>
+          )}
 
           {renderContent()}
         </div>
       </main>
+
+      {showOnboarding && currentUser && (
+        <OnboardingModal
+          onComplete={async (dept, isHead) => {
+            try {
+              const u = await apiCompleteOnboarding(dept, isHead);
+              setCurrentUser(u);
+              setDemoRole(u.role);
+              setShowOnboarding(false);
+            } catch {}
+          }}
+        />
+      )}
     </div>
   );
 }

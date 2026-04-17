@@ -26,6 +26,8 @@ class UserOut(BaseModel):
     phone: str
     ext: str
     location: str
+    onboarded: int = 0
+    email_notifs: int = 1
 
 
 class TokenOut(BaseModel):
@@ -62,6 +64,10 @@ class SuggestionStatusIn(BaseModel):
 
 class SuggestionResponseIn(BaseModel):
     response: str
+
+
+class SuggestionVoteIn(BaseModel):
+    vote_type: str = "up"  # 'up' | 'down'
 
 
 # ── Incidències ───────────────────────────────────────────────────────────────
@@ -142,3 +148,38 @@ class SolicitudIn(BaseModel):
 class SolicitudUpdateIn(BaseModel):
     status: str  # 'Aprovada' | 'Denegada'
     motive: str = ""
+
+
+# ── Onboarding ────────────────────────────────────────────────────────────────
+
+class OnboardingIn(BaseModel):
+    dept: str
+    is_head: bool = False
+
+
+# ── Vacances ──────────────────────────────────────────────────────────────────
+
+class VacancaIn(BaseModel):
+    start_date: str
+    end_date: str
+    comments: str = ""
+
+
+class VacancaHeadUpdateIn(BaseModel):
+    status: str   # 'Aprovada' | 'Denegada'
+    comment: str = ""
+
+
+class VacancaRrhhUpdateIn(BaseModel):
+    status: str   # 'Aprovada' | 'Denegada'
+    comment: str = ""
+
+
+# ── User extended ─────────────────────────────────────────────────────────────
+
+class UserUpdateExtIn(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    ext: Optional[str] = None
+    location: Optional[str] = None
+    email_notifs: Optional[int] = None

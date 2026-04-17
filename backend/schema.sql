@@ -161,6 +161,35 @@ CREATE TABLE IF NOT EXISTS solicituds (
   created_at TEXT    DEFAULT (datetime('now'))
 );
 
+-- ─── Vacances ─────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS vacances (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id         INTEGER NOT NULL REFERENCES users(id),
+  author_name     TEXT    NOT NULL DEFAULT '',
+  author_dept     TEXT    NOT NULL DEFAULT '',
+  start_date      TEXT    NOT NULL,
+  end_date        TEXT    NOT NULL,
+  comments        TEXT    NOT NULL DEFAULT '',
+  status          TEXT    NOT NULL DEFAULT 'Pendent',
+  head_status     TEXT    NOT NULL DEFAULT 'Pendent',
+  head_comment    TEXT    NOT NULL DEFAULT '',
+  rrhh_status     TEXT    NOT NULL DEFAULT 'Pendent',
+  rrhh_comment    TEXT    NOT NULL DEFAULT '',
+  created_at      TEXT    DEFAULT (datetime('now'))
+);
+
+-- ─── Suggestion votes ────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS suggestion_votes (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  suggestion_id INTEGER NOT NULL REFERENCES suggestions(id),
+  user_id       INTEGER NOT NULL REFERENCES users(id),
+  vote_type     TEXT    NOT NULL DEFAULT 'up',
+  created_at    TEXT    DEFAULT (datetime('now')),
+  UNIQUE(suggestion_id, user_id)
+);
+
 -- ─── Notifications ────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS notifications (
@@ -169,6 +198,6 @@ CREATE TABLE IF NOT EXISTS notifications (
   title      TEXT    NOT NULL,
   body       TEXT    NOT NULL DEFAULT '',
   tab        TEXT    NOT NULL DEFAULT '',
-  read       INTEGER NOT NULL DEFAULT 0,
+  `read`     INTEGER NOT NULL DEFAULT 0,
   created_at TEXT    DEFAULT (datetime('now'))
 );

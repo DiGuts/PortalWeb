@@ -6,14 +6,14 @@ from fastapi.staticfiles import StaticFiles
 
 from database import init_db
 from routers import auth, users, suggestions, incidencies, enquestes
-from routers import employees, activities, agenda, notices, news, courses, solicituds, notifications, upload
+from routers import employees, activities, agenda, notices, news, courses, solicituds, notifications, upload, vacances
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from database import DATABASE_URL
-    if DATABASE_URL.startswith("sqlite"):
-        await init_db()
+    await init_db()
+    from database import run_migrations
+    await run_migrations()
     yield
 
 
@@ -40,6 +40,7 @@ app.include_router(news.router)
 app.include_router(courses.router)
 app.include_router(solicituds.router)
 app.include_router(notifications.router)
+app.include_router(vacances.router)
 app.include_router(upload.router)
 
 UPLOADS_DIR = Path(__file__).parent / "uploads"

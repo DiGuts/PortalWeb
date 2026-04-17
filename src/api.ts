@@ -9,6 +9,8 @@ export interface User {
   phone: string;
   ext: string;
   location: string;
+  onboarded: number;
+  email_notifs: number;
 }
 
 export interface TokenOut {
@@ -120,10 +122,17 @@ export async function apiUpdateMyRole(role: string): Promise<User> {
   });
 }
 
-export async function apiUpdateMe(fields: Partial<Pick<User, 'name' | 'phone' | 'ext' | 'location'>>): Promise<User> {
+export async function apiUpdateMe(fields: Partial<Pick<User, 'name' | 'phone' | 'ext' | 'location' | 'email_notifs'>>): Promise<User> {
   return apiFetch<User>('/api/users/me', {
     method: 'PATCH',
     body: JSON.stringify(fields),
+  });
+}
+
+export async function apiCompleteOnboarding(dept: string, isHead: boolean): Promise<User> {
+  return apiFetch<User>('/api/users/me/onboarding', {
+    method: 'POST',
+    body: JSON.stringify({ dept, is_head: isHead }),
   });
 }
 
@@ -167,6 +176,7 @@ export interface Suggestion {
   anonymous: boolean;
   author: string;
   votes: number;
+  user_vote: 'up' | 'down' | null;
   status: string;
   response: string;
   created_at: string;
@@ -174,7 +184,7 @@ export interface Suggestion {
 
 export async function apiGetSuggestions(): Promise<Suggestion[]> {
   const data = await apiFetch<any[]>('/api/suggestions');
-  return data.map(s => ({ ...s, anonymous: !!s.anonymous }));
+  return data.map(s => ({ ...s, anonymous: !!s.anonymous, user_vote: s.user_vote ?? null }));
 }
 
 export async function apiCreateSuggestion(
@@ -190,8 +200,11 @@ export async function apiCreateSuggestion(
   return { ...s, anonymous: !!s.anonymous };
 }
 
-export async function apiVoteSuggestion(id: number): Promise<void> {
-  await apiFetch('/api/suggestions/' + id + '/vote', { method: 'POST' });
+export async function apiVoteSuggestion(id: number, voteType: 'up' | 'down'): Promise<void> {
+  await apiFetch('/api/suggestions/' + id + '/vote', {
+    method: 'POST',
+    body: JSON.stringify({ vote_type: voteType }),
+  });
 }
 
 export async function apiUpdateSuggestionStatus(id: number, status: string): Promise<void> {
@@ -463,5 +476,48 @@ export async function apiUpdateCourseProgress(id: number, status: string, progre
   await apiFetch(`/api/courses/${id}/progress`, {
     method: 'PATCH',
     body: JSON.stringify({ status, progress }),
+  });
+}
+
+// ── Vacances ──────────────────────────────────────────────────────────────────
+
+export interface Vacanca {
+  id: number;
+  user_id: number;
+  author_name: string;
+  author_dept: string;
+  start_date: string;
+  end_date: string;
+  comments: string;
+  status: string;
+  head_status: string;
+  head_comment: string;
+  rrhh_status: string;
+  rrhh_comment: string;
+  created_at: string;
+}
+
+export async function apiGetVacances(): Promise<Vacanca[]> {
+  return apiFetch<Vacanca[]>('/api/vacances');
+}
+
+export async function apiCreateVacanca(start_date: string, end_date: string, comments: string): Promise<Vacanca> {
+  return apiFetch<Vacanca>('/api/vacances', {
+    method: 'POST',
+    body: JSON.stringify({ start_date, end_date, comments }),
+  });
+}
+
+export async function apiUpdateVacancaHead(id: number, status: 'Aprovada' | 'Denegada', comment: string = ''): Promise<void> {
+  await apiFetch(`/api/vacances/${id}/head`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status, comment }),
+  });
+}
+
+export async function apiUpdateVacancaRrhh(id: number, status: 'Aprovada' | 'Denegada', comment: string = ''): Promise<void> {
+  await apiFetch(`/api/vacances/${id}/rrhh`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status, comment }),
   });
 }

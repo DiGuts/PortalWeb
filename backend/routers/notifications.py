@@ -26,7 +26,7 @@ async def mark_all_read(
     db: AsyncConnection = Depends(get_db),
 ):
     await db.execute(
-        text("UPDATE notifications SET read = 1 WHERE user_id = :uid"),
+        text("UPDATE notifications SET `read` = 1 WHERE user_id = :uid"),
         {"uid": current_user["id"]},
     )
     await db.commit()
@@ -52,7 +52,7 @@ async def mark_read(
     db: AsyncConnection = Depends(get_db),
 ):
     await db.execute(
-        text("UPDATE notifications SET read = 1 WHERE id = :id AND user_id = :uid"),
+        text("UPDATE notifications SET `read` = 1 WHERE id = :id AND user_id = :uid"),
         {"id": notif_id, "uid": current_user["id"]},
     )
     await db.commit()

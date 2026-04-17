@@ -8,11 +8,13 @@ from models import LoginIn, RegisterIn, TokenOut, UserOut
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+_USER_FIELDS = "id, name, email, role, dept, phone, ext, location, onboarded, email_notifs"
+
 
 @router.post("/login", response_model=TokenOut)
 async def login(body: LoginIn, db: AsyncConnection = Depends(get_db)):
     row = (await db.execute(
-        text("SELECT * FROM users WHERE email = :email"),
+        text(f"SELECT {_USER_FIELDS}, password FROM users WHERE email = :email"),
         {"email": body.email},
     )).mappings().first()
 
@@ -20,12 +22,15 @@ async def login(body: LoginIn, db: AsyncConnection = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Credencials incorrectes")
 
     token = create_access_token({"sub": row["email"], "id": row["id"], "role": row["role"]})
-    user = UserOut(**{k: row[k] for k in UserOut.model_fields})
+    user = UserOut(**{k: row[k] for k in UserOut.model_fields if k in row})
     return TokenOut(access_token=token, user=user)
 
 
 @router.post("/register", response_model=TokenOut, status_code=201)
 async def register(body: RegisterIn, db: AsyncConnection = Depends(get_db)):
+    if not body.email.lower().endswith('@tavil.net'):
+        raise HTTPException(status_code=400, detail="Només es permeten correus @tavil.net")
+
     existing = (await db.execute(
         text("SELECT id FROM users WHERE email = :email"),
         {"email": body.email},
@@ -45,10 +50,10 @@ async def register(body: RegisterIn, db: AsyncConnection = Depends(get_db)):
     await db.commit()
 
     row = (await db.execute(
-        text("SELECT * FROM users WHERE id = :id"),
+        text(f"SELECT {_USER_FIELDS} FROM users WHERE id = :id"),
         {"id": result.lastrowid},
     )).mappings().first()
 
     token = create_access_token({"sub": row["email"], "id": row["id"], "role": row["role"]})
-    user = UserOut(**{k: row[k] for k in UserOut.model_fields})
+    user = UserOut(**{k: row[k] for k in UserOut.model_fields if k in row})
     return TokenOut(access_token=token, user=user)

@@ -5,11 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from database import get_db
 from auth import get_current_user, require_rrhh_or_admin
 from models import SolicitudIn, SolicitudUpdateIn
+from email_service import send_email
 
 router = APIRouter(prefix="/api/solicituds", tags=["solicituds"])
 
 
-async def _notify(db: AsyncConnection, user_id: int, title: str, body: str, tab: str = "") -> None:
+async def _notify(db: AsyncConnection, user_id: int, title: str, body: str, tab: str = "Solicituds") -> None:
     await db.execute(
         text("INSERT INTO notifications (user_id, title, body, tab) VALUES (:uid, :title, :body, :tab)"),
         {"uid": user_id, "title": title, "body": body, "tab": tab},
@@ -48,9 +49,9 @@ async def create_solicitud(
          "comments": body.comments, "author": current_user["email"]},
     )
 
-    # Notify all RRHH / Admin users
+    # Notify and email all RRHH users
     staff = (await db.execute(
-        text("SELECT id FROM users WHERE role IN ('Recursos humans')")
+        text("SELECT id, email, email_notifs FROM users WHERE role = 'Recursos humans'")
     )).mappings().all()
     for s in staff:
         await _notify(
@@ -58,6 +59,17 @@ async def create_solicitud(
             "Nova petició rebuda",
             f"{current_user['name']} ha enviat una nova petició per al {body.date}.",
         )
+        if s["email_notifs"]:
+            await send_email(
+                to=s["email"],
+                subject=f"Nova petició de dies no ordinaris — {current_user['name']}",
+                html=f"""
+                <p>Hola,</p>
+                <p><b>{current_user['name']}</b> ha sol·licitat un dia no ordinari per al <b>{body.date}</b>.</p>
+                {f'<p><b>Comentaris:</b> {body.comments}</p>' if body.comments else ''}
+                <p>Accedeix al portal per gestionar la petició.</p>
+                """,
+            )
 
     await db.commit()
     row = (await db.execute(
@@ -87,7 +99,7 @@ async def update_solicitud(
     # Notify the author if status changed from Pendent
     if row and row["status"] == "Pendent" and body.status != "Pendent":
         author = (await db.execute(
-            text("SELECT id FROM users WHERE email = :email"),
+            text("SELECT id, email, email_notifs FROM users WHERE email = :email"),
             {"email": row["author"]},
         )).mappings().first()
         if author:
@@ -96,6 +108,17 @@ async def update_solicitud(
             if body.motive:
                 notif_body += f" Motiu: {body.motive}"
             await _notify(db, author["id"], f"Petició {body.status}", notif_body)
+            if author["email_notifs"]:
+                await send_email(
+                    to=author["email"],
+                    subject=f"Petició de dies no ordinaris {body.status}",
+                    html=f"""
+                    <p>Hola,</p>
+                    <p>La teva petició de dies no ordinaris ha estat <b>{status_label}</b>.</p>
+                    {f'<p><b>Motiu:</b> {body.motive}</p>' if body.motive else ''}
+                    <p>Accedeix al portal per veure els detalls.</p>
+                    """,
+                )
 
     await db.commit()
     return {"ok": True}
