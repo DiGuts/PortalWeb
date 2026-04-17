@@ -722,7 +722,13 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
                   className="md:w-1/2 h-56 md:h-auto overflow-hidden bg-gray-100 dark:bg-zinc-800 cursor-pointer"
                   onClick={() => setSelectedNews(item)}
                 >
-                  <img src={item.image || '/assets/images/img_4.png'} alt="Featured" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                  {item.image ? (
+                    <img src={item.image} alt="Featured" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                  ) : (
+                    <div className="w-full h-full min-h-[224px] bg-gradient-to-br from-red-100 to-red-50 dark:from-red-950/30 dark:to-red-950/10 flex items-center justify-center">
+                      <Newspaper size={56} className="text-red-300" />
+                    </div>
+                  )}
                 </div>
                 <div className="md:w-1/2 p-8 flex flex-col justify-center">
                   <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider w-fit mb-4">{item.category}</span>
@@ -779,7 +785,13 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
         {grid.map((item, i) => (
           <div key={i} className="group hover-lift bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
             <div className="aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-zinc-800 cursor-pointer" onClick={() => setSelectedNews(item)}>
-              <img src={item.image || '/assets/images/img_7.png'} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[600ms] ease-out" />
+              {item.image ? (
+                <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[600ms] ease-out" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-red-100 to-red-50 dark:from-red-950/30 dark:to-red-950/10 flex items-center justify-center">
+                  <Newspaper size={40} className="text-red-300" />
+                </div>
+              )}
             </div>
             <div className="p-5">
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">{item.category}</p>
