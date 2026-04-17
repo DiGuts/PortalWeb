@@ -289,28 +289,39 @@ function InicialTab({ onNavigate, onNavigateToDate }: { onNavigate?: (tab: strin
                   </div>
                 )}
               </div>
-              <div
-                onClick={() => onNavigate?.('Notícies')}
-                className="relative rounded-xl overflow-hidden bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 cursor-pointer hover:border-red-200 dark:hover:border-red-900/40 hover-lift group"
-              >
-                <div key={featuredIdx} className="anim-crossfade">
-                  {featured.image ? (
-                    <img src={featured.image.startsWith('http') ? featured.image : `${API_BASE}${featured.image}`} alt="" className="w-full h-56 object-cover group-hover:scale-[1.03] transition-transform duration-[600ms] ease-out" />
-                  ) : (
-                    <div className="w-full h-56 bg-gradient-to-br from-red-100 to-red-50 dark:from-red-950/30 dark:to-red-950/10 flex items-center justify-center">
-                      <Newspaper size={48} className="text-red-300" />
+              <div className="relative rounded-xl overflow-hidden bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 hover-lift">
+                <div
+                  className="flex"
+                  style={{
+                    transform: `translateX(-${featuredIdx * 100}%)`,
+                    transition: 'transform 500ms cubic-bezier(.23, 1, .32, 1)',
+                  }}
+                >
+                  {featuredNews.map(item => (
+                    <div
+                      key={item.id}
+                      onClick={() => onNavigate?.('Notícies')}
+                      className="min-w-full relative cursor-pointer"
+                    >
+                      {item.image ? (
+                        <img src={item.image.startsWith('http') ? item.image : `${API_BASE}${item.image}`} alt="" className="w-full h-56 object-cover" />
+                      ) : (
+                        <div className="w-full h-56 bg-gradient-to-br from-red-100 to-red-50 dark:from-red-950/30 dark:to-red-950/10 flex items-center justify-center">
+                          <Newspaper size={48} className="text-red-300" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded uppercase", NEWS_CAT_COLORS[item.category] ?? "bg-gray-100 text-gray-600")}>{item.category}</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400/90 text-amber-900 uppercase flex items-center gap-0.5"><Star size={9} /> Destacada</span>
+                        </div>
+                        <h4 className="text-white text-lg font-bold leading-tight drop-shadow line-clamp-2">{item.title}</h4>
+                        {item.summary && <p className="text-white/85 text-xs mt-1 line-clamp-2 drop-shadow">{item.summary}</p>}
+                        <p className="text-white/70 text-[10px] mt-2">{item.date}</p>
+                      </div>
                     </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded uppercase", NEWS_CAT_COLORS[featured.category] ?? "bg-gray-100 text-gray-600")}>{featured.category}</span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400/90 text-amber-900 uppercase flex items-center gap-0.5"><Star size={9} /> Destacada</span>
-                    </div>
-                    <h4 className="text-white text-lg font-bold leading-tight drop-shadow line-clamp-2">{featured.title}</h4>
-                    {featured.summary && <p className="text-white/85 text-xs mt-1 line-clamp-2 drop-shadow">{featured.summary}</p>}
-                    <p className="text-white/70 text-[10px] mt-2">{featured.date}</p>
-                  </div>
+                  ))}
                 </div>
               </div>
               {/* Dots */}
@@ -697,59 +708,70 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
       </div>
 
       {featured && (
-        <div className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden flex flex-col md:flex-row mb-8 min-h-[360px]">
+        <div className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden mb-8">
           <div
-            key={`img-${featuredIndex}`}
-            className="md:w-1/2 h-56 md:h-auto overflow-hidden bg-gray-100 dark:bg-zinc-800 cursor-pointer anim-crossfade"
-            onClick={() => setSelectedNews(featured)}
+            className="flex"
+            style={{
+              transform: `translateX(-${(featuredIndex % featuredItems.length) * 100}%)`,
+              transition: 'transform 550ms cubic-bezier(.23, 1, .32, 1)',
+            }}
           >
-            <img src={featured.image || '/assets/images/img_4.png'} alt="Featured" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
-          </div>
-          <div key={`txt-${featuredIndex}`} className="md:w-1/2 p-8 flex flex-col justify-center anim-crossfade">
-            <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider w-fit mb-4">{featured.category}</span>
-            <h2
-              className="text-2xl font-bold text-gray-900 dark:text-white mb-4 leading-tight cursor-pointer hover:text-red-600 transition-colors"
-              onClick={() => setSelectedNews(featured)}
-            >{featured.title}</h2>
-            <p className="text-gray-500 dark:text-zinc-400 text-sm mb-6 leading-relaxed">{featured.summary}</p>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 text-xs text-gray-400">
-                <div className="flex items-center gap-1.5"><UserCircle size={14} /><span>{featured.author}</span></div>
-                <div className="flex items-center gap-1.5"><Calendar size={14} /><span>{featured.date}</span></div>
-              </div>
-              {isAdmin && (
-                <div className="flex gap-2">
-                  <button onClick={() => newsEditId === featured.id ? setNewsEditId(null) : openNewsEdit(featured)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 hover:text-red-600 transition-colors"><Pencil size={14} /></button>
-                  <button onClick={() => handleDeleteNews(featured.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-400 hover:text-red-600 transition-colors"><Trash2 size={14} /></button>
+            {featuredItems.map(item => (
+              <div key={item.id} className="min-w-full flex flex-col md:flex-row min-h-[360px]">
+                <div
+                  className="md:w-1/2 h-56 md:h-auto overflow-hidden bg-gray-100 dark:bg-zinc-800 cursor-pointer"
+                  onClick={() => setSelectedNews(item)}
+                >
+                  <img src={item.image || '/assets/images/img_4.png'} alt="Featured" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
                 </div>
-              )}
+                <div className="md:w-1/2 p-8 flex flex-col justify-center">
+                  <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider w-fit mb-4">{item.category}</span>
+                  <h2
+                    className="text-2xl font-bold text-gray-900 dark:text-white mb-4 leading-tight cursor-pointer hover:text-red-600 transition-colors"
+                    onClick={() => setSelectedNews(item)}
+                  >{item.title}</h2>
+                  <p className="text-gray-500 dark:text-zinc-400 text-sm mb-6 leading-relaxed">{item.summary}</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 text-xs text-gray-400">
+                      <div className="flex items-center gap-1.5"><UserCircle size={14} /><span>{item.author}</span></div>
+                      <div className="flex items-center gap-1.5"><Calendar size={14} /><span>{item.date}</span></div>
+                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-2">
+                        <button onClick={() => newsEditId === item.id ? setNewsEditId(null) : openNewsEdit(item)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 hover:text-red-600 transition-colors"><Pencil size={14} /></button>
+                        <button onClick={() => handleDeleteNews(item.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-400 hover:text-red-600 transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    )}
+                  </div>
+                  {isAdmin && newsEditId === item.id && <NewsEditForm {...{neCategory,setNeCategory,neTitle,setNeTitle,neSummary,setNeSummary,neAuthor,setNeAuthor,neDate,setNeDate,neImage,neImageFile,setNeImageFile,neFeatured,setNeFeatured,neSaving,onSave:handleSaveNewsEdit,onCancel:()=>setNewsEditId(null)}} />}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Carousel controls — outside slide track, absolute positioned */}
+          {featuredItems.length > 1 && (
+            <div className="absolute bottom-6 md:bottom-8 right-6 md:right-8 flex items-center gap-3 z-10">
+              <button
+                onClick={() => setFeaturedIndex(i => (i - 1 + featuredItems.length) % featuredItems.length)}
+                className="p-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-500 hover:text-red-600 transition-colors"
+                title={t('home.featuredPrev')}
+              ><ChevronLeft size={16} /></button>
+              <div className="flex gap-1.5">
+                {featuredItems.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setFeaturedIndex(i)}
+                    className={cn("rounded-full transition-all duration-300", i === featuredIndex % featuredItems.length ? "w-5 h-2 bg-red-600" : "w-2 h-2 bg-gray-300 dark:bg-zinc-600 hover:bg-red-400")}
+                  />
+                ))}
+              </div>
+              <button
+                onClick={() => setFeaturedIndex(i => (i + 1) % featuredItems.length)}
+                className="p-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-500 hover:text-red-600 transition-colors"
+                title={t('home.featuredNext')}
+              ><ChevronRight size={16} /></button>
             </div>
-            {isAdmin && newsEditId === featured.id && <NewsEditForm {...{neCategory,setNeCategory,neTitle,setNeTitle,neSummary,setNeSummary,neAuthor,setNeAuthor,neDate,setNeDate,neImage,neImageFile,setNeImageFile,neFeatured,setNeFeatured,neSaving,onSave:handleSaveNewsEdit,onCancel:()=>setNewsEditId(null)}} />}
-            {/* Carousel controls */}
-            {featuredItems.length > 1 && (
-              <div className="flex items-center gap-3 mt-5">
-                <button
-                  onClick={() => setFeaturedIndex(i => (i - 1 + featuredItems.length) % featuredItems.length)}
-                  className="p-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-500 hover:text-red-600 transition-colors"
-                  title={t('home.featuredPrev')}
-                ><ChevronLeft size={16} /></button>
-                <div className="flex gap-1.5">
-                  {featuredItems.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setFeaturedIndex(i)}
-                      className={cn("rounded-full transition-all", i === featuredIndex % featuredItems.length ? "w-5 h-2 bg-red-600" : "w-2 h-2 bg-gray-300 dark:bg-zinc-600 hover:bg-red-400")}
-                    />
-                  ))}
-                </div>
-                <button
-                  onClick={() => setFeaturedIndex(i => (i + 1) % featuredItems.length)}
-                  className="p-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-500 hover:text-red-600 transition-colors"
-                  title={t('home.featuredNext')}
-                ><ChevronRight size={16} /></button>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       )}
 
