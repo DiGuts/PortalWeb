@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+  useDraggable, useDroppable, DragOverlay,
+  type DragEndEvent, type DragStartEvent,
+} from '@dnd-kit/core';
+import { arrayMove } from '@dnd-kit/sortable';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n';
 import {
@@ -7,8 +13,9 @@ import {
   Moon, ChevronLeft, ChevronRight, Mail, Database, FolderOpen,
   AlertTriangle, ArrowRight, Sun, MapPin, Clock, Phone, FileText,
   BookOpen, Shield, ThumbsUp, ThumbsDown, Send, ExternalLink, CreditCard,
-  TrendingUp, CheckCircle, Star, LogOut, LayoutGrid, List,
-  Heart, Gift, Globe, Download, Video, Award, Settings, Eye, EyeOff, Lock, Pencil, Trash2
+  CheckCircle, Star, LogOut, LayoutGrid, List,
+  Heart, Gift, Globe, Download, Video, Award, Settings, Eye, EyeOff, Lock, Pencil, Trash2,
+  Type, AlignLeft, Image as ImageIcon, Minus, Plus, GripVertical
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -538,6 +545,525 @@ function NewsEditForm({ neCategory, setNeCategory, neTitle, setNeTitle, neSummar
   );
 }
 
+// ── Rich Article ──────────────────────────────────────────────────────────────
+type BlockSpan = 1 | 2 | 3;
+type BlockType = 'heading' | 'text' | 'image' | 'quote' | 'divider';
+
+interface ArticleBlock {
+  id: string;
+  type: BlockType;
+  span: BlockSpan;
+  content?: string;
+  level?: 1 | 2 | 3;
+  url?: string;
+  caption?: string;
+  author?: string;
+}
+
+function genBlockId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function makeBlock(type: BlockType): ArticleBlock {
+  if (type === 'heading') return { id: genBlockId(), type, span: 3, level: 2, content: '' };
+  if (type === 'image')   return { id: genBlockId(), type, span: 1, url: '', caption: '' };
+  if (type === 'quote')   return { id: genBlockId(), type, span: 2, content: '', author: '' };
+  if (type === 'divider') return { id: genBlockId(), type, span: 3 };
+  return { id: genBlockId(), type: 'text', span: 2, content: '' };
+}
+
+function isRichContent(s: string): boolean {
+  return s.trimStart().startsWith('[');
+}
+
+function parseBlocks(s: string): ArticleBlock[] {
+  try { return JSON.parse(s) as ArticleBlock[]; }
+  catch { return []; }
+}
+
+function RichBlockViewer({ blocks }: { blocks: ArticleBlock[] }) {
+  return (
+    <div className="grid grid-cols-3 gap-6 mt-4">
+      {blocks.map(block => {
+        const sc = block.span === 1 ? 'col-span-1' : block.span === 2 ? 'col-span-2' : 'col-span-3';
+        return (
+          <div key={block.id} className={sc}>
+            {block.type === 'heading' && (
+              <p className={cn('font-black text-gray-900 dark:text-white leading-tight',
+                block.level === 1 ? 'text-3xl' : block.level === 3 ? 'text-lg' : 'text-2xl'
+              )}>{block.content}</p>
+            )}
+            {block.type === 'text' && (
+              <p className="text-gray-700 dark:text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap">{block.content}</p>
+            )}
+            {block.type === 'image' && block.url && (
+              <figure>
+                <img src={block.url} alt={block.caption ?? ''} className="w-full rounded-xl object-cover" />
+                {block.caption && <figcaption className="text-[11px] text-gray-400 mt-2 text-center italic">{block.caption}</figcaption>}
+              </figure>
+            )}
+            {block.type === 'quote' && (
+              <blockquote className="border-l-4 border-red-600 pl-5 py-2">
+                <p className="text-gray-700 dark:text-zinc-300 text-base italic leading-relaxed">&ldquo;{block.content}&rdquo;</p>
+                {block.author && <footer className="text-xs text-gray-400 mt-2">— {block.author}</footer>}
+              </blockquote>
+            )}
+            {block.type === 'divider' && (
+              <hr className="border-gray-200 dark:border-zinc-700 my-2" />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const RICH_BLOCK_TYPES: { type: BlockType; label: string; icon: React.ElementType; color: string }[] = [
+  { type: 'heading', label: 'Títol',      icon: Type,           color: 'text-purple-500' },
+  { type: 'text',    label: 'Text',       icon: AlignLeft,      color: 'text-blue-500'   },
+  { type: 'image',   label: 'Imatge',     icon: ImageIcon,      color: 'text-green-500'  },
+  { type: 'quote',   label: 'Cita',       icon: MessageSquare,  color: 'text-orange-500' },
+  { type: 'divider', label: 'Separador',  icon: Minus,          color: 'text-gray-400'   },
+];
+
+// ── Grid layout (ghost cells) ─────────────────────────────────────────────────
+interface GhostCell {
+  id: string;
+  insertBeforeBlockIdx: number; // index in blocks[]; blocks.length = append
+  span: BlockSpan;
+}
+type GridCell = { kind: 'block'; block: ArticleBlock } | { kind: 'ghost'; ghost: GhostCell };
+
+function buildGridLayout(blocks: ArticleBlock[]): GridCell[][] {
+  const rows: GridCell[][] = [];
+  let row: GridCell[] = [];
+  let colSum = 0;
+
+  const addGhost = (span: BlockSpan, idx: number) =>
+    row.push({ kind: 'ghost', ghost: { id: `ghost-r${rows.length}-c${3 - span}`, insertBeforeBlockIdx: idx, span } });
+
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i];
+    if (colSum + b.span > 3) { addGhost((3 - colSum) as BlockSpan, i); rows.push(row); row = []; colSum = 0; }
+    row.push({ kind: 'block', block: b });
+    colSum += b.span;
+    if (colSum === 3) { rows.push(row); row = []; colSum = 0; }
+  }
+  if (row.length > 0) { if (colSum < 3) addGhost((3 - colSum) as BlockSpan, blocks.length); rows.push(row); }
+  // Always show a trailing empty full-width row as a drop target
+  rows.push([{ kind: 'ghost', ghost: { id: 'ghost-append', insertBeforeBlockIdx: blocks.length, span: 3 } }]);
+  return rows;
+}
+
+// ── Ghost drop cell ───────────────────────────────────────────────────────────
+function GhostDropCell({ ghost, isEmpty, activeBlock }: {
+  ghost: GhostCell;
+  isEmpty?: boolean;
+  activeBlock?: ArticleBlock | null;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: ghost.id });
+  const sc = ghost.span === 1 ? 'col-span-1' : ghost.span === 2 ? 'col-span-2' : 'col-span-3';
+  const bt = activeBlock ? RICH_BLOCK_TYPES.find(t => t.type === activeBlock.type)! : null;
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(sc, 'rounded-xl border-2 border-dashed transition-all duration-150 overflow-hidden',
+        isEmpty && !isOver ? 'min-h-40 flex flex-col items-center justify-center' : 'min-h-20',
+        isOver && activeBlock
+          ? 'border-red-400 bg-red-50/40 dark:bg-red-950/15'
+          : isOver
+            ? 'border-red-400 bg-red-50/70 dark:bg-red-950/20 scale-[1.01] flex items-center justify-center'
+            : 'border-gray-200/60 dark:border-zinc-700/40 flex flex-col items-center justify-center'
+      )}
+    >
+      {isOver && activeBlock && bt ? (
+        // Preview: ghost silhouette of the dragged block at this slot
+        <div className="w-full opacity-60 pointer-events-none">
+          <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-red-100 dark:border-red-900/30 bg-red-50/60 dark:bg-red-950/20">
+            <bt.icon size={12} className={bt.color} />
+            <span className="text-[11px] font-semibold text-red-400">{bt.label}</span>
+            <span className="ml-auto text-[10px] font-bold text-red-300">
+              {ghost.span === 1 ? '1/3' : ghost.span === 2 ? '2/3' : 'Ple'}
+            </span>
+          </div>
+          <div className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500 truncate">
+            {activeBlock.content ?? activeBlock.url ?? '—'}
+          </div>
+        </div>
+      ) : isOver ? (
+        <span className="text-[11px] font-semibold text-red-400">
+          {ghost.span === 1 ? '1 columna' : ghost.span === 2 ? '2 columnes' : 'Ample complet'}
+        </span>
+      ) : isEmpty ? (
+        <div className="text-center">
+          <LayoutGrid size={32} className="text-gray-200 dark:text-zinc-700 mx-auto mb-2" />
+          <p className="text-xs text-gray-300 dark:text-zinc-600">Afegeix blocs o arrossega aquí</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ── Block drag overlay preview ────────────────────────────────────────────────
+function BlockDragPreview({ block }: { block: ArticleBlock }) {
+  const bt = RICH_BLOCK_TYPES.find(t => t.type === block.type)!;
+  return (
+    <div className="w-56 bg-white dark:bg-zinc-900 rounded-xl border border-red-300 shadow-2xl overflow-hidden rotate-1 opacity-95 pointer-events-none">
+      <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-50 dark:bg-zinc-800/60 border-b border-gray-100 dark:border-zinc-800">
+        <GripVertical size={13} className="text-gray-400" />
+        <bt.icon size={12} className={bt.color} />
+        <span className="text-[11px] font-semibold text-gray-500 dark:text-zinc-400">{bt.label}</span>
+      </div>
+      <div className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500 truncate">
+        {block.content ?? block.url ?? '—'}
+      </div>
+    </div>
+  );
+}
+
+// ── Active-block ghost slot (keeps ID stable so dnd-kit never loses it) ──────
+function GhostForActiveBlock({ block, activeBlock }: { block: ArticleBlock; activeBlock?: ArticleBlock | null }) {
+  const { setNodeRef, isOver } = useDroppable({ id: block.id });
+  const sc = block.span === 1 ? 'col-span-1' : block.span === 2 ? 'col-span-2' : 'col-span-3';
+  const bt = activeBlock ? RICH_BLOCK_TYPES.find(t => t.type === activeBlock.type)! : null;
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(sc, 'rounded-xl border-2 border-dashed min-h-20 flex flex-col items-center justify-center transition-all duration-150 overflow-hidden',
+        isOver && activeBlock
+          ? 'border-red-400 bg-red-50/40 dark:bg-red-950/15'
+          : 'border-gray-200/60 dark:border-zinc-700/40'
+      )}
+    >
+      {isOver && activeBlock && bt && (
+        <div className="w-full opacity-60 pointer-events-none">
+          <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-red-100 dark:border-red-900/30 bg-red-50/60 dark:bg-red-950/20">
+            <bt.icon size={12} className={bt.color} />
+            <span className="text-[11px] font-semibold text-red-400">{bt.label}</span>
+          </div>
+          <div className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500 truncate">
+            {activeBlock.content ?? activeBlock.url ?? '—'}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Draggable block card ──────────────────────────────────────────────────────
+function DraggableBlockCard({
+  block, updateBlock, removeBlock, spanLabel, isBeingDragged,
+}: {
+  block: ArticleBlock;
+  updateBlock: (id: string, patch: Partial<ArticleBlock>) => void;
+  removeBlock: (id: string) => void;
+  spanLabel: (s: BlockSpan) => string;
+  isBeingDragged: boolean;
+}) {
+  const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({ id: block.id });
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: block.id });
+  const setRef = useCallback((node: HTMLDivElement | null) => { setDragRef(node); setDropRef(node); }, [setDragRef, setDropRef]);
+  const sc = block.span === 1 ? 'col-span-1' : block.span === 2 ? 'col-span-2' : 'col-span-3';
+  const bt = RICH_BLOCK_TYPES.find(t => t.type === block.type)!;
+
+  return (
+    <div
+      ref={setRef}
+      className={cn(sc, 'rounded-xl border overflow-hidden shadow-sm transition-all duration-150',
+        isBeingDragged
+          ? 'opacity-25 border-dashed border-red-300 dark:border-red-800 bg-red-50/30 dark:bg-red-950/10'
+          : isOver
+            ? 'border-red-400 shadow-md bg-white dark:bg-zinc-900'
+            : 'border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:border-red-300 dark:hover:border-red-800'
+      )}
+    >
+      <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/60">
+        <div className="flex items-center gap-1.5">
+          <button
+            {...attributes} {...listeners}
+            className="p-1 rounded cursor-grab active:cursor-grabbing text-gray-300 dark:text-zinc-600 hover:text-gray-500 dark:hover:text-zinc-400 touch-none"
+            title="Arrossega per moure"
+          >
+            <GripVertical size={13} />
+          </button>
+          <bt.icon size={12} className={bt.color} />
+          <span className="text-[11px] font-semibold text-gray-500 dark:text-zinc-400">{bt.label}</span>
+        </div>
+        <div className="flex items-center gap-0.5">
+          {block.type !== 'divider' && ([1, 2, 3] as BlockSpan[]).map(s => (
+            <button key={s} onClick={() => updateBlock(block.id, { span: s })}
+              className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors',
+                block.span === s ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-gray-700 dark:hover:text-zinc-300'
+              )}>{spanLabel(s)}</button>
+          ))}
+          <div className="w-px h-3 bg-gray-200 dark:bg-zinc-700 mx-1" />
+          <button onClick={() => removeBlock(block.id)}
+            className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-950/20 text-gray-400 hover:text-red-600 transition-colors"><Trash2 size={11} /></button>
+        </div>
+      </div>
+      <div className="p-3">
+        {block.type === 'heading' && (
+          <div className="space-y-2">
+            <div className="flex gap-1">
+              {([1, 2, 3] as const).map(l => (
+                <button key={l} onClick={() => updateBlock(block.id, { level: l })}
+                  className={cn('text-[10px] font-bold px-2 py-0.5 rounded transition-colors',
+                    block.level === l ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300' : 'text-gray-400 hover:text-gray-700')}>H{l}</button>
+              ))}
+            </div>
+            <input value={block.content ?? ''} onChange={e => updateBlock(block.id, { content: e.target.value })}
+              placeholder="Títol..."
+              className={cn('w-full bg-transparent outline-none text-gray-900 dark:text-white font-bold placeholder-gray-300 dark:placeholder-zinc-600',
+                block.level === 1 ? 'text-2xl' : block.level === 3 ? 'text-base' : 'text-xl')} />
+          </div>
+        )}
+        {block.type === 'text' && (
+          <textarea value={block.content ?? ''} onChange={e => updateBlock(block.id, { content: e.target.value })}
+            placeholder="Escriu el text aquí..." rows={5}
+            className="w-full bg-transparent outline-none text-sm text-gray-700 dark:text-zinc-300 leading-relaxed resize-none placeholder-gray-300 dark:placeholder-zinc-600" />
+        )}
+        {block.type === 'image' && (
+          <div className="space-y-2">
+            {block.url ? (
+              <div className="relative">
+                <img src={block.url} alt="" className="w-full rounded-lg object-cover max-h-48" />
+                <button onClick={() => updateBlock(block.id, { url: '' })}
+                  className="absolute top-2 right-2 p-1 bg-white/90 dark:bg-zinc-900/90 rounded-lg text-gray-500 hover:text-red-600 transition-colors"><Trash2 size={12} /></button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-xl py-8 cursor-pointer hover:border-red-300 dark:hover:border-red-800 transition-colors">
+                <ImageIcon size={22} className="text-gray-300 dark:text-zinc-600" />
+                <span className="text-xs text-gray-400">Clica per pujar imatge</span>
+                <input type="file" accept="image/*" className="hidden" onChange={async e => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try { updateBlock(block.id, { url: await apiUploadImage(file) }); } catch {}
+                }} />
+              </label>
+            )}
+            <input value={block.caption ?? ''} onChange={e => updateBlock(block.id, { caption: e.target.value })}
+              placeholder="Peu de foto (opcional)"
+              className="w-full bg-transparent outline-none text-xs text-gray-500 dark:text-zinc-400 placeholder-gray-300 dark:placeholder-zinc-600 border-b border-gray-100 dark:border-zinc-800 pb-1" />
+          </div>
+        )}
+        {block.type === 'quote' && (
+          <div className="space-y-2 border-l-4 border-red-300 pl-3">
+            <textarea value={block.content ?? ''} onChange={e => updateBlock(block.id, { content: e.target.value })}
+              placeholder="Text de la cita..." rows={3}
+              className="w-full bg-transparent outline-none text-sm italic text-gray-700 dark:text-zinc-300 leading-relaxed resize-none placeholder-gray-300 dark:placeholder-zinc-600" />
+            <input value={block.author ?? ''} onChange={e => updateBlock(block.id, { author: e.target.value })}
+              placeholder="Autor de la cita"
+              className="w-full bg-transparent outline-none text-xs text-gray-400 placeholder-gray-300 dark:placeholder-zinc-600" />
+          </div>
+        )}
+        {block.type === 'divider' && (
+          <div className="flex items-center justify-center py-3">
+            <hr className="w-full border-gray-200 dark:border-zinc-700" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── RichArticleBuilder ────────────────────────────────────────────────────────
+function RichArticleBuilder({
+  onSave, onCancel,
+}: {
+  onSave: (fields: {
+    category: string; title: string; summary: string; content: string;
+    author: string; date: string; image: string; featured: number;
+  }) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [blocks, setBlocks]         = useState<ArticleBlock[]>([]);
+  const [title, setTitle]           = useState('');
+  const [category, setCategory]     = useState('Comunicats interns');
+  const [summary, setSummary]       = useState('');
+  const [author, setAuthor]         = useState('');
+  const [date, setDate]             = useState('');
+  const [headerFile, setHeaderFile] = useState<File | null>(null);
+  const [featured, setFeatured]     = useState(false);
+  const [saving, setSaving]         = useState(false);
+  const [activeId, setActiveId]     = useState<string | null>(null);
+
+  // Track dark mode via MutationObserver so the single canvas background stays correct
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  useEffect(() => {
+    const obs = new MutationObserver(() => setIsDark(document.documentElement.classList.contains('dark')));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const layout  = useMemo(() => buildGridLayout(blocks), [blocks]);
+
+  const updateBlock = useCallback((id: string, patch: Partial<ArticleBlock>) =>
+    setBlocks(bs => bs.map(b => b.id === id ? { ...b, ...patch } : b)), []);
+  const removeBlock = useCallback((id: string) =>
+    setBlocks(bs => bs.filter(b => b.id !== id)), []);
+
+  const handleDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null);
+    const { active, over } = event;
+    if (!over || String(active.id) === String(over.id)) return;
+    const overId    = String(over.id);
+    const activeId_ = String(active.id);
+
+    if (overId.startsWith('ghost-')) {
+      setBlocks(bs => {
+        const currentLayout = buildGridLayout(bs);
+        let ghost: GhostCell | undefined;
+        for (const row of currentLayout) {
+          for (const cell of row) {
+            if (cell.kind === 'ghost' && cell.ghost.id === overId) { ghost = cell.ghost; break; }
+          }
+          if (ghost) break;
+        }
+        if (!ghost) return bs;
+        const dragIdx = bs.findIndex(b => b.id === activeId_);
+        if (dragIdx === -1) return bs;
+        const dragged = { ...bs[dragIdx], span: ghost.span };
+        const rest = bs.filter((_, i) => i !== dragIdx);
+        let insertAt = ghost.insertBeforeBlockIdx;
+        if (dragIdx < insertAt) insertAt--;
+        insertAt = Math.max(0, Math.min(insertAt, rest.length));
+        return [...rest.slice(0, insertAt), dragged, ...rest.slice(insertAt)];
+      });
+    } else {
+      // Drop on block → reorder
+      setBlocks(bs => {
+        const from = bs.findIndex(b => b.id === activeId_);
+        const to   = bs.findIndex(b => b.id === overId);
+        if (from === -1 || to === -1) return bs;
+        return arrayMove(bs, from, to);
+      });
+    }
+  };
+
+  const handleSave = async () => {
+    if (!title.trim()) return;
+    setSaving(true);
+    try {
+      let imageUrl = '';
+      if (headerFile) imageUrl = await apiUploadImage(headerFile);
+      await onSave({
+        category, title: title.trim(), summary: summary.trim(),
+        content: JSON.stringify(blocks),
+        author: author.trim(), date: date.trim(),
+        image: imageUrl, featured: featured ? 1 : 0,
+      });
+    } catch (e) { console.error(e); setSaving(false); }
+  };
+
+  const spanLabel = (s: BlockSpan) => s === 1 ? '1/3' : s === 2 ? '2/3' : 'Ple';
+  const activeBlock = blocks.find(b => b.id === activeId);
+
+  const canvasBg: React.CSSProperties = {
+    backgroundImage: `radial-gradient(circle, ${isDark ? '#3f3f46' : '#cbd5e1'} 1px, transparent 1px)`,
+    backgroundSize: '24px 24px',
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-gray-50 dark:bg-zinc-950 flex flex-col anim-fade-in overflow-hidden">
+      {/* Top bar */}
+      <div className="flex items-center gap-3 px-6 py-3 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 flex-shrink-0">
+        <button onClick={onCancel} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 transition-colors press">
+          <ChevronLeft size={18} />
+        </button>
+        <input
+          value={title} onChange={e => setTitle(e.target.value)}
+          placeholder="Títol de l'article *"
+          className="flex-1 text-xl font-bold text-gray-900 dark:text-white bg-transparent border-none outline-none placeholder-gray-300 dark:placeholder-zinc-600"
+        />
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button onClick={onCancel} className="px-4 py-2 text-sm text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
+            Cancel·lar
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!title.trim() || saving}
+            className="px-4 py-2 text-sm font-semibold bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg transition-colors press"
+          >
+            {saving ? 'Desant...' : 'Publicar article'}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left sidebar */}
+        <div className="bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 flex flex-col overflow-y-auto flex-shrink-0" style={{ width: '272px' }}>
+          <div className="p-4 border-b border-gray-100 dark:border-zinc-800 space-y-3">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Metadades</p>
+            <select value={category} onChange={e => setCategory(e.target.value)}
+              className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white">
+              {['Comunicats interns','Notícies corporatives','Recursos humans','Esdeveniments','Innovació','Seguretat'].map(c => <option key={c}>{c}</option>)}
+            </select>
+            <textarea value={summary} onChange={e => setSummary(e.target.value)}
+              placeholder="Resum breu (targeta de notícia)" rows={3}
+              className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white resize-none" />
+            <input value={author} onChange={e => setAuthor(e.target.value)} placeholder="Autor"
+              className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+            <input value={date} onChange={e => setDate(e.target.value)} placeholder="Data (ex: 17 abril 2026)"
+              className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+            <div>
+              <p className="text-[10px] text-gray-400 mb-1">Imatge de capçalera</p>
+              <input type="file" accept="image/*" onChange={e => setHeaderFile(e.target.files?.[0] ?? null)}
+                className="w-full text-xs text-gray-600 dark:text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100" />
+              {headerFile && <p className="text-[10px] text-gray-400 mt-1 truncate">{headerFile.name}</p>}
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setFeatured(v => !v)}
+                className={cn("relative inline-flex h-5 w-9 items-center rounded-full transition-colors", featured ? "bg-red-600" : "bg-gray-200 dark:bg-zinc-700")}>
+                <span className="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform" style={{ transform: featured ? 'translateX(18px)' : 'translateX(2px)' }} />
+              </button>
+              <span className="text-xs text-gray-600 dark:text-zinc-400">Destacada</span>
+            </div>
+          </div>
+          <div className="p-4 flex-1">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Afegir bloc</p>
+            <div className="space-y-1.5">
+              {RICH_BLOCK_TYPES.map(bt => (
+                <button key={bt.type} onClick={() => setBlocks(bs => [...bs, makeBlock(bt.type)])}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-gray-100 dark:border-zinc-800 hover:border-red-200 dark:hover:border-red-900/40 hover:bg-red-50 dark:hover:bg-red-950/10 transition-colors group press">
+                  <bt.icon size={14} className={cn(bt.color, 'flex-shrink-0')} />
+                  <span className="text-sm font-medium text-gray-700 dark:text-zinc-300 group-hover:text-red-600 transition-colors">{bt.label}</span>
+                  <Plus size={13} className="ml-auto text-gray-300 dark:text-zinc-600 group-hover:text-red-400" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Canvas — single div, DndContext lives here */}
+        <div className="flex-1 overflow-y-auto p-8" style={canvasBg}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveId(null)}>
+            <div className="space-y-4">
+              {layout.map((row, ri) => (
+                <div key={ri} className="grid grid-cols-3 gap-4">
+                  {row.map(cell =>
+                    cell.kind === 'block'
+                      ? activeId === cell.block.id
+                        ? <GhostForActiveBlock key={cell.block.id} block={cell.block} activeBlock={activeBlock} />
+                        : <DraggableBlockCard key={cell.block.id} block={cell.block} updateBlock={updateBlock} removeBlock={removeBlock} spanLabel={spanLabel} isBeingDragged={false} />
+                      : <GhostDropCell key={cell.ghost.id} ghost={cell.ghost} isEmpty={blocks.length === 0} activeBlock={activeBlock} />
+                  )}
+                </div>
+              ))}
+            </div>
+            <DragOverlay dropAnimation={null}>
+              {activeBlock ? <BlockDragPreview block={activeBlock} /> : null}
+            </DragOverlay>
+          </DndContext>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NoticiesTab({ currentUser }: { currentUser: User | null }) {
   const { t } = useTranslation();
   const [news, setNews] = useState<NewsArticle[]>([]);
@@ -548,6 +1074,7 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
 
   // Create news form state
   const [showNewsForm, setShowNewsForm] = useState(false);
+  const [showRichBuilder, setShowRichBuilder] = useState(false);
   const [nCategory, setNCategory] = useState('Comunicats interns');
   const [nTitle, setNTitle] = useState('');
   const [nSummary, setNSummary] = useState('');
@@ -634,7 +1161,7 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
 
   if (selectedNews) {
     return (
-      <div className="max-w-3xl mx-auto">
+      <div className={cn("mx-auto", isRichContent(selectedNews.content) ? "max-w-5xl" : "max-w-3xl")}>
         <button
           onClick={() => setSelectedNews(null)}
           className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors mb-6"
@@ -656,7 +1183,11 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
               <div className="flex items-center gap-1.5"><Calendar size={14} /><span>{selectedNews.date}</span></div>
             </div>
             {selectedNews.summary && <p className="text-gray-600 dark:text-zinc-300 text-base leading-relaxed mb-6 font-medium">{selectedNews.summary}</p>}
-            {selectedNews.content && <div className="text-gray-700 dark:text-zinc-400 text-sm leading-relaxed whitespace-pre-wrap">{selectedNews.content}</div>}
+            {selectedNews.content && (
+              isRichContent(selectedNews.content)
+                ? <RichBlockViewer blocks={parseBlocks(selectedNews.content)} />
+                : <div className="text-gray-700 dark:text-zinc-400 text-sm leading-relaxed whitespace-pre-wrap">{selectedNews.content}</div>
+            )}
           </div>
         </div>
       </div>
@@ -667,7 +1198,14 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-gray-500 dark:text-zinc-400 text-sm">{t('news.subtitle')}</p>
-        {isAdmin && <button onClick={() => setShowNewsForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">{t('news.newArticle')}</button>}
+        {isAdmin && (
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowRichBuilder(true)} className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 text-xs font-semibold px-3 py-2 rounded-lg hover:border-red-400 hover:text-red-600 transition-colors press">
+              <LayoutGrid size={14} /> Article extès
+            </button>
+            <button onClick={() => setShowNewsForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors press">{t('news.newArticle')}</button>
+          </div>
+        )}
       </div>
       {isAdmin && showNewsForm && (
         <div className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-xl p-5 mb-6 grid grid-cols-2 gap-3">
@@ -755,7 +1293,7 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
             ))}
           </div>
           {/* Carousel controls — outside slide track, absolute positioned */}
-          {featuredItems.length > 1 && (
+          {featuredItems.length > 1 && !newsEditId && (
             <div className="absolute bottom-6 md:bottom-8 right-6 md:right-8 flex items-center gap-3 z-10">
               <button
                 onClick={() => setFeaturedIndex(i => (i - 1 + featuredItems.length) % featuredItems.length)}
@@ -812,6 +1350,16 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
           </div>
         ))}
       </div>
+      {showRichBuilder && (
+        <RichArticleBuilder
+          onSave={async fields => {
+            await apiCreateNews(fields);
+            setNews(await apiGetNews());
+            setShowRichBuilder(false);
+          }}
+          onCancel={() => setShowRichBuilder(false)}
+        />
+      )}
       {confirmModal && <ConfirmModal message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} />}
     </div>
   );
@@ -1571,7 +2119,6 @@ function CampusTavilTab() {
   }, []);
 
   const completed = courses.filter(c => c.user_status === 'Completat');
-  const inProgress = courses.filter(c => c.user_status === 'En curs');
   const pending = courses.filter(c => c.user_status === 'Pendent');
   const completedHours = completed.reduce((s, c) => s + (parseInt(c.hours) || 0), 0);
   const mandatoryPending = courses.find(c => !!c.mandatory && c.user_status === 'Pendent');
@@ -1597,10 +2144,9 @@ function CampusTavilTab() {
       <div key={activeTab} className="anim-tab">
       {activeTab === 'Resum' && (
         <>
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-3 gap-4 mb-6">
             {[
               { label: "Cursos completats", value: String(completed.length), icon: CheckCircle, color: "text-green-500" },
-              { label: "En curs", value: String(inProgress.length), icon: TrendingUp, color: "text-blue-500" },
               { label: "Pendents", value: String(pending.length), icon: Clock, color: "text-orange-500" },
               { label: "Hores completades", value: `${completedHours}h`, icon: ActivityIcon, color: "text-purple-500" },
             ].map((stat, i) => (
@@ -1622,22 +2168,6 @@ function CampusTavilTab() {
               </div>
             </div>
           )}
-          <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4 flex items-center gap-2"><TrendingUp size={15} className="text-blue-500" /> Cursos en curs</h3>
-          <div className="grid grid-cols-2 gap-4">
-            {inProgress.map((course, i) => (
-              <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
-                <div className="flex items-start justify-between mb-3">
-                  <span className="text-[11px] font-bold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{course.category}</span>
-                  <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded", STATUS_COLORS[course.user_status])}>{course.user_status}</span>
-                </div>
-                <h4 className="font-bold text-gray-900 dark:text-white mb-2">{course.title}</h4>
-                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed">{course.description}</p>
-                <div className="flex items-center gap-2 text-xs text-gray-500 mb-3"><Clock size={12} /><span>{course.hours}</span>{!!course.mandatory && <span className="text-[10px] bg-orange-100 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400 px-1.5 py-0.5 rounded font-bold">Obligatòria</span>}</div>
-                <div className="flex justify-between text-xs text-gray-500 mb-1.5"><span>Progrés</span><span className="font-medium">{course.user_progress}%</span></div>
-                <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-2"><div className="bg-red-500 h-2 rounded-full" style={{ width: `${course.user_progress}%` }} /></div>
-              </div>
-            ))}
-          </div>
         </>
       )}
 
@@ -1677,35 +2207,40 @@ function CampusTavilTab() {
         <>
           <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 mb-6">
             <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Resum del meu progrés</h3>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              {[{ label: "Completats", value: String(completed.length), icon: CheckCircle, color: "text-green-500" }, { label: "En curs", value: String(inProgress.length), icon: TrendingUp, color: "text-blue-500" }, { label: "Hores formació", value: `${completedHours}h`, icon: Clock, color: "text-purple-500" }].map((s, i) => (
+            <div className="grid grid-cols-2 gap-4 text-center">
+              {[{ label: "Completats", value: String(completed.length), icon: CheckCircle, color: "text-green-500" }, { label: "Hores formació", value: `${completedHours}h`, icon: Clock, color: "text-purple-500" }].map((s, i) => (
                 <div key={i}><p className="text-3xl font-bold text-gray-900 dark:text-white">{s.value}</p><p className="text-xs text-gray-500 mt-1">{s.label}</p></div>
               ))}
             </div>
           </div>
-          {['En curs', 'Pendents', 'Completats'].map(group => {
+          {['Pendents', 'Completats'].map(group => {
             const items = courses.filter(c => {
               if (group === 'Pendents') return c.user_status === 'Pendent';
-              if (group === 'Completats') return c.user_status === 'Completat';
-              return c.user_status === 'En curs';
+              return c.user_status === 'Completat';
             });
-            if (items.length === 0) return null;
             return (
               <div key={group} className="mb-6">
-                <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3">{group}</h3>
-                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 divide-y divide-gray-50 dark:divide-zinc-800">
-                  {items.map((c, i) => (
-                    <div key={i} className="flex items-center gap-4 p-4">
-                      <GraduationCap size={16} className="text-gray-400 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 dark:text-white text-sm">{c.title}</p>
-                        <p className="text-xs text-gray-500">{c.hours} · {c.category}{!!c.mandatory ? ' · ' : ''}{!!c.mandatory && <span className="text-orange-500 font-medium">Obligatòria</span>}</p>
-                        {c.user_progress > 0 && c.user_progress < 100 && <div className="flex items-center gap-2 mt-1.5"><div className="flex-1 bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${c.user_progress}%` }} /></div><span className="text-[10px] text-gray-500">{c.user_progress}%</span></div>}
+                <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3 flex items-center gap-2">
+                  {group}
+                  <span className="text-[11px] font-bold bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 px-2 py-0.5 rounded-full">{items.length}</span>
+                </h3>
+                {items.length > 0 ? (
+                  <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 divide-y divide-gray-50 dark:divide-zinc-800">
+                    {items.map((c, i) => (
+                      <div key={i} className="flex items-center gap-4 p-4">
+                        <GraduationCap size={16} className="text-gray-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 dark:text-white text-sm">{c.title}</p>
+                          <p className="text-xs text-gray-500">{c.hours} · {c.category}{!!c.mandatory ? ' · ' : ''}{!!c.mandatory && <span className="text-orange-500 font-medium">Obligatòria</span>}</p>
+                          {c.user_progress > 0 && c.user_progress < 100 && <div className="flex items-center gap-2 mt-1.5"><div className="flex-1 bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${c.user_progress}%` }} /></div><span className="text-[10px] text-gray-500">{c.user_progress}%</span></div>}
+                        </div>
+                        <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded flex-shrink-0", STATUS_COLORS[c.user_status])}>{c.user_status}</span>
                       </div>
-                      <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded flex-shrink-0", STATUS_COLORS[c.user_status])}>{c.user_status}</span>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 dark:text-zinc-500">Cap curs en aquest estat.</p>
+                )}
               </div>
             );
           })}
@@ -2706,7 +3241,7 @@ function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; on
 
   const profileCourses = courses.filter(c => c.user_status !== 'Pendent');
   const completedCount = courses.filter(c => c.user_status === 'Completat').length;
-  const inProgressCount = courses.filter(c => c.user_status === 'En curs').length;
+  const pendingCount = courses.filter(c => c.user_status === 'Pendent').length;
   const totalHoursStr = `${profileCourses.reduce((s, c) => s + (parseInt(c.hours) || 0), 0)}h`;
 
   const initials = (currentUser?.name ?? '?').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
@@ -2866,7 +3401,7 @@ function PerfilTab({ currentUser, onUserUpdate }: { currentUser: User | null; on
       {activeTab === 'Formació' && (
         <>
           <div className="grid grid-cols-3 gap-4 mb-6">
-            {[{ label: "Completats", value: String(completedCount), icon: Award, color: "text-green-500" }, { label: "En curs", value: String(inProgressCount), icon: Clock, color: "text-blue-500" }, { label: "Hores totals", value: totalHoursStr, icon: GraduationCap, color: "text-purple-500" }].map((s, i) => (
+            {[{ label: "Completats", value: String(completedCount), icon: Award, color: "text-green-500" }, { label: "Pendents", value: String(pendingCount), icon: Clock, color: "text-orange-500" }, { label: "Hores totals", value: totalHoursStr, icon: GraduationCap, color: "text-purple-500" }].map((s, i) => (
               <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
                 <div className="flex items-center justify-between mb-2"><p className="text-xs text-gray-500 dark:text-zinc-400">{s.label}</p><s.icon size={15} className={s.color} /></div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{s.value}</p>
