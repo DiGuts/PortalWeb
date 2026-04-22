@@ -6,13 +6,15 @@ from database import get_db
 from auth import get_current_user
 from models import VacancaIn, VacancaHeadUpdateIn, VacancaRrhhUpdateIn
 from email_service import send_email
+from conveni import validate_vacanca, ExistingVacation
+from datetime import datetime
 
 router = APIRouter(prefix="/api/vacances", tags=["vacances"])
 
 
 async def _notify(db: AsyncConnection, user_id: int, title: str, body: str) -> None:
     await db.execute(
-        text("INSERT INTO notifications (user_id, title, body, tab) VALUES (:uid, :title, :body, 'Solicituds')"),
+        text("INSERT INTO notifications (user_id, title, body, tab) VALUES (:uid, :title, :body, 'Solicituds/Vacances')"),
         {"uid": user_id, "title": title, "body": body},
     )
 
@@ -30,7 +32,7 @@ async def list_vacances(
         rows = (await db.execute(
             text("SELECT * FROM vacances ORDER BY created_at DESC")
         )).mappings().all()
-    elif role == "Responsable de departament":
+    elif current_user.get("is_head", 0):
         # Own requests + dept requests pending head approval
         rows = (await db.execute(
             text("""
@@ -57,6 +59,26 @@ async def create_vacanca(
     db: AsyncConnection = Depends(get_db),
 ):
     dept = current_user.get("dept", "")
+
+    # Enforce conveni rules server-side (defence in depth; the React form does same checks).
+    existing_rows = (await db.execute(
+        text("SELECT start_date, end_date, status FROM vacances WHERE user_id = :uid"),
+        {"uid": current_user["id"]},
+    )).mappings().all()
+    existing = [
+        ExistingVacation(
+            start_date=r["start_date"] if hasattr(r["start_date"], "year")
+                        else datetime.strptime(str(r["start_date"]), "%Y-%m-%d").date(),
+            end_date=r["end_date"] if hasattr(r["end_date"], "year")
+                        else datetime.strptime(str(r["end_date"]), "%Y-%m-%d").date(),
+            status=r["status"],
+        )
+        for r in existing_rows
+    ]
+    errors = validate_vacanca(body.start_date, body.end_date, existing)
+    if errors:
+        raise HTTPException(status_code=400, detail={"conveni_errors": errors})
+
     result = await db.execute(
         text("""
             INSERT INTO vacances (user_id, author_name, author_dept, start_date, end_date, comments)
@@ -72,9 +94,9 @@ async def create_vacanca(
         },
     )
 
-    # Find and notify department head (Responsable de departament of same dept)
+    # Find and notify department head
     heads = (await db.execute(
-        text("SELECT id, email, email_notifs FROM users WHERE role = 'Responsable de departament' AND dept = :dept"),
+        text("SELECT id, email, email_notifs FROM users WHERE is_head = 1 AND dept = :dept"),
         {"dept": dept},
     )).mappings().all()
 
@@ -114,7 +136,7 @@ async def update_head(
     current_user: dict = Depends(get_current_user),
     db: AsyncConnection = Depends(get_db),
 ):
-    if current_user["role"] not in ("Responsable de departament", "Administrador/a", "Recursos humans"):
+    if current_user["role"] not in ("Administrador/a", "Recursos humans") and not current_user.get("is_head", 0):
         raise HTTPException(status_code=403, detail="No autoritzat")
 
     row = (await db.execute(

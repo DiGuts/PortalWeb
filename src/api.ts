@@ -11,12 +11,21 @@ export interface User {
   location: string;
   onboarded: number;
   email_notifs: number;
+  is_head: number;
 }
 
 export interface TokenOut {
   access_token: string;
   token_type: string;
   user: User;
+}
+
+export interface AuthOut {
+  status: 'ok' | 'pending_verification' | 'pending_otp';
+  email?: string;
+  access_token?: string;
+  token_type?: string;
+  user?: User;
 }
 
 // ── Token storage ─────────────────────────────────────────────────────────────
@@ -63,12 +72,18 @@ export async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    let detail = `Error ${res.status}`;
+    let detail: unknown = `Error ${res.status}`;
     try {
       const body = await res.json();
       detail = body.detail ?? detail;
     } catch {}
-    throw new Error(detail);
+    // Conveni / complex errors come back as objects — flatten to a readable string.
+    let msg: string;
+    if (typeof detail === 'string') msg = detail;
+    else if (detail && typeof detail === 'object' && 'conveni_errors' in (detail as any)) {
+      msg = ((detail as any).conveni_errors as string[]).join('\n');
+    } else msg = JSON.stringify(detail);
+    throw new Error(msg);
   }
 
   if (res.status === 204) return undefined as unknown as T;
@@ -76,6 +91,18 @@ export async function apiFetch<T>(
 }
 
 // ── Image upload ──────────────────────────────────────────────────────────────
+
+export async function apiGetImages(): Promise<{ url: string; name: string }[]> {
+  return apiFetch('/api/upload/images');
+}
+
+export async function apiDedupImages(): Promise<{ removed_count: number; deleted: string[] }> {
+  return apiFetch('/api/upload/dedup', { method: 'DELETE' });
+}
+
+export async function apiDeleteImage(filename: string): Promise<void> {
+  await apiFetch(`/api/upload/images/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+}
 
 export async function apiUploadImage(file: File): Promise<string> {
   const formData = new FormData();
@@ -93,8 +120,8 @@ export async function apiUploadImage(file: File): Promise<string> {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
-export async function apiLogin(email: string, password: string): Promise<TokenOut> {
-  return apiFetch<TokenOut>('/api/auth/login', {
+export async function apiLogin(email: string, password: string): Promise<AuthOut> {
+  return apiFetch<AuthOut>('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
@@ -104,10 +131,31 @@ export async function apiRegister(
   name: string,
   email: string,
   password: string
-): Promise<TokenOut> {
-  return apiFetch<TokenOut>('/api/auth/register', {
+): Promise<AuthOut> {
+  return apiFetch<AuthOut>('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify({ name, email, password }),
+  });
+}
+
+export async function apiVerifyEmail(email: string, code: string): Promise<AuthOut> {
+  return apiFetch<AuthOut>('/api/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ email, code }),
+  });
+}
+
+export async function apiVerifyOTP(email: string, code: string): Promise<AuthOut> {
+  return apiFetch<AuthOut>('/api/auth/verify-otp', {
+    method: 'POST',
+    body: JSON.stringify({ email, code }),
+  });
+}
+
+export async function apiResendVerification(email: string): Promise<void> {
+  await apiFetch('/api/auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
   });
 }
 
@@ -132,6 +180,17 @@ export async function apiUpdateMe(fields: Partial<Pick<User, 'name' | 'phone' | 
 export async function apiCompleteOnboarding(dept: string, isHead: boolean): Promise<User> {
   return apiFetch<User>('/api/users/me/onboarding', {
     method: 'POST',
+    body: JSON.stringify({ dept, is_head: isHead }),
+  });
+}
+
+export async function apiGetDeptHead(dept: string): Promise<{ has_head: boolean }> {
+  return apiFetch<{ has_head: boolean }>(`/api/users/dept-head/${encodeURIComponent(dept)}`);
+}
+
+export async function apiUpdateDept(dept: string, isHead: boolean): Promise<User> {
+  return apiFetch<User>('/api/users/me/dept', {
+    method: 'PATCH',
     body: JSON.stringify({ dept, is_head: isHead }),
   });
 }
@@ -338,6 +397,10 @@ export async function apiGetActivities(past?: 0 | 1): Promise<Activity[]> {
   return apiFetch<Activity[]>(`/api/activities${qs}`);
 }
 
+export async function apiEnrollActivity(id: number): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>(`/api/activities/${id}/enroll`, { method: 'POST' });
+}
+
 // ── Agenda ────────────────────────────────────────────────────────────────────
 
 export interface AgendaEvent {
@@ -464,6 +527,7 @@ export interface Course {
   hours: string;
   mandatory: number;
   cert: number;
+  url: string;
   user_status: string;
   user_progress: number;
 }
