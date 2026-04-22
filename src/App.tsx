@@ -16,7 +16,7 @@ import {
   BookOpen, Shield, ThumbsUp, ThumbsDown, Send, ExternalLink, CreditCard,
   CheckCircle, Star, LogOut, LayoutGrid, List,
   Heart, Gift, Globe, Download, Video, Award, Settings, Eye, EyeOff, Lock, Pencil, Trash2,
-  Type, AlignLeft, Image as ImageIcon, Minus, Plus, GripVertical, X
+  Type, AlignLeft, Image as ImageIcon, Minus, Plus, GripVertical, X, Menu
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -44,6 +44,39 @@ import {
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+// ── Prefetch cache ────────────────────────────────────────────────────────────
+// Module-level cache so tabs can read previously-fetched data synchronously in
+// useState initializers, avoiding skeleton flashes on (re)mount and while the
+// mobile swipe strip pre-renders adjacent tabs.
+type TabPrefetchCache = {
+  notices?: Notice[];
+  news?: NewsArticle[];
+  activities?: Activity[];
+  agendaEvents?: AgendaEvent[];
+  employees?: Employee[];
+};
+export const tabPrefetch: TabPrefetchCache = {};
+let tabPrefetchPromise: Promise<void> | null = null;
+export function prefetchTabData(force = false): Promise<void> {
+  if (tabPrefetchPromise && !force) return tabPrefetchPromise;
+  tabPrefetchPromise = Promise.allSettled([
+    apiGetNotices().then(d => { tabPrefetch.notices = d; }),
+    apiGetNews().then(d => { tabPrefetch.news = d; }),
+    apiGetActivities().then(d => { tabPrefetch.activities = d; }),
+    apiGetAgendaEvents().then(d => { tabPrefetch.agendaEvents = d; }),
+    apiGetEmployees().then(d => { tabPrefetch.employees = d; }),
+  ]).then(() => undefined);
+  return tabPrefetchPromise;
+}
+export function resetTabPrefetch() {
+  tabPrefetch.notices = undefined;
+  tabPrefetch.news = undefined;
+  tabPrefetch.activities = undefined;
+  tabPrefetch.agendaEvents = undefined;
+  tabPrefetch.employees = undefined;
+  tabPrefetchPromise = null;
 }
 
 function timeAgo(isoStr: string): string {
@@ -90,51 +123,286 @@ const SkeletonCard = ({ className, lines = 2, media = true }: { className?: stri
   </div>
 );
 
+// ── Mobile App Header ─────────────────────────────────────────────────────────
+
+function MobileAppHeader({
+  onOpenDrawer,
+  onNotif,
+  hasUnread,
+  isDarkMode,
+}: {
+  onOpenDrawer: () => void;
+  onNotif: () => void;
+  hasUnread?: boolean;
+  isDarkMode: boolean;
+}) {
+  return (
+    <div
+      className={cn("flex items-center justify-between px-4 pt-[10px] pb-1", isDarkMode && "dark")}
+      style={{ background: 'var(--tavil-bg)' }}
+    >
+      {/* Hamburger */}
+      <button
+        onClick={onOpenDrawer}
+        aria-label="Obrir menú"
+        style={{
+          width: 40, height: 40, borderRadius: 20,
+          background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0,
+        }}
+      >
+        <Menu size={18} />
+      </button>
+
+      {/* Logo */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 7,
+        fontFamily: '"Instrument Serif", "Times New Roman", serif',
+        fontSize: 20, color: 'var(--tavil-text)', letterSpacing: '-0.01em',
+      }}>
+        <div style={{
+          width: 22, height: 22, borderRadius: 5,
+          background: '#bf211e', color: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, fontWeight: 700, fontFamily: 'Instrument Sans, sans-serif',
+        }}>T</div>
+        TAVIL
+      </div>
+
+      {/* Bell */}
+      <button
+        onClick={onNotif}
+        aria-label="Notificacions"
+        style={{
+          width: 40, height: 40, borderRadius: 20,
+          background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', color: 'var(--tavil-text)', position: 'relative', flexShrink: 0,
+        }}
+      >
+        <Bell size={18} />
+        {hasUnread && (
+          <div style={{
+            position: 'absolute', top: 8, right: 9,
+            width: 8, height: 8, borderRadius: 4,
+            background: '#bf211e', border: '2px solid var(--tavil-card)',
+          }} />
+        )}
+      </button>
+    </div>
+  );
+}
+
+// ── Mobile Drawer ─────────────────────────────────────────────────────────────
+
+function MobileDrawer({
+  open,
+  onClose,
+  onNavigate,
+  currentUser,
+  isDarkMode,
+  activeTab,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onNavigate: (tab: string) => void;
+  currentUser: { name: string; role?: string; email?: string } | null;
+  isDarkMode: boolean;
+  activeTab: string;
+}) {
+  const groups = [
+    {
+      label: 'General',
+      items: [
+        { id: 'Inici', icon: Home, label: 'Inici' },
+        { id: 'Notícies', icon: Newspaper, label: 'Notícies' },
+        { id: 'Activitats', icon: Calendar, label: 'Activitats' },
+        { id: 'Agenda', icon: Calendar, label: 'Agenda' },
+      ],
+    },
+    {
+      label: 'Empresa',
+      items: [
+        { id: 'Directori', icon: Users, label: 'Qui és qui' },
+        { id: 'Campus', icon: Building2, label: 'Campus TAVIL' },
+      ],
+    },
+    {
+      label: 'Personal',
+      items: [
+        { id: 'Veu', icon: MessageSquare, label: "Veu de l'empleat" },
+        { id: 'Solicituds', icon: FileText, label: 'Sol·licituds' },
+        { id: 'Perfil', icon: UserCircle, label: 'Perfil' },
+      ],
+    },
+  ];
+
+  const initials = currentUser?.name
+    ? currentUser.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+    : '?';
+
+  return (
+    <div className={isDarkMode ? 'dark' : ''} style={{ position: 'fixed', inset: 0, zIndex: 200, pointerEvents: open ? 'auto' : 'none' }}>
+      {/* Overlay */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'absolute', inset: 0,
+          background: 'rgba(20,22,20,0.5)',
+          opacity: open ? 1 : 0,
+          transition: 'opacity 260ms',
+        }}
+      />
+      {/* Panel */}
+      <div style={{
+        position: 'absolute', top: 0, bottom: 0, left: 0, width: '78%', maxWidth: 320,
+        background: 'var(--tavil-bg)',
+        transform: open ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 340ms cubic-bezier(.23,1,.32,1)',
+        display: 'flex', flexDirection: 'column',
+        borderRight: '1px solid var(--tavil-border)',
+        overflowY: 'auto',
+      }}>
+        {/* Header */}
+        <div style={{ padding: '52px 20px 20px', borderBottom: '1px solid var(--tavil-border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              fontFamily: '"Instrument Serif", "Times New Roman", serif',
+              fontSize: 22, color: 'var(--tavil-text)', letterSpacing: '-0.01em',
+            }}>
+              <div style={{
+                width: 26, height: 26, borderRadius: 6,
+                background: '#bf211e', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 13, fontWeight: 700,
+              }}>T</div>
+              TAVIL
+            </div>
+            <button onClick={onClose} style={{
+              width: 36, height: 36, borderRadius: 18,
+              background: 'transparent', border: '1px solid var(--tavil-border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: 'var(--tavil-text)',
+            }}>
+              <X size={16} />
+            </button>
+          </div>
+          {currentUser && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 42, height: 42, borderRadius: 21,
+                background: '#bf211e', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 16, fontWeight: 600, flexShrink: 0,
+              }}>{initials}</div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)' }}>{currentUser.name}</div>
+                <div style={{ fontSize: 12, color: 'var(--tavil-muted)' }}>{currentUser.role ?? currentUser.email}</div>
+              </div>
+            </div>
+          )}
+        </div>
+        {/* Nav groups */}
+        <div style={{ flex: 1, padding: '16px 12px', overflowY: 'auto' }}>
+          {groups.map((g, gi) => (
+            <div key={gi} style={{ marginBottom: 18 }}>
+              <div style={{
+                fontSize: 10, fontWeight: 600, color: 'var(--tavil-faint)',
+                textTransform: 'uppercase', letterSpacing: '0.14em',
+                padding: '4px 12px 8px',
+              }}>{g.label}</div>
+              {g.items.map(it => {
+                const Icon = it.icon;
+                const isActive = activeTab === it.id;
+                return (
+                  <button
+                    key={it.id}
+                    onClick={() => { onNavigate(it.id); onClose(); }}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '11px 12px',
+                      background: isActive ? 'var(--tavil-accent-light, #f9eceb)' : 'transparent',
+                      border: 'none', borderRadius: 10,
+                      color: isActive ? '#bf211e' : 'var(--tavil-text)',
+                      cursor: 'pointer', fontSize: 14.5, textAlign: 'left',
+                    }}
+                  >
+                    <Icon size={19} strokeWidth={isActive ? 2 : 1.6} />
+                    {it.label}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Bottom Nav Bar (mobile) ──────────────────────────────────────────────────
 
-function BottomNavBar({ activeTab, onTabChange, isDarkMode }: { activeTab: string; onTabChange: (id: string) => void; isDarkMode: boolean }) {
+function BottomNavBar({ activeTab, onTabChange, onOpenDrawer, isDarkMode }: {
+  activeTab: string;
+  onTabChange: (id: string) => void;
+  onOpenDrawer: () => void;
+  isDarkMode: boolean;
+}) {
   const items = [
     { id: 'Inici', icon: Home, label: 'Inici' },
     { id: 'Notícies', icon: Newspaper, label: 'Notícies' },
     { id: 'Agenda', icon: Calendar, label: 'Agenda' },
-    { id: 'Solicituds', icon: FileText, label: 'Solicituds' },
-    { id: 'Perfil', icon: UserCircle, label: 'Perfil' },
+    { id: 'Directori', icon: Users, label: 'Qui és qui' },
+    { id: '__more', icon: Menu, label: 'Més' },
   ];
+
   return createPortal(
     <div className={cn("md:hidden", isDarkMode && "dark")}>
       <nav
         aria-label="Navegació principal"
-        style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999 }}
-        className="bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_10px_-2px_rgba(0,0,0,0.08)]"
+        style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999,
+          background: 'var(--tavil-card)',
+          borderTop: '1px solid var(--tavil-border)',
+          padding: '8px 8px calc(22px + env(safe-area-inset-bottom))',
+          display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)',
+          boxShadow: '0 -4px 24px -12px rgba(34,39,37,0.08)',
+        }}
       >
-        <ul className="flex items-stretch justify-around min-h-[56px] w-full">
-          {items.map(({ id, icon: Icon, label }) => {
-            const active = activeTab === id;
-            return (
-              <li key={id} className="flex-1 min-w-0">
-                <button
-                  onClick={() => onTabChange(id)}
-                  aria-label={label}
-                  aria-current={active ? 'page' : undefined}
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                  className={cn(
-                    "press w-full h-full min-h-[56px] flex flex-col items-center justify-center gap-0.5 transition-colors relative focus-ring",
-                    active ? "text-red-600" : "text-gray-500 dark:text-zinc-400 active:bg-gray-50 dark:active:bg-zinc-800/60"
-                  )}
-                >
-                  {active && (
-                    <span
-                      aria-hidden="true"
-                      className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-red-600 rounded-b-full anim-fade-in"
-                    />
-                  )}
-                  <Icon size={22} strokeWidth={active ? 2.4 : 2} />
-                  <span className={cn("text-[11px] font-medium leading-none", active && "font-semibold")}>{label}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        {items.map(({ id, icon: Icon, label }) => {
+          const active = id !== '__more' && activeTab === id;
+          return (
+            <button
+              key={id}
+              onClick={() => id === '__more' ? onOpenDrawer() : onTabChange(id)}
+              aria-label={label}
+              aria-current={active ? 'page' : undefined}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: '6px 0', display: 'flex', flexDirection: 'column',
+                alignItems: 'center', gap: 3, fontFamily: 'inherit',
+                color: active ? '#bf211e' : 'var(--tavil-muted)',
+                position: 'relative',
+                touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
+              } as React.CSSProperties}
+            >
+              {/* Top indicator */}
+              <div style={{
+                height: 3, width: active ? 22 : 0, background: '#bf211e',
+                borderRadius: 2, position: 'absolute', top: -8,
+                transition: 'width 260ms cubic-bezier(.23,1,.32,1)',
+              }} />
+              <Icon size={22} strokeWidth={active ? 1.9 : 1.6} />
+              <span style={{
+                fontSize: 10.5,
+                fontWeight: active ? 600 : 500,
+                letterSpacing: '0.01em',
+              }}>{label}</span>
+            </button>
+          );
+        })}
       </nav>
     </div>,
     document.body
@@ -225,11 +493,13 @@ const NEWS_CAT_COLORS: Record<string, string> = {
   "Innovació":             "bg-violet-100 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400",
 };
 function InicialTab({ onNavigate, onNavigateToDate }: { onNavigate?: (tab: string) => void; onNavigateToDate?: (day: number, month: number, year: number) => void }) {
-  const [notices, setNotices] = useState<Notice[]>([]);
-  const [news, setNews] = useState<NewsArticle[]>([]);
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [notices, setNotices] = useState<Notice[]>(() => tabPrefetch.notices ?? []);
+  const [news, setNews] = useState<NewsArticle[]>(() => tabPrefetch.news ?? []);
+  const [activities, setActivities] = useState<Activity[]>(() => tabPrefetch.activities ?? []);
+  const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>(() => tabPrefetch.agendaEvents ?? []);
+  const [loading, setLoading] = useState(
+    () => !(tabPrefetch.notices && tabPrefetch.news && tabPrefetch.activities && tabPrefetch.agendaEvents)
+  );
   const [heroLoaded, setHeroLoaded] = useState(false);
   const [noticeIndex, setNoticeIndex] = useState(0);
   const [featuredIdx, setFeaturedIdx] = useState(0);
@@ -1493,7 +1763,7 @@ function RichArticleBuilder({
 
 function NoticiesTab({ currentUser }: { currentUser: User | null }) {
   const { t } = useTranslation();
-  const [news, setNews] = useState<NewsArticle[]>([]);
+  const [news, setNews] = useState<NewsArticle[]>(() => tabPrefetch.news ?? []);
   const [activeFilter, setActiveFilter] = useState('Totes');
   const [newsSearch, setNewsSearch] = useState('');
   const [selectedNews, setSelectedNews] = useState<NewsArticle | null>(null);
@@ -1581,11 +1851,11 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
     });
   };
 
-  const [newsLoading, setNewsLoading] = useState(true);
+  const [newsLoading, setNewsLoading] = useState(() => !tabPrefetch.news);
   useEffect(() => {
     let cancelled = false;
     apiGetNews()
-      .then(d => { if (!cancelled) setNews(d); })
+      .then(d => { if (!cancelled) { setNews(d); tabPrefetch.news = d; } })
       .catch(console.error)
       .finally(() => { if (!cancelled) setNewsLoading(false); });
     return () => { cancelled = true; };
@@ -1857,7 +2127,7 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
 // ── Activitats Tab ────────────────────────────────────────────────────────────
 
 function ActivitatsTab({ currentUser }: { currentUser: User | null }) {
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activities, setActivities] = useState<Activity[]>(() => tabPrefetch.activities ?? []);
   const [activeTab, setActiveTab] = useState('Properes');
   const [activeFilter, setActiveFilter] = useState('Totes');
   const [actSearch, setActSearch] = useState('');
@@ -1934,11 +2204,11 @@ function ActivitatsTab({ currentUser }: { currentUser: User | null }) {
     });
   };
 
-  const [actLoading, setActLoading] = useState(true);
+  const [actLoading, setActLoading] = useState(() => !tabPrefetch.activities);
   useEffect(() => {
     let cancelled = false;
     apiGetActivities()
-      .then(d => { if (!cancelled) setActivities(d); })
+      .then(d => { if (!cancelled) { setActivities(d); tabPrefetch.activities = d; } })
       .catch(console.error)
       .finally(() => { if (!cancelled) setActLoading(false); });
     return () => { cancelled = true; };
@@ -2122,7 +2392,7 @@ const MONTH_NAMES = ['', 'Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'J
 const MONTH_ABBR: Record<number, string> = { 1: 'GEN', 2: 'FEB', 3: 'MAR', 4: 'ABR', 5: 'MAI', 6: 'JUN', 7: 'JUL', 8: 'AGO', 9: 'SET', 10: 'OCT', 11: 'NOV', 12: 'DES' };
 
 function AgendaTab({ currentUser, initDate, onInitDateConsumed }: { currentUser: User | null; initDate: { day: number; month: number; year: number } | null; onInitDateConsumed: () => void }) {
-  const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>([]);
+  const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>(() => tabPrefetch.agendaEvents ?? []);
   const [view, setView] = useState<'calendar' | 'list'>('calendar');
   const [activeFilter, setActiveFilter] = useState('Tots');
   const today0 = new Date();
@@ -3564,7 +3834,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
 
       {activeTab === 'Dies no ordinaris' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-          <div className={isRRHH ? 'md:col-span-3' : 'md:col-span-2'}>
+          <div className="md:col-span-2">
             <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">{t('solicituds.sentRequests', { count: diesNoOrdinaris.length })}</h3>
             {diesNoOrdinaris.length === 0 ? (
               <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-8 text-center">
@@ -3617,7 +3887,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
             )}
           </div>
 
-          {!isRRHH && <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 h-fit">
+          <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 h-fit">
             <div className="flex items-center gap-2 mb-4">
               <Calendar size={15} className="text-gray-500" />
               <h3 className="font-bold text-gray-900 dark:text-white text-sm">{t('solicituds.newRequest')}</h3>
@@ -3658,11 +3928,11 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                 <Send size={14} /> {t('solicituds.send')}
               </button>
             </div>
-          </div>}
+          </div>
         </div>
       )}
 
-      {activeTab === 'Dies no ordinaris' && !isRRHH && createPortal(
+      {activeTab === 'Dies no ordinaris' && createPortal(
         <button
           onClick={() => setMobileFormOpen(true)}
           className="md:hidden fixed right-4 bottom-20 z-[9998] w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"
@@ -3674,7 +3944,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
         document.body
       )}
 
-      {activeTab === 'Dies no ordinaris' && !isRRHH && mobileFormOpen && createPortal(
+      {activeTab === 'Dies no ordinaris' && mobileFormOpen && createPortal(
         <div className="md:hidden">
           <div
             onClick={() => setMobileFormOpen(false)}
@@ -3754,7 +4024,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
       {activeTab === 'Vacances' && vacSubTab === 'sol' && (() => {
         const pendingHead = vacances.filter(v => v.head_status === 'Pendent');
         const pendingRrhh = vacances.filter(v => v.head_status === 'Aprovada' && v.rrhh_status === 'Pendent');
-        const showForm = !isRRHH && !isHead;
+        const showForm = true;
         const reviewList = isHead ? pendingHead : isRRHH ? pendingRrhh : vacances;
         const showReviewPanel = isHead || isRRHH;
 
@@ -3775,7 +4045,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
         };
         // Live conveni validation for current user's own existing vacances.
         const ownVacances = vacances.filter(v => v.user_id === currentUser?.id);
-        const vacReport = (vacStartDate && vacEndDate)
+        const vacReport = (vacStartDate && vacEndDate && /^\d{4}-\d{2}-\d{2}$/.test(vacStartDate) && /^\d{4}-\d{2}-\d{2}$/.test(vacEndDate))
           ? validateVacanca(
               vacStartDate, vacEndDate,
               ownVacances.map(v => ({ start_date: v.start_date, end_date: v.end_date, status: v.status })),
@@ -4684,7 +4954,7 @@ function RegisterPage({ onBack, onRegisterResult, isDarkMode, toggleDarkMode }: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!EMAIL_RE.test(email.trim())) { setError('El correu ha de tenir el format nom@domini.ext'); return; }
+    if (!EMAIL_RE.test(email.trim())) { setError('El correu ha de tenir el format nom@tavil.net'); return; }
     if (!email.trim().toLowerCase().endsWith('@tavil.net')) { setError('Només es permeten correus @tavil.net'); return; }
     if (password.length < 6) { setError('La contrasenya ha de tenir mínim 6 caràcters.'); return; }
     if (password !== confirmPassword) { setError('Les contrasenyes no coincideixen.'); return; }
@@ -4733,7 +5003,7 @@ function RegisterPage({ onBack, onRegisterResult, isDarkMode, toggleDarkMode }: 
                     email && !EMAIL_RE.test(email) ? "border-red-400 focus:border-red-500" : "border-gray-200 dark:border-zinc-700 focus:border-red-400")} />
               </div>
               {email && !EMAIL_RE.test(email) && (
-                <p className="text-red-400 text-xs mt-1">Format: nom@domini.ext</p>
+                <p className="text-red-400 text-xs mt-1">Format: nom@tavil.net</p>
               )}
             </div>
             <div>
@@ -4843,6 +5113,146 @@ function EmpresaLandingTab({ onNavigate }: { onNavigate?: (tab: string) => void 
   );
 }
 
+// ── Mobile swipe stack — Instagram-style lateral drag between tabs ────────────
+
+function MobileSwipeStack({
+  activeTab,
+  setActiveTab,
+  tabOrder,
+  renderPageLayout,
+}: {
+  activeTab: string;
+  setActiveTab: (t: string) => void;
+  tabOrder: string[];
+  renderPageLayout: (t: string) => React.ReactNode;
+}) {
+  const [displayTab, setDisplayTab] = useState(activeTab);
+  const [dragX, setDragX] = useState(0);
+  const [snapping, setSnapping] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const startRef = useRef<{ x: number; y: number; t: number; axis: 'x' | 'y' | null } | null>(null);
+
+  // External tab change (click on bottom nav / sidebar / search) — animate if adjacent
+  useEffect(() => {
+    if (displayTab === activeTab) return;
+    const oldIdx = tabOrder.indexOf(displayTab);
+    const newIdx = tabOrder.indexOf(activeTab);
+    if (oldIdx === -1 || newIdx === -1 || Math.abs(newIdx - oldIdx) !== 1) {
+      setDisplayTab(activeTab);
+      return;
+    }
+    const w = containerRef.current?.clientWidth ?? window.innerWidth;
+    const dir = newIdx > oldIdx ? -1 : 1;
+    setSnapping(true);
+    setDragX(dir * w);
+    const timer = window.setTimeout(() => {
+      setSnapping(false);
+      setDragX(0);
+      setDisplayTab(activeTab);
+    }, 340);
+    return () => clearTimeout(timer);
+  }, [activeTab, displayTab, tabOrder]);
+
+  const dIdx = tabOrder.indexOf(displayTab);
+  const prevTab = dIdx > 0 ? tabOrder[dIdx - 1] : null;
+  const nextTab = dIdx >= 0 && dIdx < tabOrder.length - 1 ? tabOrder[dIdx + 1] : null;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (snapping || e.touches.length !== 1) return;
+    const tgt = e.target as HTMLElement;
+    // don't hijack gestures that originate inside interactive/scrollable controls
+    if (tgt.closest('input, textarea, select, [data-no-swipe], [role="slider"]')) return;
+    startRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      t: Date.now(),
+      axis: null,
+    };
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!startRef.current) return;
+    const dx = e.touches[0].clientX - startRef.current.x;
+    const dy = e.touches[0].clientY - startRef.current.y;
+    if (startRef.current.axis == null) {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      startRef.current.axis = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'x' : 'y';
+    }
+    if (startRef.current.axis !== 'x') return;
+    let eff = dx;
+    if (!prevTab && eff > 0) eff *= 0.3;
+    if (!nextTab && eff < 0) eff *= 0.3;
+    setDragX(eff);
+  };
+  const onTouchEnd = () => {
+    if (!startRef.current) return;
+    const axis = startRef.current.axis;
+    const t0 = startRef.current.t;
+    startRef.current = null;
+    if (axis !== 'x') {
+      setDragX(0);
+      return;
+    }
+    const w = containerRef.current?.clientWidth ?? window.innerWidth;
+    const dx = dragX;
+    const elapsed = Math.max(1, Date.now() - t0);
+    const velocity = Math.abs(dx) / elapsed; // px/ms
+    const threshold = w * 0.28;
+    setSnapping(true);
+    if ((dx <= -threshold || (dx < -20 && velocity > 0.45)) && nextTab) {
+      setDragX(-w);
+      window.setTimeout(() => {
+        setSnapping(false);
+        setDragX(0);
+        setDisplayTab(nextTab);
+        setActiveTab(nextTab);
+      }, 300);
+    } else if ((dx >= threshold || (dx > 20 && velocity > 0.45)) && prevTab) {
+      setDragX(w);
+      window.setTimeout(() => {
+        setSnapping(false);
+        setDragX(0);
+        setDisplayTab(prevTab);
+        setActiveTab(prevTab);
+      }, 300);
+    } else {
+      setDragX(0);
+      window.setTimeout(() => setSnapping(false), 300);
+    }
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="page-stack w-full"
+      style={{ touchAction: 'pan-y', overflow: 'hidden' }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchEnd}
+    >
+      <div
+        className="flex"
+        style={{
+          width: '300%',
+          transform: `translate3d(calc(-33.3333% + ${dragX}px), 0, 0)`,
+          transition: snapping ? 'transform 300ms cubic-bezier(0.22,1,0.36,1)' : 'none',
+          willChange: 'transform',
+        }}
+      >
+        <div className="shrink-0" style={{ width: '33.3333%' }}>
+          {prevTab ? renderPageLayout(prevTab) : null}
+        </div>
+        <div className="shrink-0" style={{ width: '33.3333%' }}>
+          {renderPageLayout(displayTab)}
+        </div>
+        <div className="shrink-0" style={{ width: '33.3333%' }}>
+          {nextTab ? renderPageLayout(nextTab) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 
 function App() {
@@ -4869,9 +5279,11 @@ function App() {
   const [exitingTab, setExitingTab] = useState<string | null>(null);
   const [exitDirection, setExitDirection] = useState<'fwd' | 'back'>('fwd');
   const [exitIsMobile, setExitIsMobile] = useState(isMobilePage);
+  const [hasNavigated, setHasNavigated] = useState(false);
   const prevTabRef = useRef(activeTab);
   useEffect(() => {
     if (prevTabRef.current === activeTab) return;
+    setHasNavigated(true);
     const prev = tabOrder.indexOf(prevTabRef.current);
     const cur = tabOrder.indexOf(activeTab);
     const dir = prev !== -1 && cur !== -1 && cur < prev ? 'back' : 'fwd';
@@ -4884,9 +5296,11 @@ function App() {
     return () => clearTimeout(timer);
   }, [activeTab, isMobilePage, tabOrder]);
 
-  const enterClass = isMobilePage
-    ? (exitDirection === 'fwd' ? 'anim-page-enter-h-fwd' : 'anim-page-enter-h-back')
-    : (exitDirection === 'fwd' ? 'anim-page-enter-v-fwd' : 'anim-page-enter-v-back');
+  const enterClass = !hasNavigated
+    ? ''
+    : isMobilePage
+      ? (exitDirection === 'fwd' ? 'anim-page-enter-h-fwd' : 'anim-page-enter-h-back')
+      : (exitDirection === 'fwd' ? 'anim-page-enter-v-fwd' : 'anim-page-enter-v-back');
   const exitClass = exitIsMobile
     ? (exitDirection === 'fwd' ? 'anim-page-exit-h-fwd' : 'anim-page-exit-h-back')
     : (exitDirection === 'fwd' ? 'anim-page-exit-v-fwd' : 'anim-page-exit-v-back');
@@ -4904,6 +5318,7 @@ function App() {
   const [demoRole, setDemoRole] = useState('Treballador/a');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -4920,6 +5335,7 @@ function App() {
     setDemoRole(user.role);
     setIsLoggedIn(true);
     apiGetNotifications().then(setNotifications).catch(() => {});
+    prefetchTabData(true);
     if (!user.onboarded) setShowOnboarding(true);
   };
 
@@ -4945,6 +5361,7 @@ function App() {
     setIsProfileMenuOpen(false);
     setActiveTabState('Inici');
     setNotifications([]);
+    resetTabPrefetch();
   };
 
   const currentSection = SIDEBAR_SECTIONS.flatMap(s => s.items).find(i => i.id === activeTab)
@@ -4965,6 +5382,7 @@ function App() {
           setDemoRole(user.role);
           setIsLoggedIn(true);
           apiGetNotifications().then(setNotifications).catch(() => {});
+          prefetchTabData(true);
           if (!user.onboarded) setShowOnboarding(true);
         })
         .catch(() => clearToken());
@@ -5053,10 +5471,57 @@ function App() {
     const isInici = tab === 'Inici';
     const section = SIDEBAR_SECTIONS.flatMap(s => s.items).find(i => i.id === tab)
       ?? (tab === 'Empresa' ? { id: 'Empresa', label: 'Empresa', icon: Building2 } : undefined);
+
+    const mobileKickers: Record<string, string> = {
+      'Notícies': 'Comunicació interna',
+      'Activitats': "Vida a l'empresa",
+      'Agenda': 'Calendari',
+      'Directori': 'Equip',
+      'Veu': 'Personal',
+      'Solicituds': 'RRHH',
+      'Perfil': 'El teu compte',
+      'Campus': 'Formació',
+      'Espai': 'Empresa',
+      'Empresa': 'Empresa',
+    };
+
     return (
-      <div className={isInici ? 'w-full' : 'p-3 md:p-4 lg:p-8 max-w-7xl mx-auto w-full'}>
+      <div className={isInici ? 'w-full' : 'w-full md:p-4 lg:p-8 md:max-w-7xl md:mx-auto'}>
+
+        {/* ── Mobile top bar (hamburger · logo · bell) — hidden on desktop ── */}
+        <div className="md:hidden" style={{ background: 'var(--tavil-bg)' }}>
+          <MobileAppHeader
+            onOpenDrawer={() => setIsDrawerOpen(true)}
+            onNotif={() => setIsNotifOpen(true)}
+            hasUnread={notifications.some(n => !n.read)}
+            isDarkMode={isDarkMode}
+          />
+        </div>
+
+        {/* ── Mobile page title (kicker + Instrument Serif h1) — non-Inici only ── */}
         {!isInici && (
-          <div className="mb-6">
+          <div
+            className="md:hidden px-4 pt-3 pb-2"
+            style={{ background: 'var(--tavil-bg)' }}
+          >
+            {mobileKickers[tab] && (
+              <div className="mobile-kicker">{mobileKickers[tab]}</div>
+            )}
+            <h1 style={{
+              fontFamily: '"Instrument Serif", "Times New Roman", serif',
+              fontSize: 32, fontWeight: 400, lineHeight: 1.05,
+              letterSpacing: '-0.02em',
+              color: 'var(--tavil-text)',
+              margin: 0,
+            }}>
+              {section?.label ?? tab}
+            </h1>
+          </div>
+        )}
+
+        {/* ── Desktop breadcrumb + title — hidden on mobile ── */}
+        {!isInici && (
+          <div className="hidden md:block mb-6 p-3 md:p-0">
             <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
               <button onClick={() => setActiveTab('Inici')} className="hover:text-red-600 flex items-center gap-1 transition-colors">
                 <Home size={11} /> {t('breadcrumb.home')}
@@ -5067,7 +5532,11 @@ function App() {
             <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{section?.label}</h1>
           </div>
         )}
-        {renderContentFor(tab)}
+
+        {/* ── Tab content ── */}
+        <div className={!isInici ? 'md:mt-0 px-3 md:px-0 pb-24 md:pb-0' : ''}>
+          {renderContentFor(tab)}
+        </div>
       </div>
     );
   };
@@ -5329,17 +5798,26 @@ function App() {
           </div>
         </header>
 
-        {/* Content — push transition: old slides out, new slides in, stacked in a relative wrapper */}
-        <div className="page-stack w-full">
-          {exitingTab && exitingTab !== activeTab && (
-            <div key={`exit-${exitingTab}`} className={cn("page-viewport page-exiting w-full", exitClass)}>
-              {renderPageLayout(exitingTab)}
+        {/* Content — mobile: swipeable Instagram-style strip; desktop: vertical push transition */}
+        {isMobilePage ? (
+          <MobileSwipeStack
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            tabOrder={tabOrder}
+            renderPageLayout={renderPageLayout}
+          />
+        ) : (
+          <div className="page-stack w-full">
+            {exitingTab && exitingTab !== activeTab && (
+              <div key={`exit-${exitingTab}`} className={cn("page-viewport page-exiting w-full", exitClass)}>
+                {renderPageLayout(exitingTab)}
+              </div>
+            )}
+            <div key={`enter-${activeTab}`} className={cn("page-viewport page-entering w-full", enterClass)}>
+              {renderPageLayout(activeTab)}
             </div>
-          )}
-          <div key={`enter-${activeTab}`} className={cn("page-viewport page-entering w-full", enterClass)}>
-            {renderPageLayout(activeTab)}
           </div>
-        </div>
+        )}
       </main>
 
       {showOnboarding && currentUser && (
@@ -5354,7 +5832,15 @@ function App() {
           }}
         />
       )}
-      <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} isDarkMode={isDarkMode} />
+      <MobileDrawer
+        open={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        onNavigate={(tab) => { setActiveTab(tab); setIsDrawerOpen(false); }}
+        currentUser={currentUser}
+        isDarkMode={isDarkMode}
+        activeTab={activeTab}
+      />
+      <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} onOpenDrawer={() => setIsDrawerOpen(true)} isDarkMode={isDarkMode} />
     </div>
   );
 }
