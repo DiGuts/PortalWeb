@@ -387,10 +387,9 @@ html.dark {
 
 /* ── Mobile base overrides ───────────────────────────────────────────────── */
 @media (max-width: 767px) {
-  /* Porcelain background + Instrument Sans on mobile */
+  /* Porcelain background on mobile — keep same font as desktop */
   body {
     background-color: var(--tavil-bg);
-    font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   }
   html.dark body {
     background-color: var(--tavil-bg);

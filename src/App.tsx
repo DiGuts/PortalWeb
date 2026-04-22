@@ -156,19 +156,11 @@ function MobileAppHeader({
       </button>
 
       {/* Logo */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 7,
-        fontFamily: '"Instrument Serif", "Times New Roman", serif',
-        fontSize: 20, color: 'var(--tavil-text)', letterSpacing: '-0.01em',
-      }}>
-        <div style={{
-          width: 22, height: 22, borderRadius: 5,
-          background: '#bf211e', color: '#fff',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 700, fontFamily: 'Instrument Sans, sans-serif',
-        }}>T</div>
-        TAVIL
-      </div>
+      <img
+        src={`${process.env.PUBLIC_URL}/assets/images/${isDarkMode ? 'tavilLogoDark' : 'tavilLogo'}.png`}
+        alt="TAVIL"
+        style={{ height: 26, objectFit: 'contain' }}
+      />
 
       {/* Bell */}
       <button
@@ -267,19 +259,11 @@ function MobileDrawer({
         {/* Header */}
         <div style={{ padding: '52px 20px 20px', borderBottom: '1px solid var(--tavil-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              fontFamily: '"Instrument Serif", "Times New Roman", serif',
-              fontSize: 22, color: 'var(--tavil-text)', letterSpacing: '-0.01em',
-            }}>
-              <div style={{
-                width: 26, height: 26, borderRadius: 6,
-                background: '#bf211e', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 13, fontWeight: 700,
-              }}>T</div>
-              TAVIL
-            </div>
+            <img
+              src={`${process.env.PUBLIC_URL}/assets/images/${isDarkMode ? 'tavilLogoDark' : 'tavilLogo'}.png`}
+              alt="TAVIL"
+              style={{ height: 24, objectFit: 'contain' }}
+            />
             <button onClick={onClose} style={{
               width: 36, height: 36, borderRadius: 18,
               background: 'transparent', border: '1px solid var(--tavil-border)',
@@ -4880,6 +4864,125 @@ function LoginPage({ onLoginResult, onRegister, isDarkMode, toggleDarkMode }: {
     }
   };
 
+  const isMobileLogin = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  // ── Mobile layout — matches design's LoginScreen ──────────────────────────
+  if (isMobileLogin) {
+    return (
+      <div className={cn("min-h-screen flex flex-col transition-colors", isDarkMode && "dark")}
+        style={{ background: 'var(--tavil-bg)', color: 'var(--tavil-text)', padding: '20px 24px 32px' }}>
+        {/* Top: logo + dark toggle */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 56 }}>
+          <img
+            src={`${process.env.PUBLIC_URL}/assets/images/${isDarkMode ? 'tavilLogoDark' : 'tavilLogo'}.png`}
+            alt="TAVIL" style={{ height: 26, objectFit: 'contain' }}
+          />
+          <button onClick={toggleDarkMode} style={{
+            width: 36, height: 36, borderRadius: 18,
+            background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', color: 'var(--tavil-text)',
+          }}>
+            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+        </div>
+
+        {/* Heading */}
+        <div style={{ marginBottom: 32 }}>
+          <div style={{
+            fontSize: 10.5, color: '#bf211e', fontWeight: 600,
+            textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 12,
+          }}>Portal intern</div>
+          <h1 style={{
+            fontFamily: '"Instrument Serif", "Times New Roman", serif',
+            fontSize: 34, fontWeight: 400, lineHeight: 1.05, margin: '0 0 12px',
+            letterSpacing: '-0.02em', color: 'var(--tavil-text)',
+          }}>Benvingut a TAVIL</h1>
+          <p style={{ fontSize: 14.5, color: 'var(--tavil-muted)', margin: 0, lineHeight: 1.45 }}>
+            Entra amb el teu compte corporatiu
+          </p>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          <label style={{ display: 'block', marginBottom: 14 }}>
+            <div style={{ fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 6, fontWeight: 500 }}>
+              Correu electrònic
+            </div>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Mail size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+              <input
+                type="email" value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="nom.cognom@tavil.net" required autoComplete="email"
+                style={{
+                  width: '100%', height: 48, padding: '0 14px 0 42px',
+                  background: 'var(--tavil-card)', color: 'var(--tavil-text)',
+                  border: '1px solid var(--tavil-border)',
+                  borderRadius: 12, fontSize: 15, outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+          </label>
+          <label style={{ display: 'block', marginBottom: 8 }}>
+            <div style={{ fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 6, fontWeight: 500 }}>
+              Contrasenya
+            </div>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Lock size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+              <input
+                type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••" required autoComplete="current-password"
+                style={{
+                  width: '100%', height: 48, padding: '0 42px 0 42px',
+                  background: 'var(--tavil-card)', color: 'var(--tavil-text)',
+                  border: '1px solid var(--tavil-border)',
+                  borderRadius: 12, fontSize: 15, outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+              <button type="button" onClick={() => setShowPass(!showPass)} style={{
+                position: 'absolute', right: 14, color: 'var(--tavil-faint)',
+                background: 'none', border: 'none', cursor: 'pointer', display: 'flex',
+              }}>
+                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </label>
+          <div style={{ textAlign: 'right', marginBottom: 20 }}>
+            <button type="button" style={{
+              background: 'none', border: 'none', color: '#bf211e',
+              fontSize: 13, cursor: 'pointer', padding: 0,
+            }}>Has oblidat la contrasenya?</button>
+          </div>
+          {error && (
+            <p style={{ fontSize: 13, color: '#bf211e', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>
+          )}
+          <button type="submit" disabled={loading} style={{
+            height: 52, borderRadius: 12, border: 'none',
+            background: loading ? '#a21b18' : '#bf211e', color: '#fff',
+            fontSize: 15, fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer',
+            transition: 'all 160ms', opacity: loading ? 0.7 : 1,
+          }}>
+            {loading ? 'Carregant…' : 'Inicia sessió'}
+          </button>
+        </form>
+
+        <div style={{ flex: 1 }} />
+
+        <div style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--tavil-muted)', marginBottom: 14 }}>
+          Encara no tens compte?{' '}
+          <button onClick={onRegister} style={{
+            background: 'none', border: 'none', color: '#bf211e',
+            fontSize: 13.5, fontWeight: 600, cursor: 'pointer', padding: 0,
+          }}>Crea un compte</button>
+        </div>
+        <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--tavil-faint)', letterSpacing: '0.02em' }}>
+          TAVIL · Portal intern · 2026
+        </div>
+      </div>
+    );
+  }
+
+  // ── Desktop layout ────────────────────────────────────────────────────────
   return (
     <div className={cn("min-h-screen bg-gray-100 dark:bg-zinc-950 flex flex-col transition-colors", isDarkMode && "dark")}>
       <div className="flex justify-end p-4">
