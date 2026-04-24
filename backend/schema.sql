@@ -4,15 +4,25 @@
 -- ─── Auth / Users ─────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS users (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  name           TEXT    NOT NULL,
+  email          TEXT    UNIQUE NOT NULL,
+  password       TEXT    NOT NULL,          -- bcrypt hash, NEVER plaintext
+  role           TEXT    NOT NULL DEFAULT 'Treballador/a',
+  dept           TEXT    NOT NULL DEFAULT 'General',
+  phone          TEXT    NOT NULL DEFAULT '',
+  ext            TEXT    NOT NULL DEFAULT '',
+  location       TEXT    NOT NULL DEFAULT '',
+  email_verified INTEGER NOT NULL DEFAULT 1, -- 1=verified, 0=pending (used when EMAIL_VERIFY_ENABLED)
+  created_at     TEXT    DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS auth_tokens (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  name       TEXT    NOT NULL,
-  email      TEXT    UNIQUE NOT NULL,
-  password   TEXT    NOT NULL,          -- bcrypt hash, NEVER plaintext
-  role       TEXT    NOT NULL DEFAULT 'Treballador/a',
-  dept       TEXT    NOT NULL DEFAULT 'General',
-  phone      TEXT    NOT NULL DEFAULT '',
-  ext        TEXT    NOT NULL DEFAULT '',
-  location   TEXT    NOT NULL DEFAULT '',
+  email      TEXT    NOT NULL,
+  code       TEXT    NOT NULL,
+  purpose    TEXT    NOT NULL,  -- 'verify' | 'otp'
+  expires_at TEXT    NOT NULL,
   created_at TEXT    DEFAULT (datetime('now'))
 );
 

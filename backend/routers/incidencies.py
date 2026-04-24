@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/incidencies", tags=["incidencies"])
 
 async def _notify(db: AsyncConnection, user_id: int, title: str, body: str) -> None:
     await db.execute(
-        text("INSERT INTO notifications (user_id, title, body, tab) VALUES (:uid, :title, :body, 'Veu')"),
+        text("INSERT INTO notifications (user_id, title, body, tab) VALUES (:uid, :title, :body, 'Veu/Incidències')"),
         {"uid": user_id, "title": title, "body": body},
     )
 

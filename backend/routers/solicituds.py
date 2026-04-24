@@ -10,7 +10,7 @@ from email_service import send_email
 router = APIRouter(prefix="/api/solicituds", tags=["solicituds"])
 
 
-async def _notify(db: AsyncConnection, user_id: int, title: str, body: str, tab: str = "Solicituds") -> None:
+async def _notify(db: AsyncConnection, user_id: int, title: str, body: str, tab: str = "Solicituds/Dies no ordinaris") -> None:
     await db.execute(
         text("INSERT INTO notifications (user_id, title, body, tab) VALUES (:uid, :title, :body, :tab)"),
         {"uid": user_id, "title": title, "body": body, "tab": tab},

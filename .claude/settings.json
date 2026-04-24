@@ -1,0 +1,5 @@
+{
+  "enabledPlugins": {
+    "goodmem@claude-plugins-official": true
+  }
+}

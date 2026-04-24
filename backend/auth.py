@@ -59,7 +59,7 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="Token sense subjecte")
 
     row = (await db.execute(
-        text("SELECT id, name, email, role, dept, phone, ext, location FROM users WHERE email = :email"),
+        text("SELECT id, name, email, role, dept, phone, ext, location, is_head FROM users WHERE email = :email"),
         {"email": email},
     )).mappings().first()
 

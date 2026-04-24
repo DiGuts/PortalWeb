@@ -4,11 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from database import get_db
 from auth import get_current_user, require_admin
-from models import UserOut, UserUpdateIn, UserUpdateExtIn, UserRoleIn, OnboardingIn
+from models import UserOut, UserUpdateIn, UserUpdateExtIn, UserRoleIn, OnboardingIn, UserDeptIn
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
-_USER_FIELDS = "id, name, email, role, dept, phone, ext, location, onboarded, email_notifs"
+_USER_FIELDS = "id, name, email, role, dept, phone, ext, location, onboarded, email_notifs, is_head"
 
 
 @router.get("/me", response_model=UserOut)
@@ -58,10 +58,9 @@ async def complete_onboarding(
     current_user: dict = Depends(get_current_user),
     db: AsyncConnection = Depends(get_db),
 ):
-    new_role = "Responsable de departament" if body.is_head else current_user.get("role", "Treballador/a")
     await db.execute(
-        text("UPDATE users SET dept = :dept, role = :role, onboarded = 1 WHERE id = :id"),
-        {"dept": body.dept, "role": new_role, "id": current_user["id"]},
+        text("UPDATE users SET dept = :dept, is_head = :is_head, onboarded = 1 WHERE id = :id"),
+        {"dept": body.dept, "is_head": 1 if body.is_head else 0, "id": current_user["id"]},
     )
     await db.commit()
 
@@ -81,6 +80,49 @@ async def update_my_role(
     await db.execute(
         text("UPDATE users SET role = :role WHERE id = :id"),
         {"role": body.role, "id": current_user["id"]},
+    )
+    await db.commit()
+
+    row = (await db.execute(
+        text(f"SELECT {_USER_FIELDS} FROM users WHERE id = :id"),
+        {"id": current_user["id"]},
+    )).mappings().first()
+    return UserOut(**dict(row))
+
+
+@router.get("/dept-head/{dept}")
+async def get_dept_head(
+    dept: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncConnection = Depends(get_db),
+):
+    """Returns whether the given dept already has a head (is_head=1), excluding the current user."""
+    row = (await db.execute(
+        text("SELECT id FROM users WHERE dept = :dept AND is_head = 1 AND id != :uid LIMIT 1"),
+        {"dept": dept, "uid": current_user["id"]},
+    )).first()
+    return {"has_head": row is not None}
+
+
+@router.patch("/me/dept", response_model=UserOut)
+async def update_my_dept(
+    body: UserDeptIn,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncConnection = Depends(get_db),
+):
+    """Change own dept and head status. Refuses if dept already has another head."""
+    if body.is_head:
+        conflict = (await db.execute(
+            text("SELECT id FROM users WHERE dept = :dept AND is_head = 1 AND id != :uid LIMIT 1"),
+            {"dept": body.dept, "uid": current_user["id"]},
+        )).first()
+        if conflict:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=409, detail="Aquest departament ja té un responsable assignat")
+
+    await db.execute(
+        text("UPDATE users SET dept = :dept, is_head = :is_head WHERE id = :id"),
+        {"dept": body.dept, "is_head": 1 if body.is_head else 0, "id": current_user["id"]},
     )
     await db.commit()
 

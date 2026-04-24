@@ -9,6 +9,20 @@ class LoginIn(BaseModel):
     password: str
 
 
+class VerifyEmailIn(BaseModel):
+    email: EmailStr
+    code: str
+
+
+class VerifyOTPIn(BaseModel):
+    email: EmailStr
+    code: str
+
+
+class ResendVerificationIn(BaseModel):
+    email: EmailStr
+
+
 class RegisterIn(BaseModel):
     name: str
     email: EmailStr
@@ -28,6 +42,7 @@ class UserOut(BaseModel):
     location: str
     onboarded: int = 0
     email_notifs: int = 1
+    is_head: int = 0
 
 
 class TokenOut(BaseModel):
@@ -183,3 +198,8 @@ class UserUpdateExtIn(BaseModel):
     ext: Optional[str] = None
     location: Optional[str] = None
     email_notifs: Optional[int] = None
+
+
+class UserDeptIn(BaseModel):
+    dept: str
+    is_head: bool = False

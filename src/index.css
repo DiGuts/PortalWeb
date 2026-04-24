@@ -66,10 +66,10 @@
 /* Vertical — forward (new pushes old up) */
 @keyframes tavil-page-out-up {
   0%   { opacity: 1; transform: translate3d(0, 0, 0)     scale(1); }
-  100% { opacity: 0; transform: translate3d(0, -100%, 0) scale(.96); }
+  100% { opacity: 0; transform: translate3d(0, -50%, 0) scale(.96); }
 }
 @keyframes tavil-page-in-from-below {
-  0%   { opacity: 0; transform: translate3d(0, 100%, 0) scale(.96); filter: blur(4px); }
+  0%   { opacity: 0; transform: translate3d(0, 50%, 0) scale(.96); filter: blur(4px); }
   45%  { opacity: 1; filter: blur(0); }
   100% { opacity: 1; transform: translate3d(0, 0, 0)    scale(1);   filter: blur(0); }
 }
@@ -77,10 +77,10 @@
 /* Vertical — backward (new pulls old down) */
 @keyframes tavil-page-out-down {
   0%   { opacity: 1; transform: translate3d(0, 0, 0)   scale(1); }
-  100% { opacity: 0; transform: translate3d(0, 100%, 0) scale(.96); }
+  100% { opacity: 0; transform: translate3d(0, 50%, 0) scale(.96); }
 }
 @keyframes tavil-page-in-from-above {
-  0%   { opacity: 0; transform: translate3d(0, -100%, 0) scale(.96); filter: blur(4px); }
+  0%   { opacity: 0; transform: translate3d(0, -50%, 0) scale(.96); filter: blur(4px); }
   45%  { opacity: 1; filter: blur(0); }
   100% { opacity: 1; transform: translate3d(0, 0, 0)     scale(1);   filter: blur(0); }
 }
@@ -105,10 +105,10 @@
   100% { opacity: 1; transform: translate3d(0, 0, 0)     scale(1); }
 }
 
-.anim-page-enter-v-fwd  { animation: tavil-page-in-from-below 720ms var(--ease-out-quint) both; }
-.anim-page-exit-v-fwd   { animation: tavil-page-out-up         720ms var(--ease-out-quint) both; }
-.anim-page-enter-v-back { animation: tavil-page-in-from-above  720ms var(--ease-out-quint) both; }
-.anim-page-exit-v-back  { animation: tavil-page-out-down       720ms var(--ease-out-quint) both; }
+.anim-page-enter-v-fwd  { animation: tavil-page-in-from-below 1080ms var(--ease-out-quint) both; }
+.anim-page-exit-v-fwd   { animation: tavil-page-out-up         1080ms var(--ease-out-quint) both; }
+.anim-page-enter-v-back { animation: tavil-page-in-from-above  1080ms var(--ease-out-quint) both; }
+.anim-page-exit-v-back  { animation: tavil-page-out-down       1080ms var(--ease-out-quint) both; }
 .anim-page-enter-h-fwd  { animation: tavil-page-in-from-right  620ms var(--ease-out-quint) both; }
 .anim-page-exit-h-fwd   { animation: tavil-page-out-left       620ms var(--ease-out-quint) both; }
 .anim-page-enter-h-back { animation: tavil-page-in-from-left   620ms var(--ease-out-quint) both; }
@@ -343,7 +343,7 @@ code {
 
 /* ── Mobile design tokens ─────────────────────────────────────────────────── */
 :root {
-  --tavil-bg: #f7f7f2;
+  --tavil-bg: #eeeee9;
   --tavil-card: #ffffff;
   --tavil-border: #e3e2db;
   --tavil-text: #222725;
@@ -354,14 +354,30 @@ code {
   --tavil-accent-dark: #a21b18;
 }
 html.dark {
-  --tavil-bg: #1a1c1a;
+  --tavil-bg: #121212;
   --tavil-card: #242624;
   --tavil-border: #33362f;
   --tavil-text: #f0efe8;
   --tavil-muted: #a8afa6;
   --tavil-faint: #7a8178;
 }
+@media (max-width: 767px) {
 
+  /* Mobile tokens */
+  :root {
+    --tavil-bg: #f7f7f2;
+  }
+
+  html.dark {
+    --tavil-bg: #1a1c1a;
+  }
+
+  /* Aquest és el canvi que volies */
+  html:not(.dark) .bg-gray-50 {
+    background-color: #f7f7f2;
+  }
+
+}
 /* Instrument Serif for mobile serif headings */
 .font-serif-display {
   font-family: 'Instrument Serif', 'Times New Roman', serif;

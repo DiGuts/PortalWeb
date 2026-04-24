@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { LoginScreen } from './components/mobile/auth/LoginScreen';
+import { RegisterScreen } from './components/mobile/auth/RegisterScreen';
+import { VerifyScreen } from './components/mobile/auth/VerifyScreen';
+import { ForgotScreen } from './components/mobile/auth/ForgotScreen';
 import { createPortal } from 'react-dom';
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -2165,7 +2169,7 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
 
     if (selectedNews) {
       return (
-        <div style={{ minHeight: '100vh', background: 'var(--tavil-bg)', paddingBottom: 96 }} className="anim-page-enter-h-fwd">
+        <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }} className="anim-page-enter-h-fwd">
           <div style={{ height: 52, background: 'var(--tavil-bg)', display: 'flex', alignItems: 'center', padding: '0 12px' }}>
             <button onClick={() => setSelectedNews(null)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '8px 4px' }}>
               <ChevronLeft size={20} style={{ color: 'var(--tavil-accent)' }} />
@@ -2195,9 +2199,9 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
     }
 
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--tavil-bg)', paddingBottom: 96 }}>
+      <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
         {/* Top bar */}
-        <div style={{ height: 52, background: 'var(--tavil-bg)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
+        <div style={{ height: 82, background: 'var(--tavil-bg)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
           <button onClick={onOpenDrawer} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)' }}>
             <Menu size={18} />
           </button>
@@ -2645,7 +2649,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
   // ── Mobile layout ──────────────────────────────────────────────────────────
   if (isMobileAct) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--tavil-bg)', paddingBottom: 96 }}>
+      <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
         {/* Top bar: back button + centered title */}
         <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 12px', position: 'relative' }}>
           <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '8px 4px', zIndex: 1 }}>
@@ -3155,70 +3159,70 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
   const cells: (number | null)[] = [...Array(mondayOffset).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
   // ── Mobile layout ──────────────────────────────────────────────────────────
-  if (isMobileAgenda) {
-    const EVENT_BAR_COLORS: Record<string, string> = {
-      'Festiu': '#22c55e',
-      'Fira': '#f59e0b',
-      'Visita comercial': '#3b82f6',
-      'Sessió interna': '#8b5cf6',
-      'Activitat empresa': '#bf211e',
-    };
-    // Week strip: 7 days of the current week (Mon–Sun), anchored to today
-    const todayDate = new Date();
-    const todayDay = todayDate.getDate();
-    const todayMonth = todayDate.getMonth() + 1;
-    const todayYear = todayDate.getFullYear();
-    const dow = todayDate.getDay(); // 0=Sun
-    const mondayShift = dow === 0 ? -6 : 1 - dow;
-    const weekDayLabels = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'];
-    const weekDays = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(todayDate);
-      d.setDate(todayDate.getDate() + mondayShift + i);
-      return { n: d.getDate(), l: weekDayLabels[i], month: d.getMonth() + 1, year: d.getFullYear() };
-    });
-    const selDay = selectedDay ?? todayDay;
-    const selMonth = currentMonth;
-    const selEvents = agendaEvents.filter(e => e.day === selDay && e.month === selMonth);
-    return (
-      <div style={{ minHeight: '100vh', background: 'var(--tavil-bg)', paddingBottom: 96 }}>
-        {/* Top bar */}
-        <div style={{ height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
-          <button onClick={onOpenDrawer} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)' }}>
-            <Menu size={18} />
-          </button>
-          {isAdmin && (
-            <button onClick={() => setShowEventForm(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, padding: '0 14px', borderRadius: 10, background: '#bf211e', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-              <Plus size={15} /> Nou
+          if (isMobileAgenda) {
+          const EVENT_BAR_COLORS: Record<string, string> = {
+          'Festiu': '#22c55e',
+          'Fira': '#f59e0b',
+          'Visita comercial': '#3b82f6',
+          'Sessió interna': '#8b5cf6',
+          'Activitat empresa': '#bf211e',
+        };
+          // Week strip: 7 days of the current week (Mon–Sun), anchored to today
+          const todayDate = new Date();
+          const todayDay = todayDate.getDate();
+          const todayMonth = todayDate.getMonth() + 1;
+          const todayYear = todayDate.getFullYear();
+          const dow = todayDate.getDay(); // 0=Sun
+          const mondayShift = dow === 0 ? -6 : 1 - dow;
+          const weekDayLabels = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'];
+          const weekDays = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(todayDate);
+          d.setDate(todayDate.getDate() + mondayShift + i);
+          return { n: d.getDate(), l: weekDayLabels[i], month: d.getMonth() + 1, year: d.getFullYear() };
+        });
+          const selDay = selectedDay ?? todayDay;
+          const selMonth = currentMonth;
+          const selEvents = agendaEvents.filter(e => e.day === selDay && e.month === selMonth);
+          return (
+          <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
+          {/* Top bar */}
+          <div style={{ height: 82, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
+            <button onClick={onOpenDrawer} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)' }}>
+              <Menu size={18} />
             </button>
-          )}
-        </div>
-        {/* Header text */}
-        <div style={{ padding: '8px 20px 16px' }}>
-          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>
-            {MONTH_NAMES[todayMonth]} {todayYear}
+            {isAdmin && (
+                <button onClick={() => setShowEventForm(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, padding: '0 14px', borderRadius: 10, background: '#bf211e', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <Plus size={15} /> Nou
+                </button>
+            )}
           </div>
-          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 36, fontWeight: 400, lineHeight: 1, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>Agenda</h1>
-        </div>
-        {/* Week strip */}
-        <div style={{ padding: '4px 16px 18px', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
-          {weekDays.map(d => {
-            const active = d.n === selDay && d.month === selMonth;
-            const isTod = d.n === todayDay && d.month === todayMonth && d.year === todayYear;
-            return (
-              <button key={d.n + '-' + d.month} onClick={() => { setSelectedDay(d.n); setCurrentMonth(d.month); setCurrentYear(d.year); }} style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0 6px',
-                background: active ? 'var(--tavil-text)' : 'transparent',
-                color: active ? 'var(--tavil-bg)' : 'var(--tavil-text)',
-                border: `1px solid ${active ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
-                borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit',
-                transition: 'all 200ms',
-              }}>
-                <span style={{ fontSize: 10, fontWeight: 500, opacity: active ? 0.7 : 0.6, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{d.l}</span>
-                <span style={{ fontSize: 18, fontWeight: 600, marginTop: 2, fontFamily: '"Instrument Serif", serif' }}>{d.n}</span>
-                {isTod && !active && <div style={{ width: 4, height: 4, borderRadius: 2, background: '#bf211e', marginTop: 3 }} />}
-              </button>
-            );
-          })}
+          {/* Header text */}
+          <div style={{ padding: '8px 20px 16px' }}>
+            <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>
+              {MONTH_NAMES[todayMonth]} {todayYear}
+            </div>
+            <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 36, fontWeight: 400, lineHeight: 1, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>Agenda</h1>
+          </div>
+          {/* Week strip */}
+          <div style={{ padding: '4px 16px 18px', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+            {weekDays.map(d => {
+              const active = d.n === selDay && d.month === selMonth;
+              const isTod = d.n === todayDay && d.month === todayMonth && d.year === todayYear;
+              return (
+                  <button key={d.n + '-' + d.month} onClick={() => { setSelectedDay(d.n); setCurrentMonth(d.month); setCurrentYear(d.year); }} style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0 6px',
+                    background: active ? 'var(--tavil-text)' : 'transparent',
+                    color: active ? 'var(--tavil-bg)' : 'var(--tavil-text)',
+                    border: `1px solid ${active ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
+                    borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit',
+                    transition: 'all 200ms',
+                  }}>
+                    <span style={{ fontSize: 10, fontWeight: 500, opacity: active ? 0.7 : 0.6, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{d.l}</span>
+                    <span style={{ fontSize: 18, fontWeight: 600, marginTop: 2, fontFamily: '"Instrument Serif", serif' }}>{d.n}</span>
+                    {isTod && !active && <div style={{ width: 4, height: 4, borderRadius: 2, background: '#bf211e', marginTop: 3 }} />}
+                  </button>
+              );
+            })}
         </div>
         {/* Event count + timeline */}
         <div style={{ padding: '0 20px' }}>
@@ -3545,12 +3549,13 @@ function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
   // ── Mobile layout ──────────────────────────────────────────────────────────
   if (isMobileDir) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--tavil-bg)', paddingBottom: 96 }}>
+      <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
         {/* Top bar */}
-        <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 16px', flexShrink: 0 }}>
+        <div style={{ height: 82, display: 'flex', alignItems: 'center', padding: '0 16px', flexShrink: 0 }}>
           <button onClick={onOpenDrawer} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)' }}>
             <Menu size={18} />
           </button>
+
         </div>
         {/* Header kicker + title */}
         <div style={{ padding: '0 20px 14px' }}>
@@ -4252,7 +4257,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
     };
 
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--tavil-bg)', paddingBottom: 96 }}>
+      <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
         {/* Top bar: back + centered title */}
         <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 12px', position: 'relative' }}>
           <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '8px 4px', zIndex: 1 }}>
@@ -4986,7 +4991,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
       .reduce((acc, v) => acc + laboralDaysBetween(v.start_date, v.end_date), 0);
     const vacancesDisponibles = Math.max(0, ANNUAL_QUOTA_DAYS - approvedDaysThisYear);
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--tavil-bg)', paddingBottom: 96 }}>
+      <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
         {/* Top bar: back + centered title */}
         <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 12px', position: 'relative' }}>
           <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '8px 4px', zIndex: 1 }}>
@@ -7347,7 +7352,7 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authView, setAuthView] = useState<'login' | 'register' | 'verify-email' | 'otp'>('login');
+  const [authView, setAuthView] = useState<'login' | 'register' | 'verify-email' | 'otp' | 'forgot'>('login');
   const [pendingEmail, setPendingEmail] = useState('');
 
   const [activeTab, setActiveTabState] = useState(() => localStorage.getItem('tavil_active_tab') ?? 'Inici');
@@ -7643,6 +7648,12 @@ function App() {
   };
 
   if (!isLoggedIn) {
+    if (isMobilePage) {
+      if (authView === 'login') return <LoginScreen onLoginResult={handleAuthResult} onRegister={() => setAuthView('register')} onForgot={() => setAuthView('forgot')} isDarkMode={isDarkMode} />;
+      if (authView === 'register') return <RegisterScreen onBack={() => setAuthView('login')} onRegisterResult={handleAuthResult} isDarkMode={isDarkMode} />;
+      if (authView === 'verify-email') return <VerifyScreen email={pendingEmail} onBack={() => setAuthView('login')} onVerified={handleAuthResult} isDarkMode={isDarkMode} />;
+      if (authView === 'forgot') return <ForgotScreen onBack={() => setAuthView('login')} isDarkMode={isDarkMode} />;
+    }
     if (authView === 'login') return <LoginPage onLoginResult={handleAuthResult} onRegister={() => setAuthView('register')} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} />;
     if (authView === 'register') return <RegisterPage onBack={() => setAuthView('login')} onRegisterResult={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} />;
     if (authView === 'verify-email') return <VerifyEmailPage email={pendingEmail} onBack={() => setAuthView('login')} onVerified={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} />;

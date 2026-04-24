@@ -108,24 +108,43 @@ export const INTENSIUS_2026 = {
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-const toDate = (iso: IsoDate): Date => new Date(iso + 'T00:00:00');
-const toIso = (d: Date): IsoDate => d.toISOString().slice(0, 10);
+const toDate = (iso: IsoDate): Date => {
+  // Ensure the date is reasonably valid before trying to create a Date object
+  // Standard HTML5 date inputs are YYYY-MM-DD.
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+    return new Date(NaN); // Invalid Date
+  }
+  return new Date(iso + 'T00:00:00');
+};
+
+const toIso = (d: Date): IsoDate => {
+  if (isNaN(d.getTime())) return 'invalid-date';
+  return d.toISOString().slice(0, 10);
+};
 const addDays = (iso: IsoDate, n: number): IsoDate => {
   const d = toDate(iso); d.setDate(d.getDate() + n); return toIso(d);
 };
 const dayOfWeek = (iso: IsoDate): number => toDate(iso).getDay(); // 0=Sun..6=Sat
 
 export const isWeekend = (iso: IsoDate): boolean => {
+  if (iso === 'invalid-date') return false;
   const d = dayOfWeek(iso); return d === 0 || d === 6;
 };
-export const isHoliday = (iso: IsoDate): boolean => HOLIDAYS_2026.has(iso);
-export const isLaboral = (iso: IsoDate): boolean => !isWeekend(iso) && !isHoliday(iso);
+export const isHoliday = (iso: IsoDate): boolean => iso !== 'invalid-date' && HOLIDAYS_2026.has(iso);
+export const isLaboral = (iso: IsoDate): boolean => iso !== 'invalid-date' && !isWeekend(iso) && !isHoliday(iso);
 
 // Expand inclusive date range into ISO strings.
 export const expandRange = (from: IsoDate, to: IsoDate): IsoDate[] => {
+  if (from === 'invalid-date' || to === 'invalid-date') return [];
   const out: IsoDate[] = [];
   let cur = from;
-  while (cur <= to) { out.push(cur); cur = addDays(cur, 1); }
+  let safety = 0;
+  while (cur <= to && safety < 1000) { 
+    out.push(cur); 
+    cur = addDays(cur, 1); 
+    if (cur === 'invalid-date') break;
+    safety++;
+  }
   return out;
 };
 
@@ -135,6 +154,7 @@ export const laboralDaysBetween = (from: IsoDate, to: IsoDate): number =>
 
 // Which período does a date fall into, if any.
 export const findPeriod = (iso: IsoDate): Period | null => {
+  if (iso === 'invalid-date') return null;
   for (const p of PERIODS_2026) {
     for (const r of p.ranges) {
       if (iso >= r.from && iso <= r.to) return p;

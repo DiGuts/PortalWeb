@@ -40,6 +40,12 @@ MIGRATIONS = [
     # Add new columns to existing tables (safe: ignore if column already exists)
     "ALTER TABLE users ADD COLUMN onboarded INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE users ADD COLUMN email_notifs INTEGER NOT NULL DEFAULT 1",
+    # email_verified defaults to 1 so existing users are pre-verified
+    "ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1",
+    # is_head: boolean separate from role — backfill from existing "Responsable de departament" role
+    "ALTER TABLE users ADD COLUMN is_head INTEGER NOT NULL DEFAULT 0",
+    "UPDATE users SET is_head = 1 WHERE role = 'Responsable de departament'",
+    "ALTER TABLE courses ADD COLUMN url TEXT NOT NULL DEFAULT ''",
 ]
 
 

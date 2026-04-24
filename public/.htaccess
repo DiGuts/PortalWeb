@@ -2,5 +2,15 @@ AddType application/wasm .wasm
 
 Options -MultiViews
 RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule ^ index.html [QSA,L]
+RewriteBase /public_html/portal_web/
+
+# Uploads → persistent directory outside build/
+RewriteRule ^uploads/(.*)$ ../backend/uploads/$1 [L]
+
+# Serve real files and directories (uploads, static assets, etc.)
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# SPA fallback
+RewriteRule ^ index.html [L]
