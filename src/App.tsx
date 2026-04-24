@@ -371,7 +371,7 @@ function MesTab({
 }) {
   const name = currentUser?.name ?? '';
   const ini = name.split(' ').map((w: string) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
-  const hue = [...name].reduce((a: number, c: string) => a + c.charCodeAt(0), 0) % 360;
+  const hue = name.split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0) % 360;
 
   const groups: { label: string; items: { id: string; icon: any; label: string }[] }[] = [
     { label: 'General', items: [
@@ -785,7 +785,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                 <div style={{ padding: 16 }}>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: 'rgba(191,33,30,0.08)', color: '#bf211e' }}>{featured.category}</span>
-                    <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 999, background: 'var(--tavil-bg-alt)', color: 'var(--tavil-muted)', border: '1px solid var(--tavil-border)' }}>{featured.read_time ?? '4'} min</span>
+                    <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 999, background: 'var(--tavil-bg-alt)', color: 'var(--tavil-muted)', border: '1px solid var(--tavil-border)' }}>{featured.date}</span>
                   </div>
                   <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 22, fontWeight: 400, lineHeight: 1.15, letterSpacing: '-0.01em', color: 'var(--tavil-text)', marginBottom: 8 }}>{featured.title}</div>
                   <div style={{ fontSize: 13.5, color: 'var(--tavil-muted)', lineHeight: 1.45 }}>{featured.summary}</div>
@@ -4392,14 +4392,13 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
               <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: '14px 14px' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                   <h3 style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--tavil-text)', flex: 1, lineHeight: 1.25 }}>{enq.title}</h3>
-                  {enq.responded && <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#dcfce7', color: '#15803d', flexShrink: 0 }}>Respost</span>}
+                  {enq.user_completed && <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#dcfce7', color: '#15803d', flexShrink: 0 }}>Respost</span>}
                 </div>
-                {enq.description && <p style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginBottom: 10, lineHeight: 1.4 }}>{enq.description}</p>}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)' }}>
-                    {enq.question_count ?? 0} preguntes · {enq.response_count ?? 0} respostes
+                    {enq.questions ?? 0} preguntes · {enq.responses ?? 0} respostes
                   </div>
-                  {!enq.responded && (
+                  {!enq.user_completed && (
                     <button onClick={() => handleRespondre(enq.id)} style={{ fontSize: 13, fontWeight: 600, padding: '7px 16px', borderRadius: 10, border: 'none', background: '#bf211e', color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
                       Respondre
                     </button>
@@ -5081,7 +5080,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
 
             {/* My requests */}
             <div className="mobile-kicker" style={{ marginBottom: 8 }}>LES MEVES SOL·LICITUDS</div>
-            {diesNoOrdinaris.filter(d => !isRRHH && !isHead ? true : d.user_email === currentUser?.email).length === 0 ? (
+            {diesNoOrdinaris.filter(d => !isRRHH && !isHead ? true : d.author === currentUser?.name).length === 0 ? (
               <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--tavil-faint)' }}>
                 <FileText size={32} style={{ margin: '0 auto 10px', opacity: 0.35 }} />
                 <p style={{ fontSize: 13.5 }}>Sense sol·licituds</p>
@@ -5805,7 +5804,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
   if (isMobilePerfil) {
     const name = currentUser?.name ?? '';
     const ini = name.split(' ').map((w: string) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
-    const hue = [...name].reduce((a: number, c: string) => a + c.charCodeAt(0), 0) % 360;
+    const hue = name.split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0) % 360;
 
     // ── Notifications sub-view ─────────────────────────────
     if (showNotifs) {
