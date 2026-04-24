@@ -14,7 +14,7 @@ import {
   Moon, ChevronLeft, ChevronRight, Mail, Database, FolderOpen,
   AlertTriangle, ArrowRight, Sun, MapPin, Clock, Phone, FileText,
   BookOpen, Shield, ThumbsUp, ThumbsDown, Send, ExternalLink, CreditCard,
-  CheckCircle, Star, LogOut, LayoutGrid, List,
+  CheckCircle, Star, LogOut, LayoutGrid, List, Check,
   Heart, Gift, Globe, Download, Video, Award, Settings, Eye, EyeOff, Lock, Pencil, Trash2,
   Type, AlignLeft, Image as ImageIcon, Minus, Plus, GripVertical, X, Menu
 } from 'lucide-react';
@@ -128,11 +128,13 @@ const SkeletonCard = ({ className, lines = 2, media = true }: { className?: stri
 function MobileAppHeader({
   onOpenDrawer,
   onNotif,
+  onTabChange,
   hasUnread,
   isDarkMode,
 }: {
   onOpenDrawer: () => void;
   onNotif: () => void;
+  onTabChange: (tab: string) => void;
   hasUnread?: boolean;
   isDarkMode: boolean;
 }) {
@@ -155,12 +157,14 @@ function MobileAppHeader({
         <Menu size={18} />
       </button>
 
-      {/* Logo */}
-      <img
-        src={`${process.env.PUBLIC_URL}/assets/images/${isDarkMode ? 'tavilLogoDark' : 'tavilLogo'}.png`}
-        alt="TAVIL"
-        style={{ height: 26, objectFit: 'contain' }}
-      />
+      {/* Brand */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => onTabChange('Inici')}>
+        {isDarkMode ? (
+          <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoDark.png`} alt="TAVIL" style={{ height: 24, display: 'block' }} />
+        ) : (
+          <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`} alt="TAVIL" style={{ height: 24, display: 'block' }} />
+        )}
+      </div>
 
       {/* Bell */}
       <button
@@ -209,7 +213,7 @@ function MobileDrawer({
       items: [
         { id: 'Inici', icon: Home, label: 'Inici' },
         { id: 'Notícies', icon: Newspaper, label: 'Notícies' },
-        { id: 'Activitats', icon: Calendar, label: 'Activitats' },
+        { id: 'Activitats', icon: ActivityIcon, label: 'Activitats' },
         { id: 'Agenda', icon: Calendar, label: 'Agenda' },
       ],
     },
@@ -259,11 +263,13 @@ function MobileDrawer({
         {/* Header */}
         <div style={{ padding: '52px 20px 20px', borderBottom: '1px solid var(--tavil-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <img
-              src={`${process.env.PUBLIC_URL}/assets/images/${isDarkMode ? 'tavilLogoDark' : 'tavilLogo'}.png`}
-              alt="TAVIL"
-              style={{ height: 24, objectFit: 'contain' }}
-            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--tavil-text)' }}>
+              {isDarkMode ? (
+                <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoDark.png`} alt="TAVIL" style={{ height: 22, display: 'block' }} />
+              ) : (
+                <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`} alt="TAVIL" style={{ height: 22, display: 'block' }} />
+              )}
+            </div>
             <button onClick={onClose} style={{
               width: 36, height: 36, borderRadius: 18,
               background: 'transparent', border: '1px solid var(--tavil-border)',
@@ -328,6 +334,120 @@ function MobileDrawer({
 
 // ── Bottom Nav Bar (mobile) ──────────────────────────────────────────────────
 
+// ── Més Tab (mobile overflow menu) ──────────────────────────────────────────
+
+function MesSettingsGroup({ label, children, noCard }: { label: string; children: React.ReactNode; noCard?: boolean }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{
+        fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)',
+        textTransform: 'uppercase', letterSpacing: '0.14em',
+        padding: '0 24px 8px',
+      }}>{label}</div>
+      {noCard ? (
+        <div style={{ margin: '0 16px' }}>{children}</div>
+      ) : (
+        <div style={{
+          margin: '0 16px', background: 'var(--tavil-card)',
+          border: '1px solid var(--tavil-border)', borderRadius: 14, overflow: 'hidden',
+        }}>{children}</div>
+      )}
+    </div>
+  );
+}
+
+function MesTab({
+  onNavigate,
+  currentUser,
+  isDarkMode,
+  toggleDarkMode,
+  onLogout,
+}: {
+  onNavigate: (tab: string) => void;
+  currentUser: { name: string; role?: string; dept?: string; email?: string } | null;
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
+  onLogout: () => void;
+}) {
+  const name = currentUser?.name ?? '';
+  const ini = name.split(' ').map((w: string) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
+  const hue = [...name].reduce((a: number, c: string) => a + c.charCodeAt(0), 0) % 360;
+
+  const groups: { label: string; items: { id: string; icon: any; label: string }[] }[] = [
+    { label: 'General', items: [
+      { id: 'Activitats', icon: ActivityIcon, label: 'Activitats' },
+    ]},
+    { label: 'Empresa', items: [
+      { id: 'Campus', icon: GraduationCap, label: 'Campus TAVIL' },
+      { id: 'Espai', icon: Building2, label: 'Espai corporatiu' },
+    ]},
+    { label: 'Personal', items: [
+      { id: 'Veu', icon: MessageSquare, label: "Veu de l'empleat" },
+      { id: 'Solicituds', icon: FileText, label: 'Sol·licituds' },
+    ]},
+  ];
+
+  return (
+    <div style={{ margin: '0 -12px', paddingBottom: 96, overflow: 'hidden' }}>
+      {/* User card */}
+      <div style={{ padding: '0 16px 16px' }}>
+        <button
+          onClick={() => onNavigate('Perfil')}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+            background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
+            borderRadius: 14, padding: 14, cursor: 'pointer', fontFamily: 'inherit',
+            textAlign: 'left',
+          }}
+        >
+          <div style={{
+            width: 46, height: 46, borderRadius: 23, flexShrink: 0,
+            background: `oklch(0.88 0.03 ${hue})`,
+            color: `oklch(0.32 0.04 ${hue})`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 600, fontSize: 17, letterSpacing: '-0.01em',
+          }}>{ini}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)' }}>
+              {name || 'Usuari'}
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--tavil-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {currentUser?.role ?? ''}{currentUser?.dept ? ` · ${currentUser.dept}` : ''}
+            </div>
+          </div>
+          <ChevronRight size={18} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
+        </button>
+      </div>
+
+      {/* Settings groups */}
+      {groups.map((g, gi) => (
+        <MesSettingsGroup key={gi} label={g.label}>
+          {g.items.map((it, i, arr) => {
+            const ItIcon = it.icon;
+            return (
+              <button
+                key={it.id}
+                onClick={() => onNavigate(it.id)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '14px 16px', background: 'transparent', border: 'none',
+                  borderBottom: '1px solid var(--tavil-border)',
+                  cursor: 'pointer', fontFamily: 'inherit', fontSize: 14.5,
+                  color: 'var(--tavil-text)',
+                }}
+              >
+                <ItIcon size={18} style={{ color: 'var(--tavil-muted)', flexShrink: 0 }} />
+                <span style={{ flex: 1, textAlign: 'left' }}>{it.label}</span>
+                <ChevronRight size={16} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
+              </button>
+            );
+          })}
+        </MesSettingsGroup>
+      ))}
+    </div>
+  );
+}
+
 function BottomNavBar({ activeTab, onTabChange, onOpenDrawer, isDarkMode }: {
   activeTab: string;
   onTabChange: (id: string) => void;
@@ -356,11 +476,11 @@ function BottomNavBar({ activeTab, onTabChange, onOpenDrawer, isDarkMode }: {
         }}
       >
         {items.map(({ id, icon: Icon, label }) => {
-          const active = id !== '__more' && activeTab === id;
+          const active = id === '__more' ? activeTab === 'Més' : activeTab === id;
           return (
             <button
               key={id}
-              onClick={() => id === '__more' ? onOpenDrawer() : onTabChange(id)}
+              onClick={() => onTabChange(id === '__more' ? 'Més' : id)}
               aria-label={label}
               aria-current={active ? 'page' : undefined}
               style={{
@@ -476,7 +596,7 @@ const NEWS_CAT_COLORS: Record<string, string> = {
   "Esdeveniments":         "bg-green-100 text-green-600 dark:bg-green-950/30 dark:text-green-400",
   "Innovació":             "bg-violet-100 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400",
 };
-function InicialTab({ onNavigate, onNavigateToDate }: { onNavigate?: (tab: string) => void; onNavigateToDate?: (day: number, month: number, year: number) => void }) {
+function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onOpenNotifs, currentUser: currentUserProp }: { onNavigate?: (tab: string) => void; onNavigateToDate?: (day: number, month: number, year: number) => void; onOpenDrawer?: () => void; hasUnread?: boolean; onOpenNotifs?: () => void; currentUser?: User | null }) {
   const [notices, setNotices] = useState<Notice[]>(() => tabPrefetch.notices ?? []);
   const [news, setNews] = useState<NewsArticle[]>(() => tabPrefetch.news ?? []);
   const [activities, setActivities] = useState<Activity[]>(() => tabPrefetch.activities ?? []);
@@ -559,6 +679,188 @@ function InicialTab({ onNavigate, onNavigateToDate }: { onNavigate?: (tab: strin
     })
     .sort((a, b) => (a.month - b.month) || (a.day - b.day))
     .slice(0, 4);
+
+  const isMobileInici = useIsMobile();
+  const { t } = useTranslation();
+
+  if (isMobileInici) {
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? t('common.goodMorning') : hour < 19 ? t('common.goodAfternoon') : t('common.goodEvening');
+    const firstName = (currentUserProp?.name ?? '').split(' ')[0] || 'Hola';
+    const MONTH_NAMES = ['Gener','Febrer','Març','Abril','Maig','Juny','Juliol','Agost','Setembre','Octubre','Novembre','Desembre'];
+    const quickItems = [
+      { id: 'Solicituds', Icon: FileText, label: t('nav.solicituds') },
+      { id: 'Agenda', Icon: Calendar, label: t('nav.agenda') },
+      { id: 'Veu', Icon: MessageSquare, label: t('nav.veu') },
+      { id: 'Campus', Icon: GraduationCap, label: t('nav.campus') },
+    ];
+    const moreNews = news.filter(n => n.category !== 'Comunicats interns').slice(featured ? 1 : 0, 4);
+
+    return (
+      <div style={{ paddingBottom: 96, background: 'var(--tavil-bg)' }}>
+        {/* Top bar */}
+        <MobileAppHeader
+          onOpenDrawer={onOpenDrawer ?? (() => {})}
+          onNotif={onOpenNotifs ?? (() => {})}
+          onTabChange={onNavigate ?? (() => {})}
+          hasUnread={hasUnread}
+          isDarkMode={false}
+        />
+
+        {/* Greeting */}
+        <div style={{ padding: '18px 20px 8px' }}>
+          <div style={{ fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 2 }}>{greeting},</div>
+          <div style={{
+            fontFamily: '"Instrument Serif","Times New Roman",serif',
+            fontSize: 36, fontWeight: 400, lineHeight: 1, letterSpacing: '-0.02em', color: 'var(--tavil-text)',
+          }}>{firstName}.</div>
+        </div>
+
+        {/* Urgent banner */}
+        {notice && (
+          <div style={{ padding: '14px 16px 0' }}>
+            <div style={{
+              background: '#bf211e', color: '#fff', borderRadius: 14, padding: '14px 16px',
+              display: 'flex', alignItems: 'center', gap: 12,
+            }}>
+              <AlertTriangle size={20} strokeWidth={1.8} style={{ flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', opacity: 0.8, marginBottom: 2 }}>AVÍS URGENT</div>
+                <div style={{ fontSize: 13.5, fontWeight: 500, lineHeight: 1.3 }}>{notice.title}</div>
+              </div>
+              <ChevronRight size={18} style={{ flexShrink: 0 }} />
+            </div>
+          </div>
+        )}
+
+        {/* Quick access */}
+        <div style={{ padding: '24px 20px 4px' }}>
+          <div style={{ fontSize: 11, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Accés ràpid</div>
+          <div style={{
+            fontFamily: '"Instrument Serif","Times New Roman",serif',
+            fontSize: 24, fontWeight: 400, lineHeight: 1, letterSpacing: '-0.01em', color: 'var(--tavil-text)', marginBottom: 14,
+          }}>{t('home.quickAccess')}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
+            {quickItems.map(q => (
+              <button key={q.id} onClick={() => onNavigate?.(q.id)} style={{
+                background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
+                borderRadius: 14, padding: '14px 6px 12px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                color: 'var(--tavil-text)', cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                <div style={{
+                  width: 34, height: 34, borderRadius: 10,
+                  background: 'rgba(191,33,30,0.08)', color: '#bf211e',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}><q.Icon size={18} strokeWidth={1.7} /></div>
+                <span style={{ fontSize: 10.5, fontWeight: 500, letterSpacing: '0.01em', textAlign: 'center', lineHeight: 1.2, color: 'var(--tavil-text)' }}>{q.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Featured news */}
+        {featured && (
+          <>
+            <div style={{ padding: '28px 20px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div>
+                <div style={{ fontSize: 11, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>{t('news.featured')}</div>
+                <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 24, fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.01em', color: 'var(--tavil-text)' }}>{t('home.latestNews')}</div>
+              </div>
+              <button onClick={() => onNavigate?.('Notícies')} style={{ background: 'none', border: 'none', color: 'var(--tavil-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>
+                {t('common.seeAll')} <ChevronRight size={14} />
+              </button>
+            </div>
+            <div style={{ padding: '0 16px' }}>
+              <div
+                onClick={() => onNavigate?.('Notícies')}
+                style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden', cursor: 'pointer' }}
+              >
+                {featured.image ? (
+                  <img src={`${API_BASE}/uploads/${featured.image}`} alt={featured.title}
+                    style={{ width: '100%', aspectRatio: '16/10', objectFit: 'cover', display: 'block', borderBottom: '1px solid var(--tavil-border)' }} />
+                ) : (
+                  <div style={{ width: '100%', aspectRatio: '16/10', background: 'repeating-linear-gradient(135deg,rgba(191,33,30,0.07) 0 8px,rgba(191,33,30,0.03) 8px 16px)', borderBottom: '1px solid var(--tavil-border)' }} />
+                )}
+                <div style={{ padding: 16 }}>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: 'rgba(191,33,30,0.08)', color: '#bf211e' }}>{featured.category}</span>
+                    <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 999, background: 'var(--tavil-bg-alt)', color: 'var(--tavil-muted)', border: '1px solid var(--tavil-border)' }}>{featured.read_time ?? '4'} min</span>
+                  </div>
+                  <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 22, fontWeight: 400, lineHeight: 1.15, letterSpacing: '-0.01em', color: 'var(--tavil-text)', marginBottom: 8 }}>{featured.title}</div>
+                  <div style={{ fontSize: 13.5, color: 'var(--tavil-muted)', lineHeight: 1.45 }}>{featured.summary}</div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12, fontSize: 12, color: 'var(--tavil-faint)' }}>
+                    <span>{featured.author || ''}</span>
+                    {featured.author && featured.date && <span>·</span>}
+                    <span>{featured.date}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Upcoming agenda */}
+        {upcomingThisWeek.length > 0 && (
+          <>
+            <div style={{ padding: '28px 20px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div>
+                <div style={{ fontSize: 11, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Agenda</div>
+                <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 24, fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.01em', color: 'var(--tavil-text)' }}>{t('home.upcomingAgenda')}</div>
+              </div>
+              <button onClick={() => onNavigate?.('Agenda')} style={{ background: 'none', border: 'none', color: 'var(--tavil-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>
+                {t('common.seeAll')} <ChevronRight size={14} />
+              </button>
+            </div>
+            <div style={{ padding: '0 0 0 16px', display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none' }}>
+              {upcomingThisWeek.map(ev => (
+                <div key={ev.id} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: 14, minWidth: 220, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+                    <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 28, lineHeight: 1, fontWeight: 400, color: '#bf211e' }}>{ev.day}</div>
+                    <div style={{ fontSize: 11, color: 'var(--tavil-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{MONTH_NAMES[ev.month - 1]}</div>
+                  </div>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.25, color: 'var(--tavil-text)', marginBottom: 6 }}>{ev.title}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Clock size={12} />{ev.time || ev.type}
+                  </div>
+                </div>
+              ))}
+              <div style={{ minWidth: 8, flexShrink: 0 }} />
+            </div>
+          </>
+        )}
+
+        {/* More news */}
+        {moreNews.length > 0 && (
+          <>
+            <div style={{ padding: '28px 20px 14px' }}>
+              <div style={{ fontSize: 11, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Novetats</div>
+              <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 24, fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.01em', color: 'var(--tavil-text)' }}>Més notícies</div>
+            </div>
+            <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {moreNews.map(n => (
+                <div key={n.id} onClick={() => onNavigate?.('Notícies')} style={{
+                  background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: 14, cursor: 'pointer',
+                }}>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, color: 'var(--tavil-faint)', marginBottom: 4 }}>{n.category} · {n.date}</div>
+                      <div style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1.3, color: 'var(--tavil-text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{n.title}</div>
+                    </div>
+                    {n.image ? (
+                      <img src={`${API_BASE}/uploads/${n.image}`} alt="" style={{ width: 64, height: 64, flexShrink: 0, borderRadius: 10, objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: 64, height: 64, flexShrink: 0, borderRadius: 10, background: 'repeating-linear-gradient(135deg,rgba(120,132,117,0.1) 0 8px,rgba(120,132,117,0.05) 8px 16px)', border: '1px solid var(--tavil-border)' }} />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -1745,7 +2047,7 @@ function RichArticleBuilder({
   );
 }
 
-function NoticiesTab({ currentUser }: { currentUser: User | null }) {
+function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; onOpenDrawer?: () => void }) {
   const { t } = useTranslation();
   const [news, setNews] = useState<NewsArticle[]>(() => tabPrefetch.news ?? []);
   const [activeFilter, setActiveFilter] = useState('Totes');
@@ -1851,6 +2153,140 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
   const featuredItems = featuredList.length > 0 ? featuredList : filtered.slice(0, 1);
   const featured = featuredItems[featuredIndex % Math.max(featuredItems.length, 1)] ?? null;
   const grid = filtered.filter(n => !featuredItems.includes(n));
+  const isMobileNoticies = useIsMobile();
+
+  // ── Mobile branch ────────────────────────────────────────────────────────
+  if (isMobileNoticies) {
+    const cats = ['Totes', ...Array.from(new Set(news.map(n => n.category).filter(Boolean)))];
+    const mFiltered = (activeFilter === 'Totes' ? news : news.filter(n => n.category === activeFilter))
+      .filter(n => !newsSearch || [n.title, n.summary].some(f => f?.toLowerCase().includes(newsSearch.toLowerCase())));
+    const mFeatured = mFiltered[0] ?? null;
+    const mRest = mFiltered.slice(1);
+
+    if (selectedNews) {
+      return (
+        <div style={{ minHeight: '100vh', background: 'var(--tavil-bg)', paddingBottom: 96 }} className="anim-page-enter-h-fwd">
+          <div style={{ height: 52, background: 'var(--tavil-bg)', display: 'flex', alignItems: 'center', padding: '0 12px' }}>
+            <button onClick={() => setSelectedNews(null)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '8px 4px' }}>
+              <ChevronLeft size={20} style={{ color: 'var(--tavil-accent)' }} />
+              Notícies
+            </button>
+          </div>
+          <div style={{ padding: '0 16px 24px' }}>
+            {selectedNews.image && (
+              <div style={{ margin: '0 -16px 16px', aspectRatio: '16/9', overflow: 'hidden' }}>
+                <img src={resolveImg(selectedNews.image)} alt={selectedNews.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--tavil-accent)', textTransform: 'uppercase', letterSpacing: '0.12em', background: 'rgba(191,33,30,0.08)', borderRadius: 6, padding: '3px 8px' }}>{selectedNews.category}</span>
+              <span style={{ fontSize: 10, color: 'var(--tavil-muted)', background: 'var(--tavil-faint)', borderRadius: 6, padding: '3px 8px' }}>{selectedNews.date}</span>
+            </div>
+            <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 26, fontWeight: 400, lineHeight: 1.15, margin: '0 0 12px', letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>{selectedNews.title}</h1>
+            {selectedNews.summary && <p style={{ fontSize: 14, color: 'var(--tavil-muted)', lineHeight: 1.5, margin: '0 0 16px' }}>{selectedNews.summary}</p>}
+            {selectedNews.content && (
+              isRichContent(selectedNews.content)
+                ? <RichBlockViewer blocks={parseBlocks(selectedNews.content)} />
+                : <div style={{ fontSize: 14, color: 'var(--tavil-text)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{selectedNews.content}</div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--tavil-bg)', paddingBottom: 96 }}>
+        {/* Top bar */}
+        <div style={{ height: 52, background: 'var(--tavil-bg)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
+          <button onClick={onOpenDrawer} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)' }}>
+            <Menu size={18} />
+          </button>
+          <button
+            onClick={() => { const el = document.getElementById('noticies-search'); el?.focus(); }}
+            style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)' }}
+          >
+            <Search size={18} />
+          </button>
+        </div>
+        {/* Header text */}
+        <div style={{ padding: '8px 20px 16px' }}>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Comunicació interna</div>
+          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 36, fontWeight: 400, lineHeight: 1, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>{t('nav.noticies')}</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>{t('news.subtitle')}</p>
+        </div>
+        {/* Search (hidden, activated by button) */}
+        <div style={{ padding: '0 16px 12px' }}>
+          <input id="noticies-search" type="text" value={newsSearch} onChange={e => setNewsSearch(e.target.value)} placeholder="Cercar notícies…"
+            style={{ width: '100%', boxSizing: 'border-box', height: 38, borderRadius: 10, border: '1px solid var(--tavil-border)', background: 'var(--tavil-card)', color: 'var(--tavil-text)', fontSize: 13.5, padding: '0 12px', outline: 'none', display: newsSearch ? 'block' : 'none' }} />
+        </div>
+        {/* Filter chips */}
+        <div style={{ padding: '0 0 16px 16px', display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }} className="hide-sb">
+          {cats.map(cat => (
+            <button key={cat} onClick={() => setActiveFilter(cat)} style={{
+              padding: '7px 14px', borderRadius: 999,
+              background: activeFilter === cat ? 'var(--tavil-text)' : 'var(--tavil-card)',
+              color: activeFilter === cat ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
+              border: `1px solid ${activeFilter === cat ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
+              fontSize: 12.5, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
+            }}>{cat}</button>
+          ))}
+          <div style={{ minWidth: 8, flexShrink: 0 }} />
+        </div>
+        {/* Featured article */}
+        {newsLoading && !mFeatured && (
+          <div style={{ padding: '0 16px 12px' }}><Skeleton style={{ width: '100%', height: 240, borderRadius: 16 }} /></div>
+        )}
+        {mFeatured && (
+          <div style={{ padding: '0 16px 12px' }}>
+            <div onClick={() => setSelectedNews(mFeatured)} style={{ background: 'var(--tavil-card)', borderRadius: 16, border: '1px solid var(--tavil-border)', overflow: 'hidden', cursor: 'pointer' }}>
+              <div style={{ aspectRatio: '16/10', background: 'var(--tavil-faint)', overflow: 'hidden' }}>
+                {mFeatured.image
+                  ? <img src={resolveImg(mFeatured.image)} alt={mFeatured.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, rgba(191,33,30,0.12) 0%, rgba(191,33,30,0.04) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Newspaper size={40} style={{ color: 'rgba(191,33,30,0.3)' }} /></div>
+                }
+              </div>
+              <div style={{ padding: 16 }}>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--tavil-accent)', textTransform: 'uppercase', letterSpacing: '0.12em', background: 'rgba(191,33,30,0.08)', borderRadius: 6, padding: '3px 8px' }}>{mFeatured.category}</span>
+                  <span style={{ fontSize: 10, color: 'var(--tavil-muted)', background: 'var(--tavil-faint)', borderRadius: 6, padding: '3px 8px' }}>{mFeatured.date}</span>
+                </div>
+                <h3 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 22, fontWeight: 400, lineHeight: 1.15, margin: 0, letterSpacing: '-0.01em', color: 'var(--tavil-text)', textWrap: 'balance' } as React.CSSProperties}>{mFeatured.title}</h3>
+                <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '10px 0 0', lineHeight: 1.45 }}>{mFeatured.summary}</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Rest as list */}
+        <div style={{ padding: '4px 16px' }}>
+          {mRest.map((n, i) => (
+            <div key={n.id} onClick={() => setSelectedNews(n)} style={{
+              display: 'flex', gap: 14, padding: '14px 4px',
+              borderBottom: '1px solid var(--tavil-border)',
+              cursor: 'pointer',
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 5 }}>{n.category}</div>
+                <h4 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 17, fontWeight: 400, lineHeight: 1.2, margin: 0, letterSpacing: '-0.01em', color: 'var(--tavil-text)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>{n.title}</h4>
+                <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginTop: 8 }}><span>{n.date}</span></div>
+              </div>
+              <div style={{ width: 86, height: 86, flexShrink: 0, borderRadius: 10, overflow: 'hidden', background: 'var(--tavil-faint)' }}>
+                {n.image
+                  ? <img src={resolveImg(n.image)} alt={n.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Newspaper size={22} style={{ color: 'rgba(191,33,30,0.3)' }} /></div>
+                }
+              </div>
+            </div>
+          ))}
+          {newsLoading && mRest.length === 0 && mFeatured && Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} style={{ display: 'flex', gap: 14, padding: '14px 4px', borderBottom: '1px solid var(--tavil-border)' }}>
+              <div style={{ flex: 1 }}><Skeleton style={{ height: 14, borderRadius: 6, marginBottom: 8 }} /><Skeleton style={{ height: 40, borderRadius: 6 }} /></div>
+              <Skeleton style={{ width: 86, height: 86, borderRadius: 10, flexShrink: 0 }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (selectedNews) {
     return (
@@ -2110,7 +2546,7 @@ function NoticiesTab({ currentUser }: { currentUser: User | null }) {
 
 // ── Activitats Tab ────────────────────────────────────────────────────────────
 
-function ActivitatsTab({ currentUser }: { currentUser: User | null }) {
+function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBack?: () => void }) {
   const [activities, setActivities] = useState<Activity[]>(() => tabPrefetch.activities ?? []);
   const [activeTab, setActiveTab] = useState('Properes');
   const [activeFilter, setActiveFilter] = useState('Totes');
@@ -2198,12 +2634,227 @@ function ActivitatsTab({ currentUser }: { currentUser: User | null }) {
     return () => { cancelled = true; };
   }, []);
 
+  const isMobileAct = useIsMobile();
   const upcoming = activities.filter(a => a.past === 0);
   const past = activities.filter(a => a.past === 1);
   const source = activeTab === 'Properes' ? upcoming : past;
   const filtered = (activeFilter === 'Totes' ? source : source.filter(a => a.category === activeFilter))
     .filter(a => !actSearch || [a.title, a.description, a.location].some(f => f.toLowerCase().includes(actSearch.toLowerCase())));
   const isProperes = activeTab === 'Properes';
+
+  // ── Mobile layout ──────────────────────────────────────────────────────────
+  if (isMobileAct) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--tavil-bg)', paddingBottom: 96 }}>
+        {/* Top bar: back button + centered title */}
+        <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 12px', position: 'relative' }}>
+          <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '8px 4px', zIndex: 1 }}>
+            <ChevronLeft size={20} style={{ color: 'var(--tavil-accent)' }} />
+            Més
+          </button>
+          <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Activitats</span>
+        </div>
+        {/* Header kicker + title + subtitle */}
+        <div style={{ padding: '0 20px 12px' }}>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Vida a l'empresa</div>
+          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 32, fontWeight: 400, lineHeight: 1.05, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>Activitats</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>Activitats internes, formacions i esdeveniments oberts a tothom.</p>
+        </div>
+        {/* Segmented: Pròximes / Passades */}
+        <div style={{ padding: '6px 20px 18px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: 4, background: 'var(--tavil-faint)', borderRadius: 12 }}>
+            {([`Properes`, `Passades`] as const).map(key => (
+              <button key={key} onClick={() => { setActiveTab(key); setActiveFilter('Totes'); setActSearch(''); }} style={{
+                padding: '9px 0', borderRadius: 9,
+                background: activeTab === key ? 'var(--tavil-card)' : 'transparent',
+                color: activeTab === key ? 'var(--tavil-text)' : 'var(--tavil-muted)',
+                fontWeight: 500, fontSize: 13, border: 'none', cursor: 'pointer',
+                fontFamily: 'inherit',
+                boxShadow: activeTab === key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              }}>{key}</button>
+            ))}
+          </div>
+        </div>
+        {/* Cards */}
+        {actLoading && activities.length === 0 ? (
+          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[1,2,3].map(i => <Skeleton key={i} style={{ width: '100%', height: 96, borderRadius: 14 }} />)}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tavil-faint)' }}>
+            <ActivityIcon size={36} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
+            <p style={{ fontSize: 13.5 }}>No hi ha activitats</p>
+          </div>
+        ) : (
+          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {filtered.map((act, i) => {
+              const full = act.capacity > 0 && act.enrolled >= act.capacity;
+              const pct = act.capacity > 0 ? Math.min(Math.round((act.enrolled / act.capacity) * 100), 100) : 0;
+              return (
+              <div
+                key={i}
+                style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden' }}
+              >
+                <div style={{ display: 'flex' }}>
+                  <div
+                    onClick={() => isProperes && (setSelectedAct(act), setEnrolledId(null), setEnrollError(''))}
+                    style={{ width: 96, flexShrink: 0, background: 'var(--tavil-faint)', borderRight: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isProperes ? 'pointer' : 'default', minHeight: 110 }}
+                  >
+                    <ActivityIcon size={28} style={{ color: 'rgba(191,33,30,0.3)' }} />
+                  </div>
+                  <div style={{ flex: 1, padding: 14, minWidth: 0 }}>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 10.5, fontWeight: 700, background: 'var(--tavil-faint)', color: 'var(--tavil-muted)', padding: '2px 8px', borderRadius: 6 }}>{act.category}</span>
+                      {full && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '2px 8px', borderRadius: 6 }}>Complert</span>}
+                      {!full && isProperes && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.1)', padding: '2px 8px', borderRadius: 6 }}>Oberta</span>}
+                    </div>
+                    <div style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1.25, color: 'var(--tavil-text)', marginBottom: 6, cursor: isProperes ? 'pointer' : 'default' }}
+                      onClick={() => isProperes && (setSelectedAct(act), setEnrolledId(null), setEnrollError(''))}
+                    >{act.title}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
+                      <Clock size={11} /><span>{act.date}{act.time ? ` · ${act.time}` : ''}</span>
+                    </div>
+                    {act.capacity > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                        <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'var(--tavil-faint)', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: full ? '#f59e0b' : '#bf211e', transition: 'width 400ms' }} />
+                        </div>
+                        <span style={{ fontSize: 11, color: 'var(--tavil-faint)', fontFeatureSettings: '"tnum"' }}>{act.enrolled}/{act.capacity}</span>
+                      </div>
+                    )}
+                    {isProperes && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (enrolledId === act.id) return;
+                            setSelectedAct(act); setEnrolledId(null); setEnrollError('');
+                          }}
+                          disabled={full && enrolledId !== act.id}
+                          style={{
+                            padding: '6px 14px', borderRadius: 8, border: 'none', fontSize: 12.5, fontWeight: 600,
+                            background: enrolledId === act.id ? '#22c55e' : full ? 'var(--tavil-faint)' : '#bf211e',
+                            color: enrolledId === act.id || full ? 'var(--tavil-muted)' : '#fff',
+                            cursor: full && enrolledId !== act.id ? 'default' : 'pointer', fontFamily: 'inherit',
+                          }}
+                        >
+                          {enrolledId === act.id ? '✓ Inscrit/a' : full ? "Llista d'espera" : "M'inscric"}
+                        </button>
+                      </div>
+                    )}
+                    {isAdmin && (
+                      <div style={{ display: 'flex', gap: 16, paddingTop: 10, borderTop: '1px solid var(--tavil-border)', marginTop: 6 }}>
+                        <button onClick={e => { e.stopPropagation(); actEditId === act.id ? setActEditId(null) : openActEdit(act); }} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--tavil-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}><Pencil size={12} /> Editar</button>
+                        <button onClick={e => { e.stopPropagation(); handleDeleteActivity(act.id); }} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#bf211e', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}><Trash2 size={12} /> Eliminar</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+            })}
+          </div>
+        )}
+
+        {/* Admin FAB */}
+        {isAdmin && (
+          <button
+            onClick={() => setShowActForm(v => !v)}
+            style={{
+              position: 'fixed', bottom: 90, right: 20, width: 52, height: 52,
+              borderRadius: 26, background: '#bf211e', color: '#fff',
+              border: 'none', fontSize: 24, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 16px rgba(191,33,30,0.35)', zIndex: 40,
+            }}
+          ><Plus size={22} /></button>
+        )}
+
+        {/* Admin form portal */}
+        {isAdmin && showActForm && (
+          <EditModal title="Nova activitat" onClose={() => setShowActForm(false)}>
+            <div className="grid grid-cols-2 gap-3">
+              <input type="text" value={aTitle} onChange={e => setATitle(e.target.value)} placeholder="Títol *" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+              <select value={aCategory} onChange={e => setACategory(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white">
+                {['Esport','Cultura','Social','RSC','Benestar'].map(c => <option key={c}>{c}</option>)}
+              </select>
+              <input type="date" value={aDate} onChange={e => setADate(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+              <input type="text" value={aTime} onChange={e => setATime(e.target.value)} placeholder="Hora (ex: 10:00)" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+              <input type="text" value={aLocation} onChange={e => setALocation(e.target.value)} placeholder="Lloc" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+              <textarea value={aDesc} onChange={e => setADesc(e.target.value)} placeholder="Descripció" rows={2} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white resize-none" />
+              <input type="number" value={aCapacity} onChange={e => setACapacity(e.target.value)} placeholder="Aforament (0 = il·limitat)" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+              <div className="flex justify-end gap-2 items-center">
+                <button onClick={() => setShowActForm(false)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800">Cancel·lar</button>
+                <button onClick={handleCreateActivity} disabled={!aTitle.trim() || aSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">{aSaving ? 'Desant...' : 'Crear activitat'}</button>
+              </div>
+            </div>
+          </EditModal>
+        )}
+
+        {/* Detail modal (shared with desktop) */}
+        {selectedAct && createPortal(
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 anim-fade-in" onClick={() => setSelectedAct(null)}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, background: 'var(--tavil-border)', color: 'var(--tavil-muted)', padding: '2px 8px', borderRadius: 6 }}>{selectedAct.category}</span>
+                <button onClick={() => setSelectedAct(null)} style={{ background: 'none', border: 'none', color: 'var(--tavil-faint)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
+              </div>
+              <h2 style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 24, fontWeight: 400, color: 'var(--tavil-text)', marginBottom: 8, lineHeight: 1.1 }}>{selectedAct.title}</h2>
+              <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', lineHeight: 1.55, marginBottom: 16 }}>{selectedAct.description}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--tavil-border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)' }}><Calendar size={14} /><span>{selectedAct.date}{selectedAct.time ? ` · ${selectedAct.time}` : ''}</span></div>
+                {selectedAct.location && <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)' }}><MapPin size={14} /><span>{selectedAct.location}</span></div>}
+              </div>
+              {selectedAct.capacity > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--tavil-muted)', marginBottom: 6 }}>
+                    <span>{selectedAct.enrolled} / {selectedAct.capacity} places</span>
+                    <span style={{ color: '#22c55e', fontWeight: 600 }}>{Math.max(0, selectedAct.capacity - selectedAct.enrolled)} disponibles</span>
+                  </div>
+                  <div style={{ height: 5, borderRadius: 3, background: 'var(--tavil-border)' }}>
+                    <div style={{ height: 5, borderRadius: 3, background: '#bf211e', width: `${Math.min((selectedAct.enrolled / selectedAct.capacity) * 100, 100)}%` }} />
+                  </div>
+                </div>
+              )}
+              {enrollError && <p style={{ fontSize: 13, color: '#bf211e', marginBottom: 10 }}>{enrollError}</p>}
+              <button
+                onClick={async () => {
+                  if (enrolledId === selectedAct.id) return;
+                  try {
+                    await apiEnrollActivity(selectedAct.id);
+                    setEnrolledId(selectedAct.id);
+                    setActivities(await apiGetActivities());
+                  } catch (e: any) { setEnrollError(e.message ?? 'Error'); }
+                }}
+                disabled={enrolledId === selectedAct.id}
+                style={{
+                  width: '100%', height: 50, borderRadius: 14, border: 'none',
+                  background: enrolledId === selectedAct.id ? '#22c55e' : '#bf211e',
+                  color: '#fff', fontSize: 15, fontWeight: 600, cursor: enrolledId === selectedAct.id ? 'default' : 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {enrolledId === selectedAct.id ? '✓ Inscrit/a' : "Inscriure's"}
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
+        {confirmModal && createPortal(
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={() => setConfirmModal(null)}>
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6 w-full max-w-xs mx-4 shadow-xl" onClick={e => e.stopPropagation()}>
+              <p className="text-sm text-gray-700 dark:text-zinc-300 mb-4">{confirmModal.message}</p>
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setConfirmModal(null)} className="px-3 py-1.5 text-xs border border-gray-200 dark:border-zinc-700 rounded-lg text-gray-600 dark:text-zinc-400">Cancel·lar</button>
+                <button onClick={confirmModal.onConfirm} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg font-semibold">Eliminar</button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -2375,7 +3026,7 @@ const EVENT_COLORS: Record<string, string> = {
 const MONTH_NAMES = ['', 'Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre'];
 const MONTH_ABBR: Record<number, string> = { 1: 'GEN', 2: 'FEB', 3: 'MAR', 4: 'ABR', 5: 'MAI', 6: 'JUN', 7: 'JUL', 8: 'AGO', 9: 'SET', 10: 'OCT', 11: 'NOV', 12: 'DES' };
 
-function AgendaTab({ currentUser, initDate, onInitDateConsumed }: { currentUser: User | null; initDate: { day: number; month: number; year: number } | null; onInitDateConsumed: () => void }) {
+function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: { currentUser: User | null; initDate: { day: number; month: number; year: number } | null; onInitDateConsumed: () => void; onOpenDrawer?: () => void }) {
   const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>(() => tabPrefetch.agendaEvents ?? []);
   const [view, setView] = useState<'calendar' | 'list'>('calendar');
   const [activeFilter, setActiveFilter] = useState('Tots');
@@ -2499,8 +3150,191 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed }: { currentUser:
   const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
   const firstDayOfWeek = new Date(currentYear, currentMonth - 1, 1).getDay();
   const mondayOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+  const isMobileAgenda = useIsMobile();
   const days = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'];
   const cells: (number | null)[] = [...Array(mondayOffset).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+
+  // ── Mobile layout ──────────────────────────────────────────────────────────
+  if (isMobileAgenda) {
+    const EVENT_BAR_COLORS: Record<string, string> = {
+      'Festiu': '#22c55e',
+      'Fira': '#f59e0b',
+      'Visita comercial': '#3b82f6',
+      'Sessió interna': '#8b5cf6',
+      'Activitat empresa': '#bf211e',
+    };
+    // Week strip: 7 days of the current week (Mon–Sun), anchored to today
+    const todayDate = new Date();
+    const todayDay = todayDate.getDate();
+    const todayMonth = todayDate.getMonth() + 1;
+    const todayYear = todayDate.getFullYear();
+    const dow = todayDate.getDay(); // 0=Sun
+    const mondayShift = dow === 0 ? -6 : 1 - dow;
+    const weekDayLabels = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'];
+    const weekDays = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(todayDate);
+      d.setDate(todayDate.getDate() + mondayShift + i);
+      return { n: d.getDate(), l: weekDayLabels[i], month: d.getMonth() + 1, year: d.getFullYear() };
+    });
+    const selDay = selectedDay ?? todayDay;
+    const selMonth = currentMonth;
+    const selEvents = agendaEvents.filter(e => e.day === selDay && e.month === selMonth);
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--tavil-bg)', paddingBottom: 96 }}>
+        {/* Top bar */}
+        <div style={{ height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
+          <button onClick={onOpenDrawer} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)' }}>
+            <Menu size={18} />
+          </button>
+          {isAdmin && (
+            <button onClick={() => setShowEventForm(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, padding: '0 14px', borderRadius: 10, background: '#bf211e', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <Plus size={15} /> Nou
+            </button>
+          )}
+        </div>
+        {/* Header text */}
+        <div style={{ padding: '8px 20px 16px' }}>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>
+            {MONTH_NAMES[todayMonth]} {todayYear}
+          </div>
+          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 36, fontWeight: 400, lineHeight: 1, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>Agenda</h1>
+        </div>
+        {/* Week strip */}
+        <div style={{ padding: '4px 16px 18px', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+          {weekDays.map(d => {
+            const active = d.n === selDay && d.month === selMonth;
+            const isTod = d.n === todayDay && d.month === todayMonth && d.year === todayYear;
+            return (
+              <button key={d.n + '-' + d.month} onClick={() => { setSelectedDay(d.n); setCurrentMonth(d.month); setCurrentYear(d.year); }} style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0 6px',
+                background: active ? 'var(--tavil-text)' : 'transparent',
+                color: active ? 'var(--tavil-bg)' : 'var(--tavil-text)',
+                border: `1px solid ${active ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
+                borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit',
+                transition: 'all 200ms',
+              }}>
+                <span style={{ fontSize: 10, fontWeight: 500, opacity: active ? 0.7 : 0.6, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{d.l}</span>
+                <span style={{ fontSize: 18, fontWeight: 600, marginTop: 2, fontFamily: '"Instrument Serif", serif' }}>{d.n}</span>
+                {isTod && !active && <div style={{ width: 4, height: 4, borderRadius: 2, background: '#bf211e', marginTop: 3 }} />}
+              </button>
+            );
+          })}
+        </div>
+        {/* Event count + timeline */}
+        <div style={{ padding: '0 20px' }}>
+          <div style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginBottom: 14 }}>
+            {selEvents.length} {selEvents.length === 1 ? 'esdeveniment' : 'esdeveniments'} · {selDay === todayDay && selMonth === todayMonth ? 'Avui' : `${selDay} ${MONTH_NAMES[selMonth]}`}
+          </div>
+          {selEvents.length === 0 && (
+            <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 28, textAlign: 'center', color: 'var(--tavil-faint)', fontSize: 13 }}>
+              Cap esdeveniment aquest dia
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {selEvents.sort((a, b) => (a.time || '').localeCompare(b.time || '')).map((ev, j) => {
+              const parts = ev.time ? ev.time.split(/[-–]/) : [];
+              return (
+                <div key={j} style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
+                  <div style={{ width: 52, flexShrink: 0, paddingTop: 2 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--tavil-text)', fontFeatureSettings: '"tnum"' }}>{parts[0]?.trim() || ev.time}</div>
+                    {parts[1] && <div style={{ fontSize: 10.5, color: 'var(--tavil-faint)', marginTop: 1 }}>{parts[1].trim()}</div>}
+                  </div>
+                  <div style={{ width: 3, background: EVENT_BAR_COLORS[ev.type] ?? '#bf211e', borderRadius: 2, flexShrink: 0, alignSelf: 'stretch' }} />
+                  <div style={{ flex: 1, minWidth: 0, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 14 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1.25, color: 'var(--tavil-text)', marginBottom: 6 }}>{ev.title}</div>
+                    {ev.location && (
+                      <div style={{ fontSize: 12, color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+                        <MapPin size={12} />{ev.location}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 12, color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{ fontSize: 10.5, fontWeight: 600, background: 'var(--tavil-faint)', borderRadius: 5, padding: '1px 7px' }}>{ev.type}</span>
+                    </div>
+                    {isAdmin && (
+                      <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
+                        <button onClick={() => openEvEdit(ev)} style={{ background: 'none', border: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', padding: 0 }}><Pencil size={13} /></button>
+                        <button onClick={() => handleDeleteEvent(ev.id)} style={{ background: 'none', border: 'none', color: '#bf211e', cursor: 'pointer', padding: 0 }}><Trash2 size={13} /></button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        {/* Admin: new event bottom sheet */}
+        {isAdmin && showEventForm && createPortal(
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 anim-fade-in" onClick={() => setShowEventForm(false)}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 20, fontWeight: 400, color: 'var(--tavil-text)', marginBottom: 18 }}>Nou event</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <input type="text" value={eTitle} onChange={e => setETitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                <input type="date" value={eDate} onChange={e => setEDate(e.target.value)} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <input type="text" value={eTime} onChange={e => setETime(e.target.value)} placeholder="Hora (ex: 10:00)" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                  <input type="text" value={eLocation} onChange={e => setELocation(e.target.value)} placeholder="Lloc" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8, fontWeight: 600 }}>Tipus</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {Object.keys(EVENT_COLORS).map(t => (
+                      <button key={t} onClick={() => setEType(t)} style={{ padding: '7px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', background: eType === t ? 'var(--tavil-text)' : 'var(--tavil-bg)', color: eType === t ? 'var(--tavil-bg)' : 'var(--tavil-muted)', border: `1px solid ${eType === t ? 'var(--tavil-text)' : 'var(--tavil-border)'}` }}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                  <button onClick={() => setShowEventForm(false)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                  <button onClick={handleCreateEvent} disabled={!eTitle.trim() || !eDate || eSaving} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#bf211e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!eTitle.trim() || !eDate || eSaving) ? 0.5 : 1 }}>{eSaving ? 'Desant...' : 'Crear event'}</button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+        {/* Admin: edit event bottom sheet */}
+        {isAdmin && evEditId !== null && createPortal(
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 anim-fade-in" onClick={() => setEvEditId(null)}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 20, fontWeight: 400, color: 'var(--tavil-text)', marginBottom: 18 }}>Editar event</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <input type="text" value={eeTitle} onChange={e => setEeTitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                <input type="date" value={eeDate} onChange={e => setEeDate(e.target.value)} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <input type="text" value={eeTime} onChange={e => setEeTime(e.target.value)} placeholder="Hora (ex: 10:00)" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                  <input type="text" value={eeLocation} onChange={e => setEeLocation(e.target.value)} placeholder="Lloc" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8, fontWeight: 600 }}>Tipus</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {Object.keys(EVENT_COLORS).map(t => (
+                      <button key={t} onClick={() => setEeType(t)} style={{ padding: '7px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', background: eeType === t ? 'var(--tavil-text)' : 'var(--tavil-bg)', color: eeType === t ? 'var(--tavil-bg)' : 'var(--tavil-muted)', border: `1px solid ${eeType === t ? 'var(--tavil-text)' : 'var(--tavil-border)'}` }}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                  <button onClick={() => setEvEditId(null)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                  <button onClick={handleSaveEvEdit} disabled={!eeTitle.trim() || !eeDate || eeSaving} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#bf211e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!eeTitle.trim() || !eeDate || eeSaving) ? 0.5 : 1 }}>{eeSaving ? 'Desant...' : 'Desar'}</button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+        {confirmModal && createPortal(
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={() => setConfirmModal(null)}>
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6 w-full max-w-xs mx-4 shadow-xl" onClick={e => e.stopPropagation()}>
+              <p className="text-sm text-gray-700 dark:text-zinc-300 mb-4">{confirmModal.message}</p>
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setConfirmModal(null)} className="px-3 py-1.5 text-xs border border-gray-200 dark:border-zinc-700 rounded-lg text-gray-600 dark:text-zinc-400">Cancel·lar</button>
+                <button onClick={confirmModal.onConfirm} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg font-semibold">Eliminar</button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -2687,7 +3521,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed }: { currentUser:
 
 const DEPT_ORDER = ['Comercial', 'Compres', 'Direcció', 'Enginyeria', 'Màrqueting', 'Operacions', 'Producció', 'Recursos humans', 'Sistemes', 'Qualitat'];
 
-function DirectoriTab() {
+function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
   const { t } = useTranslation();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [activeFilter, setActiveFilter] = useState('Tots');
@@ -2701,11 +3535,86 @@ function DirectoriTab() {
   const filtered = (activeFilter === 'Tots' ? employees : employees.filter(e => e.dept === activeFilter))
     .filter(e => !dirSearch || [e.name, e.role, e.email, e.ext].some(f => f.toLowerCase().includes(dirSearch.toLowerCase())));
 
+  const isMobileDir = useIsMobile();
   const grouped = DEPT_ORDER.reduce((acc, dept) => {
     const members = filtered.filter(e => e.dept === dept);
     if (members.length > 0) acc[dept] = members;
     return acc;
   }, {} as Record<string, Employee[]>);
+
+  // ── Mobile layout ──────────────────────────────────────────────────────────
+  if (isMobileDir) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--tavil-bg)', paddingBottom: 96 }}>
+        {/* Top bar */}
+        <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 16px', flexShrink: 0 }}>
+          <button onClick={onOpenDrawer} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)' }}>
+            <Menu size={18} />
+          </button>
+        </div>
+        {/* Header kicker + title */}
+        <div style={{ padding: '0 20px 14px' }}>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Equip</div>
+          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 36, fontWeight: 400, lineHeight: 1, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>{t('nav.directori')}</h1>
+        </div>
+        {/* Search */}
+        <div style={{ padding: '0 20px 14px' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Search size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+            <input type="text" value={dirSearch} onChange={e => setDirSearch(e.target.value)} placeholder="Cerca per nom, rol, departament…"
+              style={{ width: '100%', height: 44, borderRadius: 12, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', paddingLeft: 42, paddingRight: 16, fontSize: 14, color: 'var(--tavil-text)', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+            />
+          </div>
+        </div>
+        {/* Dept chips */}
+        <div style={{ padding: '0 0 18px 16px', display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }} className="hide-sb">
+          {(['Tots', ...DEPT_ORDER]).map(f => (
+            <button key={f} onClick={() => setActiveFilter(f)} style={{
+              padding: '7px 14px', borderRadius: 999,
+              background: activeFilter === f ? 'var(--tavil-text)' : 'var(--tavil-card)',
+              color: activeFilter === f ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
+              border: `1px solid ${activeFilter === f ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
+              fontSize: 12.5, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
+            }}>{f}</button>
+          ))}
+          <div style={{ minWidth: 8, flexShrink: 0 }} />
+        </div>
+        {/* People list */}
+        <div style={{ padding: '0 16px' }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--tavil-faint)' }}>
+              <Users size={36} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
+              <p style={{ fontSize: 13.5 }}>Cap resultat</p>
+            </div>
+          ) : filtered.map((emp, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: 14, padding: '12px 4px',
+              borderBottom: '1px solid var(--tavil-border)',
+              cursor: 'pointer',
+            }}>
+              <div className={cn("w-[46px] h-[46px] rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0", emp.color)}>{emp.initials}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)', letterSpacing: '-0.005em' }}>{emp.name}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginTop: 1 }}>{emp.role} · {emp.dept}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                {(emp.phone || emp.ext) && (
+                  <a href={`tel:${emp.phone || emp.ext}`} style={{ width: 34, height: 34, borderRadius: 17, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tavil-muted)', textDecoration: 'none' }}>
+                    <Phone size={15} />
+                  </a>
+                )}
+                {emp.email && (
+                  <a href={`mailto:${emp.email}`} style={{ width: 34, height: 34, borderRadius: 17, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tavil-muted)', textDecoration: 'none' }}>
+                    <Mail size={15} />
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -3153,7 +4062,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   );
 }
 
-function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed }: { currentUser: User | null; initialSubTab?: string | null; onSubTabConsumed?: () => void }) {
+function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }: { currentUser: User | null; initialSubTab?: string | null; onSubTabConsumed?: () => void; onBack?: () => void }) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialSubTab ?? 'Suggeriments');
 
@@ -3307,6 +4216,8 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed }: { curre
     }
   };
 
+  const isMobileVeu = useIsMobile();
+
   const handleRespondre = async (id: number) => {
     try {
       await apiRespondreEnquesta(id);
@@ -3317,6 +4228,261 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed }: { curre
       alert(e instanceof Error ? e.message : 'Error en respondre l\'enquesta');
     }
   };
+
+  const [mobileVeuForm, setMobileVeuForm] = useState<'sugg' | 'inc' | null>(null);
+
+  // ── Mobile layout ──────────────────────────────────────────────────────────
+  if (isMobileVeu) {
+    const tabs = [
+      { key: 'Suggeriments', label: 'Suggeriments' },
+      { key: 'Incidències', label: 'Incidències' },
+      { key: 'Enquestes', label: 'Enquestes' },
+    ];
+    const statusStyleInline = (label: string): React.CSSProperties => {
+      if (label === 'Acceptada') return { background: '#dcfce7', color: '#15803d' };
+      if (label === 'En revisió') return { background: '#ffedd5', color: '#c2410c' };
+      if (label === 'Pendent') return { background: 'var(--tavil-border)', color: 'var(--tavil-muted)' };
+      return { background: '#dbeafe', color: '#1d4ed8' };
+    };
+    const incStatusInline = (s: string): React.CSSProperties => {
+      if (s === 'Resolta') return { background: '#dcfce7', color: '#15803d' };
+      if (s === 'En gestió') return { background: '#dbeafe', color: '#1d4ed8' };
+      if (s === 'Oberta') return { background: '#fef3c7', color: '#b45309' };
+      return { background: 'var(--tavil-border)', color: 'var(--tavil-muted)' };
+    };
+
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--tavil-bg)', paddingBottom: 96 }}>
+        {/* Top bar: back + centered title */}
+        <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 12px', position: 'relative' }}>
+          <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '8px 4px', zIndex: 1 }}>
+            <ChevronLeft size={20} style={{ color: 'var(--tavil-accent)' }} />
+            Més
+          </button>
+          <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Veu Empleat</span>
+        </div>
+        {/* Header kicker + title + subtitle */}
+        <div style={{ padding: '0 20px 14px' }}>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Personal</div>
+          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 32, fontWeight: 400, lineHeight: 1.05, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>Veu Empleat</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>{t('veu.subtitle')}</p>
+        </div>
+        {/* Pill tabs */}
+        <div style={{ padding: '4px 16px 16px', display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }} className="hide-sb">
+          {tabs.map(tab => (
+            <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
+              padding: '8px 14px', borderRadius: 999,
+              background: activeTab === tab.key ? 'var(--tavil-text)' : 'var(--tavil-card)',
+              color: activeTab === tab.key ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
+              border: `1px solid ${activeTab === tab.key ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
+              fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap',
+              fontFamily: 'inherit', flexShrink: 0,
+            }}>{tab.label}</button>
+          ))}
+        </div>
+
+        {/* Suggeriments */}
+        {activeTab === 'Suggeriments' && (
+          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {suggestions.length === 0 && <p style={{ fontSize: 13, color: 'var(--tavil-faint)', fontStyle: 'italic', padding: '24px 0', textAlign: 'center' }}>Sense suggeriments</p>}
+            {suggestions.map((s, i) => (
+              <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: '14px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {s.category && <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: '#dbeafe', color: '#1d4ed8', marginBottom: 5, display: 'inline-block' }}>{s.category}</span>}
+                    <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--tavil-text)', lineHeight: 1.25, marginTop: 3 }}>{s.title}</div>
+                  </div>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 6, flexShrink: 0, ...statusStyleInline(s.status) }}>{s.status}</span>
+                </div>
+                {s.description && <p style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginBottom: 10, lineHeight: 1.4 }}>{s.description}</p>}
+                {s.response && (
+                  <div style={{ background: 'var(--tavil-bg)', borderRadius: 10, padding: '8px 12px', marginBottom: 10, borderLeft: '3px solid #bf211e' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#bf211e', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Resposta RRHH</div>
+                    <p style={{ fontSize: 12.5, color: 'var(--tavil-muted)' }}>{s.response}</p>
+                  </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)' }}>
+                    {s.anonymous ? 'Anònim' : s.author} · {formatDate(s.created_at)}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button onClick={() => handleVote(s.id, 'up')} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: s.user_vote === 'up' ? '#bf211e' : 'var(--tavil-muted)', background: 'var(--tavil-bg)', border: `1px solid ${s.user_vote === 'up' ? '#bf211e' : 'var(--tavil-border)'}`, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      <ThumbsUp size={13} /> {s.votes}
+                    </button>
+                    <button onClick={() => handleVote(s.id, 'down')} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: s.user_vote === 'down' ? '#3b82f6' : 'var(--tavil-muted)', background: 'var(--tavil-bg)', border: `1px solid ${s.user_vote === 'down' ? '#3b82f6' : 'var(--tavil-border)'}`, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      <ThumbsDown size={13} />
+                    </button>
+                  </div>
+                </div>
+                {isRrhhOrAdmin && (
+                  <div style={{ paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--tavil-border)' }}>
+                    <button onClick={() => openSuggAdmin(s)} style={{ fontSize: 12, color: '#bf211e', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
+                      Gestionar →
+                    </button>
+                    {suggAdminOpen === s.id && (
+                      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <select value={suggAdminStatus} onChange={e => setSuggAdminStatus(e.target.value)} style={{ borderRadius: 8, border: '1px solid var(--tavil-border)', padding: '6px 10px', fontSize: 13, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit' }}>
+                          {['Pendent','En revisió','Acceptada','Rebutjada'].map(s => <option key={s}>{s}</option>)}
+                        </select>
+                        <textarea value={suggAdminResponse} onChange={e => setSuggAdminResponse(e.target.value)} placeholder="Resposta (opcional)" rows={2} style={{ borderRadius: 8, border: '1px solid var(--tavil-border)', padding: '8px 10px', fontSize: 13, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', resize: 'none', outline: 'none' }} />
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <button onClick={() => setSuggAdminOpen(null)} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                          <button onClick={() => saveSuggAdmin(s.id)} disabled={suggAdminSaving} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: 'none', background: '#bf211e', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>{suggAdminSaving ? 'Desant...' : 'Desar'}</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Incidències */}
+        {activeTab === 'Incidències' && (
+          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {incidencies.length === 0 && <p style={{ fontSize: 13, color: 'var(--tavil-faint)', fontStyle: 'italic', padding: '24px 0', textAlign: 'center' }}>Sense incidències</p>}
+            {incidencies.map((inc, i) => (
+              <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden' }}>
+                <div style={{ height: 4, background: inc.status === 'Resolta' ? '#22c55e' : inc.status === 'En gestió' ? '#3b82f6' : '#f59e0b' }} />
+                <div style={{ padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {inc.area && <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: 'var(--tavil-border)', color: 'var(--tavil-muted)', marginBottom: 5, display: 'inline-block' }}>{inc.area}</span>}
+                      <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--tavil-text)', lineHeight: 1.25, marginTop: 3 }}>{inc.title}</div>
+                    </div>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 6, flexShrink: 0, ...incStatusInline(inc.status) }}>{inc.status}</span>
+                  </div>
+                  {inc.description && <p style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginBottom: 8, lineHeight: 1.4 }}>{inc.description}</p>}
+                  <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginBottom: inc.priority ? 6 : 0 }}>
+                    {inc.author} · {formatDate(inc.created_at)}
+                    {inc.priority && <span style={{ marginLeft: 8, fontWeight: 600 }}>Prioritat: {inc.priority}</span>}
+                  </div>
+                  {isRrhhOrAdmin && (
+                    <div style={{ paddingTop: 10, marginTop: 6, borderTop: '1px solid var(--tavil-border)' }}>
+                      <button onClick={() => openIncAdmin(inc)} style={{ fontSize: 12, color: '#bf211e', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
+                        Gestionar →
+                      </button>
+                      {incAdminOpen === inc.id && (
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <select value={incAdminStatus} onChange={e => setIncAdminStatus(e.target.value)} style={{ borderRadius: 8, border: '1px solid var(--tavil-border)', padding: '6px 10px', fontSize: 13, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit' }}>
+                            {['Oberta','En gestió','Resolta'].map(s => <option key={s}>{s}</option>)}
+                          </select>
+                          <input type="text" value={incAdminAssigned} onChange={e => setIncAdminAssigned(e.target.value)} placeholder="Assignat a" style={{ borderRadius: 8, border: '1px solid var(--tavil-border)', padding: '6px 10px', fontSize: 13, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                          <textarea value={incAdminResolution} onChange={e => setIncAdminResolution(e.target.value)} placeholder="Resolució" rows={2} style={{ borderRadius: 8, border: '1px solid var(--tavil-border)', padding: '8px 10px', fontSize: 13, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', resize: 'none', outline: 'none' }} />
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                            <button onClick={() => setIncAdminOpen(null)} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                            <button onClick={() => saveIncAdmin(inc.id)} disabled={incAdminSaving} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: 'none', background: '#bf211e', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>{incAdminSaving ? 'Desant...' : 'Desar'}</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Enquestes */}
+        {activeTab === 'Enquestes' && (
+          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {enquestes.length === 0 && <p style={{ fontSize: 13, color: 'var(--tavil-faint)', fontStyle: 'italic', padding: '24px 0', textAlign: 'center' }}>Sense enquestes actives</p>}
+            {enquestes.map((enq, i) => (
+              <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: '14px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                  <h3 style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--tavil-text)', flex: 1, lineHeight: 1.25 }}>{enq.title}</h3>
+                  {enq.responded && <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#dcfce7', color: '#15803d', flexShrink: 0 }}>Respost</span>}
+                </div>
+                {enq.description && <p style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginBottom: 10, lineHeight: 1.4 }}>{enq.description}</p>}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)' }}>
+                    {enq.question_count ?? 0} preguntes · {enq.response_count ?? 0} respostes
+                  </div>
+                  {!enq.responded && (
+                    <button onClick={() => handleRespondre(enq.id)} style={{ fontSize: 13, fontWeight: 600, padding: '7px 16px', borderRadius: 10, border: 'none', background: '#bf211e', color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      Respondre
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* FAB */}
+        <button
+          onClick={() => setMobileVeuForm(activeTab === 'Suggeriments' ? 'sugg' : 'inc')}
+          style={{
+            position: 'fixed', bottom: 90, right: 20, width: 52, height: 52,
+            borderRadius: 26, background: '#bf211e', color: '#fff',
+            border: 'none', fontSize: 24, cursor: 'pointer',
+            display: activeTab === 'Enquestes' ? 'none' : 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 16px rgba(191,33,30,0.35)', zIndex: 40,
+          }}
+        ><Plus size={22} /></button>
+
+        {/* New suggestion form */}
+        {mobileVeuForm === 'sugg' && createPortal(
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 anim-fade-in" onClick={() => setMobileVeuForm(null)}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Nou suggeriment</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                <select value={newCat} onChange={e => setNewCat(e.target.value)} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }}>
+                  <option value="">Categoria *</option>
+                  {['Millora operativa','Benestar laboral','Tecnologia','Cultura i valors','Altres'].map(c => <option key={c}>{c}</option>)}
+                </select>
+                <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Descripció" rows={3} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', resize: 'none' }} />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: 'var(--tavil-muted)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={isAnon} onChange={e => setIsAnon(e.target.checked)} />
+                  Enviar de forma anònima
+                </label>
+                {suggSuccess && <p style={{ fontSize: 13, color: '#22c55e', fontWeight: 600 }}>Suggeriment enviat!</p>}
+                <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                  <button onClick={() => setMobileVeuForm(null)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                  <button onClick={async () => { await handleSuggSubmit(); setMobileVeuForm(null); }} disabled={!newTitle.trim() || !newCat || suggSubmitting} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#bf211e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!newTitle.trim() || !newCat || suggSubmitting) ? 0.5 : 1 }}>
+                    {suggSubmitting ? 'Enviant...' : 'Enviar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* New incidència form */}
+        {mobileVeuForm === 'inc' && createPortal(
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 anim-fade-in" onClick={() => setMobileVeuForm(null)}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Nova incidència</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <input type="text" value={incTitle} onChange={e => setIncTitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                <select value={incArea} onChange={e => setIncArea(e.target.value)} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }}>
+                  <option value="">Àrea *</option>
+                  {['IT','Instal·lacions','RRHH','Seguretat','Altres'].map(a => <option key={a}>{a}</option>)}
+                </select>
+                <select value={incPriority} onChange={e => setIncPriority(e.target.value)} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }}>
+                  <option value="">Prioritat *</option>
+                  {['Baixa','Normal','Alta','Urgent'].map(p => <option key={p}>{p}</option>)}
+                </select>
+                <textarea value={incDesc} onChange={e => setIncDesc(e.target.value)} placeholder="Descripció" rows={3} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', resize: 'none' }} />
+                {incSuccess && <p style={{ fontSize: 13, color: '#22c55e', fontWeight: 600 }}>Incidència enviada!</p>}
+                <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                  <button onClick={() => setMobileVeuForm(null)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                  <button onClick={async () => { await handleIncSubmit(); setMobileVeuForm(null); }} disabled={!incTitle.trim() || !incArea || !incPriority || incSubmitting} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#bf211e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!incTitle.trim() || !incArea || !incPriority || incSubmitting) ? 0.5 : 1 }}>
+                    {incSubmitting ? 'Enviant...' : 'Enviar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -3709,7 +4875,7 @@ function VacancesInfo() {
 }
 
 
-function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabConsumed }: { currentUser: User | null; onNotifChange?: () => void; initialSubTab?: string | null; onSubTabConsumed?: () => void }) {
+function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabConsumed, onBack }: { currentUser: User | null; onNotifChange?: () => void; initialSubTab?: string | null; onSubTabConsumed?: () => void; onBack?: () => void }) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(initialSubTab ?? 'Dies no ordinaris');
 
@@ -3803,7 +4969,285 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
     }
   };
 
+  const isMobileSol = useIsMobile();
+  const [mobileSolForm, setMobileSolForm] = useState(false);
+  const [mobileVacForm, setMobileVacForm] = useState(false);
   const today = new Date().toISOString().split('T')[0];
+
+  // ── Mobile layout ──────────────────────────────────────────────────────────
+  if (isMobileSol) {
+    const statusInline = (s: string): React.CSSProperties => {
+      if (s === 'Aprovada') return { background: '#dcfce7', color: '#15803d' };
+      if (s === 'Denegada') return { background: '#fee2e2', color: '#dc2626' };
+      return { background: '#fef3c7', color: '#b45309' };
+    };
+    const myVacances = isRRHH ? vacances : vacances.filter(v => v.user_id === currentUser?.id);
+    const pendingVacances = vacances.filter(v => v.head_status === 'Pendent' || (v.head_status === 'Aprovada' && v.rrhh_status === 'Pendent'));
+    const approvedDaysThisYear = vacances.filter(v => v.rrhh_status === 'Aprovada' && v.user_id === currentUser?.id)
+      .reduce((acc, v) => acc + laboralDaysBetween(v.start_date, v.end_date), 0);
+    const vacancesDisponibles = Math.max(0, ANNUAL_QUOTA_DAYS - approvedDaysThisYear);
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--tavil-bg)', paddingBottom: 96 }}>
+        {/* Top bar: back + centered title */}
+        <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 12px', position: 'relative' }}>
+          <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '8px 4px', zIndex: 1 }}>
+            <ChevronLeft size={20} style={{ color: 'var(--tavil-accent)' }} />
+            Més
+          </button>
+          <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Sol·licituds</span>
+        </div>
+        {/* Header kicker + title + subtitle */}
+        <div style={{ padding: '0 20px 14px' }}>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>RRHH</div>
+          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 32, fontWeight: 400, lineHeight: 1.05, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>Sol·licituds</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>{t('solicituds.subtitle')}</p>
+        </div>
+        {/* 3-counter grid */}
+        {!isRRHH && !isHead && (
+          <div style={{ padding: '6px 16px 18px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {[
+              { n: vacancesDisponibles, l: 'Vacances' },
+              { n: diesNoOrdinaris.filter(d => d.status === 'Pendent' && !isRRHH && !isHead).length, l: 'Assumptes' },
+              { n: 0, l: 'Teletreball' },
+            ].map((c, i) => (
+              <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 12, textAlign: 'center' }}>
+                <div style={{ fontFamily: '"Instrument Serif", serif', fontSize: 28, lineHeight: 1, color: 'var(--tavil-accent)' }}>{c.n}</div>
+                <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginTop: 4, letterSpacing: '0.02em' }}>{c.l} · disponibles</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Nova sol·licitud button */}
+        <div style={{ padding: '0 16px 14px' }}>
+          <button
+            onClick={() => activeTab === 'Vacances' ? setMobileVacForm(true) : setMobileSolForm(true)}
+            style={{ width: '100%', height: 48, borderRadius: 14, border: 'none', background: '#bf211e', color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          >
+            <Plus size={18} /> Nova sol·licitud
+          </button>
+        </div>
+        {/* Tab selector */}
+        <div style={{ padding: '0 16px 12px', display: 'flex', gap: 6 }}>
+          {(['Dies no ordinaris', 'Vacances'] as const).map(key => (
+            <button key={key} onClick={() => setActiveTab(key)} style={{
+              padding: '7px 14px', borderRadius: 999,
+              background: activeTab === key ? 'var(--tavil-text)' : 'var(--tavil-card)',
+              color: activeTab === key ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
+              border: `1px solid ${activeTab === key ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
+              fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+            }}>{key}</button>
+          ))}
+        </div>
+        {/* Kicker */}
+        <div style={{ padding: '2px 20px 8px', fontSize: 11, color: 'var(--tavil-faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+          Sol·licitades · {activeTab === 'Dies no ordinaris' ? diesNoOrdinaris.length : (isRRHH ? vacances : vacances.filter(v => v.user_id === currentUser?.id)).length}
+        </div>
+
+        {/* Dies no ordinaris */}
+        {activeTab === 'Dies no ordinaris' && (
+          <div style={{ padding: '0 16px' }}>
+            {/* Pending approvals for RRHH/head */}
+            {(isRRHH || isHead) && diesNoOrdinaris.filter(d => d.status === 'Pendent').length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div className="mobile-kicker" style={{ marginBottom: 8 }}>PENDENT APROVACIÓ</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {diesNoOrdinaris.filter(d => d.status === 'Pendent').map((d, i) => (
+                    <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: '12px 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)' }}>{formatDate(d.date)}</div>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#fef3c7', color: '#b45309' }}>Pendent</span>
+                      </div>
+                      {d.comments && <p style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginBottom: 8 }}>{d.comments}</p>}
+                      <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginBottom: 10 }}>{d.author}</div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => handleApprove(d.id)} style={{ flex: 1, padding: '8px', borderRadius: 10, border: 'none', background: '#dcfce7', color: '#15803d', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Aprovar</button>
+                        {denyingId !== d.id ? (
+                          <button onClick={() => { setDenyingId(d.id); setDenyMotive(''); }} style={{ flex: 1, padding: '8px', borderRadius: 10, border: 'none', background: '#fee2e2', color: '#dc2626', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Denegar</button>
+                        ) : (
+                          <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <input type="text" value={denyMotive} onChange={e => setDenyMotive(e.target.value)} placeholder="Motiu (opcional)" style={{ borderRadius: 8, border: '1px solid var(--tavil-border)', padding: '7px 10px', fontSize: 13, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button onClick={() => setDenyingId(null)} style={{ flex: 1, padding: '7px', borderRadius: 8, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                              <button onClick={() => handleDenyConfirm(d.id)} style={{ flex: 1, padding: '7px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Confirmar</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* My requests */}
+            <div className="mobile-kicker" style={{ marginBottom: 8 }}>LES MEVES SOL·LICITUDS</div>
+            {diesNoOrdinaris.filter(d => !isRRHH && !isHead ? true : d.user_email === currentUser?.email).length === 0 ? (
+              <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--tavil-faint)' }}>
+                <FileText size={32} style={{ margin: '0 auto 10px', opacity: 0.35 }} />
+                <p style={{ fontSize: 13.5 }}>Sense sol·licituds</p>
+              </div>
+            ) : (
+              <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden' }}>
+                {diesNoOrdinaris.map((d, i) => (
+                  <div key={i} style={{ padding: '12px 14px', borderBottom: '1px solid var(--tavil-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 2 }}>{formatDate(d.date)}</div>
+                        {d.comments && <div style={{ fontSize: 12, color: 'var(--tavil-muted)' }}>{d.comments}</div>}
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(d.status) }}>{d.status}</span>
+                    </div>
+                    {d.motive && <div style={{ fontSize: 12, color: 'var(--tavil-faint)', marginTop: 4, fontStyle: 'italic' }}>Motiu: {d.motive}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Vacances */}
+        {activeTab === 'Vacances' && (
+          <div style={{ padding: '0 16px' }}>
+            {/* Quota summary */}
+            {!isRRHH && !isHead && (() => {
+              const approvedDays = vacances.filter(v => v.rrhh_status === 'Aprovada' && v.user_id === currentUser?.id)
+                .reduce((acc, v) => acc + laboralDaysBetween(v.start_date, v.end_date), 0);
+              const used = approvedDays;
+              const pct = Math.min((used / ANNUAL_QUOTA_DAYS) * 100, 100);
+              return (
+                <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: '14px 16px', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)' }}>Dies de vacances</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#bf211e' }}>{used} / {ANNUAL_QUOTA_DAYS} dies</span>
+                  </div>
+                  <div style={{ height: 6, borderRadius: 3, background: 'var(--tavil-border)' }}>
+                    <div style={{ height: 6, borderRadius: 3, background: '#bf211e', width: `${pct}%`, transition: 'width 600ms' }} />
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginTop: 6 }}>{ANNUAL_QUOTA_DAYS - used} dies disponibles</div>
+                </div>
+              );
+            })()}
+
+            {/* RRHH pending approvals */}
+            {(isRRHH || isHead) && pendingVacances.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div className="mobile-kicker" style={{ marginBottom: 8 }}>PENDENT APROVACIÓ ({pendingVacances.length})</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {pendingVacances.map((v, i) => (
+                    <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: '12px 14px' }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 4 }}>
+                        {formatDate(v.start_date)} → {formatDate(v.end_date)}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--tavil-muted)', marginBottom: 4 }}>{v.author_name}</div>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: '#fef3c7', color: '#b45309' }}>{v.head_status === 'Pendent' ? 'Pendent cap' : 'Pendent RRHH'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* My vacances list */}
+            <div className="mobile-kicker" style={{ marginBottom: 8 }}>LES MEVES VACANCES</div>
+            {myVacances.length === 0 ? (
+              <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--tavil-faint)' }}>
+                <Calendar size={32} style={{ margin: '0 auto 10px', opacity: 0.35 }} />
+                <p style={{ fontSize: 13.5 }}>Sense sol·licituds de vacances</p>
+              </div>
+            ) : (
+              <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden' }}>
+                {myVacances.map((v, i) => (
+                  <div key={i} style={{ padding: '12px 14px', borderBottom: '1px solid var(--tavil-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)' }}>
+                        {formatDate(v.start_date)} – {formatDate(v.end_date)}
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(v.rrhh_status === 'Aprovada' ? 'Aprovada' : v.rrhh_status === 'Denegada' || v.head_status === 'Denegada' ? 'Denegada' : 'Pendent') }}>{v.rrhh_status === 'Aprovada' ? 'Aprovada' : v.rrhh_status === 'Denegada' || v.head_status === 'Denegada' ? 'Denegada' : 'Pendent'}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--tavil-faint)' }}>{laboralDaysBetween(v.start_date, v.end_date)} dies laborables</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* New day-off form */}
+        {mobileSolForm && createPortal(
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 anim-fade-in" onClick={() => setMobileSolForm(false)}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%' }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Nova sol·licitud</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>Data</label>
+                  <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} min={today} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>Comentaris</label>
+                  <textarea value={comments} onChange={e => setComments(e.target.value)} placeholder="Motiu (opcional)" rows={3} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', resize: 'none', boxSizing: 'border-box' }} />
+                </div>
+                {success && <p style={{ fontSize: 13, color: '#22c55e', fontWeight: 600 }}>Sol·licitud enviada!</p>}
+                <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                  <button onClick={() => setMobileSolForm(false)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                  <button onClick={async () => { await handleSubmit(); setMobileSolForm(false); }} disabled={!selectedDate || submitting} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#bf211e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!selectedDate || submitting) ? 0.5 : 1 }}>
+                    {submitting ? 'Enviant...' : 'Enviar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* New vacances form */}
+        {mobileVacForm && createPortal(
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 anim-fade-in" onClick={() => setMobileVacForm(false)}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%' }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Sol·licitar vacances</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>Data inici</label>
+                  <input type="date" value={vacStartDate} onChange={e => setVacStartDate(e.target.value)} min={today} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>Data fi</label>
+                  <input type="date" value={vacEndDate} onChange={e => setVacEndDate(e.target.value)} min={vacStartDate || today} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>Comentaris</label>
+                  <textarea value={vacComments} onChange={e => setVacComments(e.target.value)} placeholder="Opcional" rows={2} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', resize: 'none', boxSizing: 'border-box' }} />
+                </div>
+                {vacSuccess && <p style={{ fontSize: 13, color: '#22c55e', fontWeight: 600 }}>Sol·licitud enviada!</p>}
+                <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                  <button onClick={() => setMobileVacForm(false)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                  <button
+                    onClick={async () => {
+                      if (!vacStartDate || !vacEndDate) return;
+                      setVacSubmitting(true);
+                      try {
+                        await apiCreateVacanca(vacStartDate, vacEndDate, vacComments.trim());
+                        fetchVacances();
+                        onNotifChange?.();
+                        setVacStartDate(''); setVacEndDate(''); setVacComments('');
+                        setVacSuccess(true);
+                        setTimeout(() => setVacSuccess(false), 3000);
+                        setMobileVacForm(false);
+                      } catch (e) { console.error(e); }
+                      finally { setVacSubmitting(false); }
+                    }}
+                    disabled={!vacStartDate || !vacEndDate || vacSubmitting}
+                    style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#bf211e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!vacStartDate || !vacEndDate || vacSubmitting) ? 0.5 : 1 }}
+                  >
+                    {vacSubmitting ? 'Enviant...' : 'Sol·licitar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -4281,7 +5725,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
 
 // ── Perfil Tab ────────────────────────────────────────────────────────────────
 
-function PerfilTab({ currentUser, onUserUpdate, onNavigate }: { currentUser: User | null; onUserUpdate: (u: User) => void; onNavigate?: (tab: string) => void }) {
+function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDarkMode, onLogout, notifications }: { currentUser: User | null; onUserUpdate: (u: User) => void; onNavigate?: (tab: string) => void; isDarkMode?: boolean; toggleDarkMode?: () => void; onLogout?: () => void; notifications?: Notification[] }) {
   const [activeTab, setActiveTab] = useState('Informació');
   const [notifCorreu, setNotifCorreu] = useState(currentUser?.email_notifs !== 0);
   const [notifPortal, setNotifPortal] = useState(true);
@@ -4347,6 +5791,242 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate }: { currentUser: Use
     setDeptInput(currentUser?.dept ?? DEPT_ORDER[0]);
     setIsHeadInput((currentUser?.is_head ?? 0) === 1);
   };
+
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [notifList, setNotifList] = useState<Notification[]>([]);
+
+  useEffect(() => {
+    if (showNotifs) {
+      apiGetNotifications().then(setNotifList).catch(() => {});
+    }
+  }, [showNotifs]);
+
+  const isMobilePerfil = useIsMobile();
+  if (isMobilePerfil) {
+    const name = currentUser?.name ?? '';
+    const ini = name.split(' ').map((w: string) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
+    const hue = [...name].reduce((a: number, c: string) => a + c.charCodeAt(0), 0) % 360;
+
+    // ── Notifications sub-view ─────────────────────────────
+    if (showNotifs) {
+      return (
+        <div className="anim-page-enter-h-fwd" style={{ margin: '0 -12px', paddingBottom: 96 }}>
+          {/* Back header */}
+          <div style={{
+            display: 'flex', alignItems: 'center', padding: '14px 16px 6px', gap: 4,
+          }}>
+            <button
+              onClick={() => setShowNotifs(false)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                color: '#bf211e', fontFamily: 'inherit', fontSize: 16, padding: '4px 0',
+              }}
+            >
+              <ChevronLeft size={20} strokeWidth={2} />
+              Perfil
+            </button>
+          </div>
+          <div style={{
+            fontSize: 28, fontFamily: '"Instrument Serif","Times New Roman",serif',
+            fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--tavil-text)',
+            padding: '4px 24px 18px',
+          }}>Notificacions</div>
+
+          <MesSettingsGroup label={notifList.length > 0 ? `${notifList.filter(n => !n.read).length} sense llegir` : 'RECENTS'}>
+            {notifList.length === 0 ? (
+              <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--tavil-faint)', fontSize: 13 }}>
+                Sense notificacions
+              </div>
+            ) : (
+              notifList.map((n, i) => (
+                <button
+                  key={n.id}
+                  onClick={() => {
+                    apiMarkNotifRead(n.id).then(() => apiGetNotifications().then(setNotifList)).catch(() => {});
+                  }}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'flex-start', gap: 12,
+                    padding: '14px 16px', background: 'transparent', border: 'none',
+                    borderBottom: '1px solid var(--tavil-border)',
+                    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                  }}
+                >
+                  <div style={{
+                    width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                    background: n.read ? 'var(--tavil-bg-alt)' : '#fdf2f2',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Bell size={16} style={{ color: n.read ? 'var(--tavil-muted)' : '#bf211e' }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 14, color: 'var(--tavil-text)',
+                      fontWeight: n.read ? 400 : 600, lineHeight: 1.35,
+                    }}>{n.title}</div>
+                    {n.body && (
+                      <div style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginTop: 2, lineHeight: 1.35 }}>{n.body}</div>
+                    )}
+                    <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginTop: 4 }}>{timeAgo(n.created_at)}</div>
+                  </div>
+                  {!n.read && (
+                    <div style={{ width: 8, height: 8, borderRadius: 4, background: '#bf211e', marginTop: 6, flexShrink: 0 }} />
+                  )}
+                </button>
+              ))
+            )}
+          </MesSettingsGroup>
+
+          {notifList.length > 0 && (
+            <div style={{ padding: '0 16px' }}>
+              <button
+                onClick={() => apiMarkAllNotifsRead().then(() => apiGetNotifications().then(setNotifList)).catch(() => {})}
+                style={{
+                  width: '100%', padding: '13px 16px', background: 'var(--tavil-card)',
+                  border: '1px solid var(--tavil-border)', borderRadius: 14,
+                  cursor: 'pointer', fontFamily: 'inherit', fontSize: 14,
+                  color: '#bf211e', fontWeight: 500,
+                }}
+              >
+                Marcar totes com a llegides
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── Main profile view ──────────────────────────────────
+    return (
+      <div style={{ margin: '0 -12px', paddingBottom: 96 }}>
+        {/* Hero */}
+        <div style={{ padding: '10px 20px 22px', textAlign: 'center' }}>
+          <div style={{
+            width: 84, height: 84, borderRadius: 42, margin: '0 auto 14px',
+            background: `oklch(0.88 0.03 ${hue})`,
+            color: `oklch(0.32 0.04 ${hue})`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 600, fontSize: 32, letterSpacing: '-0.01em',
+          }}>{ini}</div>
+          <div style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 28, letterSpacing: '-0.01em', lineHeight: 1.1, color: 'var(--tavil-text)' }}>
+            {name || 'Usuari'}
+          </div>
+          <div style={{ fontSize: 13.5, color: 'var(--tavil-muted)', marginTop: 4 }}>
+            {currentUser?.role}{currentUser?.dept ? ` · ${currentUser.dept}` : ''}
+          </div>
+          {(currentUser?.ext || currentUser?.email) && (
+            <div style={{ fontSize: 12, color: 'var(--tavil-faint)', marginTop: 2 }}>
+              {currentUser.ext ? `Ext. ${currentUser.ext}` : ''}{currentUser.ext && currentUser.email ? ' · ' : ''}{currentUser.email ?? ''}
+            </div>
+          )}
+        </div>
+
+        {/* Aparença */}
+        <MesSettingsGroup label="APARENÇA">
+          <div style={{ padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {[
+              { dark: false, label: 'Light', Icon: Sun },
+              { dark: true,  label: 'Fosc',  Icon: Moon },
+            ].map(o => {
+              const active = (isDarkMode ?? false) === o.dark;
+              return (
+                <button
+                  key={String(o.dark)}
+                  onClick={toggleDarkMode}
+                  style={{
+                    padding: '14px 8px 12px', borderRadius: 12,
+                    background: active ? '#fdf2f2' : 'transparent',
+                    border: `1px solid ${active ? '#bf211e' : 'var(--tavil-border)'}`,
+                    color: active ? '#bf211e' : 'var(--tavil-text)',
+                    cursor: 'pointer', fontFamily: 'inherit', fontSize: 13,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, fontWeight: 500,
+                  }}
+                >
+                  <o.Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+        </MesSettingsGroup>
+
+        {/* Idioma */}
+        <MesSettingsGroup label="IDIOMA">
+          {[
+            { code: 'ca', label: 'Català' },
+            { code: 'es', label: 'Castellano' },
+            { code: 'en', label: 'English' },
+          ].map((l, i) => {
+            const active = i18n.language === l.code;
+            return (
+              <button
+                key={l.code}
+                onClick={() => i18n.changeLanguage(l.code)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center',
+                  padding: '14px 16px', background: 'transparent',
+                  border: 'none', borderBottom: '1px solid var(--tavil-border)',
+                  cursor: 'pointer', fontFamily: 'inherit', fontSize: 14.5,
+                  color: 'var(--tavil-text)',
+                }}
+              >
+                <span style={{ flex: 1, textAlign: 'left' }}>{l.label}</span>
+                {active && <Check size={16} style={{ color: '#bf211e' }} />}
+              </button>
+            );
+          })}
+        </MesSettingsGroup>
+
+        {/* Compte */}
+        <MesSettingsGroup label="COMPTE">
+          <button
+            onClick={() => setShowNotifs(true)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+              padding: '14px 16px', background: 'transparent',
+              border: 'none', borderBottom: '1px solid var(--tavil-border)',
+              cursor: 'pointer', fontFamily: 'inherit', fontSize: 14.5,
+              color: 'var(--tavil-text)',
+            }}
+          >
+            <Bell size={18} style={{ color: 'var(--tavil-muted)' }} />
+            <span style={{ flex: 1, textAlign: 'left' }}>Notificacions</span>
+            <ChevronRight size={16} style={{ color: 'var(--tavil-faint)' }} />
+          </button>
+          <button
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+              padding: '14px 16px', background: 'transparent',
+              border: 'none', borderBottom: '1px solid var(--tavil-border)',
+              cursor: 'pointer', fontFamily: 'inherit', fontSize: 14.5,
+              color: 'var(--tavil-text)',
+            }}
+          >
+            <Settings size={18} style={{ color: 'var(--tavil-muted)' }} />
+            <span style={{ flex: 1, textAlign: 'left' }}>Configuració</span>
+            <ChevronRight size={16} style={{ color: 'var(--tavil-faint)' }} />
+          </button>
+          <button
+            onClick={onLogout}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+              padding: '14px 16px', background: 'transparent', border: 'none',
+              borderBottom: '1px solid var(--tavil-border)',
+              cursor: 'pointer', fontFamily: 'inherit', fontSize: 14.5, color: '#bf211e',
+            }}
+          >
+            <LogOut size={18} style={{ color: '#bf211e' }} />
+            <span style={{ flex: 1, textAlign: 'left' }}>Tanca sessió</span>
+          </button>
+        </MesSettingsGroup>
+
+        {/* Footer */}
+        <div style={{ textAlign: 'center', padding: '20px 0 10px', fontSize: 11, color: 'var(--tavil-faint)', letterSpacing: '0.02em' }}>
+          TAVIL · v2026.4
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -4701,6 +6381,146 @@ function VerifyEmailPage({ email, onBack, onVerified, isDarkMode, toggleDarkMode
     } catch {}
   };
 
+  const isMobileVerify = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [verifyLang, setVerifyLang] = useState<'ca'|'es'|'en'>('ca');
+  const CODE_LEN = 8;
+  const [slots, setSlots] = useState<string[]>(Array(CODE_LEN).fill(''));
+  const slotRefs = React.useRef<(HTMLInputElement | null)[]>([]);
+  const singleCode = code || slots.join('');
+
+  const setSlot = (i: number, v: string) => {
+    v = v.toUpperCase().replace(/[^0-9A-F]/g, '').slice(0, 1);
+    const next = [...slots]; next[i] = v; setSlots(next);
+    setCode(next.join(''));
+    if (v && i < CODE_LEN - 1) slotRefs.current[i + 1]?.focus();
+  };
+  const onSlotKey = (i: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !slots[i] && i > 0) { slotRefs.current[i - 1]?.focus(); }
+    if (e.key === 'ArrowLeft' && i > 0) slotRefs.current[i - 1]?.focus();
+    if (e.key === 'ArrowRight' && i < CODE_LEN - 1) slotRefs.current[i + 1]?.focus();
+  };
+  const onSlotPaste = (e: React.ClipboardEvent) => {
+    const txt = (e.clipboardData?.getData('text') || '').toUpperCase().replace(/[^0-9A-F]/g, '').slice(0, CODE_LEN);
+    if (!txt) return;
+    e.preventDefault();
+    const next = Array(CODE_LEN).fill('');
+    for (let i = 0; i < txt.length; i++) next[i] = txt[i];
+    setSlots(next); setCode(next.join(''));
+    slotRefs.current[Math.min(txt.length, CODE_LEN - 1)]?.focus();
+  };
+
+  if (isMobileVerify) {
+    const complete = slots.join('').length === CODE_LEN;
+    return (
+      <div className={cn("min-h-screen flex flex-col transition-colors", isDarkMode && "dark")}
+        style={{ background: 'var(--tavil-bg)', color: 'var(--tavil-text)', padding: '10px 24px 28px' }}>
+
+        {/* Top: back + lang */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+          <button onClick={onBack} style={{
+            width: 40, height: 40, borderRadius: 20,
+            background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0,
+          }}>
+            <ChevronLeft size={18} />
+          </button>
+          <div style={{ display: 'inline-flex', background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 999, padding: 3, gap: 0 }}>
+            {(['ca','es','en'] as const).map(l => (
+              <button key={l} onClick={() => setVerifyLang(l)} style={{
+                padding: '5px 10px', fontSize: 11, fontWeight: 600,
+                background: verifyLang === l ? 'var(--tavil-text)' : 'transparent',
+                color: verifyLang === l ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
+                border: 'none', borderRadius: 999, cursor: 'pointer',
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+                fontFamily: 'inherit', transition: 'all 200ms',
+              }}>{l}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Step indicator — both steps complete */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
+          <div style={{ flex: 1, height: 3, borderRadius: 2, background: '#bf211e' }} />
+          <div style={{ flex: 1, height: 3, borderRadius: 2, background: '#bf211e' }} />
+        </div>
+
+        {/* Heading */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 10.5, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
+            Pas 2 de 2
+          </div>
+          <h1 style={{
+            fontFamily: '"Instrument Serif", "Times New Roman", serif',
+            fontSize: 34, fontWeight: 400, lineHeight: 1.04, margin: '0 0 10px',
+            letterSpacing: '-0.02em', color: 'var(--tavil-text)',
+          }}>Verifica el teu correu</h1>
+          <p style={{ fontSize: 14, color: 'var(--tavil-muted)', margin: 0, lineHeight: 1.45 }}>
+            Hem enviat un codi a{' '}
+            <span style={{ color: 'var(--tavil-text)', fontWeight: 500 }}>{email || 'nom.cognom@tavil.net'}</span>
+          </p>
+        </div>
+
+        {/* 8-slot code input */}
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 10, fontWeight: 500 }}>Codi de verificació</div>
+            <div style={{ display: 'flex', gap: 4, justifyContent: 'space-between' }} onPaste={onSlotPaste}>
+              {slots.map((c, i) => (
+                <input
+                  key={i}
+                  ref={el => { slotRefs.current[i] = el; }}
+                  value={c}
+                  onChange={e => setSlot(i, e.target.value)}
+                  onKeyDown={e => onSlotKey(i, e)}
+                  maxLength={1}
+                  inputMode="text"
+                  autoCapitalize="characters"
+                  style={{
+                    flex: '1 1 0', minWidth: 0, height: 50, textAlign: 'center',
+                    fontFamily: '"JetBrains Mono", "Courier New", monospace',
+                    fontSize: 18, fontWeight: 500,
+                    color: 'var(--tavil-text)',
+                    background: 'var(--tavil-card)',
+                    border: `1px solid ${c ? '#bf211e' : 'var(--tavil-border)'}`,
+                    borderRadius: 10, outline: 'none', padding: 0,
+                    transition: 'all 160ms', textTransform: 'uppercase',
+                    boxShadow: c ? '0 0 0 3px rgba(191,33,30,0.12)' : 'none',
+                  }}
+                />
+              ))}
+            </div>
+            <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginTop: 8, fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.04em' }}>
+              Format: 8 car. hex · ex. E2A76B29
+            </div>
+          </div>
+
+          <div style={{ fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 24 }}>
+            No l'has rebut?{' '}
+            <button type="button" onClick={handleResend} style={{
+              background: 'none', border: 'none', color: '#bf211e',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: 0,
+            }}>Reenviar</button>
+            {resent && <span style={{ display: 'block', fontSize: 11.5, color: '#3f7a52', marginTop: 4 }}>✓ Codi reenviat</span>}
+          </div>
+
+          {error && <p style={{ fontSize: 13, color: '#bf211e', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
+
+          <div style={{ flex: 1 }} />
+          <button type="submit" disabled={loading || !complete} style={{
+            width: '100%', height: 52, borderRadius: 14, border: 'none',
+            background: '#bf211e', color: '#fff',
+            fontSize: 15, fontWeight: 600, cursor: (loading || !complete) ? 'not-allowed' : 'pointer',
+            transition: 'all 160ms', opacity: (loading || !complete) ? 0.6 : 1, fontFamily: 'inherit',
+          }}>
+            {loading ? 'Verificant…' : 'Verificar compte'}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  // ── Desktop layout ───────────────────────────────────────────────────────────
   return (
     <div className={cn("min-h-screen bg-gray-100 dark:bg-zinc-950 flex flex-col transition-colors", isDarkMode && "dark")}>
       <div className="flex justify-end p-4">
@@ -4865,34 +6685,54 @@ function LoginPage({ onLoginResult, onRegister, isDarkMode, toggleDarkMode }: {
   };
 
   const isMobileLogin = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [mobileLang, setMobileLang] = useState<'ca'|'es'|'en'>('ca');
+
+  const mobileInputStyle: React.CSSProperties = {
+    width: '100%', height: 50, padding: '0 14px 0 42px',
+    background: 'var(--tavil-card)', color: 'var(--tavil-text)',
+    border: '1px solid var(--tavil-border)',
+    borderRadius: 14, fontSize: 15, outline: 'none', boxSizing: 'border-box',
+    fontFamily: 'inherit',
+  };
+  const mobileLabelStyle: React.CSSProperties = {
+    fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 6, fontWeight: 500, display: 'block',
+  };
 
   // ── Mobile layout — matches design's LoginScreen ──────────────────────────
   if (isMobileLogin) {
     return (
       <div className={cn("min-h-screen flex flex-col transition-colors", isDarkMode && "dark")}
         style={{ background: 'var(--tavil-bg)', color: 'var(--tavil-text)', padding: '20px 24px 32px' }}>
-        {/* Top: logo + dark toggle */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 56 }}>
-          <img
-            src={`${process.env.PUBLIC_URL}/assets/images/${isDarkMode ? 'tavilLogoDark' : 'tavilLogo'}.png`}
-            alt="TAVIL" style={{ height: 26, objectFit: 'contain' }}
-          />
-          <button onClick={toggleDarkMode} style={{
-            width: 36, height: 36, borderRadius: 18,
-            background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: 'var(--tavil-text)',
-          }}>
-            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
+
+        {/* Top: logo + language switcher */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 60 }}>
+          <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            {isDarkMode ? (
+              <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoDark.png`} alt="TAVIL" style={{ height: 16, display: 'block' }} />
+            ) : (
+              <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`} alt="TAVIL" style={{ height: 16, display: 'block' }} />
+            )}
+          </div>
+          <div style={{ display: 'inline-flex', background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 999, padding: 3, gap: 0 }}>
+            {(['ca','es','en'] as const).map(l => (
+              <button key={l} onClick={() => setMobileLang(l)} style={{
+                padding: '5px 10px', fontSize: 11, fontWeight: 600,
+                background: mobileLang === l ? 'var(--tavil-text)' : 'transparent',
+                color: mobileLang === l ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
+                border: 'none', borderRadius: 999, cursor: 'pointer',
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+                fontFamily: 'inherit', transition: 'all 200ms',
+              }}>{l}</button>
+            ))}
+          </div>
         </div>
 
         {/* Heading */}
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ marginBottom: 36 }}>
           <div style={{
             fontSize: 10.5, color: '#bf211e', fontWeight: 600,
             textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 12,
-          }}>Portal intern</div>
+          }}>PORTAL INTERN</div>
           <h1 style={{
             fontFamily: '"Instrument Serif", "Times New Roman", serif',
             fontSize: 34, fontWeight: 400, lineHeight: 1.05, margin: '0 0 12px',
@@ -4904,40 +6744,27 @@ function LoginPage({ onLoginResult, onRegister, isDarkMode, toggleDarkMode }: {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          <label style={{ display: 'block', marginBottom: 14 }}>
-            <div style={{ fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 6, fontWeight: 500 }}>
-              Correu electrònic
-            </div>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0, marginBottom: 20 }}>
+          <div style={{ marginBottom: 14 }}>
+            <span style={mobileLabelStyle}>Correu electrònic</span>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <Mail size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
               <input
                 type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="nom.cognom@tavil.net" required autoComplete="email"
-                style={{
-                  width: '100%', height: 48, padding: '0 14px 0 42px',
-                  background: 'var(--tavil-card)', color: 'var(--tavil-text)',
-                  border: '1px solid var(--tavil-border)',
-                  borderRadius: 12, fontSize: 15, outline: 'none', boxSizing: 'border-box',
-                }}
+                inputMode="email"
+                style={mobileInputStyle}
               />
             </div>
-          </label>
-          <label style={{ display: 'block', marginBottom: 8 }}>
-            <div style={{ fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 6, fontWeight: 500 }}>
-              Contrasenya
-            </div>
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <span style={mobileLabelStyle}>Contrasenya</span>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <Lock size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
               <input
                 type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••" required autoComplete="current-password"
-                style={{
-                  width: '100%', height: 48, padding: '0 42px 0 42px',
-                  background: 'var(--tavil-card)', color: 'var(--tavil-text)',
-                  border: '1px solid var(--tavil-border)',
-                  borderRadius: 12, fontSize: 15, outline: 'none', boxSizing: 'border-box',
-                }}
+                style={{ ...mobileInputStyle, padding: '0 42px 0 42px' }}
               />
               <button type="button" onClick={() => setShowPass(!showPass)} style={{
                 position: 'absolute', right: 14, color: 'var(--tavil-faint)',
@@ -4946,21 +6773,21 @@ function LoginPage({ onLoginResult, onRegister, isDarkMode, toggleDarkMode }: {
                 {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
-          </label>
-          <div style={{ textAlign: 'right', marginBottom: 20 }}>
+          </div>
+          <div style={{ textAlign: 'right', marginBottom: 24 }}>
             <button type="button" style={{
               background: 'none', border: 'none', color: '#bf211e',
-              fontSize: 13, cursor: 'pointer', padding: 0,
+              fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'inherit',
             }}>Has oblidat la contrasenya?</button>
           </div>
           {error && (
             <p style={{ fontSize: 13, color: '#bf211e', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>
           )}
           <button type="submit" disabled={loading} style={{
-            height: 52, borderRadius: 12, border: 'none',
+            height: 52, borderRadius: 14, border: 'none',
             background: loading ? '#a21b18' : '#bf211e', color: '#fff',
-            fontSize: 15, fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer',
-            transition: 'all 160ms', opacity: loading ? 0.7 : 1,
+            fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+            transition: 'all 160ms', opacity: loading ? 0.7 : 1, fontFamily: 'inherit',
           }}>
             {loading ? 'Carregant…' : 'Inicia sessió'}
           </button>
@@ -4972,8 +6799,8 @@ function LoginPage({ onLoginResult, onRegister, isDarkMode, toggleDarkMode }: {
           Encara no tens compte?{' '}
           <button onClick={onRegister} style={{
             background: 'none', border: 'none', color: '#bf211e',
-            fontSize: 13.5, fontWeight: 600, cursor: 'pointer', padding: 0,
-          }}>Crea un compte</button>
+            fontSize: 13.5, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit',
+          }}>Crear compte</button>
         </div>
         <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--tavil-faint)', letterSpacing: '0.02em' }}>
           TAVIL · Portal intern · 2026
@@ -5072,6 +6899,163 @@ function RegisterPage({ onBack, onRegisterResult, isDarkMode, toggleDarkMode }: 
     }
   };
 
+  const isMobileReg = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [regLang, setRegLang] = useState<'ca'|'es'|'en'>('ca');
+
+  const regInputStyle: React.CSSProperties = {
+    width: '100%', height: 50, padding: '0 14px 0 42px',
+    background: 'var(--tavil-card)', color: 'var(--tavil-text)',
+    border: '1px solid var(--tavil-border)',
+    borderRadius: 14, fontSize: 15, outline: 'none', boxSizing: 'border-box',
+    fontFamily: 'inherit',
+  };
+  const regLabelStyle: React.CSSProperties = {
+    fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 6, fontWeight: 500, display: 'block',
+  };
+
+  // ── Mobile layout ───────────────────────────────────────────────────────────
+  if (isMobileReg) {
+    // password strength
+    const strength = (() => {
+      let s = 0;
+      if (password.length >= 6) s++; if (password.length >= 10) s++;
+      if (/[A-Z]/.test(password)) s++; if (/[0-9]/.test(password)) s++; if (/[^A-Za-z0-9]/.test(password)) s++;
+      return Math.min(s, 4);
+    })();
+    const strengthColors = ['var(--tavil-border)', '#c87158', '#b6833a', '#7a8a6b', '#3f7a52'];
+    const strengthLabels = ['—', 'Feble', 'Correcta', 'Bona', 'Forta'];
+    const valid = name.trim() && EMAIL_RE.test(email.trim()) && password.length >= 6 && password === confirmPassword;
+
+    return (
+      <div className={cn("min-h-screen flex flex-col transition-colors", isDarkMode && "dark")}
+        style={{ background: 'var(--tavil-bg)', color: 'var(--tavil-text)', padding: '10px 24px 28px', overflowY: 'auto' }}>
+
+        {/* Top: back + language switcher */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+          <button onClick={onBack} style={{
+            width: 40, height: 40, borderRadius: 20,
+            background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0,
+          }}>
+            <ChevronLeft size={18} />
+          </button>
+          <div style={{ display: 'inline-flex', background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 999, padding: 3, gap: 0 }}>
+            {(['ca','es','en'] as const).map(l => (
+              <button key={l} onClick={() => setRegLang(l)} style={{
+                padding: '5px 10px', fontSize: 11, fontWeight: 600,
+                background: regLang === l ? 'var(--tavil-text)' : 'transparent',
+                color: regLang === l ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
+                border: 'none', borderRadius: 999, cursor: 'pointer',
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+                fontFamily: 'inherit', transition: 'all 200ms',
+              }}>{l}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Step indicator */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
+          <div style={{ flex: 1, height: 3, borderRadius: 2, background: '#bf211e' }} />
+          <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-border)' }} />
+        </div>
+
+        {/* Heading */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 10.5, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
+            Pas 1 de 2
+          </div>
+          <h1 style={{
+            fontFamily: '"Instrument Serif", "Times New Roman", serif',
+            fontSize: 36, fontWeight: 400, lineHeight: 1.02, margin: '0 0 8px',
+            letterSpacing: '-0.02em', color: 'var(--tavil-text)',
+          }}>Crea un compte</h1>
+          <p style={{ fontSize: 14, color: 'var(--tavil-muted)', margin: 0, lineHeight: 1.4 }}>
+            Registra't amb el teu correu corporatiu
+          </p>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          <div style={{ marginBottom: 14 }}>
+            <span style={regLabelStyle}>Nom complet</span>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <UserCircle size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nom i cognoms" required
+                style={regInputStyle} autoComplete="name" />
+            </div>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <span style={regLabelStyle}>Correu electrònic</span>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Mail size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nom.cognom@tavil.net" required
+                style={{ ...regInputStyle, borderColor: email && !EMAIL_RE.test(email) ? '#bf211e' : 'var(--tavil-border)' }}
+                inputMode="email" autoComplete="email" />
+            </div>
+            {email && !EMAIL_RE.test(email) && (
+              <p style={{ fontSize: 12, color: '#bf211e', margin: '4px 0 0' }}>Format: nom@tavil.net</p>
+            )}
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <span style={regLabelStyle}>
+              Contrasenya{password ? ` · Seguretat: ${strengthLabels[strength]}` : ' · Mínim 6 caràcters'}
+            </span>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Lock size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+              <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••" required autoComplete="new-password"
+                style={{ ...regInputStyle, padding: '0 42px 0 42px' }} />
+              <button type="button" onClick={() => setShowPass(!showPass)} style={{
+                position: 'absolute', right: 14, color: 'var(--tavil-faint)',
+                background: 'none', border: 'none', cursor: 'pointer', display: 'flex',
+              }}>
+                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {password && (
+              <div style={{ display: 'flex', gap: 3, marginTop: 6 }}>
+                {[1,2,3,4].map(i => (
+                  <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= strength ? strengthColors[strength] : 'var(--tavil-border)', transition: 'all 200ms' }} />
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={{ marginBottom: 24 }}>
+            <span style={regLabelStyle}>Confirma la contrasenya</span>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Lock size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+              <input type={showConfirm ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                placeholder="••••••••" required autoComplete="new-password"
+                style={{ ...regInputStyle, padding: '0 42px 0 42px', borderColor: !passwordsMatch ? '#bf211e' : 'var(--tavil-border)' }} />
+              <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={{
+                position: 'absolute', right: 14, color: 'var(--tavil-faint)',
+                background: 'none', border: 'none', cursor: 'pointer', display: 'flex',
+              }}>
+                {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {!passwordsMatch && (
+              <p style={{ fontSize: 12, color: '#bf211e', margin: '4px 0 0' }}>Les contrasenyes no coincideixen.</p>
+            )}
+          </div>
+          {error && <p style={{ fontSize: 13, color: '#bf211e', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
+          <div style={{ flex: 1, minHeight: 8 }} />
+          <button type="submit" disabled={loading || !valid} style={{
+            height: 52, borderRadius: 14, border: 'none',
+            background: loading ? '#a21b18' : '#bf211e', color: '#fff',
+            fontSize: 15, fontWeight: 600, cursor: (loading || !valid) ? 'not-allowed' : 'pointer',
+            transition: 'all 160ms', opacity: (loading || !valid) ? 0.6 : 1, fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+            {loading ? 'Carregant…' : <>Continuar <ChevronRight size={16} /></>}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  // ── Desktop layout ───────────────────────────────────────────────────────────
   return (
     <div className={cn("min-h-screen bg-gray-100 dark:bg-zinc-950 flex flex-col transition-colors", isDarkMode && "dark")}>
       <div className="flex justify-end p-4">
@@ -5392,6 +7376,8 @@ function App() {
     const dir = prev !== -1 && cur !== -1 && cur < prev ? 'back' : 'fwd';
     setExitingTab(prevTabRef.current);
     setExitDirection(dir);
+    if (activeTab === 'Perfil') setExitDirection('back');
+    if (prevTabRef.current === 'Perfil' && activeTab === 'Més') setExitDirection('fwd');
     setExitIsMobile(isMobilePage);
     prevTabRef.current = activeTab;
     const duration = isMobilePage ? 620 : 720;
@@ -5555,69 +7541,79 @@ function App() {
   })();
 
   const renderContentFor = (tab: string) => {
+    const hasUnread = notifications.some(n => !n.read);
+    const openDrawer = () => setIsDrawerOpen(true);
+    const openNotifs = () => setActiveTab('Perfil');
     switch (tab) {
-      case 'Inici': return <InicialTab onNavigate={setActiveTab} onNavigateToDate={navigateToDate} />;
-      case 'Notícies': return <NoticiesTab currentUser={currentUser} />;
-      case 'Activitats': return <ActivitatsTab currentUser={currentUser} />;
-      case 'Agenda': return <AgendaTab currentUser={currentUser} initDate={agendaInitDate} onInitDateConsumed={() => setAgendaInitDate(null)} />;
-      case 'Directori': return <DirectoriTab />;
+      case 'Inici': return <InicialTab onNavigate={setActiveTab} onNavigateToDate={navigateToDate} onOpenDrawer={openDrawer} hasUnread={hasUnread} onOpenNotifs={openNotifs} currentUser={currentUser} />;
+      case 'Notícies': return <NoticiesTab currentUser={currentUser} onOpenDrawer={openDrawer} />;
+      case 'Activitats': return <ActivitatsTab currentUser={currentUser} onBack={() => setActiveTab('Més')} />;
+      case 'Agenda': return <AgendaTab currentUser={currentUser} initDate={agendaInitDate} onInitDateConsumed={() => setAgendaInitDate(null)} onOpenDrawer={openDrawer} />;
+      case 'Directori': return <DirectoriTab onOpenDrawer={openDrawer} />;
       case 'Espai': return <EspaiCorporatiuTab />;
       case 'Campus': return <CampusTavilTab />;
-      case 'Veu': return <VeuEmpleatTab currentUser={currentUser} initialSubTab={notifSubTab} onSubTabConsumed={() => setNotifSubTab(null)} />;
-      case 'Solicituds': return <SolicitudsTab currentUser={currentUser} onNotifChange={refreshNotifications} initialSubTab={notifSubTab} onSubTabConsumed={() => setNotifSubTab(null)} />;
-      case 'Perfil': return <PerfilTab currentUser={currentUser} onUserUpdate={u => { setCurrentUser(u); }} onNavigate={setActiveTab} />;
+      case 'Veu': return <VeuEmpleatTab currentUser={currentUser} initialSubTab={notifSubTab} onSubTabConsumed={() => setNotifSubTab(null)} onBack={() => setActiveTab('Més')} />;
+      case 'Solicituds': return <SolicitudsTab currentUser={currentUser} onNotifChange={refreshNotifications} initialSubTab={notifSubTab} onSubTabConsumed={() => setNotifSubTab(null)} onBack={() => setActiveTab('Més')} />;
+      case 'Perfil': return <PerfilTab currentUser={currentUser} onUserUpdate={u => { setCurrentUser(u); }} onNavigate={setActiveTab} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} onLogout={handleLogout} />;
       case 'Empresa': return <EmpresaLandingTab onNavigate={setActiveTab} />;
+      case 'Més': return <MesTab onNavigate={setActiveTab} currentUser={currentUser} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} onLogout={handleLogout} />;
       default: return null;
     }
   };
   const renderPageLayout = (tab: string) => {
     const isInici = tab === 'Inici';
+    // These tabs render their own mobile header (hamburger/back + kicker + title)
+    const selfHandledMobile = new Set(['Inici', 'Notícies', 'Agenda', 'Directori', 'Activitats', 'Veu', 'Solicituds']);
     const section = SIDEBAR_SECTIONS.flatMap(s => s.items).find(i => i.id === tab)
       ?? (tab === 'Empresa' ? { id: 'Empresa', label: 'Empresa', icon: Building2 } : undefined);
 
     const mobileKickers: Record<string, string> = {
-      'Notícies': 'Comunicació interna',
-      'Activitats': "Vida a l'empresa",
-      'Agenda': 'Calendari',
-      'Directori': 'Equip',
-      'Veu': 'Personal',
-      'Solicituds': 'RRHH',
-      'Perfil': 'El teu compte',
+      'Perfil': 'Perfil',
       'Campus': 'Formació',
       'Espai': 'Empresa',
       'Empresa': 'Empresa',
+      'Més': 'Navegació',
     };
 
     return (
       <div className={isInici ? 'w-full' : 'w-full md:p-4 lg:p-8 md:max-w-7xl md:mx-auto'}>
 
-        {/* ── Mobile top bar (hamburger · logo · bell) — hidden on desktop ── */}
-        <div className="md:hidden" style={{ background: 'var(--tavil-bg)' }}>
-          <MobileAppHeader
-            onOpenDrawer={() => setIsDrawerOpen(true)}
-            onNotif={() => setIsNotifOpen(true)}
-            hasUnread={notifications.some(n => !n.read)}
-            isDarkMode={isDarkMode}
-          />
-        </div>
+        {/* ── Mobile top bar spacer — only for tabs that don't render their own header ── */}
+        {!selfHandledMobile.has(tab) && (
+          <div className="md:hidden" style={{ background: 'var(--tavil-bg)', height: 52 }} />
+        )}
 
-        {/* ── Mobile page title (kicker + Instrument Serif h1) — non-Inici only ── */}
-        {!isInici && (
+        {/* ── Mobile page title (kicker + Instrument Serif h1) — non-self-handled only ── */}
+        {!isInici && !selfHandledMobile.has(tab) && (
           <div
-            className="md:hidden px-4 pt-3 pb-2"
-            style={{ background: 'var(--tavil-bg)' }}
+            className={`md:hidden px-5 pb-3 ${tab === 'Més' ? 'pt-8' : 'pt-3'} ${tab === 'Perfil' ? 'text-center' : ''}`}
+            style={{ background: 'var(--tavil-bg)', position: 'relative' }}
           >
-            {mobileKickers[tab] && (
+            {tab === 'Perfil' && (
+              <button
+                onClick={() => setActiveTab('Més')}
+                style={{
+                  position: 'absolute', left: 20, top: 12,
+                  width: 40, height: 40, borderRadius: 20,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
+                  color: 'var(--tavil-text)', cursor: 'pointer',
+                }}
+              >
+                <ChevronLeft size={22} />
+              </button>
+            )}
+            {mobileKickers[tab] && tab !== 'Perfil' && (
               <div className="mobile-kicker">{mobileKickers[tab]}</div>
             )}
             <h1 style={{
               fontFamily: '"Instrument Serif", "Times New Roman", serif',
-              fontSize: 32, fontWeight: 400, lineHeight: 1.05,
+              fontSize: tab === 'Més' ? 36 : 32, fontWeight: 400, lineHeight: 1,
               letterSpacing: '-0.02em',
               color: 'var(--tavil-text)',
               margin: 0,
             }}>
-              {section?.label ?? tab}
+              {tab === 'Perfil' ? 'Perfil' : (section?.label ?? tab)}
             </h1>
           </div>
         )}
@@ -5637,7 +7633,10 @@ function App() {
         )}
 
         {/* ── Tab content ── */}
-        <div className={!isInici ? 'md:mt-0 px-3 md:px-0 pb-24 md:pb-0' : ''}>
+        <div
+          className={!isInici ? 'md:mt-0 px-3 md:px-0 pb-24 md:pb-0' : ''}
+          style={!isInici ? { background: 'var(--tavil-bg)' } : undefined}
+        >
           {renderContentFor(tab)}
         </div>
       </div>
@@ -5693,7 +7692,7 @@ function App() {
       {/* Main */}
       <main className={cn("flex-1 min-w-0 min-h-screen transition-all duration-300 ml-0 pb-16 md:pb-0", sidebarCollapsed ? "md:ml-16" : "md:ml-60")}>
         {/* Header */}
-        <header className="h-14 md:h-16 bg-white dark:bg-[#1a1a1a] border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between px-3 md:px-4 lg:px-8 sticky top-0 z-20">
+        <header className="h-14 md:h-16 bg-white dark:bg-[#1a1a1a] border-b border-gray-200 dark:border-zinc-800 hidden md:flex items-center justify-between px-3 md:px-4 lg:px-8 sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
