@@ -912,7 +912,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                 style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden', cursor: 'pointer' }}
               >
                 {featured.image ? (
-                  <img src={`${API_BASE}/uploads/${featured.image}`} alt={featured.title}
+                  <img src={resolveImg(featured.image)} alt={featured.title}
                     style={{ width: '100%', aspectRatio: '16/10', objectFit: 'cover', display: 'block', borderBottom: '1px solid var(--tavil-border)' }} />
                 ) : (
                   <div style={{ width: '100%', aspectRatio: '16/10', background: 'repeating-linear-gradient(135deg,rgba(191,33,30,0.07) 0 8px,rgba(191,33,30,0.03) 8px 16px)', borderBottom: '1px solid var(--tavil-border)' }} />
@@ -983,7 +983,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                       <div style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1.3, color: 'var(--tavil-text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{n.title}</div>
                     </div>
                     {n.image ? (
-                      <img src={`${API_BASE}/uploads/${n.image}`} alt="" style={{ width: 64, height: 64, flexShrink: 0, borderRadius: 10, objectFit: 'cover' }} />
+                      <img src={resolveImg(n.image)} alt="" style={{ width: 64, height: 64, flexShrink: 0, borderRadius: 10, objectFit: 'cover' }} />
                     ) : (
                       <div style={{ width: 64, height: 64, flexShrink: 0, borderRadius: 10, background: 'repeating-linear-gradient(135deg,rgba(120,132,117,0.1) 0 8px,rgba(120,132,117,0.05) 8px 16px)', border: '1px solid var(--tavil-border)' }} />
                     )}
