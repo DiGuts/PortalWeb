@@ -254,3 +254,21 @@ async def update_rrhh(
 
     await db.commit()
     return {"ok": True}
+
+
+@router.delete("/{vacanca_id}", status_code=204)
+async def delete_vacanca(
+    vacanca_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncConnection = Depends(get_db),
+):
+    row = (await db.execute(
+        text("SELECT user_id FROM vacances WHERE id = :id"), {"id": vacanca_id}
+    )).mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="No trobat")
+    is_admin = current_user["role"] in ("Administrador/a", "Recursos humans")
+    if not is_admin and row["user_id"] != current_user["id"]:
+        raise HTTPException(status_code=403, detail="No autoritzat")
+    await db.execute(text("DELETE FROM vacances WHERE id = :id"), {"id": vacanca_id})
+    await db.commit()

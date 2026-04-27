@@ -1,4 +1,13 @@
-export const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:8000' : '';
+// Priority order:
+//   1. REACT_APP_API_URL env var (set at build time to point to any backend)
+//   2. localhost dev → local backend
+//   3. Same-origin (backend on same server)
+export const API_BASE: string =
+  process.env.REACT_APP_API_URL
+    ? process.env.REACT_APP_API_URL.replace(/\/$/, '')
+    : window.location.hostname === 'localhost'
+      ? 'http://localhost:8000'
+      : '';
 
 export interface User {
   id: number;
@@ -225,6 +234,10 @@ export async function apiUpdateSolicitud(id: number, status: 'Aprovada' | 'Deneg
   });
 }
 
+export async function apiDeleteSolicitud(id: number): Promise<void> {
+  await apiFetch(`/api/solicituds/${id}`, { method: 'DELETE' });
+}
+
 // ── Suggestions ───────────────────────────────────────────────────────────────
 
 export interface Suggestion {
@@ -239,6 +252,7 @@ export interface Suggestion {
   status: string;
   response: string;
   created_at: string;
+  user_id: number;
 }
 
 export async function apiGetSuggestions(): Promise<Suggestion[]> {
@@ -274,6 +288,10 @@ export async function apiAddSuggestionResponse(id: number, response: string): Pr
   await apiFetch('/api/suggestions/' + id + '/response', { method: 'PATCH', body: JSON.stringify({ response }) });
 }
 
+export async function apiDeleteSuggestion(id: number): Promise<void> {
+  await apiFetch('/api/suggestions/' + id, { method: 'DELETE' });
+}
+
 // ── Incidències ───────────────────────────────────────────────────────────────
 
 export interface Incidencia {
@@ -287,6 +305,7 @@ export interface Incidencia {
   assigned_to: string;
   resolution: string;
   created_at: string;
+  user_id: number;
 }
 
 export async function apiGetIncidencies(): Promise<Incidencia[]> {
@@ -315,6 +334,10 @@ export async function apiUpdateIncidenciaStatus(
     method: 'PATCH',
     body: JSON.stringify({ status, assigned_to, resolution }),
   });
+}
+
+export async function apiDeleteIncidencia(id: number): Promise<void> {
+  await apiFetch('/api/incidencies/' + id, { method: 'DELETE' });
 }
 
 // ── Enquestes ─────────────────────────────────────────────────────────────────
@@ -584,4 +607,8 @@ export async function apiUpdateVacancaRrhh(id: number, status: 'Aprovada' | 'Den
     method: 'PATCH',
     body: JSON.stringify({ status, comment }),
   });
+}
+
+export async function apiDeleteVacanca(id: number): Promise<void> {
+  await apiFetch(`/api/vacances/${id}`, { method: 'DELETE' });
 }

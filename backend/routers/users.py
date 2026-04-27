@@ -37,6 +37,15 @@ async def update_me(
         )).mappings().first()
         return UserOut(**dict(row))
 
+    _ALLOWED_UPDATE_COLS = {"name", "phone", "ext", "location", "email_notifs"}
+    updates = {k: v for k, v in updates.items() if k in _ALLOWED_UPDATE_COLS}
+    if not updates:
+        row = (await db.execute(
+            text(f"SELECT {_USER_FIELDS} FROM users WHERE id = :id"),
+            {"id": current_user["id"]},
+        )).mappings().first()
+        return UserOut(**dict(row))
+
     set_clause = ", ".join(f"{k} = :{k}" for k in updates)
     updates["id"] = current_user["id"]
     await db.execute(

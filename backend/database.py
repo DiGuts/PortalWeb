@@ -1,6 +1,7 @@
 from pathlib import Path
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncConnection
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 import os
 from dotenv import load_dotenv
@@ -46,6 +47,15 @@ MIGRATIONS = [
     "ALTER TABLE users ADD COLUMN is_head INTEGER NOT NULL DEFAULT 0",
     "UPDATE users SET is_head = 1 WHERE role = 'Responsable de departament'",
     "ALTER TABLE courses ADD COLUMN url TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE suggestions ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE incidencies ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0",
+    # Indexes for frequent lookups
+    "CREATE INDEX IF NOT EXISTS idx_suggestion_votes_user ON suggestion_votes(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_suggestion_votes_sid ON suggestion_votes(suggestion_id)",
+    "CREATE INDEX IF NOT EXISTS idx_suggestions_user ON suggestions(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_incidencies_user ON incidencies(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_vacances_user ON vacances(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_enquesta_responses_email ON enquesta_responses(user_email)",
 ]
 
 
@@ -55,8 +65,8 @@ async def run_migrations() -> None:
         for stmt in MIGRATIONS:
             try:
                 await conn.execute(text(stmt))
-            except Exception:
-                pass  # Column already exists — safe to ignore
+            except (OperationalError, ProgrammingError):
+                pass  # Column/index already exists — safe to ignore
 
 
 async def get_db() -> AsyncConnection:

@@ -4,15 +4,36 @@
 
 /* ── Animation primitives ─────────────────────────────────────────────────── */
 :root {
+  /* Legacy easing aliases (kept for non-page animations) */
   --ease-out-quint:   cubic-bezier(.23, 1, .32, 1);
   --ease-out-cubic:   cubic-bezier(.33, 1, .68, 1);
   --ease-in-out-cubic:cubic-bezier(.645, .045, .355, 1);
   --ease-spring:      cubic-bezier(.34, 1.56, .64, 1);
+
+  /* ── Motion system (TAVIL Handoff spec) ────────────────────────────────── */
+  --motion-ease:      cubic-bezier(0.32, 0.72, 0.24, 1); /* arrivals — corporate ease-out */
+  --motion-ease-out:  cubic-bezier(0.22, 1, 0.36, 1);    /* departures — quick exit */
+  --motion-dur-in:    380ms;  /* arrivals */
+  --motion-dur-out:   220ms;  /* departures */
+  --motion-dur-quick: 160ms;  /* hovers, toggles, micro-state */
+  --motion-stagger:   60ms;   /* sequential child reveals */
 }
 
 @keyframes tavil-fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+@keyframes tavil-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes tavil-sheet-enter {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes tavil-sheet-exit {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
 }
 @keyframes tavil-scale-in {
   from { opacity: 0; transform: scale(.96); }
@@ -35,10 +56,13 @@
   100% { background-position:  200% 0; }
 }
 
-.anim-fade-in    { animation: tavil-fade-in    220ms var(--ease-out-cubic) both; }
-.anim-scale-in   { animation: tavil-scale-in   240ms var(--ease-out-quint) both; }
-.anim-slide-down { animation: tavil-slide-down 220ms var(--ease-out-quint) both; }
-.anim-slide-up   { animation: tavil-slide-up   280ms var(--ease-out-quint) both; }
+.anim-fade-in     { animation: tavil-fade-in     220ms var(--ease-out-cubic)    both; }
+.anim-fade-out    { animation: tavil-fade-out    220ms var(--ease-out-cubic)    both; }
+.anim-scale-in    { animation: tavil-scale-in    240ms var(--ease-out-quint)    both; }
+.anim-slide-down  { animation: tavil-slide-down  220ms var(--ease-out-quint)    both; }
+.anim-slide-up    { animation: tavil-slide-up    280ms var(--ease-out-quint)    both; }
+.anim-sheet-enter { animation: tavil-sheet-enter 320ms var(--ease-out-quint)    both; }
+.anim-sheet-exit  { animation: tavil-sheet-exit  260ms var(--ease-in-out-cubic) both; }
 .anim-pulse-soft { animation: tavil-pulse-soft 2.2s  var(--ease-in-out-cubic) infinite; }
 
 /* Smooth tab/view transition — used when switching tabs, views, sub-tabs,
@@ -63,56 +87,65 @@
    Mobile: forward pushes old LEFT, new comes from RIGHT (Instagram-carousel).
 */
 
-/* Vertical — forward (new pushes old up) */
+/* ── PAGE mode — top-level ↔ top-level (desktop sidebar nav) ───────────────
+   Cross-fade with subtle directional drift. Asymmetric timing: arrivals
+   are deliberate (380ms), departures clear the stage fast (220ms).        */
 @keyframes tavil-page-out-up {
-  0%   { opacity: 1; transform: translate3d(0, 0, 0)     scale(1); }
-  100% { opacity: 0; transform: translate3d(0, -50%, 0) scale(.96); }
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-6px); }
 }
 @keyframes tavil-page-in-from-below {
-  0%   { opacity: 0; transform: translate3d(0, 50%, 0) scale(.96); filter: blur(4px); }
-  45%  { opacity: 1; filter: blur(0); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0)    scale(1);   filter: blur(0); }
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
-/* Vertical — backward (new pulls old down) */
 @keyframes tavil-page-out-down {
-  0%   { opacity: 1; transform: translate3d(0, 0, 0)   scale(1); }
-  100% { opacity: 0; transform: translate3d(0, 50%, 0) scale(.96); }
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(6px); }
 }
 @keyframes tavil-page-in-from-above {
-  0%   { opacity: 0; transform: translate3d(0, -50%, 0) scale(.96); filter: blur(4px); }
-  45%  { opacity: 1; filter: blur(0); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0)     scale(1);   filter: blur(0); }
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Horizontal — forward (new pushes old left) */
+/* ── SUB mode — drill-down / back (sub-pages, Més sub-tabs) ────────────────
+   Small directional slide (36px / 18px). Reinforces mental model of depth. */
 @keyframes tavil-page-out-left {
-  0%   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
-  100% { opacity: 0; transform: translate3d(-25%, 0, 0) scale(.97); }
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-18px); }
 }
 @keyframes tavil-page-in-from-right {
-  0%   { opacity: 0; transform: translate3d(100%, 0, 0) scale(.97); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0)    scale(1); }
+  from { opacity: 0; transform: translateX(36px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
-
-/* Horizontal — backward */
 @keyframes tavil-page-out-right {
-  0%   { opacity: 1; transform: translate3d(0, 0, 0)  scale(1); }
-  100% { opacity: 0; transform: translate3d(25%, 0, 0) scale(.97); }
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(18px); }
 }
 @keyframes tavil-page-in-from-left {
-  0%   { opacity: 0; transform: translate3d(-100%, 0, 0) scale(.97); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0)     scale(1); }
+  from { opacity: 0; transform: translateX(-36px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
-.anim-page-enter-v-fwd  { animation: tavil-page-in-from-below 1080ms var(--ease-out-quint) both; }
-.anim-page-exit-v-fwd   { animation: tavil-page-out-up         1080ms var(--ease-out-quint) both; }
-.anim-page-enter-v-back { animation: tavil-page-in-from-above  1080ms var(--ease-out-quint) both; }
-.anim-page-exit-v-back  { animation: tavil-page-out-down       1080ms var(--ease-out-quint) both; }
-.anim-page-enter-h-fwd  { animation: tavil-page-in-from-right  620ms var(--ease-out-quint) both; }
-.anim-page-exit-h-fwd   { animation: tavil-page-out-left       620ms var(--ease-out-quint) both; }
-.anim-page-enter-h-back { animation: tavil-page-in-from-left   620ms var(--ease-out-quint) both; }
-.anim-page-exit-h-back  { animation: tavil-page-out-right      620ms var(--ease-out-quint) both; }
+.anim-page-enter-v-fwd  { animation: tavil-page-in-from-below  var(--motion-dur-in)  var(--motion-ease)     both; }
+.anim-page-exit-v-fwd   { animation: tavil-page-out-up          var(--motion-dur-out) var(--motion-ease-out) both; }
+.anim-page-enter-v-back { animation: tavil-page-in-from-above   var(--motion-dur-in)  var(--motion-ease)     both; }
+.anim-page-exit-v-back  { animation: tavil-page-out-down        var(--motion-dur-out) var(--motion-ease-out) both; }
+.anim-page-enter-h-fwd  { animation: tavil-page-in-from-right   var(--motion-dur-in)  var(--motion-ease)     both; }
+.anim-page-exit-h-fwd   { animation: tavil-page-out-left        var(--motion-dur-out) var(--motion-ease-out) both; }
+.anim-page-enter-h-back { animation: tavil-page-in-from-left    var(--motion-dur-in)  var(--motion-ease)     both; }
+.anim-page-exit-h-back  { animation: tavil-page-out-right       var(--motion-dur-out) var(--motion-ease-out) both; }
+
+/* ── Inner-content stagger — major sections within a freshly mounted page ──
+   Apply .stagger-1 … .stagger-5 to section-level wrappers, not list rows.  */
+@keyframes tavil-stagger-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stagger-1 { animation: tavil-stagger-in 420ms var(--motion-ease) both; animation-delay: 0ms; }
+.stagger-2 { animation: tavil-stagger-in 420ms var(--motion-ease) both; animation-delay: var(--motion-stagger); }
+.stagger-3 { animation: tavil-stagger-in 420ms var(--motion-ease) both; animation-delay: calc(var(--motion-stagger) * 2); }
+.stagger-4 { animation: tavil-stagger-in 420ms var(--motion-ease) both; animation-delay: calc(var(--motion-stagger) * 3); }
+.stagger-5 { animation: tavil-stagger-in 420ms var(--motion-ease) both; animation-delay: calc(var(--motion-stagger) * 4); }
 
 .page-viewport {
   will-change: transform, opacity, filter;
@@ -219,29 +252,38 @@ html.dark .skeleton {
 
 /* Respect user preference */
 @media (prefers-reduced-motion: reduce) {
+  /* Micro-animations: disable entirely */
   .anim-fade-in,
+  .anim-fade-out,
+  .anim-sheet-enter,
+  .anim-sheet-exit,
   .anim-scale-in,
   .anim-slide-down,
   .anim-slide-up,
   .anim-pulse-soft,
   .anim-tab,
   .anim-crossfade,
-  .anim-page-enter-v-fwd,
-  .anim-page-exit-v-fwd,
-  .anim-page-enter-v-back,
-  .anim-page-exit-v-back,
-  .anim-page-enter-h-fwd,
-  .anim-page-exit-h-fwd,
-  .anim-page-enter-h-back,
-  .anim-page-exit-h-back {
+  .stagger-1, .stagger-2, .stagger-3, .stagger-4, .stagger-5 {
     animation: none !important;
+  }
+  /* Page transitions: 120ms opacity-only (per spec) */
+  .anim-page-enter-v-fwd,
+  .anim-page-enter-v-back,
+  .anim-page-enter-h-fwd,
+  .anim-page-enter-h-back {
+    animation: tavil-fade-in 120ms linear both !important;
+  }
+  .anim-page-exit-v-fwd,
+  .anim-page-exit-v-back,
+  .anim-page-exit-h-fwd,
+  .anim-page-exit-h-back {
+    animation: tavil-fade-out 120ms linear both !important;
   }
   .page-stack > .page-exiting { display: none !important; }
   .hover-lift:hover { transform: none; }
   .press:active     { transform: none; }
   * {
     transition-duration: 0ms !important;
-    animation-duration: 0ms !important;
   }
 }
 

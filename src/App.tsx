@@ -30,10 +30,10 @@ import {
   apiLogin, apiRegister, apiVerifyEmail, apiVerifyOTP, apiResendVerification,
   apiGetMe, apiUpdateMe, apiUpdateMyRole,
   setToken, clearToken, getToken, registerUnauthorizedHandler,
-  apiGetSuggestions, apiCreateSuggestion, apiVoteSuggestion, apiUpdateSuggestionStatus, apiAddSuggestionResponse, Suggestion,
-  apiGetIncidencies, apiCreateIncidencia, apiUpdateIncidenciaStatus, Incidencia,
+  apiGetSuggestions, apiCreateSuggestion, apiVoteSuggestion, apiUpdateSuggestionStatus, apiAddSuggestionResponse, apiDeleteSuggestion, Suggestion,
+  apiGetIncidencies, apiCreateIncidencia, apiUpdateIncidenciaStatus, apiDeleteIncidencia, Incidencia,
   apiGetEnquestes, apiRespondreEnquesta, Enquesta,
-  apiGetSolicituds, apiCreateSolicitud, apiUpdateSolicitud, Solicitud,
+  apiGetSolicituds, apiCreateSolicitud, apiUpdateSolicitud, apiDeleteSolicitud, Solicitud,
   Notice, apiGetNotices,
   NewsArticle, apiGetNews, apiCreateNews, apiUpdateNews, apiDeleteNews,
   Activity, apiGetActivities, apiCreateActivity, apiUpdateActivity, apiDeleteActivity, apiEnrollActivity,
@@ -43,12 +43,16 @@ import {
   Course, apiGetCourses,
   Notification, apiGetNotifications, apiMarkNotifRead, apiMarkAllNotifsRead, apiClearAllNotifications,
   apiCompleteOnboarding, apiGetDeptHead, apiUpdateDept,
-  Vacanca, apiGetVacances, apiCreateVacanca, apiUpdateVacancaHead, apiUpdateVacancaRrhh,
+  Vacanca, apiGetVacances, apiCreateVacanca, apiUpdateVacancaHead, apiUpdateVacancaRrhh, apiDeleteVacanca,
 } from './api';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+// Module-level nav-hide signal so any tab can hide the bottom nav without prop drilling
+let _setGlobalNavHidden: ((h: boolean) => void) | null = null;
+function setGlobalNavHidden(h: boolean) { _setGlobalNavHidden?.(h); }
 
 // ── Prefetch cache ────────────────────────────────────────────────────────────
 // Module-level cache so tabs can read previously-fetched data synchronously in
@@ -452,11 +456,12 @@ function MesTab({
   );
 }
 
-function BottomNavBar({ activeTab, onTabChange, onOpenDrawer, isDarkMode }: {
+function BottomNavBar({ activeTab, onTabChange, onOpenDrawer, isDarkMode, hidden }: {
   activeTab: string;
   onTabChange: (id: string) => void;
   onOpenDrawer: () => void;
   isDarkMode: boolean;
+  hidden?: boolean;
 }) {
   const items = [
     { id: 'Inici', icon: Home, label: 'Inici' },
@@ -477,6 +482,8 @@ function BottomNavBar({ activeTab, onTabChange, onOpenDrawer, isDarkMode }: {
           padding: '8px 8px calc(22px + env(safe-area-inset-bottom))',
           display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)',
           boxShadow: '0 -4px 24px -12px rgba(34,39,37,0.08)',
+          transform: hidden ? 'translateY(105%)' : 'translateY(0)',
+          transition: 'transform 280ms cubic-bezier(0.23,1,0.32,1)',
         }}
       >
         {items.map(({ id, icon: Icon, label }) => {
@@ -517,6 +524,105 @@ function BottomNavBar({ activeTab, onTabChange, onOpenDrawer, isDarkMode }: {
   );
 }
 
+// ── Mobile Notifications Overlay ─────────────────────────────────────────────
+
+function MobileNotificationsOverlay({ notifications, onClose, onMarkRead, onMarkAllRead, isDarkMode }: {
+  notifications: Notification[];
+  onClose: () => void;
+  onMarkRead: (id: number) => void;
+  onMarkAllRead: () => void;
+  isDarkMode: boolean;
+}) {
+  const unread = notifications.filter(n => !n.read).length;
+  const today = notifications.filter(n => timeAgo(n.created_at).includes('h') || timeAgo(n.created_at) === 'Fa un moment');
+  const before = notifications.filter(n => !today.includes(n));
+
+  const iconForType = (tab: string) => {
+    if (tab === 'Notícies') return <Newspaper size={16} />;
+    if (tab === 'Solicituds') return <CheckCircle size={16} />;
+    if (tab === 'Agenda') return <Calendar size={16} />;
+    if (tab === 'Veu') return <MessageSquare size={16} />;
+    return <Bell size={16} />;
+  };
+
+  const Section = ({ label, items }: { label: string; items: Notification[] }) => items.length === 0 ? null : (
+    <>
+      <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em', padding: '14px 20px 6px' }}>{label}</div>
+      <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, margin: '0 16px', overflow: 'hidden' }}>
+        {items.map((n, i) => (
+          <button
+            key={n.id}
+            onClick={() => onMarkRead(n.id)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'flex-start', gap: 12,
+              padding: '14px 16px', background: !n.read ? '#fbe4e330' : 'transparent',
+              border: 'none', borderBottom: i < items.length - 1 ? '1px solid var(--tavil-border)' : 'none',
+              cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+            }}
+          >
+            <div style={{
+              width: 36, height: 36, borderRadius: 18, flexShrink: 0,
+              background: !n.read ? '#bf211e' : 'var(--tavil-bg)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: !n.read ? '#fff' : 'var(--tavil-muted)',
+            }}>
+              {iconForType(n.tab)}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
+                <div style={{ fontSize: 14, fontWeight: !n.read ? 600 : 500, color: 'var(--tavil-text)', lineHeight: 1.3 }}>{n.title}</div>
+                <div style={{ fontSize: 11, color: 'var(--tavil-faint)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{timeAgo(n.created_at)}</div>
+              </div>
+              {n.body && <div style={{ fontSize: 12.5, color: 'var(--tavil-muted)', lineHeight: 1.35 }}>{n.body}</div>}
+              {n.tab && <div style={{ fontSize: 11, color: 'var(--tavil-faint)', marginTop: 3 }}>{n.tab}</div>}
+            </div>
+            {!n.read && <div style={{ width: 7, height: 7, borderRadius: 4, background: '#bf211e', marginTop: 5, flexShrink: 0 }} />}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+
+  return createPortal(
+    <div className={isDarkMode ? 'dark' : ''} style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'var(--tavil-bg)', overflowY: 'auto' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 6px', height: 56, flexShrink: 0 }}>
+        <button onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#bf211e', fontFamily: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}>
+          <ChevronLeft size={20} strokeWidth={2} /> Enrere
+        </button>
+        {unread > 0 && (
+          <button onClick={onMarkAllRead} style={{ background: 'none', border: 'none', color: 'var(--tavil-muted)', fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+            Marca-ho tot
+          </button>
+        )}
+      </div>
+
+      {/* Eyebrow + title */}
+      <div style={{ padding: '4px 20px 20px' }}>
+        <div style={{ fontSize: 10.5, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>ACTIVITAT</div>
+        <h1 style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 32, fontWeight: 400, letterSpacing: '-0.02em', lineHeight: 1.05, margin: '0 0 6px', color: 'var(--tavil-text)' }}>Notificacions</h1>
+        <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: 0 }}>
+          {unread > 0 ? <>Tens <strong>{unread} sense llegir</strong>.</> : 'Estàs al dia.'}
+        </p>
+      </div>
+
+      {/* Lists */}
+      {notifications.length === 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48, gap: 12 }}>
+          <Bell size={30} style={{ color: 'var(--tavil-faint)', opacity: 0.3 }} />
+          <p style={{ fontSize: 14, color: 'var(--tavil-faint)' }}>No hi ha notificacions</p>
+        </div>
+      ) : (
+        <div style={{ paddingBottom: 32 }}>
+          <Section label="AVUI" items={today} />
+          <Section label="ABANS" items={before} />
+        </div>
+      )}
+    </div>,
+    document.body
+  );
+}
+
 // ── Sidebar ──────────────────────────────────────────────────────────────────
 
 const SidebarItem = ({ icon: Icon, label, active = false, onClick, collapsed = false }: {
@@ -526,24 +632,49 @@ const SidebarItem = ({ icon: Icon, label, active = false, onClick, collapsed = f
     onClick={onClick}
     title={collapsed ? label : undefined}
     className={cn(
-      "flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-200 group relative",
-      collapsed ? "justify-center px-0 py-2.5" : "px-4 py-2.5",
-      active
-        ? "text-red-600 bg-red-50 dark:bg-red-950/20"
-        : "text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-zinc-200 hover:translate-x-0.5"
+      "flex items-center gap-2.5 rounded-lg cursor-pointer relative select-none group",
+      collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2",
     )}
+    style={{
+      // Active: white card chip + border. Hover handled via CSS class below.
+      background: active ? 'var(--tavil-card)' : 'transparent',
+      border: active ? '1px solid var(--tavil-border)' : '1px solid transparent',
+      color: active ? 'var(--tavil-text)' : 'var(--tavil-muted)',
+      fontWeight: active ? 600 : 500,
+      transition: `background var(--motion-dur-quick), color var(--motion-dur-quick), border-color var(--motion-dur-quick)`,
+    }}
+    onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--tavil-bg)'; (e.currentTarget as HTMLElement).style.color = 'var(--tavil-text)'; }}
+    onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--tavil-muted)'; }}}
   >
-    {active && !collapsed && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-red-600 rounded-r-full anim-fade-in" />}
-    {active && collapsed && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-red-600 rounded-r-full anim-fade-in" />}
-    <Icon size={18} className={cn("transition-colors duration-200", active ? "text-red-600" : "text-gray-400 group-hover:text-gray-500")} />
-    {!collapsed && <span className="text-sm font-medium">{label}</span>}
+    {/* 3px accent rail on active */}
+    {active && (
+      <span style={{
+        position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
+        width: 3, height: 20, background: 'var(--tavil-accent)', borderRadius: '0 2px 2px 0',
+      }} />
+    )}
+    <Icon
+      size={18}
+      style={{
+        color: active ? 'var(--tavil-accent)' : 'inherit',
+        strokeWidth: active ? 1.9 : 1.6,
+        flexShrink: 0,
+        transition: `color var(--motion-dur-quick)`,
+      }}
+    />
+    {!collapsed && <span style={{ fontSize: 14 }}>{label}</span>}
   </div>
 );
 
 const SidebarSection = ({ title, children, collapsed = false }: { title: string; children: React.ReactNode; collapsed?: boolean }) => (
   <div className="mb-4">
-    {!collapsed && <p className="px-4 text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">{title}</p>}
-    {collapsed && <div className="mx-auto w-4 h-px bg-gray-200 dark:bg-zinc-700 mb-2 mt-1" />}
+    {!collapsed && (
+      <p className="px-3 text-[10px] font-semibold uppercase mb-1"
+         style={{ color: 'var(--tavil-faint)', letterSpacing: '0.14em' }}>
+        {title}
+      </p>
+    )}
+    {collapsed && <div className="mx-auto w-4 h-px mb-2 mt-1" style={{ background: 'var(--tavil-border)' }} />}
     <div className="space-y-0.5">{children}</div>
   </div>
 );
@@ -2056,6 +2187,7 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
   const [news, setNews] = useState<NewsArticle[]>(() => tabPrefetch.news ?? []);
   const [activeFilter, setActiveFilter] = useState('Totes');
   const [newsSearch, setNewsSearch] = useState('');
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [selectedNews, setSelectedNews] = useState<NewsArticle | null>(null);
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const isAdmin = currentUser?.role === 'Administrador/a';
@@ -2170,7 +2302,7 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
     if (selectedNews) {
       return (
         <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }} className="anim-page-enter-h-fwd">
-          <div style={{ height: 52, background: 'var(--tavil-bg)', display: 'flex', alignItems: 'center', padding: '0 12px' }}>
+          <div style={{ height: 82, background: 'var(--tavil-bg)', display: 'flex', alignItems: 'center', padding: '0 16px' }}>
             <button onClick={() => setSelectedNews(null)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '8px 4px' }}>
               <ChevronLeft size={20} style={{ color: 'var(--tavil-accent)' }} />
               Notícies
@@ -2206,8 +2338,8 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
             <Menu size={18} />
           </button>
           <button
-            onClick={() => { const el = document.getElementById('noticies-search'); el?.focus(); }}
-            style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)' }}
+            onClick={() => { setMobileSearchOpen(v => !v); setTimeout(() => document.getElementById('noticies-search')?.focus(), 60); }}
+            style={{ width: 40, height: 40, borderRadius: 20, background: mobileSearchOpen ? 'var(--tavil-text)' : 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: mobileSearchOpen ? 'var(--tavil-bg)' : 'var(--tavil-text)' }}
           >
             <Search size={18} />
           </button>
@@ -2218,11 +2350,28 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
           <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 36, fontWeight: 400, lineHeight: 1, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>{t('nav.noticies')}</h1>
           <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>{t('news.subtitle')}</p>
         </div>
-        {/* Search (hidden, activated by button) */}
-        <div style={{ padding: '0 16px 12px' }}>
-          <input id="noticies-search" type="text" value={newsSearch} onChange={e => setNewsSearch(e.target.value)} placeholder="Cercar notícies…"
-            style={{ width: '100%', boxSizing: 'border-box', height: 38, borderRadius: 10, border: '1px solid var(--tavil-border)', background: 'var(--tavil-card)', color: 'var(--tavil-text)', fontSize: 13.5, padding: '0 12px', outline: 'none', display: newsSearch ? 'block' : 'none' }} />
-        </div>
+        {/* Search bar — toggled by icon */}
+        {(mobileSearchOpen || newsSearch) && (
+          <div style={{ padding: '0 16px 12px' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Search size={15} style={{ position: 'absolute', left: 11, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+              <input
+                id="noticies-search"
+                type="search"
+                value={newsSearch}
+                onChange={e => setNewsSearch(e.target.value)}
+                placeholder="Cercar notícies…"
+                autoFocus
+                style={{ width: '100%', boxSizing: 'border-box', height: 40, borderRadius: 10, border: '1px solid var(--tavil-border)', background: 'var(--tavil-card)', color: 'var(--tavil-text)', fontSize: 14, padding: '0 36px 0 34px', outline: 'none', fontFamily: 'inherit' }}
+              />
+              {newsSearch && (
+                <button onClick={() => setNewsSearch('')} style={{ position: 'absolute', right: 10, background: 'none', border: 'none', color: 'var(--tavil-faint)', cursor: 'pointer', display: 'flex', padding: 0 }}>
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         {/* Filter chips */}
         <div style={{ padding: '0 0 16px 16px', display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }} className="hide-sb">
           {cats.map(cat => (
@@ -2558,6 +2707,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
   const [selectedAct, setSelectedAct] = useState<Activity | null>(null);
   const [enrolledId, setEnrolledId] = useState<number | null>(null);
   const [enrollError, setEnrollError] = useState('');
+  useEffect(() => { setGlobalNavHidden(!!selectedAct); }, [selectedAct]);
   const isAdmin = currentUser?.role === 'Administrador/a';
 
   // New activity form state
@@ -2651,10 +2801,9 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
     return (
       <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
         {/* Top bar: back button + centered title */}
-        <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 12px', position: 'relative' }}>
-          <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '8px 4px', zIndex: 1 }}>
-            <ChevronLeft size={20} style={{ color: 'var(--tavil-accent)' }} />
-            Més
+        <div style={{ height: 82, display: 'flex', alignItems: 'center', padding: '0 16px', position: 'relative' }}>
+          <button onClick={onBack} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0, zIndex: 1 }}>
+            <ChevronLeft size={18} />
           </button>
           <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Activitats</span>
         </div>
@@ -2666,7 +2815,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         </div>
         {/* Segmented: Pròximes / Passades */}
         <div style={{ padding: '6px 20px 18px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: 4, background: 'var(--tavil-faint)', borderRadius: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: 4, background: 'var(--tavil-border)', borderRadius: 12 }}>
             {([`Properes`, `Passades`] as const).map(key => (
               <button key={key} onClick={() => { setActiveTab(key); setActiveFilter('Totes'); setActSearch(''); }} style={{
                 padding: '9px 0', borderRadius: 9,
@@ -2702,13 +2851,13 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                 <div style={{ display: 'flex' }}>
                   <div
                     onClick={() => isProperes && (setSelectedAct(act), setEnrolledId(null), setEnrollError(''))}
-                    style={{ width: 96, flexShrink: 0, background: 'var(--tavil-faint)', borderRight: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isProperes ? 'pointer' : 'default', minHeight: 110 }}
+                    style={{ width: 96, flexShrink: 0, background: 'rgba(191,33,30,0.06)', borderRight: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isProperes ? 'pointer' : 'default', minHeight: 110 }}
                   >
                     <ActivityIcon size={28} style={{ color: 'rgba(191,33,30,0.3)' }} />
                   </div>
                   <div style={{ flex: 1, padding: 14, minWidth: 0 }}>
                     <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, background: 'var(--tavil-faint)', color: 'var(--tavil-muted)', padding: '2px 8px', borderRadius: 6 }}>{act.category}</span>
+                      <span style={{ fontSize: 10.5, fontWeight: 700, background: 'var(--tavil-bg)', color: 'var(--tavil-muted)', border: '1px solid var(--tavil-border)', padding: '2px 8px', borderRadius: 6 }}>{act.category}</span>
                       {full && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '2px 8px', borderRadius: 6 }}>Complert</span>}
                       {!full && isProperes && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.1)', padding: '2px 8px', borderRadius: 6 }}>Oberta</span>}
                     </div>
@@ -3052,12 +3201,20 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
 
   // New event form state
   const [showEventForm, setShowEventForm] = useState(false);
+  const [closingEventForm, setClosingEventForm] = useState(false);
+  // Hide bottom nav when any form sheet is open
+  useEffect(() => { setGlobalNavHidden(showEventForm); }, [showEventForm]);
   const [eTitle, setETitle] = useState('');
   const [eDate, setEDate] = useState('');
   const [eTime, setETime] = useState('');
   const [eLocation, setELocation] = useState('');
   const [eType, setEType] = useState('Sessió interna');
   const [eSaving, setESaving] = useState(false);
+
+  const closeEventForm = () => {
+    setClosingEventForm(true);
+    setTimeout(() => { setShowEventForm(false); setClosingEventForm(false); }, 260);
+  };
 
   const handleCreateEvent = async () => {
     if (!eTitle.trim() || !eDate) return;
@@ -3069,8 +3226,8 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
       await apiCreateAgendaEvent({ title: eTitle.trim(), day, month,
         time: eTime.trim(), location: eLocation.trim(), type: eType });
       setAgendaEvents(await apiGetAgendaEvents());
-      setShowEventForm(false);
-      setETitle(''); setEDate(''); setETime(''); setELocation('');
+      closeEventForm();
+      setTimeout(() => { setETitle(''); setEDate(''); setETime(''); setELocation(''); }, 260);
     } catch (e) { console.error(e); }
     finally { setESaving(false); }
   };
@@ -3268,8 +3425,8 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
         </div>
         {/* Admin: new event bottom sheet */}
         {isAdmin && showEventForm && createPortal(
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 anim-fade-in" onClick={() => setShowEventForm(false)}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 ${closingEventForm ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeEventForm}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }} className={closingEventForm ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
               <h3 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 20, fontWeight: 400, color: 'var(--tavil-text)', marginBottom: 18 }}>Nou event</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input type="text" value={eTitle} onChange={e => setETitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
@@ -3287,7 +3444,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                  <button onClick={() => setShowEventForm(false)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                  <button onClick={closeEventForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
                   <button onClick={handleCreateEvent} disabled={!eTitle.trim() || !eDate || eSaving} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#bf211e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!eTitle.trim() || !eDate || eSaving) ? 0.5 : 1 }}>{eSaving ? 'Desant...' : 'Crear event'}</button>
                 </div>
               </div>
@@ -3747,10 +3904,11 @@ const ESPAI_CATS = [
   },
 ];
 
-function EspaiCorporatiuTab() {
+function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
   const [selectedCat, setSelectedCat] = useState<number | null>(null);
   const [catFilter, setCatFilter] = useState('Tots');
   const [espaiSearch, setEspaiSearch] = useState('');
+  const isMobileEspai = useIsMobile();
 
   const handleSelectCat = (i: number) => {
     if (selectedCat === i) { setSelectedCat(null); setCatFilter('Tots'); }
@@ -3767,6 +3925,103 @@ function EspaiCorporatiuTab() {
         .filter(d => d.title.toLowerCase().includes(espaiSearch.toLowerCase()))
         .map(d => ({ ...d, catTitle: c.title })))
     : [];
+
+  if (isMobileEspai) {
+    const allDocs = espaiSearch
+      ? ESPAI_CATS.flatMap(c => c.documents.filter(d => d.title.toLowerCase().includes(espaiSearch.toLowerCase()) || c.title.toLowerCase().includes(espaiSearch.toLowerCase())).map(d => ({ ...d, section: c.title })))
+      : [];
+    return (
+      <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
+        {/* Top bar */}
+        <div style={{ height: 82, display: 'flex', alignItems: 'center', padding: '0 16px', position: 'relative' }}>
+          <button onClick={onBack} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0, zIndex: 1 }}>
+            <ChevronLeft size={18} />
+          </button>
+          <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Espai corporatiu</span>
+        </div>
+        {/* Kicker + title */}
+        <div style={{ padding: '0 20px 12px' }}>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Empresa</div>
+          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 32, fontWeight: 400, lineHeight: 1.05, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>Espai corporatiu</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>Documents, procediments i recursos de l'empresa.</p>
+        </div>
+        {/* Search */}
+        <div style={{ padding: '0 16px 16px', position: 'relative' }}>
+          <Search size={16} style={{ position: 'absolute', left: 30, top: '50%', transform: 'translateY(-50%)', color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+          <input
+            type="text" value={espaiSearch} onChange={e => setEspaiSearch(e.target.value)}
+            placeholder="Cercar documents, procediments…"
+            style={{ width: '100%', height: 44, borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'var(--tavil-card)', color: 'var(--tavil-text)', fontSize: 14, padding: '0 14px 0 40px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+          />
+        </div>
+
+        {espaiSearch && allDocs.length > 0 ? (
+          // Search results
+          <div style={{ padding: '0 16px' }}>
+            <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>
+              {allDocs.length} resultat{allDocs.length !== 1 ? 's' : ''}
+            </div>
+            <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, overflow: 'hidden' }}>
+              {allDocs.map((doc, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: i < allDocs.length - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
+                  <div style={{ width: 38, height: 44, background: 'var(--tavil-bg)', border: '1px solid var(--tavil-border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: '#bf211e', fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.04em' }}>{doc.tag.slice(0, 4).toUpperCase()}</span>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)', lineHeight: 1.3 }}>{doc.title}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 2 }}>{doc.meta} · {doc.section}</div>
+                  </div>
+                  <ChevronRight size={16} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Quick links 2-col grid */}
+            <div style={{ padding: '0 16px 20px' }}>
+              <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>ENLLAÇOS RÀPIDS</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {ESPAI_CATS.map((c, i) => (
+                  <div key={i} onClick={() => setSelectedCat(selectedCat === i ? null : i)} style={{
+                    background: 'var(--tavil-card)', border: `1px solid ${selectedCat === i ? '#bf211e' : 'var(--tavil-border)'}`,
+                    borderRadius: 14, padding: '14px 14px 12px', cursor: 'pointer',
+                  }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 10, background: '#fbe4e3', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                      <c.icon size={17} style={{ color: '#bf211e' }} />
+                    </div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)', lineHeight: 1.3, marginBottom: 4 }}>{c.title.split(' ').slice(0, 3).join(' ')}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)' }}>{c.docs} documents</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Document groups */}
+            {(selectedCat !== null ? [ESPAI_CATS[selectedCat]] : ESPAI_CATS).map((cat, ci) => (
+              <div key={ci} style={{ padding: '0 16px 16px' }}>
+                <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>{cat.title.toUpperCase()}</div>
+                <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, overflow: 'hidden' }}>
+                  {cat.documents.map((doc, di) => (
+                    <div key={di} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: di < cat.documents.length - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
+                      <div style={{ width: 38, height: 44, background: 'var(--tavil-bg)', border: '1px solid var(--tavil-border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#bf211e', fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.04em' }}>{doc.meta.split('·')[0].trim().split(' ')[0]}</span>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)', lineHeight: 1.3, marginBottom: 2 }}>{doc.title}</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)' }}>{doc.meta} · {doc.views} visualitzacions</div>
+                      </div>
+                      <ChevronRight size={16} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -3878,12 +4133,14 @@ const STATUS_COLORS: Record<string, string> = {
   "Completat": "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-300",
 };
 
-function CampusTavilTab() {
+function CampusTavilTab({ onBack }: { onBack?: () => void }) {
   const [courses, setCourses] = useState<Course[]>([]);
   const [activeTab, setActiveTab] = useState('Resum');
   const [topicFilter, setTopicFilter] = useState('Tots els temes');
   const [statusFilter, setStatusFilter] = useState('Tots els estats');
   const [campusSearch, setCampusSearch] = useState('');
+  const isMobileCampus = useIsMobile();
+  const [mobileCat, setMobileCat] = useState('Tot');
 
   useEffect(() => {
     apiGetCourses().then(setCourses).catch(console.error);
@@ -3903,6 +4160,114 @@ function CampusTavilTab() {
     const matchSearch = !campusSearch || [c.title, c.description, c.category].some(f => f.toLowerCase().includes(campusSearch.toLowerCase()));
     return matchTopic && matchStatus && matchSearch;
   });
+
+  if (isMobileCampus) {
+    const inProgress = courses.filter(c => c.user_progress > 0 && c.user_progress < 100);
+    const MOBILE_CATS = ['Tot', 'Seguretat', 'Qualitat', 'Sistemes', 'Comercial', 'Compliance', 'Producció', 'Habilitats'];
+    const mobileFiltered = courses.filter(c => mobileCat === 'Tot' || c.category === mobileCat);
+    return (
+      <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
+        {/* Top bar */}
+        <div style={{ height: 82, display: 'flex', alignItems: 'center', padding: '0 16px', position: 'relative' }}>
+          <button onClick={onBack} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0, zIndex: 1 }}>
+            <ChevronLeft size={18} />
+          </button>
+          <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Campus TAVIL</span>
+        </div>
+        {/* Kicker + title */}
+        <div style={{ padding: '0 20px 12px' }}>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Formació</div>
+          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 32, fontWeight: 400, lineHeight: 1.05, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>Campus TAVIL</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>Formació, cursos i seguiment del teu progrés.</p>
+        </div>
+        {/* 3-stat grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '0 16px 20px' }}>
+          {[
+            { value: String(inProgress.length), label: 'En curs', color: '#bf211e' },
+            { value: String(completed.length), label: 'Completats', color: '#7a8a6b' },
+            { value: `${completedHours}h`, label: 'Aquest any', color: 'var(--tavil-text)' },
+          ].map((s, i) => (
+            <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: '12px 10px', textAlign: 'center' }}>
+              <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 26, fontWeight: 400, color: s.color, letterSpacing: '-0.02em', lineHeight: 1 }}>{s.value}</div>
+              <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginTop: 4 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Continue card — first in-progress */}
+        {inProgress[0] && (
+          <div style={{ padding: '0 16px 20px' }}>
+            <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>CONTINUA ON HO DEIXAVES</div>
+            <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden' }}>
+              <div style={{ height: 80, background: 'linear-gradient(135deg,#bf211e,#8a2623)', display: 'flex', alignItems: 'center', padding: '0 18px' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.15)', padding: '3px 10px', borderRadius: 999 }}>{inProgress[0].category}</span>
+              </div>
+              <div style={{ padding: '14px 16px' }}>
+                <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 18, fontWeight: 400, color: 'var(--tavil-text)', marginBottom: 10 }}>{inProgress[0].title}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8 }}>
+                  <span>{inProgress[0].hours}</span><span>{inProgress[0].user_progress}% completat</span>
+                </div>
+                <div style={{ height: 5, background: 'var(--tavil-border)', borderRadius: 3 }}>
+                  <div style={{ height: 5, background: '#bf211e', borderRadius: 3, width: `${inProgress[0].user_progress}%`, transition: 'width 400ms ease-out' }} />
+                </div>
+                {inProgress[0].url && (
+                  <button onClick={() => window.open(inProgress[0].url, '_blank', 'noopener,noreferrer')} style={{ marginTop: 14, width: '100%', height: 42, borderRadius: 12, border: 'none', background: '#bf211e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Continuar
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Category pills */}
+        <div style={{ padding: '0 16px 14px', overflowX: 'auto', display: 'flex', gap: 8 }} className="hide-sb">
+          {MOBILE_CATS.map(c => (
+            <button key={c} onClick={() => setMobileCat(c)} style={{
+              flexShrink: 0, height: 32, padding: '0 14px', borderRadius: 999,
+              background: mobileCat === c ? 'var(--tavil-text)' : 'var(--tavil-card)',
+              color: mobileCat === c ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
+              fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+              border: `1px solid ${mobileCat === c ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
+            } as React.CSSProperties}>{c}</button>
+          ))}
+        </div>
+
+        {/* Course list */}
+        <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {mobileFiltered.map((course, i) => (
+            <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: '14px 16px' }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--tavil-muted)', background: 'var(--tavil-bg)', border: '1px solid var(--tavil-border)', borderRadius: 6, padding: '2px 8px' }}>{course.category}</span>
+                <span style={{ fontSize: 10.5, fontWeight: 700, borderRadius: 6, padding: '2px 8px', marginLeft: 'auto', background: course.user_status === 'Completat' ? '#d1fae5' : course.user_progress > 0 ? '#fef3c7' : 'var(--tavil-bg)', color: course.user_status === 'Completat' ? '#065f46' : course.user_progress > 0 ? '#92400e' : 'var(--tavil-muted)' }}>{course.user_status}</span>
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 6, lineHeight: 1.3 }}>{course.title}</div>
+              <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--tavil-muted)', alignItems: 'center' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={11} />{course.hours}</span>
+                {!!course.mandatory && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#92400e', background: '#fef3c7', borderRadius: 6, padding: '1px 7px' }}>Obligatòria</span>}
+              </div>
+              {course.user_progress > 0 && course.user_progress < 100 && (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--tavil-muted)', marginBottom: 5 }}><span>Progrés</span><span>{course.user_progress}%</span></div>
+                  <div style={{ height: 4, background: 'var(--tavil-border)', borderRadius: 2 }}>
+                    <div style={{ height: 4, background: '#bf211e', borderRadius: 2, width: `${course.user_progress}%`, transition: 'width 400ms ease-out' }} />
+                  </div>
+                </div>
+              )}
+              {course.url && (
+                <button onClick={() => window.open(course.url, '_blank', 'noopener,noreferrer')} style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', height: 38, borderRadius: 10, border: '1px solid #e8d0cf', background: 'transparent', color: '#bf211e', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <ExternalLink size={13} /> Obrir curs
+                </button>
+              )}
+            </div>
+          ))}
+          {mobileFiltered.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 32, color: 'var(--tavil-faint)', fontSize: 13 }}>Cap curs en aquesta categoria</div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -4235,13 +4600,14 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
   };
 
   const [mobileVeuForm, setMobileVeuForm] = useState<'sugg' | 'inc' | null>(null);
+  // Hide bottom nav when voice forms open
+  useEffect(() => { setGlobalNavHidden(!!mobileVeuForm); }, [mobileVeuForm]);
 
   // ── Mobile layout ──────────────────────────────────────────────────────────
   if (isMobileVeu) {
     const tabs = [
       { key: 'Suggeriments', label: 'Suggeriments' },
       { key: 'Incidències', label: 'Incidències' },
-      { key: 'Enquestes', label: 'Enquestes' },
     ];
     const statusStyleInline = (label: string): React.CSSProperties => {
       if (label === 'Acceptada') return { background: '#dcfce7', color: '#15803d' };
@@ -4259,10 +4625,9 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
     return (
       <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
         {/* Top bar: back + centered title */}
-        <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 12px', position: 'relative' }}>
-          <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '8px 4px', zIndex: 1 }}>
-            <ChevronLeft size={20} style={{ color: 'var(--tavil-accent)' }} />
-            Més
+        <div style={{ height: 82, display: 'flex', alignItems: 'center', padding: '0 16px', position: 'relative' }}>
+          <button onClick={onBack} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0, zIndex: 1 }}>
+            <ChevronLeft size={18} />
           </button>
           <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Veu Empleat</span>
         </div>
@@ -4317,6 +4682,9 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                     <button onClick={() => handleVote(s.id, 'down')} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: s.user_vote === 'down' ? '#3b82f6' : 'var(--tavil-muted)', background: 'var(--tavil-bg)', border: `1px solid ${s.user_vote === 'down' ? '#3b82f6' : 'var(--tavil-border)'}`, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
                       <ThumbsDown size={13} />
                     </button>
+                    {(isRrhhOrAdmin || s.user_id === currentUser?.id) && (
+                      <button onClick={async () => { await apiDeleteSuggestion(s.id); setSuggestions(await apiGetSuggestions()); }} style={{ background: 'none', border: 'none', color: '#bf211e', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
+                    )}
                   </div>
                 </div>
                 {isRrhhOrAdmin && (
@@ -4359,9 +4727,14 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                     <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 6, flexShrink: 0, ...incStatusInline(inc.status) }}>{inc.status}</span>
                   </div>
                   {inc.description && <p style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginBottom: 8, lineHeight: 1.4 }}>{inc.description}</p>}
-                  <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginBottom: inc.priority ? 6 : 0 }}>
-                    {inc.author} · {formatDate(inc.created_at)}
-                    {inc.priority && <span style={{ marginLeft: 8, fontWeight: 600 }}>Prioritat: {inc.priority}</span>}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: inc.priority ? 6 : 0 }}>
+                    <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)' }}>
+                      {inc.author} · {formatDate(inc.created_at)}
+                      {inc.priority && <span style={{ marginLeft: 8, fontWeight: 600 }}>Prioritat: {inc.priority}</span>}
+                    </div>
+                    {(isRrhhOrAdmin || inc.user_id === currentUser?.id) && (
+                      <button onClick={async () => { await apiDeleteIncidencia(inc.id); setIncidencies(await apiGetIncidencies()); }} style={{ background: 'none', border: 'none', color: '#bf211e', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
+                    )}
                   </div>
                   {isRrhhOrAdmin && (
                     <div style={{ paddingTop: 10, marginTop: 6, borderTop: '1px solid var(--tavil-border)' }}>
@@ -4389,43 +4762,20 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
           </div>
         )}
 
-        {/* Enquestes */}
-        {activeTab === 'Enquestes' && (
-          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {enquestes.length === 0 && <p style={{ fontSize: 13, color: 'var(--tavil-faint)', fontStyle: 'italic', padding: '24px 0', textAlign: 'center' }}>Sense enquestes actives</p>}
-            {enquestes.map((enq, i) => (
-              <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: '14px 14px' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-                  <h3 style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--tavil-text)', flex: 1, lineHeight: 1.25 }}>{enq.title}</h3>
-                  {enq.user_completed && <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#dcfce7', color: '#15803d', flexShrink: 0 }}>Respost</span>}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)' }}>
-                    {enq.questions ?? 0} preguntes · {enq.responses ?? 0} respostes
-                  </div>
-                  {!enq.user_completed && (
-                    <button onClick={() => handleRespondre(enq.id)} style={{ fontSize: 13, fontWeight: 600, padding: '7px 16px', borderRadius: 10, border: 'none', background: '#bf211e', color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      Respondre
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* FAB — hidden when creation form is open */}
+        {!mobileVeuForm && createPortal(
+          <button
+            onClick={() => setMobileVeuForm(activeTab === 'Suggeriments' ? 'sugg' : 'inc')}
+            style={{
+              position: 'fixed', bottom: 90, right: 20, width: 52, height: 52,
+              borderRadius: 26, background: '#bf211e', color: '#fff',
+              border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 16px rgba(191,33,30,0.35)', zIndex: 9000,
+            }}
+          ><Plus size={22} /></button>,
+          document.body
         )}
-
-        {/* FAB */}
-        <button
-          onClick={() => setMobileVeuForm(activeTab === 'Suggeriments' ? 'sugg' : 'inc')}
-          style={{
-            position: 'fixed', bottom: 90, right: 20, width: 52, height: 52,
-            borderRadius: 26, background: '#bf211e', color: '#fff',
-            border: 'none', fontSize: 24, cursor: 'pointer',
-            display: activeTab === 'Enquestes' ? 'none' : 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 16px rgba(191,33,30,0.35)', zIndex: 40,
-          }}
-        ><Plus size={22} /></button>
 
         {/* New suggestion form */}
         {mobileVeuForm === 'sugg' && createPortal(
@@ -4976,6 +5326,8 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
   const isMobileSol = useIsMobile();
   const [mobileSolForm, setMobileSolForm] = useState(false);
   const [mobileVacForm, setMobileVacForm] = useState(false);
+  // Hide bottom nav when form sheets open
+  useEffect(() => { setGlobalNavHidden(mobileSolForm || mobileVacForm); }, [mobileSolForm, mobileVacForm]);
   const today = new Date().toISOString().split('T')[0];
 
   // ── Mobile layout ──────────────────────────────────────────────────────────
@@ -4986,17 +5338,16 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
       return { background: '#fef3c7', color: '#b45309' };
     };
     const myVacances = isRRHH ? vacances : vacances.filter(v => v.user_id === currentUser?.id);
-    const pendingVacances = vacances.filter(v => v.head_status === 'Pendent' || (v.head_status === 'Aprovada' && v.rrhh_status === 'Pendent'));
+    const pendingVacances = vacances.filter(v => v.user_id !== currentUser?.id && (v.head_status === 'Pendent' || (v.head_status === 'Aprovada' && v.rrhh_status === 'Pendent')));
     const approvedDaysThisYear = vacances.filter(v => v.rrhh_status === 'Aprovada' && v.user_id === currentUser?.id)
       .reduce((acc, v) => acc + laboralDaysBetween(v.start_date, v.end_date), 0);
     const vacancesDisponibles = Math.max(0, ANNUAL_QUOTA_DAYS - approvedDaysThisYear);
     return (
       <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
         {/* Top bar: back + centered title */}
-        <div style={{ height: 52, display: 'flex', alignItems: 'center', padding: '0 12px', position: 'relative' }}>
-          <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '8px 4px', zIndex: 1 }}>
-            <ChevronLeft size={20} style={{ color: 'var(--tavil-accent)' }} />
-            Més
+        <div style={{ height: 82, display: 'flex', alignItems: 'center', padding: '0 16px', position: 'relative' }}>
+          <button onClick={onBack} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0, zIndex: 1 }}>
+            <ChevronLeft size={18} />
           </button>
           <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Sol·licituds</span>
         </div>
@@ -5051,11 +5402,11 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
         {activeTab === 'Dies no ordinaris' && (
           <div style={{ padding: '0 16px' }}>
             {/* Pending approvals for RRHH/head */}
-            {(isRRHH || isHead) && diesNoOrdinaris.filter(d => d.status === 'Pendent').length > 0 && (
+            {(isRRHH || isHead) && diesNoOrdinaris.filter(d => d.status === 'Pendent' && d.author !== currentUser?.email).length > 0 && (
               <div style={{ marginBottom: 16 }}>
                 <div className="mobile-kicker" style={{ marginBottom: 8 }}>PENDENT APROVACIÓ</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {diesNoOrdinaris.filter(d => d.status === 'Pendent').map((d, i) => (
+                  {diesNoOrdinaris.filter(d => d.status === 'Pendent' && d.author !== currentUser?.email).map((d, i) => (
                     <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: '12px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)' }}>{formatDate(d.date)}</div>
@@ -5085,21 +5436,26 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
 
             {/* My requests */}
             <div className="mobile-kicker" style={{ marginBottom: 8 }}>LES MEVES SOL·LICITUDS</div>
-            {diesNoOrdinaris.filter(d => !isRRHH && !isHead ? true : d.author === currentUser?.name).length === 0 ? (
+            {diesNoOrdinaris.filter(d => !isRRHH && !isHead ? true : d.author === currentUser?.email).length === 0 ? (
               <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--tavil-faint)' }}>
                 <FileText size={32} style={{ margin: '0 auto 10px', opacity: 0.35 }} />
                 <p style={{ fontSize: 13.5 }}>Sense sol·licituds</p>
               </div>
             ) : (
               <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden' }}>
-                {diesNoOrdinaris.map((d, i) => (
+                {diesNoOrdinaris.filter(d => !isRRHH && !isHead ? true : d.author === currentUser?.email).map((d, i) => (
                   <div key={i} style={{ padding: '12px 14px', borderBottom: '1px solid var(--tavil-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 2 }}>{formatDate(d.date)}</div>
                         {d.comments && <div style={{ fontSize: 12, color: 'var(--tavil-muted)' }}>{d.comments}</div>}
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(d.status) }}>{d.status}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(d.status) }}>{d.status}</span>
+                        {(isRRHH || d.author === currentUser?.email) && (
+                          <button onClick={async () => { await apiDeleteSolicitud(d.id); fetchSolicituds(); }} style={{ background: 'none', border: 'none', color: '#bf211e', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
+                        )}
+                      </div>
                     </div>
                     {d.motive && <div style={{ fontSize: 12, color: 'var(--tavil-faint)', marginTop: 4, fontStyle: 'italic' }}>Motiu: {d.motive}</div>}
                   </div>
@@ -5165,7 +5521,12 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                       <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)' }}>
                         {formatDate(v.start_date)} – {formatDate(v.end_date)}
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(v.rrhh_status === 'Aprovada' ? 'Aprovada' : v.rrhh_status === 'Denegada' || v.head_status === 'Denegada' ? 'Denegada' : 'Pendent') }}>{v.rrhh_status === 'Aprovada' ? 'Aprovada' : v.rrhh_status === 'Denegada' || v.head_status === 'Denegada' ? 'Denegada' : 'Pendent'}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(v.rrhh_status === 'Aprovada' ? 'Aprovada' : v.rrhh_status === 'Denegada' || v.head_status === 'Denegada' ? 'Denegada' : 'Pendent') }}>{v.rrhh_status === 'Aprovada' ? 'Aprovada' : v.rrhh_status === 'Denegada' || v.head_status === 'Denegada' ? 'Denegada' : 'Pendent'}</span>
+                        {(isRRHH || v.user_id === currentUser?.id) && (
+                          <button onClick={async () => { await apiDeleteVacanca(v.id); fetchVacances(); }} style={{ background: 'none', border: 'none', color: '#bf211e', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
+                        )}
+                      </div>
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--tavil-faint)' }}>{laboralDaysBetween(v.start_date, v.end_date)} dies laborables</div>
                   </div>
@@ -5287,7 +5648,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                         {d.status === 'Denegada' && d.motive && (
                           <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2"><span className="font-semibold">Motiu:</span> {d.motive}</p>
                         )}
-                        {isRRHH && d.status === 'Pendent' && denyingId === d.id && (
+                        {isRRHH && d.status === 'Pendent' && d.author !== currentUser?.email && denyingId === d.id && (
                           <div className="mt-3 space-y-2">
                             <textarea
                               value={denyMotive}
@@ -5305,7 +5666,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(d.status))}>{d.status}</span>
-                        {isRRHH && d.status === 'Pendent' && denyingId !== d.id && (
+                        {isRRHH && d.status === 'Pendent' && d.author !== currentUser?.email && denyingId !== d.id && (
                           <>
                             <button onClick={() => handleApprove(d.id)} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-950/50 transition-colors">{t('solicituds.approve')}</button>
                             <button onClick={() => { setDenyingId(d.id); setDenyMotive(''); }} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 transition-colors">{t('solicituds.deny')}</button>
@@ -7211,13 +7572,16 @@ function MobileSwipeStack({
   setActiveTab,
   tabOrder,
   renderPageLayout,
+  enterClass,
 }: {
   activeTab: string;
   setActiveTab: (t: string) => void;
   tabOrder: string[];
   renderPageLayout: (t: string) => React.ReactNode;
+  enterClass?: string;
 }) {
   const [displayTab, setDisplayTab] = useState(activeTab);
+  const [pageEnterClass, setPageEnterClass] = useState('');
   const [dragX, setDragX] = useState(0);
   const [snapping, setSnapping] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -7230,8 +7594,10 @@ function MobileSwipeStack({
     const newIdx = tabOrder.indexOf(activeTab);
     if (oldIdx === -1 || newIdx === -1 || Math.abs(newIdx - oldIdx) !== 1) {
       setDisplayTab(activeTab);
+      setPageEnterClass(enterClass ?? '');
       return;
     }
+    setPageEnterClass('');
     const w = containerRef.current?.clientWidth ?? window.innerWidth;
     const dir = newIdx > oldIdx ? -1 : 1;
     setSnapping(true);
@@ -7242,7 +7608,7 @@ function MobileSwipeStack({
       setDisplayTab(activeTab);
     }, 340);
     return () => clearTimeout(timer);
-  }, [activeTab, displayTab, tabOrder]);
+  }, [activeTab, displayTab, tabOrder, enterClass]);
 
   const dIdx = tabOrder.indexOf(displayTab);
   const prevTab = dIdx > 0 ? tabOrder[dIdx - 1] : null;
@@ -7253,8 +7619,12 @@ function MobileSwipeStack({
     const tgt = e.target as HTMLElement;
     // don't hijack gestures that originate inside interactive/scrollable controls
     if (tgt.closest('input, textarea, select, [data-no-swipe], [role="slider"]')) return;
+    // only activate from the edge zones (left or right 10% of screen)
+    const w = containerRef.current?.clientWidth ?? window.innerWidth;
+    const touchX = e.touches[0].clientX;
+    if (touchX > w * 0.10 && touchX < w * 0.90) return;
     startRef.current = {
-      x: e.touches[0].clientX,
+      x: touchX,
       y: e.touches[0].clientY,
       t: Date.now(),
       axis: null,
@@ -7333,7 +7703,7 @@ function MobileSwipeStack({
         <div className="shrink-0" style={{ width: '33.3333%' }}>
           {prevTab ? renderPageLayout(prevTab) : null}
         </div>
-        <div className="shrink-0" style={{ width: '33.3333%' }}>
+        <div key={displayTab} className={cn('shrink-0', pageEnterClass)} style={{ width: '33.3333%' }}>
           {renderPageLayout(displayTab)}
         </div>
         <div className="shrink-0" style={{ width: '33.3333%' }}>
@@ -7349,7 +7719,11 @@ function MobileSwipeStack({
 function App() {
   const { t } = useTranslation();
   const SIDEBAR_SECTIONS = useSidebarSections();
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('tavil_dark') === 'true';
+    if (saved) document.documentElement.classList.add('dark');
+    return saved;
+  });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authView, setAuthView] = useState<'login' | 'register' | 'verify-email' | 'otp' | 'forgot'>('login');
@@ -7371,7 +7745,8 @@ function App() {
   const [exitDirection, setExitDirection] = useState<'fwd' | 'back'>('fwd');
   const [exitIsMobile, setExitIsMobile] = useState(isMobilePage);
   const [hasNavigated, setHasNavigated] = useState(false);
-  const prevTabRef = useRef(activeTab);
+  const prevTabRef = useRef(activeTab);    // previous tab (for direction logic)
+  const goBackRef = useRef(activeTab);     // where goBack() should navigate to
   useEffect(() => {
     if (prevTabRef.current === activeTab) return;
     setHasNavigated(true);
@@ -7382,12 +7757,20 @@ function App() {
     setExitDirection(dir);
     if (activeTab === 'Perfil') setExitDirection('back');
     if (prevTabRef.current === 'Perfil' && activeTab === 'Més') setExitDirection('fwd');
+    // Sub-tabs opened from Més behave like a drill-down submenu:
+    // Més → sub-tab = slide from right (fwd); sub-tab → Més = slide from left (back)
+    const MES_SUBTABS = new Set(['Activitats', 'Espai', 'Campus', 'Veu', 'Solicituds']);
+    if (prevTabRef.current === 'Més' && MES_SUBTABS.has(activeTab)) setExitDirection('fwd');
+    if (activeTab === 'Més' && MES_SUBTABS.has(prevTabRef.current)) setExitDirection('back');
     setExitIsMobile(isMobilePage);
+    goBackRef.current = prevTabRef.current; // save before overwriting
     prevTabRef.current = activeTab;
-    const duration = isMobilePage ? 620 : 720;
+    const duration = isMobilePage ? 380 : 380;
     const timer = setTimeout(() => setExitingTab(null), duration);
     return () => clearTimeout(timer);
   }, [activeTab, isMobilePage, tabOrder]);
+
+  const goBack = () => setActiveTab(goBackRef.current);
 
   const enterClass = !hasNavigated
     ? ''
@@ -7412,6 +7795,9 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [mobileNotifsOpen, setMobileNotifsOpen] = useState(false);
+  const [navHidden, setNavHidden] = useState(false);
+  useEffect(() => { _setGlobalNavHidden = setNavHidden; return () => { _setGlobalNavHidden = null; }; }, []);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -7462,11 +7848,6 @@ function App() {
 
   useEffect(() => {
     registerUnauthorizedHandler(handleLogout);
-
-    const savedDark = localStorage.getItem('tavil_dark') === 'true';
-    setIsDarkMode(savedDark);
-    if (savedDark) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
 
     if (getToken()) {
       apiGetMe()
@@ -7547,17 +7928,17 @@ function App() {
   const renderContentFor = (tab: string) => {
     const hasUnread = notifications.some(n => !n.read);
     const openDrawer = () => setIsDrawerOpen(true);
-    const openNotifs = () => setActiveTab('Perfil');
+    const openNotifs = () => setMobileNotifsOpen(true);
     switch (tab) {
       case 'Inici': return <InicialTab onNavigate={setActiveTab} onNavigateToDate={navigateToDate} onOpenDrawer={openDrawer} hasUnread={hasUnread} onOpenNotifs={openNotifs} currentUser={currentUser} />;
       case 'Notícies': return <NoticiesTab currentUser={currentUser} onOpenDrawer={openDrawer} />;
-      case 'Activitats': return <ActivitatsTab currentUser={currentUser} onBack={() => setActiveTab('Més')} />;
+      case 'Activitats': return <ActivitatsTab currentUser={currentUser} onBack={goBack} />;
       case 'Agenda': return <AgendaTab currentUser={currentUser} initDate={agendaInitDate} onInitDateConsumed={() => setAgendaInitDate(null)} onOpenDrawer={openDrawer} />;
       case 'Directori': return <DirectoriTab onOpenDrawer={openDrawer} />;
-      case 'Espai': return <EspaiCorporatiuTab />;
-      case 'Campus': return <CampusTavilTab />;
-      case 'Veu': return <VeuEmpleatTab currentUser={currentUser} initialSubTab={notifSubTab} onSubTabConsumed={() => setNotifSubTab(null)} onBack={() => setActiveTab('Més')} />;
-      case 'Solicituds': return <SolicitudsTab currentUser={currentUser} onNotifChange={refreshNotifications} initialSubTab={notifSubTab} onSubTabConsumed={() => setNotifSubTab(null)} onBack={() => setActiveTab('Més')} />;
+      case 'Espai': return <EspaiCorporatiuTab onBack={goBack} />;
+      case 'Campus': return <CampusTavilTab onBack={goBack} />;
+      case 'Veu': return <VeuEmpleatTab currentUser={currentUser} initialSubTab={notifSubTab} onSubTabConsumed={() => setNotifSubTab(null)} onBack={goBack} />;
+      case 'Solicituds': return <SolicitudsTab currentUser={currentUser} onNotifChange={refreshNotifications} initialSubTab={notifSubTab} onSubTabConsumed={() => setNotifSubTab(null)} onBack={goBack} />;
       case 'Perfil': return <PerfilTab currentUser={currentUser} onUserUpdate={u => { setCurrentUser(u); }} onNavigate={setActiveTab} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} onLogout={handleLogout} />;
       case 'Empresa': return <EmpresaLandingTab onNavigate={setActiveTab} />;
       case 'Més': return <MesTab onNavigate={setActiveTab} currentUser={currentUser} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} onLogout={handleLogout} />;
@@ -7567,7 +7948,7 @@ function App() {
   const renderPageLayout = (tab: string) => {
     const isInici = tab === 'Inici';
     // These tabs render their own mobile header (hamburger/back + kicker + title)
-    const selfHandledMobile = new Set(['Inici', 'Notícies', 'Agenda', 'Directori', 'Activitats', 'Veu', 'Solicituds']);
+    const selfHandledMobile = new Set(['Inici', 'Notícies', 'Agenda', 'Directori', 'Activitats', 'Veu', 'Solicituds', 'Campus', 'Espai']);
     const section = SIDEBAR_SECTIONS.flatMap(s => s.items).find(i => i.id === tab)
       ?? (tab === 'Empresa' ? { id: 'Empresa', label: 'Empresa', icon: Building2 } : undefined);
 
@@ -7584,18 +7965,18 @@ function App() {
 
         {/* ── Mobile top bar spacer — only for tabs that don't render their own header ── */}
         {!selfHandledMobile.has(tab) && (
-          <div className="md:hidden" style={{ background: 'var(--tavil-bg)', height: 52 }} />
+          <div className="md:hidden" style={{ background: 'var(--tavil-bg)', height: 82 }} />
         )}
 
         {/* ── Mobile page title (kicker + Instrument Serif h1) — non-self-handled only ── */}
         {!isInici && !selfHandledMobile.has(tab) && (
           <div
-            className={`md:hidden px-5 pb-3 ${tab === 'Més' ? 'pt-8' : 'pt-3'} ${tab === 'Perfil' ? 'text-center' : ''}`}
+            className={`md:hidden px-5 pb-3.5 ${tab === 'Més' ? 'pt-0' : 'pt-3'} ${tab === 'Perfil' ? 'text-center' : ''}`}
             style={{ background: 'var(--tavil-bg)', position: 'relative' }}
           >
             {tab === 'Perfil' && (
               <button
-                onClick={() => setActiveTab('Més')}
+                onClick={goBack}
                 style={{
                   position: 'absolute', left: 20, top: 12,
                   width: 40, height: 40, borderRadius: 20,
@@ -7624,21 +8005,21 @@ function App() {
 
         {/* ── Desktop breadcrumb + title — hidden on mobile ── */}
         {!isInici && (
-          <div className="hidden md:block mb-6 p-3 md:p-0">
-            <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
-              <button onClick={() => setActiveTab('Inici')} className="hover:text-red-600 flex items-center gap-1 transition-colors">
+          <div className="hidden md:block mb-6 p-3 md:p-0 stagger-1">
+            <div className="flex items-center gap-2 text-xs mb-2" style={{ color: 'var(--tavil-faint)' }}>
+              <button onClick={() => setActiveTab('Inici')} className="flex items-center gap-1 transition-colors hover:text-[var(--tavil-accent)]">
                 <Home size={11} /> {t('breadcrumb.home')}
               </button>
               <ChevronRight size={11} />
-              <span className="text-gray-700 dark:text-zinc-300">{section?.label}</span>
+              <span style={{ color: 'var(--tavil-text)' }}>{section?.label}</span>
             </div>
-            <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{section?.label}</h1>
+            <h1 style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 48, fontWeight: 400, lineHeight: 1, letterSpacing: '-0.02em', color: 'var(--tavil-text)', margin: 0 }}>{section?.label}</h1>
           </div>
         )}
 
         {/* ── Tab content ── */}
         <div
-          className={!isInici ? 'md:mt-0 px-3 md:px-0 pb-24 md:pb-0' : ''}
+          className={cn(!isInici ? 'md:mt-0 px-3 md:px-0 pb-24 md:pb-0' : '', !isInici ? 'stagger-2' : '')}
           style={!isInici ? { background: 'var(--tavil-bg)' } : undefined}
         >
           {renderContentFor(tab)}
@@ -7661,7 +8042,7 @@ function App() {
   }
 
   return (
-    <div className={cn("flex min-h-screen bg-gray-50 dark:bg-[#121212] font-sans text-gray-900 dark:text-zinc-100 transition-colors duration-300", isDarkMode && "dark")}>
+    <div className={cn("flex min-h-screen bg-[var(--tavil-bg)] font-sans text-gray-900 dark:text-zinc-100 transition-colors duration-300", isDarkMode && "dark")}>
       {/* Sidebar */}
       <aside className={cn("bg-white dark:bg-[#1a1a1a] border-r border-gray-200 dark:border-zinc-800 flex flex-col fixed inset-y-0 z-30 transition-all duration-300 hidden md:flex", sidebarCollapsed ? "md:w-16" : "md:w-60")}>
         <div className={cn("p-5 pb-4", sidebarCollapsed && "px-2")}>
@@ -7915,8 +8296,9 @@ function App() {
           <MobileSwipeStack
             activeTab={activeTab}
             setActiveTab={setActiveTab}
-            tabOrder={tabOrder}
+            tabOrder={['Inici', 'Notícies', 'Agenda', 'Directori', 'Més']}
             renderPageLayout={renderPageLayout}
+            enterClass={enterClass}
           />
         ) : (
           <div className="page-stack w-full">
@@ -7952,7 +8334,16 @@ function App() {
         isDarkMode={isDarkMode}
         activeTab={activeTab}
       />
-      <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} onOpenDrawer={() => setIsDrawerOpen(true)} isDarkMode={isDarkMode} />
+      {isMobilePage && mobileNotifsOpen && (
+        <MobileNotificationsOverlay
+          notifications={notifications}
+          onClose={() => setMobileNotifsOpen(false)}
+          onMarkRead={(id) => apiMarkNotifRead(id).then(() => apiGetNotifications().then(setNotifications)).catch(() => {})}
+          onMarkAllRead={() => apiMarkAllNotifsRead().then(() => apiGetNotifications().then(setNotifications)).catch(() => {})}
+          isDarkMode={isDarkMode}
+        />
+      )}
+      <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} onOpenDrawer={() => setIsDrawerOpen(true)} isDarkMode={isDarkMode} hidden={navHidden || mobileNotifsOpen || isDrawerOpen} />
     </div>
   );
 }

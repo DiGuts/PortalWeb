@@ -36,7 +36,11 @@
       "ca": "Català",
       "es": "Castellano",
       "en": "English"
-    }
+    },
+    "goodMorning": "Buenos días",
+    "goodAfternoon": "Buenas tardes",
+    "goodEvening": "Buenas noches",
+    "seeAll": "Ver todo"
   },
   "auth": {
     "login": "Inicia sesión",
@@ -103,6 +107,7 @@
     "create": "Crear noticia",
     "confirmDelete": "¿Seguro que quieres eliminar esta noticia? Esta acción no se puede deshacer.",
     "confirmTitle": "Confirmar eliminación",
+    "featured": "Destacado",
     "searchPlaceholder": "Buscar noticias...",
     "detail": {
       "backToNews": "← Volver a noticias",

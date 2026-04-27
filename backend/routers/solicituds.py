@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -91,6 +91,10 @@ async def update_solicitud(
         {"id": solicitud_id},
     )).mappings().first()
 
+    if row and row["author"] == _staff["email"]:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="No pots aprovar/denegar la teva pròpia sol·licitud.")
+
     await db.execute(
         text("UPDATE solicituds SET status = :status, motive = :motive WHERE id = :id"),
         {"status": body.status, "motive": body.motive, "id": solicitud_id},
@@ -122,3 +126,21 @@ async def update_solicitud(
 
     await db.commit()
     return {"ok": True}
+
+
+@router.delete("/{solicitud_id}", status_code=204)
+async def delete_solicitud(
+    solicitud_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncConnection = Depends(get_db),
+):
+    row = (await db.execute(
+        text("SELECT author FROM solicituds WHERE id = :id"), {"id": solicitud_id}
+    )).mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="No trobat")
+    is_admin = current_user["role"] in ("Administrador/a", "Recursos humans")
+    if not is_admin and row["author"] != current_user["email"]:
+        raise HTTPException(status_code=403, detail="No autoritzat")
+    await db.execute(text("DELETE FROM solicituds WHERE id = :id"), {"id": solicitud_id})
+    await db.commit()

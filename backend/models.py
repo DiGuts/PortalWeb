@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
 
@@ -67,9 +67,9 @@ class UserRoleIn(BaseModel):
 # ── Suggestions ───────────────────────────────────────────────────────────────
 
 class SuggestionIn(BaseModel):
-    title: str
-    description: str = ""
-    category: str = "General"
+    title: str = Field(..., max_length=200)
+    description: str = Field("", max_length=2000)
+    category: str = Field("General", max_length=100)
     anonymous: bool = True
 
 
@@ -88,10 +88,10 @@ class SuggestionVoteIn(BaseModel):
 # ── Incidències ───────────────────────────────────────────────────────────────
 
 class IncidenciaIn(BaseModel):
-    title: str
-    description: str = ""
-    area: str = "General"
-    priority: str = "Baixa"
+    title: str = Field(..., max_length=200)
+    description: str = Field("", max_length=2000)
+    area: str = Field("General", max_length=100)
+    priority: str = Field("Baixa", max_length=50)
 
 
 class IncidenciaStatusIn(BaseModel):
@@ -112,11 +112,11 @@ class EnquestaIn(BaseModel):
 # ── News ──────────────────────────────────────────────────────────────────────
 
 class NewsIn(BaseModel):
-    category: str
-    title: str
-    summary: str = ""
-    content: str = ""
-    author: str = ""
+    category: str = Field(..., max_length=100)
+    title: str = Field(..., max_length=300)
+    summary: str = Field("", max_length=500)
+    content: str = Field("", max_length=20000)
+    author: str = Field("", max_length=200)
     date: str = ""
     image: str = ""
     featured: int = 0
@@ -156,8 +156,8 @@ class CourseProgressIn(BaseModel):
 
 class SolicitudIn(BaseModel):
     date: str
-    motive: str
-    comments: str = ""
+    motive: str = Field("", max_length=500)
+    comments: str = Field("", max_length=1000)
 
 
 class SolicitudUpdateIn(BaseModel):

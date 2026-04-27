@@ -36,7 +36,11 @@
       "ca": "Català",
       "es": "Castellano",
       "en": "English"
-    }
+    },
+    "goodMorning": "Bon dia",
+    "goodAfternoon": "Bona tarda",
+    "goodEvening": "Bona nit",
+    "seeAll": "Veure-ho tot"
   },
   "auth": {
     "login": "Inicia sessió",
@@ -103,6 +107,7 @@
     "create": "Crear notícia",
     "confirmDelete": "Segur que vols eliminar aquesta notícia? Aquesta acció no es pot desfer.",
     "confirmTitle": "Confirmar eliminació",
+    "featured": "Destacat",
     "searchPlaceholder": "Cercar notícies...",
     "detail": {
       "backToNews": "← Tornar a notícies",

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -40,11 +40,12 @@ async def create_suggestion(
     author = "Anònim" if body.anonymous else current_user["name"]
     result = await db.execute(
         text("""
-            INSERT INTO suggestions (title, description, category, anonymous, author)
-            VALUES (:title, :description, :category, :anonymous, :author)
+            INSERT INTO suggestions (title, description, category, anonymous, author, user_id)
+            VALUES (:title, :description, :category, :anonymous, :author, :user_id)
         """),
         {"title": body.title, "description": body.description,
-         "category": body.category, "anonymous": int(body.anonymous), "author": author},
+         "category": body.category, "anonymous": int(body.anonymous),
+         "author": author, "user_id": current_user["id"]},
     )
     await db.commit()
     row = (await db.execute(
@@ -129,3 +130,22 @@ async def add_response(
     )
     await db.commit()
     return {"ok": True}
+
+
+@router.delete("/{suggestion_id}", status_code=204)
+async def delete_suggestion(
+    suggestion_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncConnection = Depends(get_db),
+):
+    row = (await db.execute(
+        text("SELECT user_id FROM suggestions WHERE id = :id"), {"id": suggestion_id}
+    )).mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="No trobat")
+    is_admin = current_user["role"] in ("Administrador/a", "Recursos humans")
+    if not is_admin and row["user_id"] != current_user["id"]:
+        raise HTTPException(status_code=403, detail="No autoritzat")
+    await db.execute(text("DELETE FROM suggestion_votes WHERE suggestion_id = :id"), {"id": suggestion_id})
+    await db.execute(text("DELETE FROM suggestions WHERE id = :id"), {"id": suggestion_id})
+    await db.commit()

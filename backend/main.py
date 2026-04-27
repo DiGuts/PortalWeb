@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI
@@ -19,9 +20,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="TAVIL Portal API", version="1.0.0", lifespan=lifespan)
 
+_CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
