@@ -715,7 +715,12 @@ const UnderlineTab = ({ label, active, onClick }: { label: string; active: boole
 
 const resolveImg = (path: string): string => {
   if (!path) return '';
-  if (path.startsWith('http')) return path;
+  if (path.startsWith('http')) {
+    // Rewrite legacy absolute URLs pointing to old localhost backend
+    const uploadMatch = path.match(/^https?:\/\/[^/]+\/uploads\/.+/);
+    if (uploadMatch) return `${API_BASE}${path.replace(/^https?:\/\/[^/]+(\/uploads\/.+)$/, '$1')}`;
+    return path;
+  }
   if (path.startsWith('/uploads') || path.startsWith('uploads/')) return `${API_BASE}${path.startsWith('/') ? path : '/' + path}`;
   if (path.startsWith('/')) return `${process.env.PUBLIC_URL}${path}`;
   return path;
