@@ -1,14 +1,14 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from database import get_db
-from auth import get_current_user, require_admin
-from models import UserOut, UserUpdateIn, UserUpdateExtIn, UserRoleIn, OnboardingIn, UserDeptIn
+from auth import get_current_user, require_admin, hash_password
+from models import UserOut, UserUpdateIn, UserUpdateExtIn, UserRoleIn, OnboardingIn, UserDeptIn, AdminCreateUserIn, AdminUpdateUserIn
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
-_USER_FIELDS = "id, name, email, role, dept, phone, ext, location, onboarded, email_notifs, is_head"
+_USER_FIELDS = "id, name, email, role, dept, phone, ext, location, onboarded, email_notifs, is_head, must_change_password"
 
 
 @router.get("/me", response_model=UserOut)
@@ -160,3 +160,80 @@ async def update_role(
         {"id": user_id},
     )).mappings().first()
     return UserOut(**dict(row))
+
+
+# ── Admin: user management ────────────────────────────────────────────────────
+
+@router.get("", response_model=list[UserOut])
+async def list_users(
+    _admin: dict = Depends(require_admin),
+    db: AsyncConnection = Depends(get_db),
+):
+    rows = (await db.execute(
+        text(f"SELECT {_USER_FIELDS} FROM users ORDER BY name")
+    )).mappings().all()
+    return [UserOut(**dict(r)) for r in rows]
+
+
+@router.post("", response_model=UserOut, status_code=201)
+async def admin_create_user(
+    body: AdminCreateUserIn,
+    _admin: dict = Depends(require_admin),
+    db: AsyncConnection = Depends(get_db),
+):
+    existing = (await db.execute(
+        text("SELECT id FROM users WHERE email = :email"),
+        {"email": body.email},
+    )).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Ja existeix un usuari amb aquest correu")
+
+    hashed = hash_password(body.temp_password)
+    await db.execute(
+        text("""INSERT INTO users (name, email, password, role, dept, must_change_password, onboarded, email_verified)
+                VALUES (:name, :email, :password, :role, :dept, 1, 1, 1)"""),
+        {"name": body.name, "email": body.email, "password": hashed,
+         "role": body.role, "dept": body.dept},
+    )
+    await db.commit()
+
+    row = (await db.execute(
+        text(f"SELECT {_USER_FIELDS} FROM users WHERE email = :email"),
+        {"email": body.email},
+    )).mappings().first()
+    return UserOut(**dict(row))
+
+
+@router.patch("/{user_id}", response_model=UserOut)
+async def admin_update_user(
+    user_id: int,
+    body: AdminUpdateUserIn,
+    _admin: dict = Depends(require_admin),
+    db: AsyncConnection = Depends(get_db),
+):
+    updates = body.model_dump(exclude_none=True)
+    if updates:
+        set_clause = ", ".join(f"{k} = :{k}" for k in updates)
+        updates["id"] = user_id
+        await db.execute(text(f"UPDATE users SET {set_clause} WHERE id = :id"), updates)
+        await db.commit()
+
+    row = (await db.execute(
+        text(f"SELECT {_USER_FIELDS} FROM users WHERE id = :id"),
+        {"id": user_id},
+    )).mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Usuari no trobat")
+    return UserOut(**dict(row))
+
+
+@router.delete("/{user_id}", status_code=204)
+async def admin_delete_user(
+    user_id: int,
+    admin: dict = Depends(require_admin),
+    db: AsyncConnection = Depends(get_db),
+):
+    if user_id == admin["id"]:
+        raise HTTPException(status_code=400, detail="No et pots eliminar a tu mateix")
+    await db.execute(text("DELETE FROM users WHERE id = :id"), {"id": user_id})
+    await db.commit()

@@ -44,6 +44,9 @@ import {
   Notification, apiGetNotifications, apiMarkNotifRead, apiMarkAllNotifsRead, apiClearAllNotifications,
   apiCompleteOnboarding, apiGetDeptHead, apiUpdateDept,
   Vacanca, apiGetVacances, apiCreateVacanca, apiUpdateVacancaHead, apiUpdateVacancaRrhh, apiDeleteVacanca,
+  apiChangePassword,
+  apiAdminListUsers, apiAdminCreateUser, apiAdminUpdateUser, apiAdminDeleteUser,
+  apiGetAllNotices, apiCreateNotice, apiUpdateNotice, apiDeleteNotice,
 } from './api';
 
 function cn(...inputs: ClassValue[]) {
@@ -7712,9 +7715,297 @@ function RegisterPage({ onBack, onRegisterResult, isDarkMode, toggleDarkMode }: 
   );
 }
 
+// ── Change Password Modal ─────────────────────────────────────────────────────
+
+function ChangePasswordModal({ onDone, forced = false }: { onDone: () => void; forced?: boolean }) {
+  const [newPwd, setNewPwd] = useState('');
+  const [confirmPwd, setConfirmPwd] = useState('');
+  const [currentPwd, setCurrentPwd] = useState('');
+  const [showNew, setShowNew] = useState(false);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (newPwd.length < 8) { setError('Mínim 8 caràcters'); return; }
+    if (newPwd !== confirmPwd) { setError('Les contrasenyes no coincideixen'); return; }
+    setSaving(true); setError('');
+    try {
+      await apiChangePassword(newPwd, forced ? undefined : currentPwd);
+      onDone();
+    } catch (e: any) { setError(e.message); }
+    finally { setSaving(false); }
+  };
+
+  const inputCls = 'w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-4 py-3 text-sm text-gray-900 dark:text-white outline-none focus:border-red-400 transition-colors';
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950/30 flex items-center justify-center text-red-600"><Lock size={20} /></div>
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+              {forced ? 'Canvia la contrasenya' : 'Nova contrasenya'}
+            </h2>
+            {forced && <p className="text-xs text-gray-500 dark:text-zinc-400">L'administrador t'ha assignat una contrasenya temporal. Has de canviar-la per continuar.</p>}
+          </div>
+        </div>
+        {error && <p className="text-sm text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2">{error}</p>}
+        {!forced && (
+          <div>
+            <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide block mb-1.5">Contrasenya actual</label>
+            <input type="password" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)} className={inputCls} placeholder="Contrasenya actual" />
+          </div>
+        )}
+        <div>
+          <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide block mb-1.5">Nova contrasenya</label>
+          <div className="relative">
+            <input type={showNew ? 'text' : 'password'} value={newPwd} onChange={e => setNewPwd(e.target.value)} className={inputCls + ' pr-10'} placeholder="Mínim 8 caràcters" />
+            <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showNew ? <EyeOff size={16} /> : <Eye size={16} />}</button>
+          </div>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide block mb-1.5">Confirma la nova contrasenya</label>
+          <input type="password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} className={inputCls} placeholder="Repeteix la contrasenya" />
+        </div>
+        <button
+          onClick={handleSubmit}
+          disabled={saving || !newPwd || !confirmPwd || (!forced && !currentPwd)}
+          className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50"
+        >
+          {saving ? 'Guardant...' : 'Canviar contrasenya'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Backoffice Tab ────────────────────────────────────────────────────────────
+
+function BackofficeTab({ currentUser }: { currentUser: import('./api').User | null }) {
+  const [subTab, setSubTab] = useState<'usuaris' | 'avisos'>('usuaris');
+  const [users, setUsers] = useState<import('./api').User[]>([]);
+  const [notices, setNotices] = useState<import('./api').Notice[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // User creation form
+  const [showUserForm, setShowUserForm] = useState(false);
+  const [editUser, setEditUser] = useState<import('./api').User | null>(null);
+  const [uName, setUName] = useState('');
+  const [uEmail, setUEmail] = useState('');
+  const [uPass, setUPass] = useState('');
+  const [uRole, setURole] = useState('Treballador/a');
+  const [uDept, setUDept] = useState('General');
+  const [uSaving, setUSaving] = useState(false);
+
+  // Notice form
+  const [showNoticeForm, setShowNoticeForm] = useState(false);
+  const [editNotice, setEditNotice] = useState<import('./api').Notice | null>(null);
+  const [nTitle, setNTitle] = useState('');
+  const [nContent, setNContent] = useState('');
+  const [nLink, setNLink] = useState('');
+  const [nActive, setNActive] = useState(1);
+  const [nSaving, setNSaving] = useState(false);
+
+  const loadUsers = () => {
+    setLoading(true);
+    apiAdminListUsers().then(setUsers).catch((e: any) => setError(e.message)).finally(() => setLoading(false));
+  };
+  const loadNotices = () => {
+    setLoading(true);
+    apiGetAllNotices().then(setNotices).catch((e: any) => setError(e.message)).finally(() => setLoading(false));
+  };
+
+  useEffect(() => { if (subTab === 'usuaris') loadUsers(); else loadNotices(); }, [subTab]);
+
+  const openCreateUser = () => { setEditUser(null); setUName(''); setUEmail(''); setUPass(''); setURole('Treballador/a'); setUDept('General'); setShowUserForm(true); };
+  const openEditUser = (u: import('./api').User) => { setEditUser(u); setUName(u.name); setUEmail(u.email); setUPass(''); setURole(u.role); setUDept(u.dept); setShowUserForm(true); };
+
+  const saveUser = async () => {
+    setUSaving(true); setError('');
+    try {
+      if (editUser) {
+        await apiAdminUpdateUser(editUser.id, { name: uName, email: uEmail, role: uRole, dept: uDept });
+      } else {
+        await apiAdminCreateUser({ name: uName, email: uEmail, temp_password: uPass, role: uRole, dept: uDept });
+      }
+      setShowUserForm(false); loadUsers();
+    } catch (e: any) { setError(e.message); }
+    finally { setUSaving(false); }
+  };
+
+  const deleteUser = async (id: number) => {
+    if (!window.confirm('Eliminar aquest usuari?')) return;
+    try { await apiAdminDeleteUser(id); loadUsers(); } catch (e: any) { setError(e.message); }
+  };
+
+  const openCreateNotice = () => { setEditNotice(null); setNTitle(''); setNContent(''); setNLink(''); setNActive(1); setShowNoticeForm(true); };
+  const openEditNotice = (n: import('./api').Notice) => { setEditNotice(n); setNTitle(n.title); setNContent(n.content); setNLink(n.link); setNActive(n.active); setShowNoticeForm(true); };
+
+  const saveNotice = async () => {
+    setNSaving(true); setError('');
+    try {
+      const fields = { title: nTitle, content: nContent, link: nLink, active: nActive };
+      if (editNotice) await apiUpdateNotice(editNotice.id, fields);
+      else await apiCreateNotice(fields);
+      setShowNoticeForm(false); loadNotices();
+    } catch (e: any) { setError(e.message); }
+    finally { setNSaving(false); }
+  };
+
+  const deleteNotice = async (id: number) => {
+    if (!window.confirm('Eliminar aquest avís?')) return;
+    try { await apiDeleteNotice(id); loadNotices(); } catch (e: any) { setError(e.message); }
+  };
+
+  const ROLES = ['Treballador/a', 'Responsable de departament', 'Recursos humans', 'Administrador/a', 'Manteniment'];
+  const DEPTS = ['General', 'Producció', 'Logística', 'Administració', 'Comercial', 'RRHH', 'IT', 'Qualitat', 'Manteniment'];
+
+  const cardCls = 'bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4';
+  const inputCls = 'w-full rounded-lg border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none focus:border-red-400 transition-colors';
+  const btnPrimary = 'bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50';
+  const btnGhost = 'text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 text-sm px-3 py-2 rounded-lg transition-colors';
+
+  return (
+    <div className="space-y-4">
+      {error && <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl p-3 text-sm text-red-700 dark:text-red-400">{error}</div>}
+
+      {/* Sub-tabs */}
+      <div className="flex gap-2">
+        <button onClick={() => setSubTab('usuaris')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subTab === 'usuaris' ? 'bg-red-600 text-white' : 'bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700'}`}>
+          <Users size={15} /> Usuaris
+        </button>
+        <button onClick={() => setSubTab('avisos')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subTab === 'avisos' ? 'bg-red-600 text-white' : 'bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700'}`}>
+          <Bell size={15} /> Avisos
+        </button>
+      </div>
+
+      {/* ── Usuaris ── */}
+      {subTab === 'usuaris' && (
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-500 dark:text-zinc-400">{users.length} usuari{users.length !== 1 ? 's' : ''}</p>
+            <button onClick={openCreateUser} className={btnPrimary}><Plus size={14} className="inline mr-1" />Nou usuari</button>
+          </div>
+          {loading ? <div className="text-center py-8 text-gray-400 text-sm">Carregant...</div> : (
+            <div className="space-y-2">
+              {users.map(u => (
+                <div key={u.id} className={`${cardCls} flex items-center gap-3`}>
+                  <div className="w-9 h-9 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                    {u.name.split(' ').slice(0,2).map((n:string) => n[0]).join('').toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{u.name}</p>
+                    <p className="text-xs text-gray-400 truncate">{u.email} · {u.role} · {u.dept}</p>
+                    {u.must_change_password ? <span className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">Canvi de contrasenya pendient</span> : null}
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button onClick={() => openEditUser(u)} className={btnGhost}><Pencil size={14} /></button>
+                    {u.id !== currentUser?.id && <button onClick={() => deleteUser(u.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-sm px-2 py-2 rounded-lg transition-colors"><Trash2 size={14} /></button>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Avisos ── */}
+      {subTab === 'avisos' && (
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-500 dark:text-zinc-400">{notices.length} avís/avisos</p>
+            <button onClick={openCreateNotice} className={btnPrimary}><Plus size={14} className="inline mr-1" />Nou avís</button>
+          </div>
+          {loading ? <div className="text-center py-8 text-gray-400 text-sm">Carregant...</div> : (
+            <div className="space-y-2">
+              {notices.map(n => (
+                <div key={n.id} className={`${cardCls} flex items-center gap-3`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{n.title}</p>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${n.active ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500'}`}>{n.active ? 'Actiu' : 'Inactiu'}</span>
+                    </div>
+                    {n.content && <p className="text-xs text-gray-400 truncate">{n.content}</p>}
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button onClick={() => openEditNotice(n)} className={btnGhost}><Pencil size={14} /></button>
+                    <button onClick={() => deleteNotice(n.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-sm px-2 py-2 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── User form modal ── */}
+      {showUserForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-t-2xl md:rounded-2xl w-full md:max-w-md p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{editUser ? 'Editar usuari' : 'Nou usuari'}</h2>
+              <button onClick={() => setShowUserForm(false)} className={btnGhost}><X size={18} /></button>
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="space-y-3">
+              <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Nom</label><input value={uName} onChange={e => setUName(e.target.value)} className={inputCls} placeholder="Nom complet" /></div>
+              <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Correu</label><input value={uEmail} onChange={e => setUEmail(e.target.value)} className={inputCls} type="email" placeholder="nom@tavil.net" /></div>
+              {!editUser && <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Contrasenya temporal</label><input value={uPass} onChange={e => setUPass(e.target.value)} className={inputCls} type="text" placeholder="L'usuari la canviarà al primer accés" /></div>}
+              <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Rol</label>
+                <select value={uRole} onChange={e => setURole(e.target.value)} className={inputCls}>
+                  {ROLES.map(r => <option key={r}>{r}</option>)}
+                </select>
+              </div>
+              <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Departament</label>
+                <select value={uDept} onChange={e => setUDept(e.target.value)} className={inputCls}>
+                  {DEPTS.map(d => <option key={d}>{d}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <button onClick={() => setShowUserForm(false)} className={btnGhost}>Cancel·lar</button>
+              <button onClick={saveUser} disabled={uSaving || !uName || !uEmail || (!editUser && !uPass)} className={btnPrimary}>{uSaving ? 'Guardant...' : 'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Notice form modal ── */}
+      {showNoticeForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-t-2xl md:rounded-2xl w-full md:max-w-md p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{editNotice ? 'Editar avís' : 'Nou avís'}</h2>
+              <button onClick={() => setShowNoticeForm(false)} className={btnGhost}><X size={18} /></button>
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="space-y-3">
+              <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Títol</label><input value={nTitle} onChange={e => setNTitle(e.target.value)} className={inputCls} placeholder="Títol de l'avís" /></div>
+              <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Contingut</label><textarea value={nContent} onChange={e => setNContent(e.target.value)} className={inputCls} rows={3} placeholder="Text de l'avís (opcional)" /></div>
+              <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Enllaç (opcional)</label><input value={nLink} onChange={e => setNLink(e.target.value)} className={inputCls} placeholder="https://..." /></div>
+              <div className="flex items-center gap-3">
+                <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Actiu</label>
+                <button onClick={() => setNActive(nActive ? 0 : 1)} className={`w-10 h-6 rounded-full transition-colors ${nActive ? 'bg-red-600' : 'bg-gray-300 dark:bg-zinc-700'} relative`}>
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${nActive ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <button onClick={() => setShowNoticeForm(false)} className={btnGhost}>Cancel·lar</button>
+              <button onClick={saveNotice} disabled={nSaving || !nTitle} className={btnPrimary}>{nSaving ? 'Guardant...' : 'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Sidebar data ──────────────────────────────────────────────────────────────
 
-function useSidebarSections() {
+function useSidebarSections(role?: string) {
   const { t } = useTranslation();
   return [
     {
@@ -7741,7 +8032,11 @@ function useSidebarSections() {
         { id: 'Solicituds', label: t('nav.solicituds'), icon: FileText },
         { id: 'Perfil', label: t('nav.perfil'), icon: UserCircle },
       ]
-    }
+    },
+    ...(role === 'Administrador/a' ? [{
+      title: 'Admin',
+      items: [{ id: 'Backoffice', label: 'Backoffice', icon: Shield }]
+    }] : [])
   ];
 }
 
@@ -7931,7 +8226,6 @@ function MobileSwipeStack({
 
 function App() {
   const { t } = useTranslation();
-  const SIDEBAR_SECTIONS = useSidebarSections();
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('tavil_dark') === 'true';
     if (saved) document.documentElement.classList.add('dark');
@@ -7939,6 +8233,7 @@ function App() {
   });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const SIDEBAR_SECTIONS = useSidebarSections(currentUser?.role);
   const [authView, setAuthView] = useState<'login' | 'register' | 'verify-email' | 'otp' | 'forgot'>('login');
   const [pendingEmail, setPendingEmail] = useState('');
 
@@ -8007,6 +8302,7 @@ function App() {
   const [demoRole, setDemoRole] = useState('Treballador/a');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [mobileNotifsOpen, setMobileNotifsOpen] = useState(false);
   const [navHidden, setNavHidden] = useState(false);
@@ -8029,6 +8325,7 @@ function App() {
     apiGetNotifications().then(setNotifications).catch(() => {});
     prefetchTabData(true);
     if (!user.onboarded) setShowOnboarding(true);
+    if (user.must_change_password) setShowChangePassword(true);
   };
 
   const handleAuthResult = (data: AuthOut) => {
@@ -8155,6 +8452,7 @@ function App() {
       case 'Perfil': return <PerfilTab currentUser={currentUser} onUserUpdate={u => { setCurrentUser(u); }} onNavigate={setActiveTab} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} onLogout={handleLogout} />;
       case 'Empresa': return <EmpresaLandingTab onNavigate={setActiveTab} />;
       case 'Més': return <MesTab onNavigate={setActiveTab} currentUser={currentUser} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} onLogout={handleLogout} />;
+      case 'Backoffice': return <BackofficeTab currentUser={currentUser} />;
       default: return null;
     }
   };
@@ -8527,6 +8825,9 @@ function App() {
         )}
       </main>
 
+      {showChangePassword && (
+        <ChangePasswordModal onDone={() => setShowChangePassword(false)} forced />
+      )}
       {showOnboarding && currentUser && (
         <OnboardingModal
           onComplete={async (dept, isHead) => {

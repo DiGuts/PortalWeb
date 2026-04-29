@@ -56,6 +56,7 @@ MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS idx_incidencies_user ON incidencies(user_id)",
     "CREATE INDEX IF NOT EXISTS idx_vacances_user ON vacances(user_id)",
     "CREATE INDEX IF NOT EXISTS idx_enquesta_responses_email ON enquesta_responses(user_email)",
+    "ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0",
 ]
 
 

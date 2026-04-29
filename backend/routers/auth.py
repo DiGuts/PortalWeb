@@ -8,8 +8,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from database import get_db
-from auth import hash_password, verify_password, create_access_token
-from models import LoginIn, RegisterIn, UserOut, VerifyEmailIn, VerifyOTPIn, ResendVerificationIn
+from auth import hash_password, verify_password, create_access_token, get_current_user
+from models import LoginIn, RegisterIn, UserOut, VerifyEmailIn, VerifyOTPIn, ResendVerificationIn, ChangePasswordIn
 from email_service import send_email
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -22,7 +22,7 @@ LOGIN_2FA_ENABLED: bool = os.getenv("LOGIN_2FA_ENABLED", "false").lower() == "tr
 OTP_EXPIRY_MINUTES = 10
 VERIFY_EXPIRY_HOURS = 24
 
-_USER_FIELDS = "id, name, email, role, dept, phone, ext, location, onboarded, email_notifs, is_head"
+_USER_FIELDS = "id, name, email, role, dept, phone, ext, location, onboarded, email_notifs, is_head, must_change_password"
 
 
 # ── Token helpers ─────────────────────────────────────────────────────────────
@@ -206,3 +206,32 @@ async def resend_verification(body: ResendVerificationIn, db: AsyncConnection = 
         f"<p style='font-family:sans-serif;color:#888'>Caduca en {VERIFY_EXPIRY_HOURS} hores.</p>",
     )
     return {"status": "sent"}
+
+
+@router.patch("/change-password")
+async def change_password(
+    body: ChangePasswordIn,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncConnection = Depends(get_db),
+):
+    row = (await db.execute(
+        text("SELECT password, must_change_password FROM users WHERE id = :id"),
+        {"id": current_user["id"]},
+    )).mappings().first()
+
+    # If not a forced reset, verify current password
+    if not row["must_change_password"]:
+        if not body.current_password:
+            raise HTTPException(status_code=400, detail="Cal introduir la contrasenya actual")
+        if not verify_password(body.current_password, row["password"]):
+            raise HTTPException(status_code=401, detail="Contrasenya actual incorrecta")
+
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=400, detail="La nova contrasenya ha de tenir mínim 8 caràcters")
+
+    await db.execute(
+        text("UPDATE users SET password = :pwd, must_change_password = 0 WHERE id = :id"),
+        {"pwd": hash_password(body.new_password), "id": current_user["id"]},
+    )
+    await db.commit()
+    return {"status": "ok"}

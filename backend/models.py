@@ -43,6 +43,7 @@ class UserOut(BaseModel):
     onboarded: int = 0
     email_notifs: int = 1
     is_head: int = 0
+    must_change_password: int = 0
 
 
 class TokenOut(BaseModel):
@@ -203,3 +204,34 @@ class UserUpdateExtIn(BaseModel):
 class UserDeptIn(BaseModel):
     dept: str
     is_head: bool = False
+
+
+# ── Admin / Backoffice ────────────────────────────────────────────────────────
+
+class AdminCreateUserIn(BaseModel):
+    name: str
+    email: EmailStr
+    temp_password: str
+    role: str = "Treballador/a"
+    dept: str = "General"
+
+
+class AdminUpdateUserIn(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    role: Optional[str] = None
+    dept: Optional[str] = None
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: Optional[str] = None  # not required for admin-forced reset
+    new_password: str
+
+
+# ── Notices ───────────────────────────────────────────────────────────────────
+
+class NoticeIn(BaseModel):
+    title: str = Field(..., max_length=300)
+    content: str = Field("", max_length=1000)
+    link: str = Field("", max_length=500)
+    active: int = 1

@@ -21,6 +21,7 @@ export interface User {
   onboarded: number;
   email_notifs: number;
   is_head: number;
+  must_change_password: number;
 }
 
 export interface TokenOut {
@@ -620,4 +621,53 @@ export async function apiUpdateVacancaRrhh(id: number, status: 'Aprovada' | 'Den
 
 export async function apiDeleteVacanca(id: number): Promise<void> {
   await apiFetch(`/api/vacances/${id}`, { method: 'DELETE' });
+}
+
+// ── Auth: change password ─────────────────────────────────────────────────────
+
+export async function apiChangePassword(newPassword: string, currentPassword?: string): Promise<void> {
+  await apiFetch('/api/auth/change-password', {
+    method: 'PATCH',
+    body: JSON.stringify({ new_password: newPassword, current_password: currentPassword }),
+  });
+}
+
+// ── Admin: user management ────────────────────────────────────────────────────
+
+export async function apiAdminListUsers(): Promise<User[]> {
+  return apiFetch<User[]>('/api/users');
+}
+
+export async function apiAdminCreateUser(fields: {
+  name: string; email: string; temp_password: string; role: string; dept: string;
+}): Promise<User> {
+  return apiFetch<User>('/api/users', { method: 'POST', body: JSON.stringify(fields) });
+}
+
+export async function apiAdminUpdateUser(id: number, fields: {
+  name?: string; email?: string; role?: string; dept?: string;
+}): Promise<User> {
+  return apiFetch<User>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(fields) });
+}
+
+export async function apiAdminDeleteUser(id: number): Promise<void> {
+  await apiFetch(`/api/users/${id}`, { method: 'DELETE' });
+}
+
+// ── Admin: notices management ─────────────────────────────────────────────────
+
+export async function apiGetAllNotices(): Promise<Notice[]> {
+  return apiFetch<Notice[]>('/api/notices/all');
+}
+
+export async function apiCreateNotice(fields: { title: string; content: string; link: string; active: number }): Promise<Notice> {
+  return apiFetch<Notice>('/api/notices', { method: 'POST', body: JSON.stringify(fields) });
+}
+
+export async function apiUpdateNotice(id: number, fields: { title: string; content: string; link: string; active: number }): Promise<Notice> {
+  return apiFetch<Notice>(`/api/notices/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
+}
+
+export async function apiDeleteNotice(id: number): Promise<void> {
+  await apiFetch(`/api/notices/${id}`, { method: 'DELETE' });
 }
