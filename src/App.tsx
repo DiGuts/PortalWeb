@@ -7036,6 +7036,7 @@ function LoginPage({ onLoginResult, onRegister, isDarkMode, toggleDarkMode }: {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -7046,6 +7047,7 @@ function LoginPage({ onLoginResult, onRegister, isDarkMode, toggleDarkMode }: {
     setLoading(true);
     try {
       const data = await apiLogin(email.trim().toLowerCase(), password);
+      data.remember = remember;
       onLoginResult(data);
     } catch (err: any) {
       setError(err.message ?? 'Correu o contrasenya incorrectes.');
@@ -7144,7 +7146,11 @@ function LoginPage({ onLoginResult, onRegister, isDarkMode, toggleDarkMode }: {
               </button>
             </div>
           </div>
-          <div style={{ textAlign: 'right', marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ accentColor: '#bf211e', width: 15, height: 15 }} />
+              Recorda'm
+            </label>
             <button type="button" style={{
               background: 'none', border: 'none', color: '#bf211e',
               fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'inherit',
@@ -7179,54 +7185,144 @@ function LoginPage({ onLoginResult, onRegister, isDarkMode, toggleDarkMode }: {
     );
   }
 
-  // ── Desktop layout ────────────────────────────────────────────────────────
+  // ── Desktop layout — split panel ─────────────────────────────────────────
+  const deskInputStyle: React.CSSProperties = {
+    width: '100%', height: 46, padding: '0 14px 0 42px',
+    background: 'var(--tavil-card)', color: 'var(--tavil-text)',
+    border: '1px solid var(--tavil-border)',
+    borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box',
+    fontFamily: 'inherit', transition: 'border-color 160ms',
+  };
+  const deskLabelStyle: React.CSSProperties = {
+    fontSize: 12.5, color: 'var(--tavil-muted)', marginBottom: 6, fontWeight: 500, display: 'block',
+  };
   return (
-    <div className={cn("min-h-screen bg-gray-100 dark:bg-zinc-950 flex flex-col transition-colors", isDarkMode && "dark")}>
-      <div className="flex justify-end p-4">
-        <button onClick={toggleDarkMode} className="p-2 hover:bg-gray-200 dark:hover:bg-zinc-800 rounded-lg text-gray-500 dark:text-zinc-400 transition-colors">
-          {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-      </div>
-      <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-10">
-        <TavilLogo />
-        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-8">Portal intern del treballador</p>
-        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-8 shadow-sm anim-scale-in">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-1">Inicia sessió</h1>
-          <p className="text-sm text-red-500 text-center mb-6">Introdueix les teves credencials corporatives</p>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Correu electrònic</label>
-              <div className="relative">
-                <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nom@tavil.net" required
-                  className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg py-3 pl-9 pr-4 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+    <div className={cn("min-h-screen", isDarkMode && "dark")} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.1fr)', background: 'var(--tavil-bg)', color: 'var(--tavil-text)' }}>
+
+      {/* ── Left: form panel ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', padding: '48px 60px', minHeight: '100vh', boxSizing: 'border-box' }}>
+        {/* Logo + dark toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {isDarkMode
+              ? <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoDark.png`} alt="TAVIL" style={{ height: 18 }} />
+              : <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`} alt="TAVIL" style={{ height: 18 }} />
+            }
+          </div>
+          <button onClick={toggleDarkMode} style={{ width: 36, height: 36, borderRadius: 18, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-muted)' }}>
+            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+        </div>
+
+        {/* Center form */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 440 }}>
+          <div style={{ fontSize: 11, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: 14 }}>
+            Portal intern
+          </div>
+          <h1 style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 52, fontWeight: 400, lineHeight: 1, margin: '0 0 14px', letterSpacing: '-0.03em', color: 'var(--tavil-text)' }}>
+            Benvingut a TAVIL
+          </h1>
+          <p style={{ fontSize: 15, color: 'var(--tavil-muted)', margin: '0 0 32px', lineHeight: 1.5 }}>
+            Entra amb el teu compte corporatiu
+          </p>
+
+          <form onSubmit={handleSubmit}>
+            {/* Email */}
+            <div style={{ marginBottom: 16 }}>
+              <span style={deskLabelStyle}>Correu electrònic</span>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <Mail size={15} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+                <input
+                  type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="nom.cognom@tavil.net" required autoComplete="email"
+                  style={deskInputStyle}
+                />
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Contrasenya</label>
-              <div className="relative">
-                <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="········" required
-                  className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg py-3 pl-9 pr-10 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
-                <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+
+            {/* Password */}
+            <div style={{ marginBottom: 16 }}>
+              <span style={deskLabelStyle}>Contrasenya</span>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <Lock size={15} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+                <input
+                  type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••••" required autoComplete="current-password"
+                  style={{ ...deskInputStyle, padding: '0 44px' }}
+                />
+                <button type="button" onClick={() => setShowPass(!showPass)} style={{ position: 'absolute', right: 14, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tavil-faint)', display: 'flex', padding: 0 }}>
                   {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            <button type="submit" disabled={loading}
-              className="press w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-60 mt-2">
-              Accedir
+
+            {/* Remember + forgot */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ accentColor: '#bf211e', width: 15, height: 15 }} />
+                Recorda'm en aquest equip
+              </label>
+              <button type="button" style={{ background: 'none', border: 'none', color: '#bf211e', fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 500 }}>
+                Has oblidat la contrasenya?
+              </button>
+            </div>
+
+            {error && <p style={{ fontSize: 13, color: '#bf211e', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
+
+            <button type="submit" disabled={loading} style={{ width: '100%', height: 48, borderRadius: 10, border: 'none', background: loading ? '#a21b18' : '#bf211e', color: '#fff', fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'all 160ms', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit' }}>
+              {loading ? 'Carregant…' : 'Inicia sessió'}
+              {!loading && <ArrowRight size={16} />}
             </button>
           </form>
-          <div className="flex items-center justify-between mt-4 text-sm">
-            <span className="text-gray-500 dark:text-zinc-400">Has oblidat la contrasenya?</span>
-            <button onClick={onRegister} className="text-red-500 font-medium hover:underline">Crea un compte</button>
+
+          {/* Divider + register */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '28px 0' }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--tavil-border)' }} />
+            <span style={{ fontSize: 11, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.14em' }}>o</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--tavil-border)' }} />
+          </div>
+          <button onClick={onRegister} style={{ width: '100%', height: 46, borderRadius: 10, border: '1px solid var(--tavil-border)', background: 'var(--tavil-card)', color: 'var(--tavil-text)', fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit', transition: 'background 160ms' }}>
+            Crear compte
+          </button>
+
+          <div style={{ marginTop: 36, fontSize: 12.5, color: 'var(--tavil-faint)', textAlign: 'center' }}>
+            © 2026 TAVIL S.A. · Portal intern · v4.2
           </div>
         </div>
       </div>
-      <div className="py-4 text-center text-xs text-gray-400 border-t border-gray-200 dark:border-zinc-800">
-        © 2026 TAVIL · Portal intern
+
+      {/* ── Right: editorial cover ── */}
+      <div style={{ background: '#bf211e', color: '#fff', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '48px 60px', justifyContent: 'space-between', minHeight: '100vh', boxSizing: 'border-box' }}>
+        {/* Texture + circles */}
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.08, background: 'repeating-linear-gradient(45deg, transparent 0 18px, #fff 18px 19px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: '-18%', right: '-14%', width: 480, height: 480, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '-22%', left: '-12%', width: 420, height: 420, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
+
+        <div style={{ position: 'relative', fontSize: 11, fontWeight: 600, letterSpacing: '0.18em', opacity: 0.9, textTransform: 'uppercase' }}>
+          Abril 2026 · Número 142
+        </div>
+
+        <div style={{ position: 'relative' }}>
+          <div style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 88, lineHeight: 0.95, letterSpacing: '-0.04em', marginBottom: 20, fontStyle: 'italic' }}>
+            Som <br />un equip.
+          </div>
+          <div style={{ fontSize: 16, lineHeight: 1.5, opacity: 0.92, maxWidth: 460 }}>
+            El portal intern de TAVIL. Notícies, agenda, formació, sol·licituds i la veu de cadascú — en un sol lloc.
+          </div>
+          <div style={{ display: 'flex', gap: 40, marginTop: 44 }}>
+            {[{ n: '128', l: 'persones' }, { n: '3', l: 'seus' }, { n: '40+', l: 'anys' }].map(s => (
+              <div key={s.l}>
+                <div style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 44, lineHeight: 1, letterSpacing: '-0.025em' }}>{s.n}</div>
+                <div style={{ fontSize: 11, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: 6 }}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ position: 'relative', fontSize: 11, opacity: 0.75, letterSpacing: '0.06em', display: 'flex', justifyContent: 'space-between' }}>
+          <span>Barcelona · Terrassa · Milà · Lió</span>
+          <span>tavil.com</span>
+        </div>
       </div>
     </div>
   );
@@ -7268,6 +7364,16 @@ function RegisterPage({ onBack, onRegisterResult, isDarkMode, toggleDarkMode }: 
       setLoading(false);
     }
   };
+
+  const regStrength = (() => {
+    let s = 0;
+    if (password.length >= 6) s++; if (password.length >= 10) s++;
+    if (/[A-Z]/.test(password)) s++; if (/[0-9]/.test(password)) s++; if (/[^A-Za-z0-9]/.test(password)) s++;
+    return Math.min(s, 4);
+  })();
+  const REG_STRENGTH_COLORS = ['var(--tavil-border)', '#c87158', '#b6833a', '#7a8a6b', '#3f7a52'];
+  const REG_STRENGTH_LABELS = ['—', 'Feble', 'Correcta', 'Bona', 'Forta'];
+  const regValid = !!(name.trim() && EMAIL_RE.test(email.trim()) && password.length >= 6 && password === confirmPassword);
 
   const isMobileReg = typeof window !== 'undefined' && window.innerWidth < 768;
   const [regLang, setRegLang] = useState<'ca'|'es'|'en'>('ca');
@@ -7425,80 +7531,182 @@ function RegisterPage({ onBack, onRegisterResult, isDarkMode, toggleDarkMode }: 
     );
   }
 
-  // ── Desktop layout ───────────────────────────────────────────────────────────
+  // ── Desktop layout — split panel ─────────────────────────────────────────
+  const deskRegInputStyle: React.CSSProperties = {
+    width: '100%', height: 46, padding: '0 14px 0 42px',
+    background: 'var(--tavil-card)', color: 'var(--tavil-text)',
+    border: '1px solid var(--tavil-border)',
+    borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box',
+    fontFamily: 'inherit', transition: 'border-color 160ms',
+  };
+  const deskRegLabelStyle: React.CSSProperties = {
+    fontSize: 12.5, color: 'var(--tavil-muted)', marginBottom: 6, fontWeight: 500, display: 'block',
+  };
   return (
-    <div className={cn("min-h-screen bg-gray-100 dark:bg-zinc-950 flex flex-col transition-colors", isDarkMode && "dark")}>
-      <div className="flex justify-end p-4">
-        <button onClick={toggleDarkMode} className="p-2 hover:bg-gray-200 dark:hover:bg-zinc-800 rounded-lg text-gray-500 dark:text-zinc-400 transition-colors">
-          {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-      </div>
-      <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-10">
-        <TavilLogo />
-        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-8">Portal intern del treballador</p>
-        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-8 shadow-sm anim-scale-in">
-          <button onClick={onBack} className="flex items-center gap-1 text-sm text-red-500 hover:underline mb-4">
-            <ChevronLeft size={15} /> Tornar
-          </button>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Crea un compte</h1>
-          <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">Registra't amb el teu correu corporatiu</p>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Nom complet</label>
-              <div className="relative">
-                <UserCircle size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Marta García" required
-                  className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg py-3 pl-9 pr-4 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+    <div className={cn("min-h-screen", isDarkMode && "dark")} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.1fr)', background: 'var(--tavil-bg)', color: 'var(--tavil-text)' }}>
+
+      {/* ── Left: form panel ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', padding: '48px 60px', minHeight: '100vh', boxSizing: 'border-box', overflowY: 'auto' }}>
+        {/* Logo + dark toggle + back */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            {isDarkMode
+              ? <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoDark.png`} alt="TAVIL" style={{ height: 18 }} />
+              : <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`} alt="TAVIL" style={{ height: 18 }} />
+            }
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--tavil-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
+              <ChevronLeft size={15} /> Tornar al login
+            </button>
+            <button onClick={toggleDarkMode} style={{ width: 36, height: 36, borderRadius: 18, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-muted)' }}>
+              {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+          </div>
+        </div>
+
+        {/* Step progress */}
+        <div style={{ display: 'flex', gap: 6, margin: '36px 0 0', maxWidth: 440 }}>
+          <div style={{ flex: 1, height: 3, borderRadius: 2, background: '#bf211e' }} />
+          <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-border)' }} />
+        </div>
+
+        {/* Center form */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 440 }}>
+          <div style={{ fontSize: 11, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: 14 }}>
+            Pas 1 de 2 · Portal intern
+          </div>
+          <h1 style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 48, fontWeight: 400, lineHeight: 1, margin: '0 0 12px', letterSpacing: '-0.03em', color: 'var(--tavil-text)' }}>
+            Crea el teu compte
+          </h1>
+          <p style={{ fontSize: 15, color: 'var(--tavil-muted)', margin: '0 0 28px', lineHeight: 1.5 }}>
+            Uneix-te al portal intern amb el teu correu corporatiu
+          </p>
+
+          <form onSubmit={handleSubmit}>
+            {/* Name */}
+            <div style={{ marginBottom: 16 }}>
+              <span style={deskRegLabelStyle}>Nom complet</span>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <UserCircle size={15} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+                <input
+                  type="text" value={name} onChange={e => setName(e.target.value)}
+                  placeholder="Nom i cognoms" required autoComplete="name"
+                  style={deskRegInputStyle}
+                />
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Correu electrònic</label>
-              <div className="relative">
-                <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type="text" value={email} onChange={e => setEmail(e.target.value)} placeholder="nom@tavil.net" required
-                  className={cn("w-full border rounded-lg py-3 pl-9 pr-4 text-sm outline-none dark:bg-zinc-800 dark:text-white",
-                    email && !EMAIL_RE.test(email) ? "border-red-400 focus:border-red-500" : "border-gray-200 dark:border-zinc-700 focus:border-red-400")} />
+
+            {/* Email */}
+            <div style={{ marginBottom: 16 }}>
+              <span style={deskRegLabelStyle}>Correu electrònic</span>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <Mail size={15} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+                <input
+                  type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="nom.cognom@tavil.net" required autoComplete="email"
+                  style={{ ...deskRegInputStyle, borderColor: email && !EMAIL_RE.test(email) ? '#bf211e' : 'var(--tavil-border)' }}
+                />
               </div>
               {email && !EMAIL_RE.test(email) && (
-                <p className="text-red-400 text-xs mt-1">Format: nom@tavil.net</p>
+                <p style={{ fontSize: 12, color: '#bf211e', margin: '4px 0 0' }}>Format: nom@tavil.net</p>
               )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Contrasenya</label>
-              <div className="relative">
-                <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínim 6 caràcters" required
-                  className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg py-3 pl-9 pr-10 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
-                <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+
+            {/* Password + strength */}
+            <div style={{ marginBottom: 16 }}>
+              <span style={deskRegLabelStyle}>
+                Contrasenya{password ? ` · ${REG_STRENGTH_LABELS[regStrength]}` : ' · Mínim 6 caràcters'}
+              </span>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <Lock size={15} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+                <input
+                  type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••••" required autoComplete="new-password"
+                  style={{ ...deskRegInputStyle, padding: '0 44px' }}
+                />
+                <button type="button" onClick={() => setShowPass(!showPass)} style={{ position: 'absolute', right: 14, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tavil-faint)', display: 'flex', padding: 0 }}>
                   {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
+              {password && (
+                <div style={{ display: 'flex', gap: 3, marginTop: 6 }}>
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= regStrength ? REG_STRENGTH_COLORS[regStrength] : 'var(--tavil-border)', transition: 'background 200ms' }} />
+                  ))}
+                </div>
+              )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Confirma la contrasenya</label>
-              <div className="relative">
-                <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type={showConfirm ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Repeteix la contrasenya" required
-                  className={cn("w-full border rounded-lg py-3 pl-9 pr-10 text-sm outline-none dark:bg-zinc-800 dark:text-white",
-                    !passwordsMatch ? "border-red-400 focus:border-red-500" : "border-gray-200 dark:border-zinc-700 focus:border-red-400")} />
-                <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+
+            {/* Confirm password */}
+            <div style={{ marginBottom: 24 }}>
+              <span style={deskRegLabelStyle}>Confirma la contrasenya</span>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <Lock size={15} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+                <input
+                  type={showConfirm ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••••" required autoComplete="new-password"
+                  style={{ ...deskRegInputStyle, padding: '0 44px', borderColor: !passwordsMatch ? '#bf211e' : 'var(--tavil-border)' }}
+                />
+                <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={{ position: 'absolute', right: 14, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tavil-faint)', display: 'flex', padding: 0 }}>
                   {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
               {!passwordsMatch && (
-                <p className="text-red-400 text-xs mt-1">Les contrasenyes no coincideixen.</p>
+                <p style={{ fontSize: 12, color: '#bf211e', margin: '4px 0 0' }}>Les contrasenyes no coincideixen</p>
               )}
             </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-            <button type="submit" disabled={loading || !passwordsMatch}
-              className="press w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-60 mt-2">
-              Registrar-se
+
+            {error && <p style={{ fontSize: 13, color: '#bf211e', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
+
+            <button type="submit" disabled={loading || !regValid} style={{ width: '100%', height: 48, borderRadius: 10, border: 'none', background: '#bf211e', color: '#fff', fontSize: 15, fontWeight: 600, cursor: (loading || !regValid) ? 'not-allowed' : 'pointer', opacity: (loading || !regValid) ? 0.6 : 1, transition: 'opacity 160ms', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit' }}>
+              {loading ? 'Carregant…' : <> Continua <ArrowRight size={16} /></>}
             </button>
           </form>
+
+          <div style={{ marginTop: 28, textAlign: 'center', fontSize: 13, color: 'var(--tavil-faint)' }}>
+            Ja tens compte?{' '}
+            <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#bf211e', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+              Inicia sessió
+            </button>
+          </div>
+          <div style={{ marginTop: 24, fontSize: 12.5, color: 'var(--tavil-faint)', textAlign: 'center' }}>
+            © 2026 TAVIL S.A. · Portal intern · v4.2
+          </div>
         </div>
       </div>
-      <div className="py-4 text-center text-xs text-gray-400 border-t border-gray-200 dark:border-zinc-800">
-        © 2026 TAVIL · Portal intern
+
+      {/* ── Right: editorial cover ── */}
+      <div style={{ background: '#bf211e', color: '#fff', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '48px 60px', justifyContent: 'space-between', minHeight: '100vh', boxSizing: 'border-box' }}>
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.08, background: 'repeating-linear-gradient(45deg, transparent 0 18px, #fff 18px 19px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: '-18%', right: '-14%', width: 480, height: 480, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '-22%', left: '-12%', width: 420, height: 420, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
+
+        <div style={{ position: 'relative', fontSize: 11, fontWeight: 600, letterSpacing: '0.18em', opacity: 0.9, textTransform: 'uppercase' }}>
+          Abril 2026 · Número 142
+        </div>
+
+        <div style={{ position: 'relative' }}>
+          <div style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 88, lineHeight: 0.95, letterSpacing: '-0.04em', marginBottom: 20, fontStyle: 'italic' }}>
+            Uneix-te<br />a nosaltres.
+          </div>
+          <div style={{ fontSize: 16, lineHeight: 1.5, opacity: 0.92, maxWidth: 460 }}>
+            Crea el teu compte i accedeix a tot el portal intern de TAVIL — notícies, agenda, formació i la veu de cadascú.
+          </div>
+          <div style={{ display: 'flex', gap: 40, marginTop: 44 }}>
+            {[{ n: '128', l: 'persones' }, { n: '3', l: 'seus' }, { n: '40+', l: 'anys' }].map(s => (
+              <div key={s.l}>
+                <div style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 44, lineHeight: 1, letterSpacing: '-0.025em' }}>{s.n}</div>
+                <div style={{ fontSize: 11, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: 6 }}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ position: 'relative', fontSize: 11, opacity: 0.75, letterSpacing: '0.06em', display: 'flex', justifyContent: 'space-between' }}>
+          <span>Barcelona · Terrassa · Milà · Lió</span>
+          <span>tavil.com</span>
+        </div>
       </div>
     </div>
   );
@@ -7831,7 +8039,7 @@ function App() {
       setPendingEmail(data.email!);
       setAuthView('otp');
     } else {
-      setToken(data.access_token!);
+      setToken(data.access_token!, data.remember ?? true);
       handleLogin(data.user!);
     }
   };

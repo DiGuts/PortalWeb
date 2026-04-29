@@ -35,20 +35,29 @@ export interface AuthOut {
   access_token?: string;
   token_type?: string;
   user?: User;
+  remember?: boolean; // client-side flag: true → localStorage, false → sessionStorage
 }
 
 // ── Token storage ─────────────────────────────────────────────────────────────
 
 export function getToken(): string | null {
-  return localStorage.getItem('tavil_token');
+  return localStorage.getItem('tavil_token') ?? sessionStorage.getItem('tavil_token');
 }
 
-export function setToken(token: string): void {
-  localStorage.setItem('tavil_token', token);
+/** persist=true → localStorage (survives tab close); persist=false → sessionStorage (tab-only) */
+export function setToken(token: string, persist = true): void {
+  if (persist) {
+    localStorage.setItem('tavil_token', token);
+    sessionStorage.removeItem('tavil_token');
+  } else {
+    sessionStorage.setItem('tavil_token', token);
+    localStorage.removeItem('tavil_token');
+  }
 }
 
 export function clearToken(): void {
   localStorage.removeItem('tavil_token');
+  sessionStorage.removeItem('tavil_token');
   localStorage.removeItem('tavil_session');
 }
 

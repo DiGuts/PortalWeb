@@ -38,6 +38,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -47,6 +48,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
     setLoading(true);
     try {
       const data = await apiLogin(email.trim().toLowerCase(), password);
+      data.remember = remember;
       onLoginResult(data);
     } catch (err: any) {
       setError(err.message ?? 'Error d\'autenticació.');
@@ -155,8 +157,17 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
           </div>
         </div>
 
-        {/* Forgot link */}
-        <div style={{ textAlign: 'right', marginBottom: 24 }}>
+        {/* Forgot + remember row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={e => setRemember(e.target.checked)}
+              style={{ accentColor: '#bf211e', width: 15, height: 15 }}
+            />
+            {t('auth.rememberMe')}
+          </label>
           <button
             type="button"
             onClick={onForgot}
