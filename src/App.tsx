@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { LoginScreen } from './components/mobile/auth/LoginScreen';
-import { RegisterScreen } from './components/mobile/auth/RegisterScreen';
 import { VerifyScreen } from './components/mobile/auth/VerifyScreen';
 import { ForgotScreen } from './components/mobile/auth/ForgotScreen';
 import { createPortal } from 'react-dom';
@@ -42,7 +41,7 @@ import {
   Employee, apiGetEmployees,
   Course, apiGetCourses,
   Notification, apiGetNotifications, apiMarkNotifRead, apiMarkAllNotifsRead, apiClearAllNotifications,
-  apiCompleteOnboarding, apiGetDeptHead, apiUpdateDept,
+  apiGetDeptHead, apiUpdateDept,
   Vacanca, apiGetVacances, apiCreateVacanca, apiUpdateVacancaHead, apiUpdateVacancaRrhh, apiDeleteVacanca,
   apiChangePassword,
   apiAdminListUsers, apiAdminCreateUser, apiAdminUpdateUser, apiAdminDeleteUser,
@@ -2198,89 +2197,6 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [selectedNews, setSelectedNews] = useState<NewsArticle | null>(null);
   const [featuredIndex, setFeaturedIndex] = useState(0);
-  const isAdmin = currentUser?.role === 'Administrador/a';
-
-  // Create news form state
-  const [showNewsForm, setShowNewsForm] = useState(false);
-  const [showRichBuilder, setShowRichBuilder] = useState(false);
-  const [nCategory, setNCategory] = useState('Comunicats interns');
-  const [nTitle, setNTitle] = useState('');
-  const [nSummary, setNSummary] = useState('');
-  const [nContent, setNContent] = useState('');
-  const [nAuthor, setNAuthor] = useState('');
-  const [nDate, setNDate] = useState('');
-  const [nImageFile, setNImageFile] = useState<File | null>(null);
-  const [nImage, setNImage] = useState('');
-  const [nFeatured, setNFeatured] = useState(false);
-  const [nSaving, setNSaving] = useState(false);
-  const [showNPicker, setShowNPicker] = useState(false);
-  const [nPoolImages, setNPoolImages] = useState<{ url: string; name: string }[]>([]);
-  const [loadingNPool, setLoadingNPool] = useState(false);
-
-  // Edit news state
-  const [newsEditId, setNewsEditId] = useState<number | null>(null);
-  const [neCategory, setNeCategory] = useState('');
-  const [neTitle, setNeTitle] = useState('');
-  const [neSummary, setNeSummary] = useState('');
-  const [neContent, setNeContent] = useState('');
-  const [neAuthor, setNeAuthor] = useState('');
-  const [neDate, setNeDate] = useState('');
-  const [neImage, setNeImage] = useState('');
-  const [neImageFile, setNeImageFile] = useState<File | null>(null);
-  const [neFeatured, setNeFeatured] = useState(false);
-  const [neSaving, setNeSaving] = useState(false);
-
-  const openNewsEdit = (item: NewsArticle) => {
-    setNewsEditId(item.id);
-    setNeCategory(item.category); setNeTitle(item.title); setNeSummary(item.summary);
-    setNeContent(item.content); setNeAuthor(item.author); setNeDate(item.date);
-    setNeImage(item.image || ''); setNeImageFile(null); setNeFeatured(item.featured === 1);
-  };
-
-  const handleCreateNews = async () => {
-    if (!nTitle.trim()) return;
-    setNSaving(true);
-    try {
-      let imageUrl = nImage;
-      if (nImageFile) imageUrl = await apiUploadImage(nImageFile);
-      await apiCreateNews({ category: nCategory, title: nTitle.trim(), summary: nSummary.trim(),
-        content: nContent.trim(), author: nAuthor.trim(), date: nDate.trim(),
-        image: imageUrl, featured: nFeatured ? 1 : 0 });
-      setNews(await apiGetNews());
-      setShowNewsForm(false);
-      setNTitle(''); setNSummary(''); setNContent(''); setNAuthor(''); setNDate(''); setNImageFile(null); setNImage(''); setNFeatured(false);
-    } catch (e) { console.error(e); }
-    finally { setNSaving(false); }
-  };
-
-  const handleSaveNewsEdit = async () => {
-    if (!newsEditId || !neTitle.trim()) return;
-    setNeSaving(true);
-    try {
-      let imageUrl = neImage;
-      if (neImageFile) imageUrl = await apiUploadImage(neImageFile);
-      await apiUpdateNews(newsEditId, { category: neCategory, title: neTitle.trim(), summary: neSummary.trim(),
-        content: neContent.trim(), author: neAuthor.trim(), date: neDate.trim(),
-        image: imageUrl, featured: neFeatured ? 1 : 0 });
-      setNews(await apiGetNews());
-      setNewsEditId(null); setNeImageFile(null);
-    } catch (e) { console.error(e); }
-    finally { setNeSaving(false); }
-  };
-
-  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
-
-  const handleDeleteNews = (id: number) => {
-    setConfirmModal({
-      message: 'Segur que vols eliminar aquesta notícia? Aquesta acció no es pot desfer.',
-      onConfirm: async () => {
-        setConfirmModal(null);
-        try { await apiDeleteNews(id); setNews(await apiGetNews()); }
-        catch (e) { console.error(e); }
-      },
-    });
-  };
-
   const [newsLoading, setNewsLoading] = useState(() => !tabPrefetch.news);
   useEffect(() => {
     let cancelled = false;
@@ -2488,80 +2404,7 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-gray-500 dark:text-zinc-400 text-sm">{t('news.subtitle')}</p>
-        {isAdmin && (
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShowRichBuilder(true)} className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 text-xs font-semibold px-3 py-2 rounded-lg hover:border-red-400 hover:text-red-600 transition-colors press">
-              <LayoutGrid size={14} /> Article extès
-            </button>
-            <button onClick={() => setShowNewsForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors press">{t('news.newArticle')}</button>
-          </div>
-        )}
       </div>
-      {isAdmin && showNewsForm && (
-        <EditModal title="Nova notícia" onClose={() => setShowNewsForm(false)}>
-          <div className="grid grid-cols-2 gap-3">
-            <select value={nCategory} onChange={e => setNCategory(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white">
-              {['Comunicats interns','Notícies corporatives','Recursos humans','Esdeveniments','Innovació','Seguretat'].map(c => <option key={c}>{c}</option>)}
-            </select>
-            <input type="text" value={nTitle} onChange={e => setNTitle(e.target.value)} placeholder="Títol *" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            <textarea value={nSummary} onChange={e => setNSummary(e.target.value)} placeholder="Resum" rows={2} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white resize-none" />
-            <input type="text" value={nAuthor} onChange={e => setNAuthor(e.target.value)} placeholder="Autor" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            <input type="date" value={nDate} onChange={e => setNDate(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            <div className="col-span-2 space-y-1.5">
-              <label className="text-xs text-gray-500 dark:text-zinc-400 block">Imatge</label>
-              {nImage && <img src={resolveImg(nImage)} alt="" className="h-16 rounded object-cover border border-gray-200 dark:border-zinc-700" />}
-              <div className="flex gap-2 items-center">
-                <input type="file" accept="image/*" onChange={e => { setNImageFile(e.target.files?.[0] ?? null); setNImage(''); }} className="flex-1 text-sm text-gray-600 dark:text-zinc-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100" />
-                <button type="button" onClick={async () => {
-                  setShowNPicker(v => !v);
-                  if (nPoolImages.length === 0) {
-                    setLoadingNPool(true);
-                    try { setNPoolImages(await apiGetImages()); } catch { }
-                    setLoadingNPool(false);
-                  }
-                }} className="text-xs px-2 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 flex items-center gap-1 whitespace-nowrap flex-shrink-0">
-                  📁 Galeria
-                </button>
-              </div>
-              {nImageFile && <p className="text-[10px] text-gray-400">{nImageFile.name}</p>}
-              {showNPicker && (
-                <div className="border border-gray-200 dark:border-zinc-700 rounded-xl p-3 bg-gray-50 dark:bg-zinc-800">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-gray-700 dark:text-zinc-300">Galeria d'imatges</span>
-                    <button onClick={() => setShowNPicker(false)} className="text-gray-400 hover:text-gray-600 text-xs">✕</button>
-                  </div>
-                  {loadingNPool ? (
-                    <p className="text-xs text-gray-400 text-center py-4">Carregant...</p>
-                  ) : nPoolImages.length === 0 ? (
-                    <p className="text-xs text-gray-400 text-center py-4">Cap imatge a la galeria</p>
-                  ) : (
-                    <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
-                      {nPoolImages.map(img => (
-                        <button key={img.name} type="button" onClick={() => { setNImage(img.url); setNImageFile(null); setShowNPicker(false); }}
-                          className={cn("rounded-lg overflow-hidden border-2 transition-colors aspect-square",
-                            nImage === img.url ? "border-red-500" : "border-transparent hover:border-red-300"
-                          )}>
-                          <img src={resolveImg(img.url)} alt={img.name} className="w-full h-full object-cover" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setNFeatured(v => !v)} className={cn("relative inline-flex h-5 w-9 items-center rounded-full transition-colors", nFeatured ? "bg-red-600" : "bg-gray-200 dark:bg-zinc-700")}>
-                <span className="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform" style={{ transform: nFeatured ? 'translateX(18px)' : 'translateX(2px)' }} />
-              </button>
-              <span className="text-xs text-gray-600 dark:text-zinc-400">Destacada</span>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setShowNewsForm(false)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800">Cancel·lar</button>
-              <button onClick={handleCreateNews} disabled={!nTitle.trim() || nSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">{nSaving ? 'Desant...' : 'Crear notícia'}</button>
-            </div>
-          </div>
-        </EditModal>
-      )}
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -2609,19 +2452,13 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
                       <div className="flex items-center gap-1.5"><UserCircle size={14} /><span>{item.author}</span></div>
                       <div className="flex items-center gap-1.5"><Calendar size={14} /><span>{item.date}</span></div>
                     </div>
-                    {isAdmin && (
-                      <div className="flex gap-2">
-                        <button onClick={() => newsEditId === item.id ? setNewsEditId(null) : openNewsEdit(item)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 hover:text-red-600 transition-colors"><Pencil size={14} /></button>
-                        <button onClick={() => handleDeleteNews(item.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-400 hover:text-red-600 transition-colors"><Trash2 size={14} /></button>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
             ))}
           </div>
           {/* Carousel controls — outside slide track, absolute positioned */}
-          {featuredItems.length > 1 && !newsEditId && (
+          {featuredItems.length > 1 && (
             <div className="absolute bottom-6 md:bottom-8 right-6 md:right-8 flex items-center gap-3 z-10">
               <button
                 onClick={() => setFeaturedIndex(i => (i - 1 + featuredItems.length) % featuredItems.length)}
@@ -2675,32 +2512,10 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
                 <div className="flex items-center gap-1"><UserCircle size={12} /><span>{item.author}</span></div>
                 <span>{item.date}</span>
               </div>
-              {isAdmin && (
-                <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-zinc-800">
-                  <button onClick={() => newsEditId === item.id ? setNewsEditId(null) : openNewsEdit(item)} className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-red-600 transition-colors"><Pencil size={12} /> Editar</button>
-                  <button onClick={() => handleDeleteNews(item.id)} className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-red-600 transition-colors"><Trash2 size={12} /> Eliminar</button>
-                </div>
-              )}
             </div>
           </div>
         ))}
       </div>
-      {showRichBuilder && (
-        <RichArticleBuilder
-          onSave={async fields => {
-            await apiCreateNews(fields);
-            setNews(await apiGetNews());
-            setShowRichBuilder(false);
-          }}
-          onCancel={() => setShowRichBuilder(false)}
-        />
-      )}
-      {newsEditId !== null && (
-        <EditModal title="Editar notícia" onClose={() => { setNewsEditId(null); setNeImageFile(null); }}>
-          <NewsEditForm {...{neCategory,setNeCategory,neTitle,setNeTitle,neSummary,setNeSummary,neAuthor,setNeAuthor,neDate,setNeDate,neImage,setNeImage,neImageFile,setNeImageFile,neFeatured,setNeFeatured,neSaving,onSave:handleSaveNewsEdit,onCancel:()=>{setNewsEditId(null);setNeImageFile(null);}}} />
-        </EditModal>
-      )}
-      {confirmModal && <ConfirmModal message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} />}
     </div>
   );
 }
@@ -7030,9 +6845,8 @@ function TavilLogo() {
   );
 }
 
-function LoginPage({ onLoginResult, onRegister, isDarkMode, toggleDarkMode }: {
+function LoginPage({ onLoginResult, isDarkMode, toggleDarkMode }: {
   onLoginResult: (data: AuthOut) => void;
-  onRegister: () => void;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
 }) {
@@ -7174,13 +6988,6 @@ function LoginPage({ onLoginResult, onRegister, isDarkMode, toggleDarkMode }: {
 
         <div style={{ flex: 1 }} />
 
-        <div style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--tavil-muted)', marginBottom: 14 }}>
-          Encara no tens compte?{' '}
-          <button onClick={onRegister} style={{
-            background: 'none', border: 'none', color: '#bf211e',
-            fontSize: 13.5, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit',
-          }}>Crear compte</button>
-        </div>
         <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--tavil-faint)', letterSpacing: '0.02em' }}>
           TAVIL · Portal intern · 2026
         </div>
@@ -7278,15 +7085,6 @@ function LoginPage({ onLoginResult, onRegister, isDarkMode, toggleDarkMode }: {
             </button>
           </form>
 
-          {/* Divider + register */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '28px 0' }}>
-            <div style={{ flex: 1, height: 1, background: 'var(--tavil-border)' }} />
-            <span style={{ fontSize: 11, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.14em' }}>o</span>
-            <div style={{ flex: 1, height: 1, background: 'var(--tavil-border)' }} />
-          </div>
-          <button onClick={onRegister} style={{ width: '100%', height: 46, borderRadius: 10, border: '1px solid var(--tavil-border)', background: 'var(--tavil-card)', color: 'var(--tavil-text)', fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit', transition: 'background 160ms' }}>
-            Crear compte
-          </button>
 
           <div style={{ marginTop: 36, fontSize: 12.5, color: 'var(--tavil-faint)', textAlign: 'center' }}>
             © 2026 TAVIL S.A. · Portal intern · v4.2
@@ -7783,9 +7581,14 @@ function ChangePasswordModal({ onDone, forced = false }: { onDone: () => void; f
 // ── Backoffice Tab ────────────────────────────────────────────────────────────
 
 function BackofficeTab({ currentUser }: { currentUser: import('./api').User | null }) {
-  const [subTab, setSubTab] = useState<'usuaris' | 'avisos'>('usuaris');
+  const role = currentUser?.role ?? '';
+  const isAdmin = role === 'Administrador/a';
+  const canManageNews = isAdmin || role === 'Recursos humans';
+
+  const [subTab, setSubTab] = useState<'usuaris' | 'avisos' | 'notícies'>(() => isAdmin ? 'usuaris' : 'notícies');
   const [users, setUsers] = useState<import('./api').User[]>([]);
   const [notices, setNotices] = useState<import('./api').Notice[]>([]);
+  const [newsItems, setNewsItems] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -7808,6 +7611,19 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
   const [nActive, setNActive] = useState(1);
   const [nSaving, setNSaving] = useState(false);
 
+  // News form
+  const [showNewsForm, setShowNewsForm] = useState(false);
+  const [editNewsItem, setEditNewsItem] = useState<NewsArticle | null>(null);
+  const [nnTitle, setNnTitle] = useState('');
+  const [nnCategory, setNnCategory] = useState('Comunicats interns');
+  const [nnSummary, setNnSummary] = useState('');
+  const [nnAuthor, setNnAuthor] = useState('');
+  const [nnDate, setNnDate] = useState('');
+  const [nnImage, setNnImage] = useState('');
+  const [nnImageFile, setNnImageFile] = useState<File | null>(null);
+  const [nnFeatured, setNnFeatured] = useState(false);
+  const [nnSaving, setNnSaving] = useState(false);
+
   const loadUsers = () => {
     setLoading(true);
     apiAdminListUsers().then(setUsers).catch((e: any) => setError(e.message)).finally(() => setLoading(false));
@@ -7816,8 +7632,16 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
     setLoading(true);
     apiGetAllNotices().then(setNotices).catch((e: any) => setError(e.message)).finally(() => setLoading(false));
   };
+  const loadNews = () => {
+    setLoading(true);
+    apiGetNews().then(setNewsItems).catch((e: any) => setError(e.message)).finally(() => setLoading(false));
+  };
 
-  useEffect(() => { if (subTab === 'usuaris') loadUsers(); else loadNotices(); }, [subTab]);
+  useEffect(() => {
+    if (subTab === 'usuaris') loadUsers();
+    else if (subTab === 'avisos') loadNotices();
+    else loadNews();
+  }, [subTab]);
 
   const openCreateUser = () => { setEditUser(null); setUName(''); setUEmail(''); setUPass(''); setURole('Treballador/a'); setUDept('General'); setShowUserForm(true); };
   const openEditUser = (u: import('./api').User) => { setEditUser(u); setUName(u.name); setUEmail(u.email); setUPass(''); setURole(u.role); setUDept(u.dept); setShowUserForm(true); };
@@ -7859,6 +7683,26 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
     try { await apiDeleteNotice(id); loadNotices(); } catch (e: any) { setError(e.message); }
   };
 
+  const openCreateNews = () => { setEditNewsItem(null); setNnTitle(''); setNnCategory('Comunicats interns'); setNnSummary(''); setNnAuthor(''); setNnDate(''); setNnImage(''); setNnImageFile(null); setNnFeatured(false); setShowNewsForm(true); };
+  const openEditNews = (n: NewsArticle) => { setEditNewsItem(n); setNnTitle(n.title); setNnCategory(n.category); setNnSummary(n.summary); setNnAuthor(n.author); setNnDate(n.date); setNnImage(n.image || ''); setNnImageFile(null); setNnFeatured(n.featured === 1); setShowNewsForm(true); };
+  const saveNews = async () => {
+    setNnSaving(true); setError('');
+    try {
+      let imageUrl = nnImage;
+      if (nnImageFile) imageUrl = await apiUploadImage(nnImageFile);
+      const fields = { category: nnCategory, title: nnTitle.trim(), summary: nnSummary.trim(), content: '', author: nnAuthor.trim(), date: nnDate.trim(), image: imageUrl, featured: nnFeatured ? 1 : 0 };
+      if (editNewsItem) await apiUpdateNews(editNewsItem.id, fields);
+      else await apiCreateNews(fields);
+      setShowNewsForm(false); loadNews();
+    } catch (e: any) { setError(e.message); }
+    finally { setNnSaving(false); }
+  };
+  const deleteNewsItem = async (id: number) => {
+    if (!window.confirm('Eliminar aquesta notícia?')) return;
+    try { await apiDeleteNews(id); loadNews(); } catch (e: any) { setError(e.message); }
+  };
+
+  const NEWS_CATS = ['Comunicats interns','Notícies corporatives','Recursos humans','Esdeveniments','Innovació','Seguretat'];
   const ROLES = ['Treballador/a', 'Responsable de departament', 'Recursos humans', 'Administrador/a', 'Manteniment'];
   const DEPTS = ['General', 'Producció', 'Logística', 'Administració', 'Comercial', 'RRHH', 'IT', 'Qualitat', 'Manteniment'];
 
@@ -7872,13 +7716,22 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
       {error && <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl p-3 text-sm text-red-700 dark:text-red-400">{error}</div>}
 
       {/* Sub-tabs */}
-      <div className="flex gap-2">
-        <button onClick={() => setSubTab('usuaris')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subTab === 'usuaris' ? 'bg-red-600 text-white' : 'bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700'}`}>
-          <Users size={15} /> Usuaris
-        </button>
-        <button onClick={() => setSubTab('avisos')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subTab === 'avisos' ? 'bg-red-600 text-white' : 'bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700'}`}>
-          <Bell size={15} /> Avisos
-        </button>
+      <div className="flex gap-2 flex-wrap">
+        {isAdmin && (
+          <button onClick={() => setSubTab('usuaris')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subTab === 'usuaris' ? 'bg-red-600 text-white' : 'bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700'}`}>
+            <Users size={15} /> Usuaris
+          </button>
+        )}
+        {isAdmin && (
+          <button onClick={() => setSubTab('avisos')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subTab === 'avisos' ? 'bg-red-600 text-white' : 'bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700'}`}>
+            <Bell size={15} /> Avisos
+          </button>
+        )}
+        {canManageNews && (
+          <button onClick={() => setSubTab('notícies')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subTab === 'notícies' ? 'bg-red-600 text-white' : 'bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700'}`}>
+            <Newspaper size={15} /> Notícies
+          </button>
+        )}
       </div>
 
       {/* ── Usuaris ── */}
@@ -7995,6 +7848,73 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
           )}
         </div>
       )}
+
+      {/* ── Notícies ── */}
+      {subTab === 'notícies' && (
+        <div className="space-y-3">
+          {showNewsForm && (
+            <div className={`${cardCls} border-red-200 dark:border-red-800 space-y-3`}>
+              <div className="flex justify-between items-center">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{editNewsItem ? 'Editar notícia' : 'Nova notícia'}</p>
+                <button onClick={() => setShowNewsForm(false)} className={btnGhost}><X size={16} /></button>
+              </div>
+              {error && <p className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2">{error}</p>}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Categoria</label>
+                  <select value={nnCategory} onChange={e => setNnCategory(e.target.value)} className={inputCls}>
+                    {NEWS_CATS.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Títol *</label><input value={nnTitle} onChange={e => setNnTitle(e.target.value)} className={inputCls} placeholder="Títol de la notícia" /></div>
+                <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Resum</label><textarea value={nnSummary} onChange={e => setNnSummary(e.target.value)} className={inputCls} rows={2} placeholder="Resum breu" /></div>
+                <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Autor</label><input value={nnAuthor} onChange={e => setNnAuthor(e.target.value)} className={inputCls} placeholder="Nom de l'autor" /></div>
+                <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Data</label><input type="date" value={nnDate} onChange={e => setNnDate(e.target.value)} className={inputCls} /></div>
+                <div className="md:col-span-2">
+                  <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Imatge</label>
+                  {nnImage && <img src={resolveImg(nnImage)} alt="" className="h-16 rounded object-cover border border-gray-200 dark:border-zinc-700 mb-1" />}
+                  <input type="file" accept="image/*" onChange={e => { setNnImageFile(e.target.files?.[0] ?? null); setNnImage(''); }} className="text-xs text-gray-600 dark:text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-red-50 file:text-red-700" />
+                  {nnImageFile && <p className="text-[10px] text-gray-400 mt-1">{nnImageFile.name}</p>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setNnFeatured(v => !v)} className={`w-10 h-6 rounded-full transition-colors relative ${nnFeatured ? 'bg-red-600' : 'bg-gray-300 dark:bg-zinc-700'}`}>
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${nnFeatured ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  </button>
+                  <span className="text-xs text-gray-600 dark:text-zinc-400">Destacada</span>
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end pt-1">
+                <button onClick={() => setShowNewsForm(false)} className={btnGhost}>Cancel·lar</button>
+                <button onClick={saveNews} disabled={nnSaving || !nnTitle.trim()} className={btnPrimary}>{nnSaving ? 'Guardant...' : 'Guardar'}</button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-500 dark:text-zinc-400">{newsItems.length} notícia{newsItems.length !== 1 ? 'es' : ''}</p>
+            {!showNewsForm && <button onClick={openCreateNews} className={btnPrimary}><Plus size={14} className="inline mr-1" />Nova notícia</button>}
+          </div>
+          {loading ? <div className="text-center py-8 text-gray-400 text-sm">Carregant...</div> : (
+            <div className="space-y-2">
+              {newsItems.map(n => (
+                <div key={n.id} className={`${cardCls} flex items-center gap-3 ${editNewsItem?.id === n.id ? 'border-red-300 dark:border-red-700' : ''}`}>
+                  {n.image && <img src={resolveImg(n.image)} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{n.title}</p>
+                      {n.featured === 1 && <span className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">Destacada</span>}
+                    </div>
+                    <p className="text-xs text-gray-400 truncate">{n.category} · {n.date} · {n.author}</p>
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button onClick={() => openEditNews(n)} className={btnGhost}><Pencil size={14} /></button>
+                    <button onClick={() => deleteNewsItem(n.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-sm px-2 py-2 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -8029,7 +7949,7 @@ function useSidebarSections(role?: string) {
         { id: 'Perfil', label: t('nav.perfil'), icon: UserCircle },
       ]
     },
-    ...(role === 'Administrador/a' ? [{
+    ...(['Administrador/a', 'Recursos humans'].includes(role ?? '') ? [{
       title: 'Admin',
       items: [{ id: 'Backoffice', label: 'Backoffice', icon: Shield }]
     }] : [])
@@ -8297,7 +8217,6 @@ function App() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [demoRole, setDemoRole] = useState('Treballador/a');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [mobileNotifsOpen, setMobileNotifsOpen] = useState(false);
@@ -8320,7 +8239,6 @@ function App() {
     setIsLoggedIn(true);
     apiGetNotifications().then(setNotifications).catch(() => {});
     prefetchTabData(true);
-    if (!user.onboarded) setShowOnboarding(true);
     if (user.must_change_password) setShowChangePassword(true);
   };
 
@@ -8363,7 +8281,7 @@ function App() {
           setIsLoggedIn(true);
           apiGetNotifications().then(setNotifications).catch(() => {});
           prefetchTabData(true);
-          if (!user.onboarded) setShowOnboarding(true);
+          if (user.must_change_password) setShowChangePassword(true);
         })
         .catch(() => clearToken());
     }
@@ -8537,13 +8455,11 @@ function App() {
 
   if (!isLoggedIn) {
     if (isMobilePage) {
-      if (authView === 'login') return <LoginScreen onLoginResult={handleAuthResult} onRegister={() => setAuthView('register')} onForgot={() => setAuthView('forgot')} isDarkMode={isDarkMode} />;
-      if (authView === 'register') return <RegisterScreen onBack={() => setAuthView('login')} onRegisterResult={handleAuthResult} isDarkMode={isDarkMode} />;
+      if (authView === 'login') return <LoginScreen onLoginResult={handleAuthResult} onForgot={() => setAuthView('forgot')} isDarkMode={isDarkMode} />;
       if (authView === 'verify-email') return <VerifyScreen email={pendingEmail} onBack={() => setAuthView('login')} onVerified={handleAuthResult} isDarkMode={isDarkMode} />;
       if (authView === 'forgot') return <ForgotScreen onBack={() => setAuthView('login')} isDarkMode={isDarkMode} />;
     }
-    if (authView === 'login') return <LoginPage onLoginResult={handleAuthResult} onRegister={() => setAuthView('register')} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} />;
-    if (authView === 'register') return <RegisterPage onBack={() => setAuthView('login')} onRegisterResult={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} />;
+    if (authView === 'login') return <LoginPage onLoginResult={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} />;
     if (authView === 'verify-email') return <VerifyEmailPage email={pendingEmail} onBack={() => setAuthView('login')} onVerified={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} />;
     return <OTPPage email={pendingEmail} onBack={() => setAuthView('login')} onVerified={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} />;
   }
@@ -8823,18 +8739,6 @@ function App() {
 
       {showChangePassword && (
         <ChangePasswordModal onDone={() => setShowChangePassword(false)} forced />
-      )}
-      {showOnboarding && currentUser && (
-        <OnboardingModal
-          onComplete={async (dept, isHead) => {
-            try {
-              const u = await apiCompleteOnboarding(dept, isHead);
-              setCurrentUser(u);
-              setDemoRole(u.role);
-              setShowOnboarding(false);
-            } catch {}
-          }}
-        />
       )}
       <MobileDrawer
         open={isDrawerOpen}

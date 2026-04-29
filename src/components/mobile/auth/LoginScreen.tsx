@@ -28,7 +28,7 @@ const labelStyle: React.CSSProperties = {
 
 interface Props {
   onLoginResult: (data: AuthOut) => void;
-  onRegister: () => void;
+  onRegister?: () => void;
   onForgot: () => void;
   isDarkMode: boolean;
 }
@@ -208,20 +208,22 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
-      {/* Register prompt */}
-      <div style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--tavil-muted)', marginBottom: 12 }}>
-        {t('auth.noAccount')}{' '}
-        <button
-          onClick={onRegister}
-          style={{
-            background: 'none', border: 'none', color: '#bf211e',
-            fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
-            padding: 0, fontFamily: 'inherit',
-          }}
-        >
-          {t('auth.createAccount')}
-        </button>
-      </div>
+      {/* Register prompt — only if self-registration enabled */}
+      {onRegister && (
+        <div style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--tavil-muted)', marginBottom: 12 }}>
+          {t('auth.noAccount')}{' '}
+          <button
+            onClick={onRegister}
+            style={{
+              background: 'none', border: 'none', color: '#bf211e',
+              fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+              padding: 0, fontFamily: 'inherit',
+            }}
+          >
+            {t('auth.createAccount')}
+          </button>
+        </div>
+      )}
 
       {/* Footer */}
       <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--tavil-faint)', letterSpacing: '0.02em' }}>

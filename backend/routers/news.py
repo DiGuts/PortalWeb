@@ -4,7 +4,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from database import get_db
-from auth import get_current_user, require_admin
+from auth import get_current_user, require_admin, require_rrhh_or_admin
 from models import NewsIn
 
 router = APIRouter(prefix="/api/news", tags=["news"])
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/news", tags=["news"])
 @router.post("", status_code=201)
 async def create_news(
     body: NewsIn,
-    _admin: dict = Depends(require_admin),
+    _admin: dict = Depends(require_rrhh_or_admin),
     db: AsyncConnection = Depends(get_db),
 ):
     result = await db.execute(
@@ -68,7 +68,7 @@ async def get_news(
 async def update_news(
     news_id: int,
     body: NewsIn,
-    _admin: dict = Depends(require_admin),
+    _admin: dict = Depends(require_rrhh_or_admin),
     db: AsyncConnection = Depends(get_db),
 ):
     await db.execute(
@@ -88,7 +88,7 @@ async def update_news(
 @router.delete("/{news_id}", status_code=204)
 async def delete_news(
     news_id: int,
-    _admin: dict = Depends(require_admin),
+    _admin: dict = Depends(require_rrhh_or_admin),
     db: AsyncConnection = Depends(get_db),
 ):
     await db.execute(text("DELETE FROM news WHERE id=:id"), {"id": news_id})
