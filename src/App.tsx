@@ -7884,21 +7884,51 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
       {/* ── Usuaris ── */}
       {subTab === 'usuaris' && (
         <div className="space-y-3">
+          {/* Inline form — create or edit */}
+          {showUserForm && (
+            <div className={`${cardCls} border-red-200 dark:border-red-800 space-y-3`}>
+              <div className="flex justify-between items-center">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{editUser ? 'Editar usuari' : 'Nou usuari'}</p>
+                <button onClick={() => setShowUserForm(false)} className={btnGhost}><X size={16} /></button>
+              </div>
+              {error && <p className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2">{error}</p>}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Nom</label><input value={uName} onChange={e => setUName(e.target.value)} className={inputCls} placeholder="Nom complet" /></div>
+                <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Correu</label><input value={uEmail} onChange={e => setUEmail(e.target.value)} className={inputCls} type="email" placeholder="nom@tavil.net" /></div>
+                {!editUser && <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Contrasenya temporal</label><input value={uPass} onChange={e => setUPass(e.target.value)} className={inputCls} type="text" placeholder="L'usuari la canviarà al primer accés" /></div>}
+                <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Rol</label>
+                  <select value={uRole} onChange={e => setURole(e.target.value)} className={inputCls}>
+                    {ROLES.map(r => <option key={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Departament</label>
+                  <select value={uDept} onChange={e => setUDept(e.target.value)} className={inputCls}>
+                    {DEPTS.map(d => <option key={d}>{d}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end pt-1">
+                <button onClick={() => setShowUserForm(false)} className={btnGhost}>Cancel·lar</button>
+                <button onClick={saveUser} disabled={uSaving || !uName || !uEmail || (!editUser && !uPass)} className={btnPrimary}>{uSaving ? 'Guardant...' : 'Guardar'}</button>
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-500 dark:text-zinc-400">{users.length} usuari{users.length !== 1 ? 's' : ''}</p>
-            <button onClick={openCreateUser} className={btnPrimary}><Plus size={14} className="inline mr-1" />Nou usuari</button>
+            {!showUserForm && <button onClick={openCreateUser} className={btnPrimary}><Plus size={14} className="inline mr-1" />Nou usuari</button>}
           </div>
           {loading ? <div className="text-center py-8 text-gray-400 text-sm">Carregant...</div> : (
             <div className="space-y-2">
               {users.map(u => (
-                <div key={u.id} className={`${cardCls} flex items-center gap-3`}>
+                <div key={u.id} className={`${cardCls} flex items-center gap-3 ${editUser?.id === u.id ? 'border-red-300 dark:border-red-700' : ''}`}>
                   <div className="w-9 h-9 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                     {u.name.split(' ').slice(0,2).map((n:string) => n[0]).join('').toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{u.name}</p>
                     <p className="text-xs text-gray-400 truncate">{u.email} · {u.role} · {u.dept}</p>
-                    {u.must_change_password ? <span className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">Canvi de contrasenya pendient</span> : null}
+                    {u.must_change_password ? <span className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">Canvi de contrasenya pendent</span> : null}
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
                     <button onClick={() => openEditUser(u)} className={btnGhost}><Pencil size={14} /></button>
@@ -7914,73 +7944,14 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
       {/* ── Avisos ── */}
       {subTab === 'avisos' && (
         <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-500 dark:text-zinc-400">{notices.length} avís/avisos</p>
-            <button onClick={openCreateNotice} className={btnPrimary}><Plus size={14} className="inline mr-1" />Nou avís</button>
-          </div>
-          {loading ? <div className="text-center py-8 text-gray-400 text-sm">Carregant...</div> : (
-            <div className="space-y-2">
-              {notices.map(n => (
-                <div key={n.id} className={`${cardCls} flex items-center gap-3`}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{n.title}</p>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${n.active ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500'}`}>{n.active ? 'Actiu' : 'Inactiu'}</span>
-                    </div>
-                    {n.content && <p className="text-xs text-gray-400 truncate">{n.content}</p>}
-                  </div>
-                  <div className="flex gap-1 flex-shrink-0">
-                    <button onClick={() => openEditNotice(n)} className={btnGhost}><Pencil size={14} /></button>
-                    <button onClick={() => deleteNotice(n.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-sm px-2 py-2 rounded-lg transition-colors"><Trash2 size={14} /></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── User form modal ── */}
-      {showUserForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-t-2xl md:rounded-2xl w-full md:max-w-md p-6 space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{editUser ? 'Editar usuari' : 'Nou usuari'}</h2>
-              <button onClick={() => setShowUserForm(false)} className={btnGhost}><X size={18} /></button>
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="space-y-3">
-              <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Nom</label><input value={uName} onChange={e => setUName(e.target.value)} className={inputCls} placeholder="Nom complet" /></div>
-              <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Correu</label><input value={uEmail} onChange={e => setUEmail(e.target.value)} className={inputCls} type="email" placeholder="nom@tavil.net" /></div>
-              {!editUser && <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Contrasenya temporal</label><input value={uPass} onChange={e => setUPass(e.target.value)} className={inputCls} type="text" placeholder="L'usuari la canviarà al primer accés" /></div>}
-              <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Rol</label>
-                <select value={uRole} onChange={e => setURole(e.target.value)} className={inputCls}>
-                  {ROLES.map(r => <option key={r}>{r}</option>)}
-                </select>
+          {/* Inline form */}
+          {showNoticeForm && (
+            <div className={`${cardCls} border-red-200 dark:border-red-800 space-y-3`}>
+              <div className="flex justify-between items-center">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">{editNotice ? 'Editar avís' : 'Nou avís'}</p>
+                <button onClick={() => setShowNoticeForm(false)} className={btnGhost}><X size={16} /></button>
               </div>
-              <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Departament</label>
-                <select value={uDept} onChange={e => setUDept(e.target.value)} className={inputCls}>
-                  {DEPTS.map(d => <option key={d}>{d}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end pt-2">
-              <button onClick={() => setShowUserForm(false)} className={btnGhost}>Cancel·lar</button>
-              <button onClick={saveUser} disabled={uSaving || !uName || !uEmail || (!editUser && !uPass)} className={btnPrimary}>{uSaving ? 'Guardant...' : 'Guardar'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Notice form modal ── */}
-      {showNoticeForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-t-2xl md:rounded-2xl w-full md:max-w-md p-6 space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{editNotice ? 'Editar avís' : 'Nou avís'}</h2>
-              <button onClick={() => setShowNoticeForm(false)} className={btnGhost}><X size={18} /></button>
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+              {error && <p className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2">{error}</p>}
             <div className="space-y-3">
               <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Títol</label><input value={nTitle} onChange={e => setNTitle(e.target.value)} className={inputCls} placeholder="Títol de l'avís" /></div>
               <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Contingut</label><textarea value={nContent} onChange={e => setNContent(e.target.value)} className={inputCls} rows={3} placeholder="Text de l'avís (opcional)" /></div>
@@ -7997,6 +7968,31 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
               <button onClick={saveNotice} disabled={nSaving || !nTitle} className={btnPrimary}>{nSaving ? 'Guardant...' : 'Guardar'}</button>
             </div>
           </div>
+          )}
+
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-500 dark:text-zinc-400">{notices.length} avís/avisos</p>
+            {!showNoticeForm && <button onClick={openCreateNotice} className={btnPrimary}><Plus size={14} className="inline mr-1" />Nou avís</button>}
+          </div>
+          {loading ? <div className="text-center py-8 text-gray-400 text-sm">Carregant...</div> : (
+            <div className="space-y-2">
+              {notices.map(n => (
+                <div key={n.id} className={`${cardCls} flex items-center gap-3 ${editNotice?.id === n.id ? 'border-red-300 dark:border-red-700' : ''}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{n.title}</p>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${n.active ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500'}`}>{n.active ? 'Actiu' : 'Inactiu'}</span>
+                    </div>
+                    {n.content && <p className="text-xs text-gray-400 truncate">{n.content}</p>}
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button onClick={() => openEditNotice(n)} className={btnGhost}><Pencil size={14} /></button>
+                    <button onClick={() => deleteNotice(n.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-sm px-2 py-2 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
