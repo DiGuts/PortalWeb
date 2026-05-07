@@ -65,6 +65,17 @@
 .anim-sheet-exit  { animation: tavil-sheet-exit  260ms var(--ease-in-out-cubic) both; }
 .anim-pulse-soft { animation: tavil-pulse-soft 2.2s  var(--ease-in-out-cubic) infinite; }
 
+/* Drawer expand — height grows from 0 below host card. Reliable max-height
+   animation, works in all browsers. Set --drawer-max if 1200px not enough. */
+@keyframes tavil-drawer-down {
+  from { max-height: 0;      opacity: 0; transform: translateY(-4px); }
+  to   { max-height: var(--drawer-max, 1200px); opacity: 1; transform: translateY(0); }
+}
+.anim-drawer-down {
+  overflow: hidden;
+  animation: tavil-drawer-down 360ms var(--ease-out-quint) both;
+}
+
 /* Smooth tab/view transition — used when switching tabs, views, sub-tabs,
    carousel slides. Longer fade + soft upward glide so swaps don't feel abrupt. */
 @keyframes tavil-tab-in {

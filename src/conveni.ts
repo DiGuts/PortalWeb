@@ -119,7 +119,12 @@ const toDate = (iso: IsoDate): Date => {
 
 const toIso = (d: Date): IsoDate => {
   if (isNaN(d.getTime())) return 'invalid-date';
-  return d.toISOString().slice(0, 10);
+  // Use local components — toISOString() is UTC and rotates back a day in TZs east of UTC,
+  // which made addDays return the same date and broke laboralDaysBetween (capped by safety=1000).
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 };
 const addDays = (iso: IsoDate, n: number): IsoDate => {
   const d = toDate(iso); d.setDate(d.getDate() + n); return toIso(d);

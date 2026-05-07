@@ -190,10 +190,10 @@ async def admin_create_user(
 
     hashed = hash_password(body.temp_password)
     await db.execute(
-        text("""INSERT INTO users (name, email, password, role, dept, must_change_password, onboarded, email_verified)
-                VALUES (:name, :email, :password, :role, :dept, 1, 1, 1)"""),
+        text("""INSERT INTO users (name, email, password, role, dept, is_head, must_change_password, onboarded, email_verified)
+                VALUES (:name, :email, :password, :role, :dept, :is_head, 1, 1, 1)"""),
         {"name": body.name, "email": body.email, "password": hashed,
-         "role": body.role, "dept": body.dept},
+         "role": body.role, "dept": body.dept, "is_head": body.is_head},
     )
     await db.commit()
 

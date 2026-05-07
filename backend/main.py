@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from database import init_db
 from routers import auth, users, suggestions, incidencies, enquestes
-from routers import employees, activities, agenda, notices, news, courses, solicituds, notifications, upload, vacances
+from routers import employees, activities, agenda, notices, news, courses, solicituds, notifications, upload, vacances, quizzes
 
 
 @asynccontextmanager
@@ -44,6 +44,7 @@ app.include_router(solicituds.router)
 app.include_router(notifications.router)
 app.include_router(vacances.router)
 app.include_router(upload.router)
+app.include_router(quizzes.router)
 
 UPLOADS_DIR = Path(__file__).parent / "uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)

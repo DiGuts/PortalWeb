@@ -57,6 +57,45 @@ MIGRATIONS = [
     "CREATE INDEX IF NOT EXISTS idx_vacances_user ON vacances(user_id)",
     "CREATE INDEX IF NOT EXISTS idx_enquesta_responses_email ON enquesta_responses(user_email)",
     "ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0",
+    # Quiz tables (added 2026-04-29) — CREATE IF NOT EXISTS so safe to re-run
+    """CREATE TABLE IF NOT EXISTS quizzes (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      title         TEXT    NOT NULL,
+      description   TEXT    NOT NULL DEFAULT '',
+      category      TEXT    NOT NULL DEFAULT '',
+      time_limit    INTEGER NOT NULL DEFAULT 0,
+      passing_score INTEGER NOT NULL DEFAULT 70,
+      active        INTEGER NOT NULL DEFAULT 1,
+      created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+    )""",
+    """CREATE TABLE IF NOT EXISTS quiz_questions (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      quiz_id     INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+      type        TEXT    NOT NULL DEFAULT 'multiple_choice',
+      question    TEXT    NOT NULL DEFAULT '',
+      explanation TEXT    NOT NULL DEFAULT '',
+      points      INTEGER NOT NULL DEFAULT 1,
+      position    INTEGER NOT NULL DEFAULT 0
+    )""",
+    """CREATE TABLE IF NOT EXISTS quiz_options (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      question_id INTEGER NOT NULL REFERENCES quiz_questions(id) ON DELETE CASCADE,
+      text        TEXT    NOT NULL DEFAULT '',
+      is_correct  INTEGER NOT NULL DEFAULT 0,
+      match_pair  TEXT    NOT NULL DEFAULT '',
+      position    INTEGER NOT NULL DEFAULT 0
+    )""",
+    """CREATE TABLE IF NOT EXISTS quiz_attempts (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      quiz_id      INTEGER NOT NULL REFERENCES quizzes(id),
+      user_id      INTEGER NOT NULL REFERENCES users(id),
+      score        INTEGER NOT NULL DEFAULT 0,
+      max_score    INTEGER NOT NULL DEFAULT 0,
+      passed       INTEGER NOT NULL DEFAULT 0,
+      answers_json TEXT    NOT NULL DEFAULT '{}',
+      completed_at TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(quiz_id, user_id)
+    )""",
 ]
 
 

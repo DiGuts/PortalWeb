@@ -28,3 +28,17 @@ backend/tavil_portal.db
 backend/__pycache__/
 backend/routers/__pycache__/
 backend/venv/
+backend/$null
+
+# php backend
+api/.env
+api/test.php
+api/uploads/*
+!api/uploads/.gitkeep
+
+# local
+/tavil_portal.db
+/test.php
+.claude/settings.local.json
+.claude/img*.png
+.htaccess.local

@@ -211,3 +211,50 @@ CREATE TABLE IF NOT EXISTS notifications (
   `read`     INTEGER NOT NULL DEFAULT 0,
   created_at TEXT    DEFAULT (datetime('now'))
 );
+
+-- ─── Quizzes / Formacions ─────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS quizzes (
+  id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+  title              TEXT    NOT NULL,
+  description        TEXT    NOT NULL DEFAULT '',
+  category           TEXT    NOT NULL DEFAULT '',
+  time_limit         INTEGER NOT NULL DEFAULT 0,
+  passing_score      INTEGER NOT NULL DEFAULT 70,
+  active             INTEGER NOT NULL DEFAULT 1,
+  -- JSON array of department names. NULL/empty = visible to everyone.
+  target_departments TEXT    NULL,
+  created_at         TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS quiz_questions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  quiz_id     INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+  type        TEXT    NOT NULL DEFAULT 'multiple_choice',
+  question    TEXT    NOT NULL DEFAULT '',
+  explanation TEXT    NOT NULL DEFAULT '',
+  points      INTEGER NOT NULL DEFAULT 1,
+  position    INTEGER NOT NULL DEFAULT 0,
+  media_url   TEXT    NULL
+);
+
+CREATE TABLE IF NOT EXISTS quiz_options (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  question_id INTEGER NOT NULL REFERENCES quiz_questions(id) ON DELETE CASCADE,
+  text        TEXT    NOT NULL DEFAULT '',
+  is_correct  INTEGER NOT NULL DEFAULT 0,
+  match_pair  TEXT    NOT NULL DEFAULT '',
+  position    INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS quiz_attempts (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  quiz_id      INTEGER NOT NULL REFERENCES quizzes(id),
+  user_id      INTEGER NOT NULL REFERENCES users(id),
+  score        INTEGER NOT NULL DEFAULT 0,
+  max_score    INTEGER NOT NULL DEFAULT 0,
+  passed       INTEGER NOT NULL DEFAULT 0,
+  answers_json TEXT    NOT NULL DEFAULT '{}',
+  completed_at TEXT    NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(quiz_id, user_id)
+);

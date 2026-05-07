@@ -1,0 +1,3957 @@
+[
+  {
+    "name": "Alfonso Aguilera Serrano",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "AA",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Miquel Agusti Grabulosa",
+    "role": "Projectes",
+    "dept": "Projectes",
+    "initials": "MA",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Jordi Aiguaviva Serra",
+    "role": "Premuntatges mecànics",
+    "dept": "Posta en Marxa",
+    "initials": "JA",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Karim Ajaha Dahan",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "KA",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Joan Alamo Pages",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "JA",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Ruben Almansa Pastor",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "RA",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Noemi Alvarez Gomez",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "NA",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Juan Joaquin Amador Muñoz",
+    "role": "Mecànic - Soldador",
+    "dept": "Posta en Marxa",
+    "initials": "JA",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Albert Amador Valiente",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "AA",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Ibrahim Amar Touhami El Hasnaoui",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "IA",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Pablo Andres Perez",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "PA",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Queralt Andreu Rabaña",
+    "role": "Posta en marxa - DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "QA",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Igor Andriyiv",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "IA",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Albert Anfruns Cros",
+    "role": "Projectes",
+    "dept": "Projectes",
+    "initials": "AA",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Eliat Ioan Antonie Dejescu",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "EA",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Anna Aradas Xargay",
+    "role": "Administració",
+    "dept": "Administració",
+    "initials": "AA",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Ricard Arbat Carandell",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "RA",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Raul Arcos Velasco",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "RA",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Genis Arderiu Modinos",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "GA",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Raimundo Arjona Toledo",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "RA",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Nil Armengol Casali",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "NA",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Manel Armengol Murillo",
+    "role": "Soldador",
+    "dept": "Posta en Marxa",
+    "initials": "MA",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Anass Arrahi Arrai",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "AA",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Rayan Arrahi Arrai",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "RA",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Daniel Artalejo Gimenez",
+    "role": "Posta en marxa - Màquines",
+    "dept": "Posta en Marxa",
+    "initials": "DA",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Daniel Aulinas Simon",
+    "role": "Tècnic mecanitzacio",
+    "dept": "Mecanització",
+    "initials": "DA",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Pau Aumatell Pujol",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "PA",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Mihai Axinia Bernec",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "MA",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Christian Felipe Ayala Figueroa",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "CA",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Ibrahim Azarfane",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "IA",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Soufian Azouaghe",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "SA",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Amath Ba Ba",
+    "role": "Premuntatges elèctrics",
+    "dept": "Posta en Marxa",
+    "initials": "AB",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Manel Baca Somovilla",
+    "role": "Mecànic DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "MB",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Ramon Badia Franch",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "RB",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Marçal Bague Bret",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "MB",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Matteo Balbo",
+    "role": "Projectes",
+    "dept": "Projectes",
+    "initials": "MB",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Pablo Ballano Ruiz",
+    "role": "Devolucions",
+    "dept": "Logística",
+    "initials": "PB",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Joan Barniol Noguer",
+    "role": "Tècnic comercial",
+    "dept": "Comercial",
+    "initials": "JB",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Jorge Barrancos Solera",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "JB",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Alejandro Barreres Piqueras",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "AB",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Michael Jozsef Barrero Pinilla",
+    "role": "Manteniment",
+    "dept": "Magatzem",
+    "initials": "MB",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Llorenç Barris Font",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "LB",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Cosme Barris Rodriguez",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "CB",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Miquel Bartrina Cunill",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "MB",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Miquel Batlle Dilme",
+    "role": "Administració SAT",
+    "dept": "SAT",
+    "initials": "MB",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Otman Belhoussain As-salah",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "OB",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "John Jairo Beltran Tascon",
+    "role": "Logística",
+    "dept": "Logística",
+    "initials": "JB",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Marc Berga Masoliver",
+    "role": "OT Mecànica - Ofertes",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "MB",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Eduardo Esteban Bermudez Rojas",
+    "role": "Posta en marxa - Màquines",
+    "dept": "Posta en Marxa",
+    "initials": "EB",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Luis Nestor Bernal Perez",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "LB",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Maria Gleva Bernet Casas",
+    "role": "Administració Depplan",
+    "dept": "Comercial",
+    "initials": "MB",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Stefano Bertero Lo Cascio",
+    "role": "Mecànic DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "SB",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Sergi Bertran Gardella",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "SB",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Labhdeep Bhardwaj Mandle",
+    "role": "Informàtica",
+    "dept": "Informàtica",
+    "initials": "LB",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Jose Antonio Bizarro Antunez",
+    "role": "Tècnic mecanitzacio",
+    "dept": "Mecanització",
+    "initials": "JB",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Gerard Blanch Daniel",
+    "role": "SAT - Comercial",
+    "dept": "SAT",
+    "initials": "GB",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "David Boadas Carreras",
+    "role": "Tècnic comercial",
+    "dept": "Comercial",
+    "initials": "DB",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Pol Boix Castillo",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "PB",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Jordi Boix Peiris",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "JB",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Nil Leslie Bokesa Salomon",
+    "role": "Posta en marxa - DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "NB",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Toni Bores Pla",
+    "role": "OT Mecànica - Premuntatges",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "TB",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Estel Bosch Arbat",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "EB",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Adrià Bosch Busquets",
+    "role": "Premuntatges mecànics",
+    "dept": "Posta en Marxa",
+    "initials": "AB",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Ayoub Bouchkhachakh Arbib",
+    "role": "OT Mecànica - Línies",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "AB",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Marc Bragulat Mir",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "MB",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Mario Paolo Bravo Cepeda",
+    "role": "OT Mecànica - Línies",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "MB",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Alvaro Bravo Lopez",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "AB",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Nora Brugada Garriga",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "NB",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Ramon Maria Brustenga Vilaseca",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "RB",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Xavier Busoms Roca",
+    "role": "Projectes",
+    "dept": "Projectes",
+    "initials": "XB",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Albert Busquets Verdaguer",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "AB",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Vicente Cabanes Ribelles",
+    "role": "OT Mecànica - Pick & Place",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "VC",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Alex Caceres Hiraldo",
+    "role": "SAP",
+    "dept": "SAP",
+    "initials": "AC",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Mayra Consuelo Caicedo Rodriguez",
+    "role": "Administració Magatzem",
+    "dept": "Magatzem",
+    "initials": "MC",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Daniel Calderon Galvez",
+    "role": "Manteniment",
+    "dept": "Magatzem",
+    "initials": "DC",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Juan Calm Masoliver",
+    "role": "Posta en marxa - Màquines",
+    "dept": "Posta en Marxa",
+    "initials": "JC",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Icar Calvet Montoya",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "IC",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Oriol Calzadilla Fimia",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "OC",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Dauda Camara Dansira",
+    "role": "Tècnic mecanitzacio",
+    "dept": "Mecanització",
+    "initials": "DC",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Pere Canadell Mir",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "PC",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Juan Carlos Caner Garcia Del Valle",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "JC",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Antonia Caporale Nita",
+    "role": "Administració SAT",
+    "dept": "SAT",
+    "initials": "AC",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Aniol Carbonell Santanach",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "AC",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Albert Carbones Pages",
+    "role": "OT Mecànica - Pick & Place",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "AC",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Marc Cardona Soler",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "MC",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Francisco Javier Carrasco Delgado",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "FC",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Alberto Carrera Mariscal",
+    "role": "Tècnic comercial",
+    "dept": "Comercial",
+    "initials": "AC",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Ramon Carrera Fuertes",
+    "role": "Posta en marxa - Màquines",
+    "dept": "Posta en Marxa",
+    "initials": "RC",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Daniel Carreras Parella",
+    "role": "Compres Mecanització",
+    "dept": "Mecanització",
+    "initials": "DC",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Pau Carreras Casassas",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "PC",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Pol Carreras Viñas",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "PC",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Arnau Casals Pons",
+    "role": "Projectes",
+    "dept": "Projectes",
+    "initials": "AC",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Carles Casas Casals",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "CC",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Sergi Casellas Gobelin",
+    "role": "OT Mecànica - Màquines",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "SC",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Arnau Caso Casals",
+    "role": "Informàtica",
+    "dept": "Informàtica",
+    "initials": "AC",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Mateo Castro Holguin",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "MC",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Bogdan Cata",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "BC",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Rosa Maria Celma Pujol",
+    "role": "Administració SAT",
+    "dept": "SAT",
+    "initials": "RC",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Muhammed Cham",
+    "role": "Soldador",
+    "dept": "Posta en Marxa",
+    "initials": "MC",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Ivan Chiva Montero",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "IC",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Ivan Chueco Martinez",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "IC",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Rafael Ciorraga Gonzalez",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "RC",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Marc Codony Ventura",
+    "role": "Elèctric DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "MC",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Marina Coll Marin",
+    "role": "Administració RRHH",
+    "dept": "Recursos Humans",
+    "initials": "MC",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Sergi Coll Castañer",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "SC",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Arnau Collado Cubero",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "AC",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Enrique Colombo Aguade",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "EC",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Biel Colomer Rubio",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "BC",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Francesc Comajoan Planas",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "FC",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Pol Comí Porcar",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "PC",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Gerard Compta Mollà",
+    "role": "SAT - Mecànic",
+    "dept": "SAT",
+    "initials": "GC",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Angel Conca Hernández",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "AC",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Daniel Contreras Massegú",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "DC",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Arnau Coromina Acuña",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "AC",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Silvia Corominas Exposito",
+    "role": "Administració SAT",
+    "dept": "SAT",
+    "initials": "SC",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Miriam Cortizo Manzano",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "MC",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Andreu Costa Camprubi",
+    "role": "OT Mecànica - Pick & Place",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "AC",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Guillem Costa Vila",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "GC",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Llorenç Costa Noguer",
+    "role": "OT Mecànica - Línies",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "LC",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Urmar Costa Said",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "UC",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Jaime Crespo Ruiz",
+    "role": "Tècnic comercial",
+    "dept": "Comercial",
+    "initials": "JC",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Ivan Cruz Fernandez",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "IC",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "David Cruz Santoyo",
+    "role": "SAT - Mecànic",
+    "dept": "SAT",
+    "initials": "DC",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Jesus Cuesta Muñoz",
+    "role": "Posta en marxa - Màquines",
+    "dept": "Posta en Marxa",
+    "initials": "JC",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Anna Cuevas Senpau",
+    "role": "Administració Compres",
+    "dept": "Compres",
+    "initials": "AC",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Denis Cufi Zykov",
+    "role": "Tècnic mecanitzacio",
+    "dept": "Mecanització",
+    "initials": "DC",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Marc Cuña Martinez",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "MC",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Joan Curos Montero",
+    "role": "OT Mecanització",
+    "dept": "Mecanització",
+    "initials": "JC",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Artur Konrad Czapiewski",
+    "role": "Logística",
+    "dept": "Logística",
+    "initials": "AC",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Ebrahima Dambelleh Sidibeh",
+    "role": "Premuntatges mecànics",
+    "dept": "Posta en Marxa",
+    "initials": "ED",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Matthieu Daniel Danjon Floquet",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "MD",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Petro Darmoriz",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "PD",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Sergi Darnes Contra",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "SD",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Joel Darnés Cros",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "JD",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Victor De La Cruz Moreno",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "VD",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Alan De Oliveira Mendoça",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "AD",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Javier Del Egido Perea",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "JD",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Maria Del Viso Tristancho",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "MD",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Baicro Dembaga Jawneh",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "BD",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Mostafa Dembaga Diagne",
+    "role": "Premuntatges mecànics",
+    "dept": "Posta en Marxa",
+    "initials": "MD",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Eva Demiquels Batlle",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "ED",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Lluc Domenech Llobet",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "LD",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Miquel Domenech Rosell",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "MD",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Artur Dominguez Gispert",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "AD",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Mike Richard Dos Santos",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "MD",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Albert Dou Vayreda",
+    "role": "OT Mecànica - Pick & Place",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "AD",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Saibo Drammeh Drammeh",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "SD",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Ebrahima Drammeh Drammeh",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "ED",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Arnau Duran Ferrero",
+    "role": "Projectes",
+    "dept": "Projectes",
+    "initials": "AD",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Abdesamad El Aoufi",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "AE",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Mohamed El Azzouzi Ainaaissa",
+    "role": "OT Mecànica - Línies",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "ME",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Mohamed El Bachikhi El Bachiri",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "ME",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Rezk El Haraoui Guennioui",
+    "role": "Tècnic comercial",
+    "dept": "Comercial",
+    "initials": "RE",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Aiman El Ouahabi El Oihabi",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "AE",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Eduardo Byron Eraso Vela",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "EE",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Jordi Espadaler Begara",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "JE",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Ezequiel Nicolas Espinoza",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "EE",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Mª Angels Espuña Llagostera",
+    "role": "Neteja",
+    "dept": "Administració",
+    "initials": "ME",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Nil Espuña Gonzalez",
+    "role": "Tècnic mecanitzacio",
+    "dept": "Mecanització",
+    "initials": "NE",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Mireia Espuña Camprubi",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "ME",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Abdelaziz Essami",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "AE",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Isaac Estarriola Camós",
+    "role": "OT Mecànica - Línies",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "IE",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Adria Estebanell Garrido",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "AE",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Carles Esteve Villas",
+    "role": "OT Mecànica - Màquines",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "CE",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Marc Fabrega Guillamet",
+    "role": "Informàtica industrial",
+    "dept": "IT Industrial",
+    "initials": "MF",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Enric Faja Pijuan",
+    "role": "Administració SAT",
+    "dept": "SAT",
+    "initials": "EF",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Angel Farrugia Trasierra",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "AF",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Pau Feixas Geli",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "PF",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Jose Manuel Fernandez Gonzalez",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "JF",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Francesc Fernandez Candel",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "FF",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Nicolas Fernandez Valera",
+    "role": "OT Mecànica - Pick & Place",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "NF",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Sergio Ferrer Molina",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "SF",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Victor Ferreres Sanchez",
+    "role": "Compres Mecanització",
+    "dept": "Mecanització",
+    "initials": "VF",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "David Fonollosa Witzke",
+    "role": "Manteniment",
+    "dept": "Magatzem",
+    "initials": "DF",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Juli Font Buil",
+    "role": "OT Mecànica - Pick & Place",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "JF",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Jofre Font Casas",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "JF",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Biel Font Massot",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "BF",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Josep Maria Frigola Aulinas",
+    "role": "Soldador",
+    "dept": "Posta en Marxa",
+    "initials": "JF",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Alain Fuentes Rivas",
+    "role": "SAP",
+    "dept": "SAP",
+    "initials": "AF",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Monica Gallach Blancafort",
+    "role": "Validació Ofertes - Costos",
+    "dept": "Costos",
+    "initials": "MG",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Soraya Gallardo Bautista",
+    "role": "Administració SAT",
+    "dept": "SAT",
+    "initials": "SG",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Mohamed Yero Gandega Samassa",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "MG",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Gerard Garcia Masdeu",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "GG",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Benjamin Garcia Cano",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "BG",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Ricardo Garcia Garcia",
+    "role": "Responsable SAP",
+    "dept": "SAP",
+    "initials": "RG",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Guillem Garcia Xarles",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "GG",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Francisco Javier Garcia Duran",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "FG",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Diego Fernando Santiago Garcia",
+    "role": "Tècnic mecanitzacio",
+    "dept": "Mecanització",
+    "initials": "DG",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Javier Garcia Castro",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "JG",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Jaime Garcia Delgado",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "JG",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Nil Garcia Santamaria",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "NG",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Arnau Gelaberto Juarez",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "AG",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Antonie Serban Gheorghe Madalin",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "AG",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Isaac Gibert Martinez",
+    "role": "OT Mecànica - Línies",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "IG",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Javier Gil Martinez",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "JG",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Didac Gimbernat Girgas",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "DG",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Aitor Giralt Lorente",
+    "role": "Premuntatges mecànics",
+    "dept": "Posta en Marxa",
+    "initials": "AG",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Elisabet Gomez Anello",
+    "role": "Administració",
+    "dept": "Administració",
+    "initials": "EG",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Andrea Gomez Pijuan",
+    "role": "Administració Depplan",
+    "dept": "Comercial",
+    "initials": "AG",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Marc Gonzalez Ubeda",
+    "role": "SAT - Recanvis / Magatzem",
+    "dept": "SAT",
+    "initials": "MG",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Raul Gonzalez Moreno",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "RG",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "German Gonzalez Garcia",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "GG",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Darío Gonzalez Buera",
+    "role": "Soldador",
+    "dept": "Posta en Marxa",
+    "initials": "DG",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Jose Francisco Gonzalez Lema",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "JG",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Ruben Gordillo Luque",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "RG",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Julià Gracia Sola I Morales",
+    "role": "Informàtica",
+    "dept": "Informàtica",
+    "initials": "JG",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Daniel Graells Vilalta",
+    "role": "SAT - Elèctric",
+    "dept": "SAT",
+    "initials": "DG",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Sergi Grau Carreras",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "SG",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Valeria Grigori",
+    "role": "Administració SAT",
+    "dept": "SAT",
+    "initials": "VG",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Pau Enric Gudayol Teixido",
+    "role": "OT Mecànica - Màquines",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "PG",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Antoni Guell Bosch",
+    "role": "OT Mecanització",
+    "dept": "Mecanització",
+    "initials": "AG",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Claudia Guell Serrat",
+    "role": "Validació Ofertes - Costos",
+    "dept": "Costos",
+    "initials": "CG",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Jordi Güell Mompió",
+    "role": "OT Mecanització",
+    "dept": "Mecanització",
+    "initials": "JG",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Roger Guilleumas Lloansi",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "RG",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Adria Guix Suñer",
+    "role": "OT Mecànica - Premuntatges",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "AG",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Jordi Guix Rodeja",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "JG",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Lasana Gumaneh Touray",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "LG",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Bryan Steven Guncha Vivanco",
+    "role": "Administració",
+    "dept": "Administració",
+    "initials": "BG",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Pol Gussinyer Coromina",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "PG",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Santiago Guzman Turk",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "SG",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Pawel Guzowski",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "PG",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Mohamed Haidour Haidour",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "MH",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Marouane Hajam El Hammach",
+    "role": "Elèctric DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "MH",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Mohamed Ayman Hamjan El Achchab Hajji",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "MH",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Eugen Cristian Harasciuc",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "EH",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Christian Hernandez Molina",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "CH",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "David Herrera Garcia",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "DH",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Benito Hervas Galeote",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "BH",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Eduard Hidalgo Vitales",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "EH",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Victor Hiraldo Pareja",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "VH",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Kiryl Holubeu",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "KH",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Carles Homs Ferrer",
+    "role": "Informàtica",
+    "dept": "Informàtica",
+    "initials": "CH",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Oriol Hurtado Llenas",
+    "role": "OT Mecànica - Pick & Place",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "OH",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Josep Maria Ibañez Font",
+    "role": "Magatzem",
+    "dept": "Magatzem",
+    "initials": "JI",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Jose Miguel Ibañez Alvarado",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "JI",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Eduard Nicolae Ichim",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "EI",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Jordi Iglesias Vilarrasa",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "JI",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Ebrahima Jallow Sedibeh",
+    "role": "Mecànic DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "EJ",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Malamini Jamegay Sumareh",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "MJ",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Mahamadou Jamegay Sumareh",
+    "role": "Elèctric DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "MJ",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Hassan Jarari",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "HJ",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Jose Manuel Jimenez Pozo",
+    "role": "SAT - Recanvis / Magatzem",
+    "dept": "SAT",
+    "initials": "JJ",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Natalia Jimenez Leon",
+    "role": "OT Mecànica - Simulació",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "NJ",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Jorgelina Jofre Navarro",
+    "role": "Administració SAT",
+    "dept": "SAT",
+    "initials": "JJ",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Nil Juanola Guardiola",
+    "role": "Elèctric DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "NJ",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Quim Juanola Pineda",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "QJ",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Vicenç Juanola Verges",
+    "role": "Magatzem",
+    "dept": "Magatzem",
+    "initials": "VJ",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Josep Junca Robles",
+    "role": "Projectes",
+    "dept": "Projectes",
+    "initials": "JJ",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Ferran Junca Juanola",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "FJ",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Sergi Juvanteny Gimenez",
+    "role": "OT Mecànica - CME",
+    "dept": "CME",
+    "initials": "SJ",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Adria Juvinyà Serra",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "AJ",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Mahamadou Juwara Sumbundu",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "MJ",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Ebrahima Juwara Touray",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "EJ",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Said Kalbouz",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "SK",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Abubakar Kanoute Ndiaye",
+    "role": "Mecànic DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "AK",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Baraka Kanuteh Samoura",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "BK",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Musa Karaga",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "MK",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Mustafa Karaga Karaga",
+    "role": "Mecànic DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "MK",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Abdoul Karim Cissokho",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "AK",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Dembo Konteh",
+    "role": "SAT - Mecànic",
+    "dept": "SAT",
+    "initials": "DK",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Julia Kravets",
+    "role": "Administració RRHH",
+    "dept": "Recursos Humans",
+    "initials": "JK",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Yury Kuritsyn",
+    "role": "Projectes",
+    "dept": "Projectes",
+    "initials": "YK",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Dovydas Kuzmickas",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "DK",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Axel Lara Sotos",
+    "role": "Elèctric DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "AL",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Jordi Legares Cererols",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "JL",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Pedro Letamendi Palomeras",
+    "role": "Tècnic comercial",
+    "dept": "Comercial",
+    "initials": "PL",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Francisco Linares Arrabal",
+    "role": "Magatzem",
+    "dept": "Magatzem",
+    "initials": "FL",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Eduard Llenas Maso",
+    "role": "OT Mecànica - Màquines",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "EL",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Joan Llongarriu Sarbosa",
+    "role": "Conductor",
+    "dept": "Logística",
+    "initials": "JL",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Marti Lloveras Mesas",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "ML",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Alejandro Lobato Caballero",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "AL",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Isaac Lopez Cantero",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "IL",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Albert Lopez Villamor",
+    "role": "Posta en marxa - DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "AL",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Pol Lopez Montenegro",
+    "role": "Informàtica",
+    "dept": "Informàtica",
+    "initials": "PL",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Sergio Lopez Elvira",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "SL",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Arnau Lopez Rodriguez",
+    "role": "Premuntatges elèctrics",
+    "dept": "Posta en Marxa",
+    "initials": "AL",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Javier Lopez Custodio",
+    "role": "Tècnic mecanitzacio",
+    "dept": "Mecanització",
+    "initials": "JL",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Natalia Escarlata López Kocsis",
+    "role": "Administració Comercial",
+    "dept": "Comercial",
+    "initials": "NL",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Alberto Lopez Bueno",
+    "role": "Administració",
+    "dept": "Administració",
+    "initials": "AL",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Joao Pedro Lopez Da Silva Benetti",
+    "role": "Posta en marxa - DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "JL",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Miguel Luque Fernandez",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "ML",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Manuel Luque Diaz",
+    "role": "Tècnic mecanitzacio",
+    "dept": "Mecanització",
+    "initials": "ML",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Yafang Ma",
+    "role": "Administració Magatzem",
+    "dept": "Magatzem",
+    "initials": "YM",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Berta Madorell Serra",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "BM",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Lyubov Makhno Atamanyuk",
+    "role": "Tècnic comercial",
+    "dept": "Comercial",
+    "initials": "LM",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Ruslan Mamedov",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "RM",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Harmandeep Mandahar Mandahar",
+    "role": "Tècnic mecanitzacio",
+    "dept": "Mecanització",
+    "initials": "HM",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Juan Pablo Mantilla Carreño",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "JM",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Raul Manzano Brioso",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "RM",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Raúl Marco Orti",
+    "role": "Administració Compres",
+    "dept": "Compres",
+    "initials": "RM",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Raquel Margüenda Rivas",
+    "role": "Administració",
+    "dept": "Administració",
+    "initials": "RM",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Pedro Antonio Marquez Cedron",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "PM",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "David Martin Artacho",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "DM",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Gerard Martin Aulina",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "GM",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Abel Martinez Dominguez",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "AM",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Ernest Martinez Casadevall",
+    "role": "SAP",
+    "dept": "SAP",
+    "initials": "EM",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Francisco Javier Martinez Labrador",
+    "role": "Projectes",
+    "dept": "Projectes",
+    "initials": "FM",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Franco Amaro Martinez Saavedra",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "FM",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Kevin Martinez Solera",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "KM",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Iker Martinez Lopez",
+    "role": "OT Mecànica - Premuntatges",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "IM",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Marta Martorell Orri",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "MM",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Steven Marulanda Aguirre",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "SM",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Pau Marzo Ruiz",
+    "role": "OT Mecànica - Línies",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "PM",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Narcis Masoliver Subiros",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "NM",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Maria Asuncion Masoliver Nicolau",
+    "role": "Administració",
+    "dept": "Administració",
+    "initials": "MM",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Juan Ramon Masoliver Nicolau",
+    "role": "SAT - Mecànic",
+    "dept": "SAT",
+    "initials": "JM",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Pau Massip Alfageme",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "PM",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Tomas Matas Nadal",
+    "role": "Tècnic comercial",
+    "dept": "Comercial",
+    "initials": "TM",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Sergio Mateu Valencia",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "SM",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Agustin Matito Martí",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "AM",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Yuriy Matvyeyev Matvyeyev",
+    "role": "SAT - Mecànic",
+    "dept": "SAT",
+    "initials": "YM",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Jorge Melendez Moreno",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "JM",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Daniela Melo Vivas",
+    "role": "Administració OTE",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "DM",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Christian Mena Aguilar",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "CM",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Adrià Mendez Garralda",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "AM",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Carlos Menor Lacosta",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "CM",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Dorottya Meszaros",
+    "role": "Administració Compres",
+    "dept": "Compres",
+    "initials": "DM",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Jamal Meziane Belaziz",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "JM",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Pau Vicent Micó Gomez",
+    "role": "Informàtica industrial",
+    "dept": "IT Industrial",
+    "initials": "PM",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Xavier Micó Vidal",
+    "role": "Informàtica",
+    "dept": "Informàtica",
+    "initials": "XM",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Nicolau Mir Curos",
+    "role": "Posta en marxa - Màquines",
+    "dept": "Posta en Marxa",
+    "initials": "NM",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Víctor Miranda Francès",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "VM",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Albert Miro Campolier",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "AM",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Brahim Mohamed Massoud",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "BM",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Nabil Mohamed Messaoud",
+    "role": "Premuntatges mecànics",
+    "dept": "Posta en Marxa",
+    "initials": "NM",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Antonio Molina Najas",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "AM",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Joaquim Moncanut Frigola",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "JM",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Alex Monells Guenes",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "AM",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "David Montenegro Martinez",
+    "role": "Posta en marxa - CME",
+    "dept": "CME",
+    "initials": "DM",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Sergio Mora Gil Poblete",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "SM",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Antonio Morales Lobato",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "AM",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Abel Morató Font",
+    "role": "Posta en marxa - CME",
+    "dept": "CME",
+    "initials": "AM",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Albert Morejón Pages",
+    "role": "Informàtica industrial",
+    "dept": "IT Industrial",
+    "initials": "AM",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Joel Moreno Sala",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "JM",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "David Moreno Duran",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "DM",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Robert Moreno Perez",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "RM",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Eduardo Morera Santomera",
+    "role": "Compres Mecanització",
+    "dept": "Mecanització",
+    "initials": "EM",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Albert Mulero Casadevall",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "AM",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Alexander Mumbru Espinosa",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "AM",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Lluís Muntada Sala",
+    "role": "OT Mecànica - CME",
+    "dept": "CME",
+    "initials": "LM",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Jaime Muñoz Navajas",
+    "role": "Posta en marxa - DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "JM",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Gerard Muñoz Luceño",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "GM",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Helena Muñoz Sarraga",
+    "role": "Administració SAT",
+    "dept": "SAT",
+    "initials": "HM",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Cesar Narvaez Rodriguez",
+    "role": "Posta en marxa - DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "CN",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Alahaji Saikou Njie Sinnera",
+    "role": "Elèctric DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "AN",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Samuel Nonell Rocha",
+    "role": "OT Mecànica - CME",
+    "dept": "CME",
+    "initials": "SN",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Olga Nonell Rocha",
+    "role": "Administració",
+    "dept": "Administració",
+    "initials": "ON",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Maria Olea Fernandez",
+    "role": "Administració Magatzem",
+    "dept": "Magatzem",
+    "initials": "MO",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Marcos Olivencia Peña",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "MO",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "David Oliveras Ribas",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "DO",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Sergi Oliveras Roura",
+    "role": "Compres Mecanització",
+    "dept": "Mecanització",
+    "initials": "SO",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Matias Ignacio Ordenes Uribe",
+    "role": "Posta en marxa - DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "MO",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Roger Orriols Valls",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "RO",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Miquel Orriols Montes",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "MO",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Pedro Ortega Obrero",
+    "role": "OT Mecànica - CME",
+    "dept": "CME",
+    "initials": "PO",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Miguel Ortega Obrero",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "MO",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Oriol Ortega Torras",
+    "role": "Compres Mecanització",
+    "dept": "Mecanització",
+    "initials": "OO",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Aitor Ortega Rodriguez",
+    "role": "Mecànic DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "AO",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Marc Padrosa Albert",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "MP",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Josep Padrosa Clavaguera",
+    "role": "OT Mecànica - Premuntatges",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "JP",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Ariadna Pages Trias",
+    "role": "Administració RRHH",
+    "dept": "Recursos Humans",
+    "initials": "AP",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Arnau Pages Postigo",
+    "role": "SAP",
+    "dept": "SAP",
+    "initials": "AP",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Dario Palacios Gutierrez",
+    "role": "Elèctric DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "DP",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Borja Palaguerri Molina",
+    "role": "OT Mecànica - Màquines",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "BP",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Aitor Palomanes Jimenez",
+    "role": "OT Mecànica - Maxpalet (Murlink)",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "AP",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Valentin Panov",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "VP",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Noa Pararol Sanchez",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "NP",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Francesc Pararols Palomeras",
+    "role": "Administració Compres",
+    "dept": "Compres",
+    "initials": "FP",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Marc Pararols Zaydin",
+    "role": "OT Mecànica - Línies",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "MP",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Vladimir Parshin",
+    "role": "Projectes",
+    "dept": "Projectes",
+    "initials": "VP",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Nil Pascual Soler",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "NP",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Eduard Pascual Membrado",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "EP",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Olga Payola Subirana",
+    "role": "Administració Depplan",
+    "dept": "Comercial",
+    "initials": "OP",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Anna Payola Subirana",
+    "role": "Administració RRHH",
+    "dept": "Recursos Humans",
+    "initials": "AP",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Kilian Pedro Saló",
+    "role": "Elèctric DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "KP",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Aaron Peñas Cruz",
+    "role": "Posta en marxa - DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "AP",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Michel Denis Pera Hernandez",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "MP",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Enrique Carlos Perez Gallego",
+    "role": "Informàtica industrial",
+    "dept": "IT Industrial",
+    "initials": "EP",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Gerard Perez Batlle",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "GP",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Yennia Perez Gonzalez",
+    "role": "Administració Compres",
+    "dept": "Compres",
+    "initials": "YP",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Alberto Perez - Muelas Noguera",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "AP",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Pau Peris Lopez",
+    "role": "OT Mecànica - Màquines",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "PP",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Fabian Aleix Peschke Espi",
+    "role": "Projectes",
+    "dept": "Projectes",
+    "initials": "FP",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Petro Petrushchak",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "PP",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Marc Picado Portillo",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "MP",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Ramiro Eduardo Pineda Sarango",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "RP",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "David Piña Garcia",
+    "role": "SAT - Mecànic",
+    "dept": "SAT",
+    "initials": "DP",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Marc Piquer Mateu",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "MP",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Josep Maria Pla Borés",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "JP",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Victor Plamadeala",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "VP",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Jaume Plana Ortiz",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "JP",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Alba Plana Casademont",
+    "role": "OT Mecànica - Màquines",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "AP",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Ricard Polls Boadas",
+    "role": "Projectes",
+    "dept": "Projectes",
+    "initials": "RP",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Eduard Pont Redondo",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "EP",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Joan Portabella Puigdemont",
+    "role": "SAT - Mecànic",
+    "dept": "SAT",
+    "initials": "JP",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Judit Pou Barrés",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "JP",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Jordi Pozo Caballero",
+    "role": "Premuntatges mecànics",
+    "dept": "Posta en Marxa",
+    "initials": "JP",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Sergi Prat Sevilla",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "SP",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Roger Prat Ferrer",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "RP",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Blai Prat Arnau",
+    "role": "Posta en marxa - DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "BP",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Arnau Puig Ferrer",
+    "role": "Administració",
+    "dept": "Administració",
+    "initials": "AP",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "David Puig Hombrados",
+    "role": "OT Mecànica - CME",
+    "dept": "CME",
+    "initials": "DP",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Berta Puig Capallera",
+    "role": "Administració RRHH",
+    "dept": "Recursos Humans",
+    "initials": "BP",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Guillem Puig Planas",
+    "role": "Administració Magatzem",
+    "dept": "Magatzem",
+    "initials": "GP",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Pedro Puigdemont Colomer",
+    "role": "SAT - Mecànic",
+    "dept": "SAT",
+    "initials": "PP",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Xavier Puigmal Claravall",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "XP",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Marc Pujadas Ullastres",
+    "role": "Compres Mecanització",
+    "dept": "Mecanització",
+    "initials": "MP",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Anna Pujol Busquets",
+    "role": "Administració SAT",
+    "dept": "SAT",
+    "initials": "AP",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Imma Pujol Badia",
+    "role": "Administració Comercial",
+    "dept": "Comercial",
+    "initials": "IP",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Marc Pujolar Repullo",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "MP",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Adrian Quesada Lopez",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "AQ",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Adria Quintana Tarradas",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "AQ",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Francesc Xavier Rabat Agusti",
+    "role": "Informàtica industrial",
+    "dept": "IT Industrial",
+    "initials": "FR",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Nicolás Ramirez Linares",
+    "role": "Premuntatges mecànics",
+    "dept": "Posta en Marxa",
+    "initials": "NR",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Yvan Ramone",
+    "role": "OT Mecànica - Màquines",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "YR",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Ramon Reguant Izaguirre",
+    "role": "Tècnic comercial",
+    "dept": "Comercial",
+    "initials": "RR",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Tomas Reixach Coll",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "TR",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Arnau Reixach Creus",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "AR",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Enric Reverter Cabot",
+    "role": "Devolucions",
+    "dept": "Logística",
+    "initials": "ER",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Lluís Ribas Bach",
+    "role": "OT Mecànica - Pick & Place",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "LR",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Carles Ribas Noguer",
+    "role": "Administració Logística",
+    "dept": "Logística",
+    "initials": "CR",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Miquel Ribas Bach",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "MR",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Tania Ribas Pallé",
+    "role": "Administració RRHH",
+    "dept": "Recursos Humans",
+    "initials": "TR",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Marc Rifa Pereira",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "MR",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Josep Ripoll Maresma",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "JR",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Arnau Risquez Guiteras",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "AR",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Ignasi Riuro Puigvert",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "IR",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Alvaro Rivas Reinoso",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "AR",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Marc Rodeja Agut",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "MR",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Oscar Rodriguez Garcia",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "OR",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Xavier Rodriguez Sabate",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "XR",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Paloma Rodriguez Callizo",
+    "role": "Administració SAT",
+    "dept": "SAT",
+    "initials": "PR",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Marc Roger Sala",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "MR",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Marina Rom Ostiategui",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "MR",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Patricia Romera Holgado",
+    "role": "Administració SAT",
+    "dept": "SAT",
+    "initials": "PR",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Antonio Romero Montmany",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "AR",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Sergio Romero Gomez",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "SR",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Albert Romero Cano",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "AR",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Isaac Romo Ferrer",
+    "role": "Mecànic DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "IR",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Pere Lluis Roquera Verges",
+    "role": "Posta en marxa - Màquines",
+    "dept": "Posta en Marxa",
+    "initials": "PR",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Zenon Rosell López",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "ZR",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Josep Rotger Goñalons",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "JR",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Roger Roura Agell",
+    "role": "Posta en marxa - DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "RR",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Fernando Maria Rubi Alzugaray",
+    "role": "Tècnic comercial",
+    "dept": "Comercial",
+    "initials": "FR",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Joan Rubirola Coll",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "JR",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Josep Maria Ruiz Perez",
+    "role": "SAT - Mecànic",
+    "dept": "SAT",
+    "initials": "JR",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Mark Anthony Ruiz Mendoza",
+    "role": "Posta en marxa - DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "MR",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Jose Luis Ruiz Morales",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "JR",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Josep Maria Ruiz Molina",
+    "role": "Administració RRHH",
+    "dept": "Recursos Humans",
+    "initials": "JR",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Adria Ruvirola Pujol",
+    "role": "Tècnic mecanitzacio",
+    "dept": "Mecanització",
+    "initials": "AR",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Daniel Ruz Fontas",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "DR",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Ilyass Saad Benouahi",
+    "role": "OT Mecànica - Línies",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "IS",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Mireia Sagué Torrentà",
+    "role": "OT Mecànica - Premuntatges",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "MS",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Pau Saguer Prats",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "PS",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Enrique Sainz Garcia",
+    "role": "Compres",
+    "dept": "Compres",
+    "initials": "ES",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Carles Sala Garriga",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "CS",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Joan Sala Rifa",
+    "role": "Administració Magatzem",
+    "dept": "Magatzem",
+    "initials": "JS",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Ramon Sala Busquets",
+    "role": "Soldador",
+    "dept": "Posta en Marxa",
+    "initials": "RS",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Astrid Salgado Padilla",
+    "role": "Administració Comercial",
+    "dept": "Comercial",
+    "initials": "AS",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Basainey Sama",
+    "role": "Mecànic DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "BS",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Tijani Samasa Krubaly",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "TS",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Bilal Samman",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "BS",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Mohamed Samman",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "MS",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Pau Samper Vila",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "PS",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Estefania Sanchez Lopez",
+    "role": "Administració",
+    "dept": "Administració",
+    "initials": "ES",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Angel Sanchez Garcia",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "AS",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Jose Antonio Sanchez Martinez",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "JS",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Raul Sanchez Gonzalez",
+    "role": "Posta en marxa - DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "RS",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Sheila Sanchez Espinosa",
+    "role": "Posta en marxa - Maxpalet",
+    "dept": "Posta en Marxa",
+    "initials": "SS",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Marcia Renata Sanchez Robles",
+    "role": "Compres",
+    "dept": "Compres",
+    "initials": "MS",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Manuel Humberto Sánchez Toledo",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "MS",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Regina Sans Paz",
+    "role": "Administració RRHH",
+    "dept": "Recursos Humans",
+    "initials": "RS",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Cristian Santoro Serrano",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "CS",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Pau Sargatal Juanola",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "PS",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Marcelo Seixas",
+    "role": "Logística",
+    "dept": "Logística",
+    "initials": "MS",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Abulai Semega Sakou",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "AS",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Adrià Serra Casado",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "AS",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "David Serra Font",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "DS",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Cristina Serra Mendoza",
+    "role": "Informàtica",
+    "dept": "Informàtica",
+    "initials": "CS",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Gerard Serrat Nogue",
+    "role": "Magatzem",
+    "dept": "Magatzem",
+    "initials": "GS",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Igor Shkira",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "IS",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Lasana Sidebeh Konteh",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "LS",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Pablo David Silva Arcos",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "PS",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Bakary Singateh Jambah",
+    "role": "Elèctric DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "BS",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Arvinder Singh",
+    "role": "Elèctric DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "AS",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Avi Singh",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "AS",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Haruna Sissoho",
+    "role": "SAT - Mecànic",
+    "dept": "SAT",
+    "initials": "HS",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Hamza Slimani Oukhaleq",
+    "role": "Elèctric DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "HS",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Jose Antonio Sola Gil",
+    "role": "OT Mecànica - Envasadores",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "JS",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "David Solà Vidal",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "DS",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Eduard Sole Guixeres",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "ES",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Marti Soler Bassagañas",
+    "role": "Premuntatges mecànics",
+    "dept": "Posta en Marxa",
+    "initials": "MS",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "David Soler Rafart",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "DS",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Estel Soles Figueras",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "ES",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Antoni Soria Muñoz",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "AS",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Jordi Soriano Ribas",
+    "role": "Tècnic comercial",
+    "dept": "Comercial",
+    "initials": "JS",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Sergi Soy Clavaguera",
+    "role": "OT Mecànica - Línies",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "SS",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Alberto Soy Cordon",
+    "role": "SAT - Mecànic",
+    "dept": "SAT",
+    "initials": "AS",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Marin Stasiev",
+    "role": "Premuntatges mecànics",
+    "dept": "Posta en Marxa",
+    "initials": "MS",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Tanchak Stepan",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "TS",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Anna Subiros Vehi",
+    "role": "OT Mecànica - Pick & Place",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "AS",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Isumaila Nyima Sumareh Touray",
+    "role": "Mecànic DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "IS",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Abubacarr Sumbundu Mahanera",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "AS",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Miquel Sunyer Roda",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "MS",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Gerard Surroca Morote",
+    "role": "SAT - Mecànic",
+    "dept": "SAT",
+    "initials": "GS",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Saibo Syllah Sillah",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "SS",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Allaye Tamboura Tamboura",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "AT",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Joan Teixidor Buixeda",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "JT",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Pere Tenas Llampayas",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "PT",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Genis Tenas Mañas",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "GT",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Daniel Terrones Espinosa",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "DT",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Vicky Théroux Mailhot",
+    "role": "Administració",
+    "dept": "Administració",
+    "initials": "VT",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Pol Toldra Fernandez",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "PT",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Fernando Torna Fernandez",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "FT",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Fernando Torna Puyol",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "FT",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Marc Torne Juanola",
+    "role": "OT Elèctrica",
+    "dept": "Oficina Tècnica Elèctrica",
+    "initials": "MT",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "David Torrent Arnall",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "DT",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Joan Torrent Juanola",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "JT",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Lluis Torrent Bach",
+    "role": "Projectes",
+    "dept": "Projectes",
+    "initials": "LT",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Khalil Torres Barreiro",
+    "role": "OT Mecànica - Màquines",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "KT",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Sonia Torres Muñoz",
+    "role": "Administració SAT",
+    "dept": "SAT",
+    "initials": "ST",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Laia Tort Vives",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "LT",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Haimadou Touray Juwara",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "HT",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Mohamed Touray Touray",
+    "role": "Premuntatges mecànics",
+    "dept": "Posta en Marxa",
+    "initials": "MT",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Ibrahima Touray Touray",
+    "role": "Mecànic DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "IT",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Ebrahima Touray Touray",
+    "role": "Informàtica",
+    "dept": "Informàtica",
+    "initials": "ET",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Muhamadou Jaha Touray Saho",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "MT",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Sidi Trawally Camara",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "ST",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Mahamadou Trawally Trawally",
+    "role": "Mecànic DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "MT",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Xavier Triado Del Fresno",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "XT",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Sergi Triado Fernandez",
+    "role": "Projectes",
+    "dept": "Projectes",
+    "initials": "ST",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Mahamado Tunkara Tunkara",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "MT",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Xenia Turon Vilagran",
+    "role": "OT Mecànica - Pick & Place",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "XT",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Lluis Turon Barris",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "LT",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Vladislav Tymoshchuk Kukla",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "VT",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Cesar Valdivia Fiallos",
+    "role": "Administració Magatzem",
+    "dept": "Magatzem",
+    "initials": "CV",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Pau Valeros Rovira",
+    "role": "OT Mecànica - Maxpalet",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "PV",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "Julio Vanacloig Blazquez",
+    "role": "Informàtica",
+    "dept": "Informàtica",
+    "initials": "JV",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Alex Vasquez Tapia-vera",
+    "role": "Soldador",
+    "dept": "Posta en Marxa",
+    "initials": "AV",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Pedro Roberto Vásquez Chau",
+    "role": "Magatzem",
+    "dept": "Magatzem",
+    "initials": "PV",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "David Vega Fernandez",
+    "role": "Posta en marxa - DUAL",
+    "dept": "Posta en Marxa",
+    "initials": "DV",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Alessandro Venosa",
+    "role": "Tècnic comercial",
+    "dept": "Comercial",
+    "initials": "AV",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Jordi Verdaguer Brugues",
+    "role": "Mecànic",
+    "dept": "Posta en Marxa",
+    "initials": "JV",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Joan Verdaguer Planaguma",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "JV",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Montserrat Verdaguer Serral",
+    "role": "Validació Ofertes - Costos",
+    "dept": "Costos",
+    "initials": "MV",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Parikshit Verma",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "PV",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Sergi Vidal Mares",
+    "role": "Posta en marxa - Línies",
+    "dept": "Posta en Marxa",
+    "initials": "SV",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Alba Vidal Vila",
+    "role": "Validació Ofertes - Costos",
+    "dept": "Costos",
+    "initials": "AV",
+    "color": "bg-yellow-400"
+  },
+  {
+    "name": "Julia Vila Xirgu",
+    "role": "Administració RRHH",
+    "dept": "Recursos Humans",
+    "initials": "JV",
+    "color": "bg-lime-400"
+  },
+  {
+    "name": "Miquel Vila Cullell",
+    "role": "Posta en marxa",
+    "dept": "Posta en Marxa",
+    "initials": "MV",
+    "color": "bg-green-400"
+  },
+  {
+    "name": "Pau Vilanova Corrales",
+    "role": "OT Mecànica - Pick & Place",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "PV",
+    "color": "bg-emerald-400"
+  },
+  {
+    "name": "Marc Vilanova Corrales",
+    "role": "OT Mecànica - Pick & Place",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "MV",
+    "color": "bg-teal-400"
+  },
+  {
+    "name": "Adela Vilanova Fabrega",
+    "role": "Tècnic comercial",
+    "dept": "Comercial",
+    "initials": "AV",
+    "color": "bg-cyan-400"
+  },
+  {
+    "name": "Lluis Vilanova Alzamora",
+    "role": "Qualitat i seguretat",
+    "dept": "Qualitat i Seguretat",
+    "initials": "LV",
+    "color": "bg-sky-400"
+  },
+  {
+    "name": "David Vilanova Fàbrega",
+    "role": "Projectes",
+    "dept": "Projectes",
+    "initials": "DV",
+    "color": "bg-blue-400"
+  },
+  {
+    "name": "Francisco Javier Vilanova Alzamora",
+    "role": "Tècnic comercial",
+    "dept": "Comercial",
+    "initials": "FV",
+    "color": "bg-indigo-400"
+  },
+  {
+    "name": "Aniol Vilar Guitart",
+    "role": "Posta en marxa - Màquines",
+    "dept": "Posta en Marxa",
+    "initials": "AV",
+    "color": "bg-violet-400"
+  },
+  {
+    "name": "Aniol Vilaregut Argerich",
+    "role": "OT Mecànica - DUAL",
+    "dept": "Oficina Tècnica Mecànica",
+    "initials": "AV",
+    "color": "bg-purple-400"
+  },
+  {
+    "name": "Eric Joaquin Villena Ninapaitan",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "EV",
+    "color": "bg-fuchsia-400"
+  },
+  {
+    "name": "Arnau Viñals Babot",
+    "role": "Informàtica",
+    "dept": "Informàtica",
+    "initials": "AV",
+    "color": "bg-pink-400"
+  },
+  {
+    "name": "Tomasz Wiktor Witkowiak",
+    "role": "SAP",
+    "dept": "SAP",
+    "initials": "TW",
+    "color": "bg-rose-400"
+  },
+  {
+    "name": "Philipp Zabeline",
+    "role": "Tècnic comercial",
+    "dept": "Comercial",
+    "initials": "PZ",
+    "color": "bg-red-400"
+  },
+  {
+    "name": "Ismael Zekriti Miro",
+    "role": "Elèctric",
+    "dept": "Posta en Marxa",
+    "initials": "IZ",
+    "color": "bg-orange-400"
+  },
+  {
+    "name": "Enrui Zhou",
+    "role": "Posta en marxa - I+D",
+    "dept": "I+D",
+    "initials": "EZ",
+    "color": "bg-amber-400"
+  },
+  {
+    "name": "Roxana Zoitanu",
+    "role": "Administració Comercial",
+    "dept": "Comercial",
+    "initials": "RZ",
+    "color": "bg-yellow-400"
+  }
+]

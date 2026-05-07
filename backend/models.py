@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Optional, List
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -214,6 +214,7 @@ class AdminCreateUserIn(BaseModel):
     temp_password: str
     role: str = "Treballador/a"
     dept: str = "General"
+    is_head: int = 0
 
 
 class AdminUpdateUserIn(BaseModel):
@@ -221,6 +222,7 @@ class AdminUpdateUserIn(BaseModel):
     email: Optional[EmailStr] = None
     role: Optional[str] = None
     dept: Optional[str] = None
+    is_head: Optional[int] = None
 
 
 class ChangePasswordIn(BaseModel):
@@ -235,3 +237,35 @@ class NoticeIn(BaseModel):
     content: str = Field("", max_length=1000)
     link: str = Field("", max_length=500)
     active: int = 1
+
+
+# ── Quizzes / Formacions ───────────────────────────────────────────────────────
+
+class QuizOptionIn(BaseModel):
+    text: str = Field("", max_length=500)
+    is_correct: int = 0
+    match_pair: str = Field("", max_length=500)
+    position: int = 0
+
+
+class QuizQuestionIn(BaseModel):
+    type: str = "multiple_choice"   # 'multiple_choice' | 'matching' | 'open_text'
+    question: str = Field("", max_length=1000)
+    explanation: str = Field("", max_length=1000)
+    points: int = 1
+    position: int = 0
+    options: List[QuizOptionIn] = []
+
+
+class QuizIn(BaseModel):
+    title: str = Field(..., max_length=300)
+    description: str = Field("", max_length=1000)
+    category: str = Field("", max_length=100)
+    time_limit: int = 0
+    passing_score: int = 70
+    active: int = 1
+    questions: List[QuizQuestionIn] = []
+
+
+class QuizAttemptIn(BaseModel):
+    answers: dict = {}

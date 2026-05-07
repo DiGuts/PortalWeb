@@ -14,12 +14,13 @@ import i18n from './i18n';
 import {
   Home, Newspaper, Activity as ActivityIcon, Calendar, Users, Building2,
   GraduationCap, MessageSquare, UserCircle, Search, Bell,
-  Moon, ChevronLeft, ChevronRight, Mail, Database, FolderOpen,
+  Moon, ChevronLeft, ChevronRight, ChevronDown, Mail, Database, FolderOpen,
   AlertTriangle, ArrowRight, Sun, MapPin, Clock, Phone, FileText,
   BookOpen, Shield, ThumbsUp, ThumbsDown, Send, ExternalLink, CreditCard,
   CheckCircle, Star, LogOut, LayoutGrid, List, Check,
   Heart, Gift, Globe, Download, Video, Award, Settings, Eye, EyeOff, Lock, Pencil, Trash2,
-  Type, AlignLeft, Image as ImageIcon, Minus, Plus, GripVertical, X, Menu
+  Type, AlignLeft, Image as ImageIcon, Minus, Plus, GripVertical, X, Menu,
+  BarChart3
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -46,6 +47,9 @@ import {
   apiChangePassword,
   apiAdminListUsers, apiAdminCreateUser, apiAdminUpdateUser, apiAdminDeleteUser,
   apiGetAllNotices, apiCreateNotice, apiUpdateNotice, apiDeleteNotice,
+  Quiz, QuizIn, QuizQuestionIn, QuizOptionIn, QuizAttemptResult, QuizResultRow,
+  apiGetQuizzes, apiGetQuiz, apiCreateQuiz, apiUpdateQuiz, apiDeleteQuiz, apiSubmitQuizAttempt,
+  apiGetQuizResults,
 } from './api';
 
 function cn(...inputs: ClassValue[]) {
@@ -66,17 +70,34 @@ type TabPrefetchCache = {
   activities?: Activity[];
   agendaEvents?: AgendaEvent[];
   employees?: Employee[];
+  courses?: Course[];
+  solicituds?: Solicitud[];
+  vacances?: Vacanca[];
 };
 export const tabPrefetch: TabPrefetchCache = {};
+const tabPrefetchAt: Record<keyof TabPrefetchCache, number> = {
+  notices: 0, news: 0, activities: 0, agendaEvents: 0,
+  employees: 0, courses: 0, solicituds: 0, vacances: 0,
+};
+// Skip refetch on mount whenever cached data exists. Mutations update the
+// cache in place, so navigations don't need to refetch — eliminates the
+// re-render flash when re-entering a previously-loaded tab.
+export function isTabCacheFresh(key: keyof TabPrefetchCache): boolean {
+  return tabPrefetch[key] !== undefined;
+}
 let tabPrefetchPromise: Promise<void> | null = null;
 export function prefetchTabData(force = false): Promise<void> {
   if (tabPrefetchPromise && !force) return tabPrefetchPromise;
+  const now = () => Date.now();
   tabPrefetchPromise = Promise.allSettled([
-    apiGetNotices().then(d => { tabPrefetch.notices = d; }),
-    apiGetNews().then(d => { tabPrefetch.news = d; }),
-    apiGetActivities().then(d => { tabPrefetch.activities = d; }),
-    apiGetAgendaEvents().then(d => { tabPrefetch.agendaEvents = d; }),
-    apiGetEmployees().then(d => { tabPrefetch.employees = d; }),
+    apiGetNotices().then(d => { tabPrefetch.notices = d; tabPrefetchAt.notices = now(); }),
+    apiGetNews().then(d => { tabPrefetch.news = d; tabPrefetchAt.news = now(); }),
+    apiGetActivities().then(d => { tabPrefetch.activities = d; tabPrefetchAt.activities = now(); }),
+    apiGetAgendaEvents().then(d => { tabPrefetch.agendaEvents = d; tabPrefetchAt.agendaEvents = now(); }),
+    apiGetEmployees().then(d => { tabPrefetch.employees = d; tabPrefetchAt.employees = now(); }),
+    apiGetCourses().then(d => { tabPrefetch.courses = d; tabPrefetchAt.courses = now(); }),
+    apiGetSolicituds().then(d => { tabPrefetch.solicituds = d; tabPrefetchAt.solicituds = now(); }),
+    apiGetVacances().then(d => { tabPrefetch.vacances = d; tabPrefetchAt.vacances = now(); }),
   ]).then(() => undefined);
   return tabPrefetchPromise;
 }
@@ -86,6 +107,10 @@ export function resetTabPrefetch() {
   tabPrefetch.activities = undefined;
   tabPrefetch.agendaEvents = undefined;
   tabPrefetch.employees = undefined;
+  tabPrefetch.courses = undefined;
+  tabPrefetch.solicituds = undefined;
+  tabPrefetch.vacances = undefined;
+  (Object.keys(tabPrefetchAt) as (keyof TabPrefetchCache)[]).forEach(k => { tabPrefetchAt[k] = 0; });
   tabPrefetchPromise = null;
 }
 
@@ -110,6 +135,33 @@ function useIsMobile(breakpoint = 768): boolean {
     return () => mq.removeEventListener('change', handler);
   }, [breakpoint]);
   return isMobile;
+}
+
+// Persist subtab to localStorage so reloads restore the inner page.
+function usePersistedSubTab<T extends string>(key: string, fallback: T, allowed?: readonly T[]): [T, (v: T) => void] {
+  const storageKey = `tavil_subtab_${key}`;
+  const [value, setValue] = useState<T>(() => {
+    if (typeof window === 'undefined') return fallback;
+    const saved = window.localStorage.getItem(storageKey) as T | null;
+    if (!saved) return fallback;
+    if (allowed && !allowed.includes(saved)) return fallback;
+    return saved;
+  });
+  const update = (v: T) => {
+    try { window.localStorage.setItem(storageKey, v); } catch {}
+    setValue(v);
+    scrollPageToTop();
+  };
+  return [value, update];
+}
+
+function scrollPageToTop() {
+  try {
+    const y = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    if (y <= 0) return;
+    // Subtle smooth animation only when actually scrolled down.
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+  } catch {}
 }
 
 // ── Skeleton primitives ──────────────────────────────────────────────────────
@@ -237,7 +289,6 @@ function MobileDrawer({
     {
       label: 'Personal',
       items: [
-        { id: 'Veu', icon: MessageSquare, label: "Veu de l'empleat" },
         { id: 'Solicituds', icon: FileText, label: 'Sol·licituds' },
         { id: 'Perfil', icon: UserCircle, label: 'Perfil' },
       ],
@@ -392,7 +443,6 @@ function MesTab({
       { id: 'Espai', icon: Building2, label: 'Espai corporatiu' },
     ]},
     { label: 'Personal', items: [
-      { id: 'Veu', icon: MessageSquare, label: "Veu de l'empleat" },
       { id: 'Solicituds', icon: FileText, label: 'Sol·licituds' },
     ]},
   ];
@@ -755,12 +805,21 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
 
   useEffect(() => {
     let cancelled = false;
-    Promise.allSettled([
-      apiGetNotices().then(d => !cancelled && setNotices(d)),
-      apiGetNews().then(d => !cancelled && setNews(d)),
-      apiGetActivities(0).then(d => !cancelled && setActivities(d)),
-      apiGetAgendaEvents().then(d => !cancelled && setAgendaEvents(d)),
-    ]).finally(() => { if (!cancelled) setLoading(false); });
+    const tasks: Promise<unknown>[] = [];
+    if (!isTabCacheFresh('notices')) {
+      tasks.push(apiGetNotices().then(d => { if (!cancelled) { setNotices(d); tabPrefetch.notices = d; tabPrefetchAt.notices = Date.now(); } }));
+    }
+    if (!isTabCacheFresh('news')) {
+      tasks.push(apiGetNews().then(d => { if (!cancelled) { setNews(d); tabPrefetch.news = d; tabPrefetchAt.news = Date.now(); } }));
+    }
+    if (!isTabCacheFresh('activities')) {
+      tasks.push(apiGetActivities(0).then(d => { if (!cancelled) { setActivities(d); tabPrefetch.activities = d; tabPrefetchAt.activities = Date.now(); } }));
+    }
+    if (!isTabCacheFresh('agendaEvents')) {
+      tasks.push(apiGetAgendaEvents().then(d => { if (!cancelled) { setAgendaEvents(d); tabPrefetch.agendaEvents = d; tabPrefetchAt.agendaEvents = Date.now(); } }));
+    }
+    if (tasks.length === 0) { setLoading(false); return () => { cancelled = true; }; }
+    Promise.allSettled(tasks).finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
 
@@ -825,6 +884,16 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
   const isMobileInici = useIsMobile();
   const { t } = useTranslation();
 
+  // Open article directly from home: store target id + origin so NoticiesTab
+  // mounts straight into detail view, and back returns to Inici.
+  const openArticleFromHome = (id: number) => {
+    try {
+      window.localStorage.setItem('tavil_selected_news_id', String(id));
+      window.localStorage.setItem('tavil_news_origin', 'Inici');
+    } catch {}
+    onNavigate?.('Notícies');
+  };
+
   if (isMobileInici) {
     const hour = new Date().getHours();
     const greeting = hour < 12 ? t('common.goodMorning') : hour < 19 ? t('common.goodAfternoon') : t('common.goodEvening');
@@ -833,7 +902,6 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
     const quickItems = [
       { id: 'Solicituds', Icon: FileText, label: t('nav.solicituds') },
       { id: 'Agenda', Icon: Calendar, label: t('nav.agenda') },
-      { id: 'Veu', Icon: MessageSquare, label: t('nav.veu') },
       { id: 'Campus', Icon: GraduationCap, label: t('nav.campus') },
     ];
     const moreNews = news.filter(n => n.category !== 'Comunicats interns').slice(featured ? 1 : 0, 4);
@@ -862,13 +930,14 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
         {notice && (
           <div style={{ padding: '14px 16px 0' }}>
             <div style={{
-              background: '#bf211e', color: '#fff', borderRadius: 14, padding: '14px 16px',
+              background: '#fef3c7', color: '#78350f', borderRadius: 14, padding: '14px 16px',
               display: 'flex', alignItems: 'center', gap: 12,
+              border: '1px solid #fde68a',
             }}>
-              <AlertTriangle size={20} strokeWidth={1.8} style={{ flexShrink: 0 }} />
+              <AlertTriangle size={20} strokeWidth={1.8} style={{ flexShrink: 0, color: '#b45309' }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', opacity: 0.8, marginBottom: 2 }}>AVÍS URGENT</div>
-                <div style={{ fontSize: 13.5, fontWeight: 500, lineHeight: 1.3 }}>{notice.title}</div>
+                <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.3 }}>{notice.title}</div>
+                {notice.content && <div style={{ fontSize: 12, fontWeight: 400, lineHeight: 1.35, marginTop: 2, opacity: 0.85 }}>{notice.content}</div>}
               </div>
               <ChevronRight size={18} style={{ flexShrink: 0 }} />
             </div>
@@ -915,7 +984,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
             </div>
             <div style={{ padding: '0 16px' }}>
               <div
-                onClick={() => onNavigate?.('Notícies')}
+                onClick={() => openArticleFromHome(featured.id)}
                 style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden', cursor: 'pointer' }}
               >
                 {featured.image ? (
@@ -981,7 +1050,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
             </div>
             <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {moreNews.map(n => (
-                <div key={n.id} onClick={() => onNavigate?.('Notícies')} style={{
+                <div key={n.id} onClick={() => openArticleFromHome(n.id)} style={{
                   background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: 14, cursor: 'pointer',
                 }}>
                   <div style={{ display: 'flex', gap: 12 }}>
@@ -1055,18 +1124,15 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
       {!loading && (<>
       {/* Urgent notice (optional — only if notices exist) */}
       {notice && (
-        <div className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-xl p-4 mb-6 flex items-start gap-3">
-          <AlertTriangle size={16} className="text-red-600 mt-0.5 flex-shrink-0" />
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl p-4 mb-6 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">AVÍS URGENT</span>
-            </div>
-            <p className="font-semibold text-gray-900 dark:text-white text-sm">{notice.title}</p>
-            <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">{notice.content}</p>
+            <p className="font-semibold text-amber-900 dark:text-amber-100 text-sm">{notice.title}</p>
+            <p className="text-xs text-amber-800/80 dark:text-amber-200/80 mt-0.5">{notice.content}</p>
             {notice.link && (
               <button
                 onClick={() => { if (notice.link.startsWith('http')) window.open(notice.link, '_blank', 'noopener,noreferrer'); }}
-                className={cn("text-red-600 text-xs font-medium mt-1 flex items-center gap-1 hover:underline", !notice.link.startsWith('http') && "cursor-default")}
+                className={cn("text-amber-700 dark:text-amber-300 text-xs font-medium mt-1 flex items-center gap-1 hover:underline", !notice.link.startsWith('http') && "cursor-default")}
               >
                 {notice.link} <ArrowRight size={11} />
               </button>
@@ -1074,12 +1140,12 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
           </div>
           {notices.length > 1 && (
             <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-              <span className="text-xs text-gray-400">{noticeIndex + 1}/{notices.length}</span>
-              <button onClick={() => setNoticeIndex((noticeIndex - 1 + notices.length) % notices.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
-                <ChevronLeft size={14} className="text-gray-500" />
+              <span className="text-xs text-amber-700 dark:text-amber-300">{noticeIndex + 1}/{notices.length}</span>
+              <button onClick={() => setNoticeIndex((noticeIndex - 1 + notices.length) % notices.length)} className="p-1 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded">
+                <ChevronLeft size={14} className="text-amber-700 dark:text-amber-300" />
               </button>
-              <button onClick={() => setNoticeIndex((noticeIndex + 1) % notices.length)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
-                <ChevronRight size={14} className="text-gray-500" />
+              <button onClick={() => setNoticeIndex((noticeIndex + 1) % notices.length)} className="p-1 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded">
+                <ChevronRight size={14} className="text-amber-700 dark:text-amber-300" />
               </button>
             </div>
           )}
@@ -1101,7 +1167,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
             {comunicats.map(c => (
               <div
                 key={c.id}
-                onClick={() => onNavigate?.('Notícies')}
+                onClick={() => openArticleFromHome(c.id)}
                 className="min-w-[280px] max-w-[320px] bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 cursor-pointer hover:border-red-200 dark:hover:border-red-900/40 transition-colors flex-shrink-0"
               >
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 uppercase">Comunicat</span>
@@ -1144,7 +1210,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                   {featuredNews.map(item => (
                     <div
                       key={item.id}
-                      onClick={() => onNavigate?.('Notícies')}
+                      onClick={() => openArticleFromHome(item.id)}
                       className="min-w-full relative cursor-pointer"
                     >
                       {item.image ? (
@@ -1201,7 +1267,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                 {novetats.map(item => (
                   <div
                     key={`${item.kind}-${item.id}`}
-                    onClick={() => onNavigate?.(item.kind === 'news' ? 'Notícies' : 'Activitats')}
+                    onClick={() => item.kind === 'news' ? openArticleFromHome(item.id) : onNavigate?.('Activitats')}
                     className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 overflow-hidden cursor-pointer hover:border-red-200 dark:hover:border-red-900/40 transition-colors flex flex-col"
                   >
                     <div className="hidden md:block">
@@ -1315,7 +1381,6 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                 { icon: Database, title: "ERP — SAP / Gestió", color: "text-green-600" },
                 { icon: FolderOpen, title: "Gestor documental", color: "text-amber-600" },
                 { icon: GraduationCap, title: "Campus TAVIL", color: "text-violet-600", tab: "Campus" },
-                { icon: AlertTriangle, title: "Comunicar incidència", color: "text-orange-600", tab: "Veu" },
                 { icon: Users, title: "Directori", color: "text-red-600", tab: "Directori" },
                 { icon: ActivityIcon, title: "Activitats", color: "text-green-600", tab: "Activitats" },
               ].map((item, i) => (
@@ -2189,19 +2254,64 @@ function RichArticleBuilder({
   );
 }
 
-function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; onOpenDrawer?: () => void }) {
+function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: User | null; onOpenDrawer?: () => void; onNavigate?: (tab: string) => void }) {
   const { t } = useTranslation();
   const [news, setNews] = useState<NewsArticle[]>(() => tabPrefetch.news ?? []);
   const [activeFilter, setActiveFilter] = useState('Totes');
   const [newsSearch, setNewsSearch] = useState('');
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const [selectedNews, setSelectedNews] = useState<NewsArticle | null>(null);
+  const [selectedNews, setSelectedNewsRaw] = useState<NewsArticle | null>(null);
+  useEffect(() => { scrollPageToTop(); }, [selectedNews]);
+  const setSelectedNews = (n: NewsArticle | null, origin?: string) => {
+    if (n) {
+      try {
+        window.localStorage.setItem('tavil_selected_news_id', String(n.id));
+        if (origin !== undefined) window.localStorage.setItem('tavil_news_origin', origin);
+      } catch {}
+    } else {
+      try {
+        window.localStorage.removeItem('tavil_selected_news_id');
+        window.localStorage.removeItem('tavil_news_origin');
+      } catch {}
+    }
+    setSelectedNewsRaw(n);
+  };
+  const closeArticleMobile = useIsMobile();
+  const closeArticle = () => {
+    let origin = '';
+    try { origin = window.localStorage.getItem('tavil_news_origin') ?? ''; } catch {}
+    setSelectedNews(null);
+    if (closeArticleMobile) return;
+    if (origin && origin !== 'Notícies' && onNavigate) onNavigate(origin);
+  };
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const [newsLoading, setNewsLoading] = useState(() => !tabPrefetch.news);
   useEffect(() => {
     let cancelled = false;
+    // Restore selected article from localStorage (reload or cross-tab open).
+    const restoreFromCache = (d: NewsArticle[]) => {
+      try {
+        const savedId = window.localStorage.getItem('tavil_selected_news_id');
+        if (savedId) {
+          const article = d.find(n => n.id === Number(savedId));
+          if (article) setSelectedNewsRaw(article);
+        }
+      } catch {}
+    };
+    if (isTabCacheFresh('news')) {
+      // Use fresh cache, skip refetch — avoids re-render flash on tab open.
+      restoreFromCache(tabPrefetch.news!);
+      setNewsLoading(false);
+      return;
+    }
     apiGetNews()
-      .then(d => { if (!cancelled) { setNews(d); tabPrefetch.news = d; } })
+      .then(d => {
+        if (cancelled) return;
+        setNews(d);
+        tabPrefetch.news = d;
+        tabPrefetchAt.news = Date.now();
+        restoreFromCache(d);
+      })
       .catch(console.error)
       .finally(() => { if (!cancelled) setNewsLoading(false); });
     return () => { cancelled = true; };
@@ -2227,7 +2337,7 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
       return (
         <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }} className="anim-page-enter-h-fwd">
           <div style={{ height: 82, background: 'var(--tavil-bg)', display: 'flex', alignItems: 'center', padding: '0 16px' }}>
-            <button onClick={() => setSelectedNews(null)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '8px 4px' }}>
+            <button onClick={closeArticle} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '8px 4px' }}>
               <ChevronLeft size={20} style={{ color: 'var(--tavil-accent)' }} />
               Notícies
             </button>
@@ -2315,7 +2425,7 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
         )}
         {mFeatured && (
           <div style={{ padding: '0 16px 12px' }}>
-            <div onClick={() => setSelectedNews(mFeatured)} style={{ background: 'var(--tavil-card)', borderRadius: 16, border: '1px solid var(--tavil-border)', overflow: 'hidden', cursor: 'pointer' }}>
+            <div onClick={() => setSelectedNews(mFeatured, 'Notícies')} style={{ background: 'var(--tavil-card)', borderRadius: 16, border: '1px solid var(--tavil-border)', overflow: 'hidden', cursor: 'pointer' }}>
               <div style={{ aspectRatio: '16/10', background: 'var(--tavil-faint)', overflow: 'hidden' }}>
                 {mFeatured.image
                   ? <img src={resolveImg(mFeatured.image)} alt={mFeatured.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -2336,7 +2446,7 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
         {/* Rest as list */}
         <div style={{ padding: '4px 16px' }}>
           {mRest.map((n, i) => (
-            <div key={n.id} onClick={() => setSelectedNews(n)} style={{
+            <div key={n.id} onClick={() => setSelectedNews(n, 'Notícies')} style={{
               display: 'flex', gap: 14, padding: '14px 4px',
               borderBottom: '1px solid var(--tavil-border)',
               cursor: 'pointer',
@@ -2369,7 +2479,7 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
     return (
       <div className={cn("mx-auto", isRichContent(selectedNews.content) ? "max-w-5xl" : "max-w-3xl")}>
         <button
-          onClick={() => setSelectedNews(null)}
+          onClick={closeArticle}
           className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors mb-6"
         >
           {t('news.detail.backToNews')}
@@ -2430,7 +2540,7 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
               <div key={item.id} className="min-w-full flex flex-col md:flex-row md:min-h-[360px]">
                 <div
                   className="w-full md:w-1/2 h-40 md:h-auto overflow-hidden bg-gray-100 dark:bg-zinc-800 cursor-pointer"
-                  onClick={() => setSelectedNews(item)}
+                  onClick={() => setSelectedNews(item, 'Notícies')}
                 >
                   {item.image ? (
                     <img src={resolveImg(item.image)} alt="Featured" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
@@ -2444,7 +2554,7 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
                   <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider w-fit mb-2 md:mb-4">{item.category}</span>
                   <h2
                     className="text-lg md:text-2xl font-bold text-gray-900 dark:text-white mb-2 md:mb-4 leading-tight cursor-pointer hover:text-red-600 transition-colors"
-                    onClick={() => setSelectedNews(item)}
+                    onClick={() => setSelectedNews(item, 'Notícies')}
                   >{item.title}</h2>
                   <p className="text-gray-500 dark:text-zinc-400 text-xs md:text-sm mb-4 md:mb-6 leading-relaxed line-clamp-3 md:line-clamp-none">{item.summary}</p>
                   <div className="flex items-center justify-between">
@@ -2495,7 +2605,7 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6">
         {grid.map((item, i) => (
           <div key={i} className="group hover-lift bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
-            <div className="hidden md:block aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-zinc-800 cursor-pointer" onClick={() => setSelectedNews(item)}>
+            <div className="hidden md:block aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-zinc-800 cursor-pointer" onClick={() => setSelectedNews(item, 'Notícies')}>
               {item.image ? (
                 <img src={resolveImg(item.image)} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[600ms] ease-out" />
               ) : (
@@ -2506,7 +2616,7 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
             </div>
             <div className="p-4 md:p-5">
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">{item.category}</p>
-              <h3 className="text-sm md:text-base font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-red-600 transition-colors cursor-pointer" onClick={() => setSelectedNews(item)}>{item.title}</h3>
+              <h3 className="text-sm md:text-base font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-red-600 transition-colors cursor-pointer" onClick={() => setSelectedNews(item, 'Notícies')}>{item.title}</h3>
               <p className="text-[13px] md:text-xs text-gray-500 dark:text-zinc-400 mb-4 line-clamp-2 leading-relaxed">{item.summary}</p>
               <div className="flex items-center justify-between text-[10px] text-gray-400">
                 <div className="flex items-center gap-1"><UserCircle size={12} /><span>{item.author}</span></div>
@@ -2524,14 +2634,15 @@ function NoticiesTab({ currentUser, onOpenDrawer }: { currentUser: User | null; 
 
 function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBack?: () => void }) {
   const [activities, setActivities] = useState<Activity[]>(() => tabPrefetch.activities ?? []);
-  const [activeTab, setActiveTab] = useState('Properes');
+  const [activeTab, setActiveTab] = usePersistedSubTab<string>('activitats', 'Properes', ['Properes', 'Passades'] as const);
   const [activeFilter, setActiveFilter] = useState('Totes');
   const [actSearch, setActSearch] = useState('');
   const [selectedAct, setSelectedAct] = useState<Activity | null>(null);
+  useEffect(() => { scrollPageToTop(); }, [selectedAct]);
   const [enrolledId, setEnrolledId] = useState<number | null>(null);
   const [enrollError, setEnrollError] = useState('');
   useEffect(() => { setGlobalNavHidden(!!selectedAct); }, [selectedAct]);
-  const isAdmin = currentUser?.role === 'Administrador/a';
+  const isAdmin = ['Administrador/a', 'Recursos humans', 'Comunicacions'].includes(currentUser?.role ?? '');
 
   // New activity form state
   const [showActForm, setShowActForm] = useState(false);
@@ -2604,8 +2715,9 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
   const [actLoading, setActLoading] = useState(() => !tabPrefetch.activities);
   useEffect(() => {
     let cancelled = false;
+    if (isTabCacheFresh('activities')) { setActLoading(false); return; }
     apiGetActivities()
-      .then(d => { if (!cancelled) { setActivities(d); tabPrefetch.activities = d; } })
+      .then(d => { if (!cancelled) { setActivities(d); tabPrefetch.activities = d; tabPrefetchAt.activities = Date.now(); } })
       .catch(console.error)
       .finally(() => { if (!cancelled) setActLoading(false); });
     return () => { cancelled = true; };
@@ -2770,7 +2882,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         {/* Detail modal (shared with desktop) */}
         {selectedAct && createPortal(
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 anim-fade-in" onClick={() => setSelectedAct(null)}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }} className="anim-sheet-enter" onClick={e => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, background: 'var(--tavil-border)', color: 'var(--tavil-muted)', padding: '2px 8px', borderRadius: 6 }}>{selectedAct.category}</span>
                 <button onClick={() => setSelectedAct(null)} style={{ background: 'none', border: 'none', color: 'var(--tavil-faint)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
@@ -2817,8 +2929,8 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
           document.body
         )}
         {confirmModal && createPortal(
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={() => setConfirmModal(null)}>
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6 w-full max-w-xs mx-4 shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 anim-fade-in" onClick={() => setConfirmModal(null)}>
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6 w-full max-w-xs mx-4 shadow-xl anim-scale-in" onClick={e => e.stopPropagation()}>
               <p className="text-sm text-gray-700 dark:text-zinc-300 mb-4">{confirmModal.message}</p>
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setConfirmModal(null)} className="px-3 py-1.5 text-xs border border-gray-200 dark:border-zinc-700 rounded-lg text-gray-600 dark:text-zinc-400">Cancel·lar</button>
@@ -3010,7 +3122,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
   const [currentMonth, setCurrentMonth] = useState(today0.getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(today0.getFullYear());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const isAdmin = currentUser?.role === 'Administrador/a';
+  const isAdmin = ['Administrador/a', 'Recursos humans', 'Comunicacions'].includes(currentUser?.role ?? '');
 
   useEffect(() => {
     if (initDate) {
@@ -3103,7 +3215,8 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
   };
 
   useEffect(() => {
-    apiGetAgendaEvents().then(setAgendaEvents).catch(console.error);
+    if (isTabCacheFresh('agendaEvents')) return;
+    apiGetAgendaEvents().then(d => { setAgendaEvents(d); tabPrefetch.agendaEvents = d; tabPrefetchAt.agendaEvents = Date.now(); }).catch(console.error);
   }, []);
 
   const navigateMonth = (dir: 1 | -1) => {
@@ -3278,7 +3391,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
         {/* Admin: edit event bottom sheet */}
         {isAdmin && evEditId !== null && createPortal(
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 anim-fade-in" onClick={() => setEvEditId(null)}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }} className="anim-sheet-enter" onClick={e => e.stopPropagation()}>
               <h3 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 20, fontWeight: 400, color: 'var(--tavil-text)', marginBottom: 18 }}>Editar event</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input type="text" value={eeTitle} onChange={e => setEeTitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
@@ -3305,8 +3418,8 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
           document.body
         )}
         {confirmModal && createPortal(
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={() => setConfirmModal(null)}>
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6 w-full max-w-xs mx-4 shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 anim-fade-in" onClick={() => setConfirmModal(null)}>
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6 w-full max-w-xs mx-4 shadow-xl anim-scale-in" onClick={e => e.stopPropagation()}>
               <p className="text-sm text-gray-700 dark:text-zinc-300 mb-4">{confirmModal.message}</p>
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setConfirmModal(null)} className="px-3 py-1.5 text-xs border border-gray-200 dark:border-zinc-700 rounded-lg text-gray-600 dark:text-zinc-400">Cancel·lar</button>
@@ -3503,17 +3616,40 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
 
 // ── Directori Tab ─────────────────────────────────────────────────────────────
 
-const DEPT_ORDER = ['Comercial', 'Compres', 'Direcció', 'Enginyeria', 'Màrqueting', 'Operacions', 'Producció', 'Recursos humans', 'Sistemes', 'Qualitat'];
+// Departments — sourced from PETICIONS/V2_Orgzanigrama_General_2025 (4).pdf (org chart).
+const DEPT_ORDER = [
+  'Administració',
+  'CME',
+  'Comercial',
+  'Compres',
+  'Costos',
+  'Direcció General',
+  'I+D',
+  'Informàtica',
+  'IT Industrial',
+  'Logística',
+  'Magatzem',
+  'Mecanització',
+  'Oficina Tècnica Elèctrica',
+  'Oficina Tècnica Mecànica',
+  'Posta en Marxa',
+  'Projectes',
+  'Qualitat i Seguretat',
+  'Recursos Humans',
+  'SAP',
+  'SAT',
+];
 
 function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
   const { t } = useTranslation();
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>(() => tabPrefetch.employees ?? []);
   const [activeFilter, setActiveFilter] = useState('Tots');
   const [dirSearch, setDirSearch] = useState('');
   const [view, setView] = useState<'graella' | 'departaments'>('graella');
 
   useEffect(() => {
-    apiGetEmployees().then(setEmployees).catch(console.error);
+    if (isTabCacheFresh('employees')) return;
+    apiGetEmployees().then(d => { setEmployees(d); tabPrefetch.employees = d; tabPrefetchAt.employees = Date.now(); }).catch(console.error);
   }, []);
 
   const filtered = (activeFilter === 'Tots' ? employees : employees.filter(e => e.dept === activeFilter))
@@ -3957,17 +4093,48 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function CampusTavilTab({ onBack }: { onBack?: () => void }) {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [activeTab, setActiveTab] = useState('Resum');
+  const [courses, setCourses] = useState<Course[]>(() => tabPrefetch.courses ?? []);
+  const [activeTab, setActiveTab] = usePersistedSubTab<string>('campus', 'Resum', ['Resum', 'Catàleg', 'El meu progrés', 'Proves', 'Recursos'] as const);
   const [topicFilter, setTopicFilter] = useState('Tots els temes');
   const [statusFilter, setStatusFilter] = useState('Tots els estats');
   const [campusSearch, setCampusSearch] = useState('');
   const isMobileCampus = useIsMobile();
   const [mobileCat, setMobileCat] = useState('Tot');
+  const [quizList, setQuizList] = useState<Quiz[]>([]);
+  const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
+  useEffect(() => { scrollPageToTop(); }, [activeQuiz]);
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, any>>({});
+  const [quizResult, setQuizResult] = useState<QuizAttemptResult | null>(null);
+  const [quizSubmitting, setQuizSubmitting] = useState(false);
 
   useEffect(() => {
-    apiGetCourses().then(setCourses).catch(console.error);
+    if (isTabCacheFresh('courses')) return;
+    apiGetCourses().then(d => { setCourses(d); tabPrefetch.courses = d; tabPrefetchAt.courses = Date.now(); }).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'Proves') {
+      apiGetQuizzes().then(setQuizList).catch(console.error);
+    }
+  }, [activeTab]);
+
+  const startQuiz = async (q: Quiz) => {
+    const full = await apiGetQuiz(q.id);
+    setActiveQuiz(full);
+    setQuizAnswers({});
+    setQuizResult(null);
+  };
+
+  const submitQuiz = async () => {
+    if (!activeQuiz) return;
+    setQuizSubmitting(true);
+    try {
+      const result = await apiSubmitQuizAttempt(activeQuiz.id, quizAnswers);
+      setQuizResult(result);
+      apiGetQuizzes().then(setQuizList).catch(console.error);
+    } catch (e) { console.error(e); }
+    finally { setQuizSubmitting(false); }
+  };
 
   const completed = courses.filter(c => c.user_status === 'Completat');
   const pending = courses.filter(c => c.user_status === 'Pendent');
@@ -4096,7 +4263,7 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
     <div>
       <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Plataforma de formació interna i desenvolupament professional</p>
       <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
-        {['Resum', 'Catàleg', 'El meu progrés', 'Recursos'].map(tab => (
+        {['Resum', 'Catàleg', 'El meu progrés', 'Recursos', 'Proves'].map(tab => (
           <UnderlineTab key={tab} label={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)} />
         ))}
       </div>
@@ -4212,6 +4379,162 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
         </>
       )}
 
+      {activeTab === 'Proves' && (
+        <>
+          {activeQuiz ? (
+            <div className="max-w-2xl mx-auto">
+              {quizResult ? (
+                /* ── Results screen ── */
+                <div className="space-y-4 anim-fade-in">
+                  <div className={`rounded-2xl p-6 text-center ${quizResult.passed ? 'bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800'}`}>
+                    <div className={`text-4xl font-bold mb-1 ${quizResult.passed ? 'text-green-600' : 'text-red-600'}`}>{quizResult.percentage}%</div>
+                    <p className={`font-semibold text-sm ${quizResult.passed ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                      {quizResult.passed ? '✓ Aprovat' : '✗ No aprovat'}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">{quizResult.score} / {quizResult.max_score} punts</p>
+                  </div>
+                  {/* Per-question breakdown */}
+                  {activeQuiz.questions?.map(q => {
+                    const r = quizResult.results[String(q.id)];
+                    if (!r) return null;
+                    return (
+                      <div key={q.id} className={`rounded-xl border p-4 text-sm ${r.correct === true ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/10' : r.correct === false ? 'border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/10' : 'border-gray-200 dark:border-zinc-700'}`}>
+                        <div className="flex items-start gap-2">
+                          <span className={`mt-0.5 flex-shrink-0 ${r.correct === true ? 'text-green-500' : r.correct === false ? 'text-red-500' : 'text-gray-400'}`}>
+                            {r.correct === true ? <CheckCircle size={16} /> : r.correct === false ? <X size={16} /> : <AlignLeft size={16} />}
+                          </span>
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900 dark:text-white">{q.question}</p>
+                            {r.correct === null && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1 italic">Resposta oberta: {r.answer}</p>}
+                            {q.explanation && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">{q.explanation}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="flex gap-2 justify-center pt-2">
+                    <button onClick={() => { setActiveQuiz(null); setQuizResult(null); }} className="px-5 py-2 rounded-xl bg-gray-100 dark:bg-zinc-800 text-sm font-medium text-gray-700 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors">Tornar a la llista</button>
+                    <button onClick={() => startQuiz(activeQuiz)} className="px-5 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors">Repetir prova</button>
+                  </div>
+                </div>
+              ) : (
+                /* ── Quiz taking ── */
+                <div className="space-y-5 anim-fade-in">
+                  <div className="flex items-center gap-3 mb-2">
+                    <button onClick={() => setActiveQuiz(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 transition-colors"><ChevronLeft size={20} /></button>
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-900 dark:text-white">{activeQuiz.title}</h2>
+                      {activeQuiz.description && <p className="text-xs text-gray-500 dark:text-zinc-400">{activeQuiz.description}</p>}
+                    </div>
+                  </div>
+
+                  {activeQuiz.questions?.map((q, qi) => (
+                    <div key={q.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs font-bold text-gray-400 mt-0.5">{qi + 1}.</span>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{q.question}</p>
+                      </div>
+
+                      {q.type === 'multiple_choice' && (
+                        <div className="space-y-2 pl-5">
+                          {q.options?.map((o, oi) => (
+                            <label key={o.id} className="flex items-center gap-3 cursor-pointer group">
+                              <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${quizAnswers[String(q.id)] === String(o.id) ? 'border-red-600 bg-red-600' : 'border-gray-300 dark:border-zinc-600 group-hover:border-red-400'}`}
+                                onClick={() => setQuizAnswers(a => ({ ...a, [String(q.id)]: String(o.id) }))}>
+                                {quizAnswers[String(q.id)] === String(o.id) && <span className="w-2 h-2 rounded-full bg-white" />}
+                              </div>
+                              <span className="text-xs font-bold text-gray-400 w-4">{String.fromCharCode(65 + oi)}</span>
+                              <span className="text-sm text-gray-700 dark:text-zinc-300">{o.text}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+
+                      {q.type === 'matching' && (
+                        <div className="space-y-2 pl-5">
+                          <p className="text-xs text-gray-400 mb-2">Escriu el valor de la dreta que correspon a cada element</p>
+                          {q.options?.map(o => (
+                            <div key={o.id} className="flex items-center gap-2">
+                              <span className="text-sm text-gray-700 dark:text-zinc-300 w-32 truncate font-medium">{o.text}</span>
+                              <span className="text-gray-400">→</span>
+                              <input
+                                value={(quizAnswers[String(q.id)] as any)?.[String(o.id)] ?? ''}
+                                onChange={e => setQuizAnswers(a => ({
+                                  ...a,
+                                  [String(q.id)]: { ...((a[String(q.id)] as any) ?? {}), [String(o.id)]: e.target.value }
+                                }))}
+                                className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-red-400"
+                                placeholder="Resposta..."
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {q.type === 'open_text' && (
+                        <div className="pl-5">
+                          <textarea
+                            value={quizAnswers[String(q.id)] ?? ''}
+                            onChange={e => setQuizAnswers(a => ({ ...a, [String(q.id)]: e.target.value }))}
+                            className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/30 resize-none"
+                            rows={3}
+                            placeholder="Escriu la teva resposta..."
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={submitQuiz}
+                    disabled={quizSubmitting}
+                    className="w-full py-3 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 disabled:opacity-50 transition-colors"
+                  >
+                    {quizSubmitting ? 'Enviant...' : 'Enviar respostes'}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* ── Quiz list ── */
+            <div className="space-y-3">
+              {quizList.length === 0 && (
+                <div className="text-center py-10 text-gray-400 text-sm">No hi ha proves disponibles de moment</div>
+              )}
+              {quizList.map(q => (
+                <div key={q.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 flex items-center gap-4 hover:border-violet-300 dark:hover:border-violet-700 transition-colors">
+                  <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950/20 flex items-center justify-center text-violet-600 flex-shrink-0">
+                    <GraduationCap size={20} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{q.title}</p>
+                      {q.user_attempt && (
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${q.user_attempt.passed ? 'bg-green-100 dark:bg-green-950/30 text-green-600' : 'bg-red-100 dark:bg-red-950/30 text-red-600'}`}>
+                          {q.user_attempt.passed ? `Aprovat · ${q.user_attempt.score}/${q.user_attempt.max_score}` : `No aprovat · ${q.user_attempt.score}/${q.user_attempt.max_score}`}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5 truncate">
+                      {q.question_count ?? 0} preguntes · {q.passing_score}% per aprovar
+                      {q.time_limit ? ` · ${q.time_limit} min` : ''}
+                      {q.category ? ` · ${q.category}` : ''}
+                    </p>
+                    {q.description && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1 truncate">{q.description}</p>}
+                  </div>
+                  <button
+                    onClick={() => window.open(`${window.location.pathname}?quiz=${q.id}`, '_blank')}
+                    className="flex-shrink-0 px-4 py-2 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition-colors"
+                  >
+                    {q.user_attempt ? 'Repetir' : 'Començar'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
       {activeTab === 'Recursos' && (
         <>
           <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Biblioteca de recursos complementaris per a l'aprenentatge.</p>
@@ -4257,7 +4580,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 
 function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }: { currentUser: User | null; initialSubTab?: string | null; onSubTabConsumed?: () => void; onBack?: () => void }) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState(initialSubTab ?? 'Suggeriments');
+  const [activeTab, setActiveTab] = usePersistedSubTab<string>('veu', initialSubTab ?? 'Suggeriments', ['Suggeriments', 'Incidències', 'Enquestes'] as const);
 
   useEffect(() => {
     if (initialSubTab) { setActiveTab(initialSubTab); onSubTabConsumed?.(); }
@@ -4603,7 +4926,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
         {/* New suggestion form */}
         {mobileVeuForm === 'sugg' && createPortal(
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 anim-fade-in" onClick={() => setMobileVeuForm(null)}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }} className="anim-sheet-enter" onClick={e => e.stopPropagation()}>
               <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Nou suggeriment</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
@@ -4632,7 +4955,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
         {/* New incidència form */}
         {mobileVeuForm === 'inc' && createPortal(
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 anim-fade-in" onClick={() => setMobileVeuForm(null)}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }} className="anim-sheet-enter" onClick={e => e.stopPropagation()}>
               <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Nova incidència</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input type="text" value={incTitle} onChange={e => setIncTitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
@@ -5052,14 +5375,240 @@ function VacancesInfo() {
 }
 
 
+// ── Vacances range picker ────────────────────────────────────────────────────
+// Multi-range vacation date selector. Two-month custom calendar, range mode,
+// confirmed-range chips, per-range validation via validateVacanca.
+type VacRange = { inici: string; final: string };
+
+function toIsoLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function isoToDate(iso: string): Date {
+  return new Date(iso + 'T12:00:00');
+}
+function fmtDayMonth(iso: string): string {
+  if (!iso) return '—';
+  return isoToDate(iso).toLocaleDateString('ca-ES', { day: '2-digit', month: 'short' });
+}
+
+function VacRangePicker({
+  ranges,
+  setRanges,
+  existingVacances,
+  minIso,
+  maxIso,
+}: {
+  ranges: VacRange[];
+  setRanges: (r: VacRange[]) => void;
+  existingVacances: { start_date: string; end_date: string; status: string }[];
+  minIso: string;
+  maxIso: string;
+}) {
+  const [open, setOpen] = useState(true);
+  const [draftFrom, setDraftFrom] = useState<string | null>(null);
+  const [draftTo, setDraftTo] = useState<string | null>(null);
+  const [hover, setHover] = useState<string | null>(null);
+  const [monthOffset, setMonthOffset] = useState(0);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const today = new Date();
+  const baseMonth = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+  const months = [baseMonth, new Date(baseMonth.getFullYear(), baseMonth.getMonth() + 1, 1)];
+
+  // Confirmed days set across all ranges (for visual booked + disable)
+  const confirmedSet = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of ranges) {
+      const cur = isoToDate(r.inici);
+      const end = isoToDate(r.final);
+      while (cur <= end) { s.add(toIsoLocal(cur)); cur.setDate(cur.getDate() + 1); }
+    }
+    return s;
+  }, [ranges]);
+
+  const draftRange: VacRange | null = (draftFrom && draftTo) ? { inici: draftFrom, final: draftTo } : null;
+  // Basic checks only — no periodo rules (sense periodes mode).
+  const draftError = (() => {
+    if (!draftRange) return null;
+    if (draftRange.final < draftRange.inici) return "La data final ha de ser posterior a la d'inici.";
+    if (laboralDaysBetween(draftRange.inici, draftRange.final) === 0) return 'El rang no conté cap dia laboral.';
+    // Overlap check with existing confirmed ranges
+    for (const r of ranges) {
+      if (!(draftRange.final < r.inici || draftRange.inici > r.final)) {
+        return 'El rang es solapa amb un altre ja afegit.';
+      }
+    }
+    return null;
+  })();
+
+  const totalDies = useMemo(() => ranges.reduce((acc, r) => acc + laboralDaysBetween(r.inici, r.final), 0), [ranges]);
+
+  const handleDayClick = (iso: string, disabled: boolean) => {
+    if (disabled) return;
+    if (!draftFrom || (draftFrom && draftTo)) {
+      setDraftFrom(iso); setDraftTo(null);
+    } else {
+      // Second click: same day = single-day range; earlier day = swap; later = end.
+      if (iso < draftFrom) { setDraftFrom(iso); setDraftTo(draftFrom); }
+      else { setDraftTo(iso); }
+    }
+  };
+
+  const handleAfegir = () => {
+    if (!draftRange || draftError) return;
+    setRanges([...ranges, draftRange]);
+    setDraftFrom(null); setDraftTo(null); setHover(null);
+  };
+
+  const handleRemove = (idx: number) => {
+    setRanges(ranges.filter((_, i) => i !== idx));
+  };
+
+  const dayInRange = (iso: string): 'start' | 'end' | 'middle' | 'single' | null => {
+    if (!draftFrom) return null;
+    const to = draftTo ?? hover;
+    if (!to) return iso === draftFrom ? 'single' : null;
+    const lo = draftFrom <= to ? draftFrom : to;
+    const hi = draftFrom <= to ? to : draftFrom;
+    if (iso < lo || iso > hi) return null;
+    if (iso === lo && iso === hi) return 'single';
+    if (iso === lo) return 'start';
+    if (iso === hi) return 'end';
+    return 'middle';
+  };
+
+  return (
+    <div ref={cardRef} className="rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50/50 dark:bg-zinc-900/50">
+      <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50 transition-colors rounded-xl">
+        <div className="text-left">
+          <p className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">Selecció de dates</p>
+          <p className="text-sm text-gray-900 dark:text-white mt-0.5">
+            {ranges.length === 0 ? 'Cap rang seleccionat' : `${ranges.length} rang${ranges.length > 1 ? 's' : ''} · ${totalDies} dies laborals`}
+          </p>
+        </div>
+        <ChevronDown size={16} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      <div className={`grid transition-[grid-template-rows] duration-[400ms] ease-in-out ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+        <div className="overflow-hidden min-h-0">
+          <div className="border-t border-gray-200 dark:border-zinc-700 px-4 py-3">
+
+            {/* Confirmed range chips */}
+            {ranges.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {ranges.map((r, idx) => (
+                  <span key={idx} className="inline-flex items-center gap-1 text-[11px] bg-white dark:bg-zinc-800 text-gray-800 dark:text-zinc-100 border border-gray-200 dark:border-zinc-700 rounded-full pl-2.5 pr-1 py-1">
+                    {fmtDayMonth(r.inici)} – {fmtDayMonth(r.final)}
+                    <span className="text-gray-400 ml-1">·</span>
+                    <span className="text-gray-500 text-[10px]">{laboralDaysBetween(r.inici, r.final)}d</span>
+                    <button onClick={() => handleRemove(idx)} aria-label="Eliminar rang" className="flex items-center justify-center w-5 h-5 rounded-full hover:bg-red-100 dark:hover:bg-red-950/40 hover:text-red-600 transition-colors ml-0.5">
+                      <X size={11} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Calendar header */}
+            <div className="flex items-center justify-between mb-2">
+              <button type="button" onClick={() => setMonthOffset(o => o - 1)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-md text-gray-500"><ChevronLeft size={14} /></button>
+              <div className="flex gap-6 text-xs font-semibold text-gray-700 dark:text-zinc-300">
+                {months.map((m, i) => (
+                  <span key={i} className="capitalize">{m.toLocaleDateString('ca-ES', { month: 'long', year: 'numeric' })}</span>
+                ))}
+              </div>
+              <button type="button" onClick={() => setMonthOffset(o => o + 1)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-md text-gray-500"><ChevronRight size={14} /></button>
+            </div>
+
+            {/* Two-month grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {months.map((m, mi) => {
+                const year = m.getFullYear();
+                const month = m.getMonth();
+                const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Mon=0
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const cells: (number | null)[] = [];
+                for (let i = 0; i < firstDow; i++) cells.push(null);
+                for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+                while (cells.length % 7 !== 0) cells.push(null);
+                return (
+                  <div key={mi}>
+                    <div className="grid grid-cols-7 text-center text-[10px] font-semibold text-gray-400 dark:text-zinc-500 mb-1">
+                      {['Dl','Dt','Dc','Dj','Dv','Ds','Dg'].map(d => <span key={d}>{d}</span>)}
+                    </div>
+                    <div className="grid grid-cols-7 gap-0.5">
+                      {cells.map((d, i) => {
+                        if (d === null) return <span key={i} />;
+                        const iso = toIsoLocal(new Date(year, month, d));
+                        const date = new Date(year, month, d);
+                        const dow = date.getDay();
+                        const isWeekend = dow === 0 || dow === 6;
+                        const isPast = iso < minIso;
+                        const isAfterMax = iso > maxIso;
+                        const isConfirmed = confirmedSet.has(iso);
+                        const disabled = isWeekend || isPast || isAfterMax || isConfirmed;
+                        const rangePos = dayInRange(iso);
+                        let cls = 'h-8 text-xs flex items-center justify-center transition-colors select-none';
+                        if (disabled) {
+                          if (isConfirmed) cls += ' bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 cursor-not-allowed';
+                          else cls += ' text-gray-300 dark:text-zinc-700 cursor-not-allowed';
+                        } else {
+                          cls += ' cursor-pointer text-gray-800 dark:text-zinc-200 hover:bg-gray-200/60 dark:hover:bg-zinc-700/60';
+                        }
+                        if (rangePos === 'single') cls += ' !bg-red-600 !text-white rounded-md';
+                        else if (rangePos === 'start') cls += ' !bg-red-600 !text-white rounded-l-md';
+                        else if (rangePos === 'end') cls += ' !bg-red-600 !text-white rounded-r-md';
+                        else if (rangePos === 'middle') cls += ' !bg-red-100 dark:!bg-red-950/40 !text-red-700 dark:!text-red-300';
+                        return (
+                          <span key={i}
+                            className={cls}
+                            onClick={() => handleDayClick(iso, disabled)}
+                            onMouseEnter={() => !disabled && setHover(iso)}
+                            onMouseLeave={() => setHover(null)}
+                          >{d}</span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Draft footer */}
+            <div className="mt-3 flex items-center justify-between gap-3 min-h-[34px]">
+              {!draftFrom && <p className="text-[11px] text-gray-500 dark:text-zinc-400">Selecciona la data d'inici</p>}
+              {draftFrom && !draftTo && <p className="text-[11px] text-gray-500 dark:text-zinc-400">Selecciona la data final</p>}
+              {draftRange && (
+                <>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[11px] text-gray-700 dark:text-zinc-300">
+                      {fmtDayMonth(draftRange.inici)} – {fmtDayMonth(draftRange.final)} · {laboralDaysBetween(draftRange.inici, draftRange.final)} dies lab.
+                    </span>
+                    {draftError && <span className="text-[10.5px] text-red-600 dark:text-red-400">{draftError}</span>}
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button type="button" onClick={() => { setDraftFrom(null); setDraftTo(null); }} className="text-[11px] px-2.5 py-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800">Cancel</button>
+                    <button type="button" onClick={handleAfegir} disabled={!!draftError} className="text-[11px] px-3 py-1.5 rounded-md bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-semibold">+ Afegir rang</button>
+                  </div>
+                </>
+              )}
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabConsumed, onBack }: { currentUser: User | null; onNotifChange?: () => void; initialSubTab?: string | null; onSubTabConsumed?: () => void; onBack?: () => void }) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState(initialSubTab ?? 'Dies no ordinaris');
+  const [activeTab, setActiveTab] = usePersistedSubTab<string>('solicituds', initialSubTab ?? 'Dies no ordinaris', ['Dies no ordinaris', 'Vacances'] as const);
 
   useEffect(() => {
     if (initialSubTab) { setActiveTab(initialSubTab); onSubTabConsumed?.(); }
   }, [initialSubTab]);
-  const [diesNoOrdinaris, setDiesNoOrdinaris] = useState<Solicitud[]>([]);
+  const [diesNoOrdinaris, setDiesNoOrdinaris] = useState<Solicitud[]>(() => tabPrefetch.solicituds ?? []);
   const [selectedDate, setSelectedDate] = useState('');
   const [comments, setComments] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -5069,9 +5618,10 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
 
   // Vacances state
   const [vacSubTab, setVacSubTab] = useState<'sol' | 'info'>('sol');
-  const [vacances, setVacances] = useState<Vacanca[]>([]);
+  const [vacances, setVacances] = useState<Vacanca[]>(() => tabPrefetch.vacances ?? []);
   const [vacStartDate, setVacStartDate] = useState('');
   const [vacEndDate, setVacEndDate] = useState('');
+  const [vacRanges, setVacRanges] = useState<VacRange[]>([]);
   const [vacComments, setVacComments] = useState('');
   const [vacSubmitting, setVacSubmitting] = useState(false);
   const [vacSuccess, setVacSuccess] = useState(false);
@@ -5084,16 +5634,16 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
   const [mobileFormOpen, setMobileFormOpen] = useState(false);
 
   const fetchSolicituds = () => {
-    apiGetSolicituds().then(setDiesNoOrdinaris).catch(console.error);
+    apiGetSolicituds().then(d => { setDiesNoOrdinaris(d); tabPrefetch.solicituds = d; tabPrefetchAt.solicituds = Date.now(); }).catch(console.error);
   };
 
   const fetchVacances = () => {
-    apiGetVacances().then(setVacances).catch(console.error);
+    apiGetVacances().then(d => { setVacances(d); tabPrefetch.vacances = d; tabPrefetchAt.vacances = Date.now(); }).catch(console.error);
   };
 
   useEffect(() => {
-    fetchSolicituds();
-    fetchVacances();
+    if (!isTabCacheFresh('solicituds')) fetchSolicituds();
+    if (!isTabCacheFresh('vacances')) fetchVacances();
   }, [currentUser?.role]);
 
   const formatDate = (iso: string) => {
@@ -5362,7 +5912,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
         {/* New day-off form */}
         {mobileSolForm && createPortal(
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 anim-fade-in" onClick={() => setMobileSolForm(false)}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%' }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%' }} className="anim-sheet-enter" onClick={e => e.stopPropagation()}>
               <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Nova sol·licitud</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div>
@@ -5389,7 +5939,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
         {/* New vacances form */}
         {mobileVacForm && createPortal(
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 anim-fade-in" onClick={() => setMobileVacForm(false)}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%' }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%' }} className="anim-sheet-enter" onClick={e => e.stopPropagation()}>
               <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Sol·licitar vacances</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div>
@@ -5669,6 +6219,28 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
           : null;
 
         const handleVacSubmit = async () => {
+          // Multi-range path (new picker) takes precedence over legacy single inputs.
+          if (vacRanges.length > 0) {
+            for (const r of vacRanges) {
+              const rep = validateVacanca(r.inici, r.final, ownVacances.map(v => ({ start_date: v.start_date, end_date: v.end_date, status: v.status })));
+              if (rep.errors.length > 0) {
+                alert(`La sol·licitud (${r.inici} – ${r.final}) no compleix el conveni:\n\n` + rep.errors.map(e => '• ' + e).join('\n'));
+                return;
+              }
+            }
+            setVacSubmitting(true);
+            try {
+              for (const r of vacRanges) {
+                await apiCreateVacanca(r.inici, r.final, vacComments.trim());
+              }
+              fetchVacances(); onNotifChange?.();
+              setVacRanges([]); setVacComments('');
+              setVacSuccess(true); setTimeout(() => setVacSuccess(false), 3000);
+            } catch (e: any) {
+              alert('La sol·licitud ha estat rebutjada pel servidor:\n\n' + (e?.message ?? 'Error desconegut'));
+            } finally { setVacSubmitting(false); }
+            return;
+          }
           if (!vacStartDate || !vacEndDate) return;
           const report = validateVacanca(
             vacStartDate, vacEndDate,
@@ -5859,16 +6431,13 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                   </div>
                 )}
                 <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Data d'inici</label>
-                    <input type="date" value={vacStartDate} min={today} onChange={e => setVacStartDate(e.target.value)}
-                      className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Data de fi</label>
-                    <input type="date" value={vacEndDate} min={vacStartDate || today} onChange={e => setVacEndDate(e.target.value)}
-                      className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
-                  </div>
+                  <VacRangePicker
+                    ranges={vacRanges}
+                    setRanges={setVacRanges}
+                    existingVacances={ownVacances.map(v => ({ start_date: v.start_date, end_date: v.end_date, status: v.status }))}
+                    minIso={today}
+                    maxIso="2027-01-31"
+                  />
                   <div>
                     <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Comentaris (opcional)</label>
                     <textarea value={vacComments} onChange={e => setVacComments(e.target.value.slice(0, 500))} placeholder="Motiu o informació addicional..." rows={3}
@@ -5895,8 +6464,13 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                       ))}
                     </div>
                   )}
+                  {vacRanges.length > 0 && (
+                    <div className="text-[11px] text-gray-600 dark:text-zinc-400 bg-gray-50 dark:bg-zinc-800/50 rounded-lg px-2.5 py-1.5">
+                      <strong>{vacRanges.reduce((acc, r) => acc + laboralDaysBetween(r.inici, r.final), 0)}</strong> dies laborals · {vacRanges.length} rang{vacRanges.length > 1 ? 's' : ''}
+                    </div>
+                  )}
                   <p className="text-[11px] text-red-600">Requereix aprovació del cap i de RRHH</p>
-                  <button onClick={handleVacSubmit} disabled={!vacStartDate || !vacEndDate || vacSubmitting || (vacReport?.errors.length ?? 0) > 0}
+                  <button onClick={handleVacSubmit} disabled={(vacRanges.length === 0 && (!vacStartDate || !vacEndDate)) || vacSubmitting || (vacReport?.errors.length ?? 0) > 0}
                     className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
                     <Send size={14} /> Enviar sol·licitud
                   </button>
@@ -5913,8 +6487,28 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
 
 // ── Perfil Tab ────────────────────────────────────────────────────────────────
 
+function ProfileRow({ icon: Icon, label, value, editing, onChange }: {
+  icon: React.ElementType;
+  label: string;
+  value?: string;
+  editing?: boolean;
+  onChange?: (v: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 py-1">
+      <Icon size={14} className="text-gray-400 dark:text-zinc-500 flex-shrink-0" />
+      <span className="text-[11px] uppercase tracking-wide font-medium text-gray-400 dark:text-zinc-500 w-20">{label}</span>
+      {editing && onChange ? (
+        <input value={value ?? ''} onChange={e => onChange(e.target.value)} className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+      ) : (
+        <span className="text-sm text-gray-700 dark:text-zinc-300 truncate flex-1">{value || '—'}</span>
+      )}
+    </div>
+  );
+}
+
 function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDarkMode, onLogout, notifications }: { currentUser: User | null; onUserUpdate: (u: User) => void; onNavigate?: (tab: string) => void; isDarkMode?: boolean; toggleDarkMode?: () => void; onLogout?: () => void; notifications?: Notification[] }) {
-  const [activeTab, setActiveTab] = useState('Informació');
+  const [activeTab, setActiveTab] = usePersistedSubTab<string>('perfil', 'Informació', ['Informació', 'Formació', 'Beneficis socials', 'Configuració'] as const);
   const [notifCorreu, setNotifCorreu] = useState(currentUser?.email_notifs !== 0);
   const [notifPortal, setNotifPortal] = useState(true);
 
@@ -5934,10 +6528,11 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
     }
   }, [deptInput, editing]);
 
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<Course[]>(() => tabPrefetch.courses ?? []);
 
   useEffect(() => {
-    apiGetCourses().then(setCourses).catch(console.error);
+    if (isTabCacheFresh('courses')) return;
+    apiGetCourses().then(d => { setCourses(d); tabPrefetch.courses = d; tabPrefetchAt.courses = Date.now(); }).catch(console.error);
   }, []);
 
   const profileCourses = courses.filter(c => c.user_status !== 'Pendent');
@@ -6228,124 +6823,100 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
       <div key={activeTab} className="anim-tab">
       {activeTab === 'Informació' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
-          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-6 relative">
-
-            {/* Edit / Save button — top right, always visible */}
-            {editing ? (
-              <div className="absolute top-4 right-4 flex gap-1.5">
-                <button onClick={handleSave} disabled={!nameInput.trim()} className="text-xs bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg font-medium transition-colors">Desar</button>
-                <button onClick={handleCancel} className="text-xs border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">Cancel·lar</button>
-              </div>
-            ) : (
-              <button
-                onClick={() => { setEditing(true); setNameInput(currentUser?.name ?? ''); }}
-                className="absolute top-4 right-4 flex items-center gap-1.5 text-xs text-gray-500 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 border border-gray-200 dark:border-zinc-700 hover:border-red-300 dark:hover:border-red-700 px-2.5 py-1.5 rounded-lg transition-colors"
-                title="Editar perfil"
-              >
-                <Settings size={13} /> Editar
-              </button>
-            )}
-
-            {/* Avatar + name */}
-            <div className="flex flex-col items-center mb-6 pt-2">
-              <div className="w-20 h-20 rounded-full bg-red-600 flex items-center justify-center text-white text-2xl font-bold mb-4">{initials}</div>
-
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden relative">
+            {/* Gradient banner */}
+            <div className="h-24 relative" style={{ background: 'linear-gradient(135deg,#bf211e 0%,#8a2624 60%,#5a1a18 100%)' }}>
               {editing ? (
-                <input
-                  autoFocus
-                  value={nameInput}
-                  onChange={e => setNameInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') handleCancel(); }}
-                  className="w-full text-center font-bold text-gray-900 dark:text-white text-base border border-red-400 rounded-lg px-3 py-1.5 outline-none dark:bg-zinc-800 mb-1"
-                />
+                <div className="absolute top-3 right-3 flex gap-1.5">
+                  <button onClick={handleSave} disabled={!nameInput.trim()} className="text-xs bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-40 px-3 py-1.5 rounded-lg font-medium transition-colors">Desar</button>
+                  <button onClick={handleCancel} className="text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg backdrop-blur transition-colors">Cancel·lar</button>
+                </div>
               ) : (
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white text-center">{currentUser?.name ?? '—'}</h3>
+                <button
+                  onClick={() => { setEditing(true); setNameInput(currentUser?.name ?? ''); }}
+                  className="absolute top-3 right-3 flex items-center gap-1.5 text-xs bg-white/15 hover:bg-white/25 text-white backdrop-blur px-2.5 py-1.5 rounded-lg transition-colors"
+                  title="Editar perfil"
+                >
+                  <Pencil size={12} /> Editar
+                </button>
               )}
-
-              {saved && <p className="text-[11px] text-green-600 mt-1">Canvis desats.</p>}
-
-              <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">{currentUser?.dept ?? '—'}</p>
-              <div className="flex gap-2 mt-2">
-                <span className="text-[11px] bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400 px-2 py-0.5 rounded font-medium">{currentUser?.dept ?? '—'}</span>
-                <span className="text-[11px] bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400 px-2 py-0.5 rounded font-medium">{currentUser?.role ?? '—'}</span>
-              </div>
             </div>
 
-            {/* Contact info */}
-            <div className="space-y-3">
-              {/* Email — read only */}
-              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-zinc-400">
-                <Mail size={14} className="text-gray-400 flex-shrink-0" />
-                <span className="truncate">{currentUser?.email ?? '—'}</span>
-              </div>
-
-              {/* Phone — editable */}
-              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-zinc-400">
-                <Phone size={14} className="text-gray-400 flex-shrink-0" />
-                {editing
-                  ? <input value={phoneInput} onChange={e => setPhoneInput(e.target.value)} className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
-                  : <span>{phoneInput}</span>}
-              </div>
-
-              {/* Ext — editable */}
-              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-zinc-400">
-                <Building2 size={14} className="text-gray-400 flex-shrink-0" />
-                {editing
-                  ? <input value={extInput} onChange={e => setExtInput(e.target.value)} className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
-                  : <span>{extInput}</span>}
-              </div>
-
-              {/* Location — editable */}
-              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-zinc-400">
-                <MapPin size={14} className="text-gray-400 flex-shrink-0" />
-                {editing
-                  ? <input value={locationInput} onChange={e => setLocationInput(e.target.value)} className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
-                  : <span>{locationInput}</span>}
-              </div>
-
-              {/* Dept — editable */}
-              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-zinc-400">
-                <FolderOpen size={14} className="text-gray-400 flex-shrink-0" />
-                {editing ? (
-                  <select value={deptInput} onChange={e => { setDeptInput(e.target.value); setIsHeadInput(false); }} className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white">
-                    {DEPT_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                ) : <span>{currentUser?.dept ?? '—'}</span>}
-              </div>
-
-              {/* Is head — editable, only show if no other head for selected dept */}
-              {editing && (
-                <label className={cn("flex items-center gap-2 cursor-pointer text-sm", deptHasHead ? "opacity-40 cursor-not-allowed" : "")}>
-                  <input
-                    type="checkbox"
-                    checked={isHeadInput}
-                    disabled={deptHasHead}
-                    onChange={e => setIsHeadInput(e.target.checked)}
-                    className="rounded text-red-600 focus:ring-red-400"
-                  />
-                  <span className="text-gray-700 dark:text-zinc-300">
-                    Sóc el/la responsable d'aquest departament
-                    {deptHasHead && <span className="text-xs text-gray-400 ml-1">(ja té responsable)</span>}
-                  </span>
-                </label>
-              )}
-              {!editing && (currentUser?.is_head === 1) && (
-                <div className="flex items-center gap-3 text-sm text-red-600 dark:text-red-400 font-medium">
-                  <Users size={14} className="flex-shrink-0" />
-                  <span>Cap de departament</span>
+            <div className="px-6 pb-6 -mt-12">
+              {/* Avatar (overlap) */}
+              <div className="flex justify-center">
+                <div className="w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-semibold shadow-lg ring-4 ring-white dark:ring-zinc-900 select-none"
+                     style={{ background: 'linear-gradient(135deg,#a8201d 0%,#6e1c1a 100%)', letterSpacing: '-0.01em' }}>
+                  {initials}
                 </div>
-              )}
-
-              {/* ID — read only */}
-              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-zinc-400">
-                <CreditCard size={14} className="text-gray-400 flex-shrink-0" />
-                <span>{`ID: TAV-0${String(currentUser?.id ?? 0).padStart(3, '0')}`}</span>
               </div>
 
-              {/* Start date — read only */}
-              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-zinc-400">
-                <Calendar size={14} className="text-gray-400 flex-shrink-0" />
-                <span>Des de 15 setembre 2019</span>
+              {/* Name + chips */}
+              <div className="text-center mt-3">
+                {editing ? (
+                  <input
+                    autoFocus
+                    value={nameInput}
+                    onChange={e => setNameInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') handleCancel(); }}
+                    className="w-full text-center font-semibold text-gray-900 dark:text-white text-lg border-b border-red-400 bg-transparent outline-none pb-1"
+                  />
+                ) : (
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.01em' }}>{currentUser?.name ?? '—'}</h3>
+                )}
+                <p className="text-sm text-gray-500 dark:text-zinc-400 mt-0.5">{currentUser?.role ?? '—'}</p>
+                <div className="flex justify-center gap-1.5 mt-2.5">
+                  <span className="text-[11px] bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 px-2 py-0.5 rounded-md font-medium">{currentUser?.dept ?? '—'}</span>
+                  {(currentUser?.is_head === 1) && (
+                    <span className="text-[11px] bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-md font-medium inline-flex items-center gap-1"><Users size={10} /> Cap</span>
+                  )}
+                </div>
+                {saved && <p className="text-[11px] text-green-600 mt-2">Canvis desats.</p>}
+              </div>
+
+              {/* Field grid */}
+              <div className="mt-5 pt-5 border-t border-gray-100 dark:border-zinc-800 space-y-2.5">
+                <ProfileRow icon={Mail} label="Correu" value={currentUser?.email ?? '—'} />
+                <ProfileRow
+                  icon={Phone} label="Telèfon"
+                  editing={editing} value={phoneInput} onChange={setPhoneInput}
+                />
+                <ProfileRow
+                  icon={Building2} label="Extensió"
+                  editing={editing} value={extInput} onChange={setExtInput}
+                />
+                <ProfileRow
+                  icon={MapPin} label="Ubicació"
+                  editing={editing} value={locationInput} onChange={setLocationInput}
+                />
+                <div className="flex items-center gap-3 py-1">
+                  <FolderOpen size={14} className="text-gray-400 dark:text-zinc-500 flex-shrink-0" />
+                  <span className="text-[11px] uppercase tracking-wide font-medium text-gray-400 dark:text-zinc-500 w-20">Dept.</span>
+                  {editing ? (
+                    <select value={deptInput} onChange={e => { setDeptInput(e.target.value); setIsHeadInput(false); }} className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white">
+                      {DEPT_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  ) : <span className="text-sm text-gray-700 dark:text-zinc-300 truncate">{currentUser?.dept ?? '—'}</span>}
+                </div>
+
+                {editing && (
+                  <label className={cn("flex items-center gap-2 cursor-pointer text-sm pl-7 pt-1", deptHasHead ? "opacity-40 cursor-not-allowed" : "")}>
+                    <input
+                      type="checkbox"
+                      checked={isHeadInput}
+                      disabled={deptHasHead}
+                      onChange={e => setIsHeadInput(e.target.checked)}
+                      className="rounded text-red-600 focus:ring-red-400"
+                    />
+                    <span className="text-xs text-gray-600 dark:text-zinc-400">
+                      Sóc el/la responsable d'aquest departament
+                      {deptHasHead && <span className="text-[10.5px] text-gray-400 ml-1">(ja té responsable)</span>}
+                    </span>
+                  </label>
+                )}
+
+                <ProfileRow icon={CreditCard} label="ID" value={`TAV-0${String(currentUser?.id ?? 0).padStart(3, '0')}`} />
+                <ProfileRow icon={Calendar} label="Des de" value="15 setembre 2019" />
               </div>
             </div>
           </div>
@@ -6367,7 +6938,6 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                 {([
                   { icon: Building2, label: "Empresa", tab: "Empresa" },
                   { icon: ActivityIcon, label: "Activitats", tab: "Activitats" },
-                  { icon: MessageSquare, label: "Veu de l'empleat", tab: "Veu" },
                   { icon: Mail, label: "Correu corporatiu", external: true },
                   { icon: ExternalLink, label: "Portal de nòmines", external: true },
                   { icon: Calendar, label: "Sol·licitud de vacances", tab: "Solicituds" },
@@ -6446,18 +7016,108 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
       )}
 
       {activeTab === 'Configuració' && (
-        <div className="max-w-lg space-y-4">
+        <div className="max-w-2xl space-y-4">
+          {/* Aparença */}
           <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
-            <div className="flex items-center gap-2 mb-4"><Bell size={15} className="text-gray-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">Notificacions</h3></div>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between"><span className="text-sm text-gray-700 dark:text-zinc-300">Notificacions per correu</span><Toggle on={notifCorreu} onToggle={async () => { const newVal = !notifCorreu; setNotifCorreu(newVal); try { const u = await apiUpdateMe({ email_notifs: newVal ? 1 : 0 }); onUserUpdate(u); } catch {} }} /></div>
-              <div className="flex items-center justify-between"><span className="text-sm text-gray-700 dark:text-zinc-300">Notificacions al portal</span><Toggle on={notifPortal} onToggle={() => setNotifPortal(!notifPortal)} /></div>
+            <div className="flex items-center gap-2 mb-4"><Sun size={15} className="text-gray-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">Aparença</h3></div>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { dark: false, label: 'Clar', Icon: Sun },
+                { dark: true,  label: 'Fosc', Icon: Moon },
+              ] as const).map(o => {
+                const active = (isDarkMode ?? false) === o.dark;
+                return (
+                  <button
+                    key={String(o.dark)}
+                    onClick={() => { if ((isDarkMode ?? false) !== o.dark) toggleDarkMode?.(); }}
+                    className={cn(
+                      'flex flex-col items-center gap-2 py-4 rounded-lg border transition-colors',
+                      active
+                        ? 'border-red-500 bg-red-50/60 dark:bg-red-950/20 text-red-600 dark:text-red-400'
+                        : 'border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800'
+                    )}
+                  >
+                    <o.Icon size={18} />
+                    <span className="text-xs font-medium">{o.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
+
+          {/* Idioma */}
           <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
-            <div className="flex items-center gap-2 mb-4"><Settings size={15} className="text-gray-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">Preferències</h3></div>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between"><span className="text-sm text-gray-700 dark:text-zinc-300 flex items-center gap-2"><Globe size={14} />Idioma</span><span className="text-sm text-gray-500">Català</span></div>
+            <div className="flex items-center gap-2 mb-4"><Globe size={15} className="text-gray-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">Idioma</h3></div>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { code: 'ca', label: 'Català' },
+                { code: 'es', label: 'Castellano' },
+                { code: 'en', label: 'English' },
+              ].map(l => {
+                const active = i18n.language === l.code;
+                return (
+                  <button
+                    key={l.code}
+                    onClick={() => i18n.changeLanguage(l.code)}
+                    className={cn(
+                      'py-2.5 rounded-lg border text-xs font-medium transition-colors',
+                      active
+                        ? 'border-red-500 bg-red-50/60 dark:bg-red-950/20 text-red-600 dark:text-red-400'
+                        : 'border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800'
+                    )}
+                  >{l.label}</button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Notificacions */}
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+            <div className="flex items-center gap-2 mb-4"><Bell size={15} className="text-gray-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">Notificacions</h3></div>
+            <div className="space-y-3.5">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-sm text-gray-800 dark:text-zinc-200">Notificacions per correu</div>
+                  <div className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">Rebràs un email per cada notificació nova.</div>
+                </div>
+                <Toggle on={notifCorreu} onToggle={async () => {
+                  const newVal = !notifCorreu;
+                  setNotifCorreu(newVal);
+                  try { const u = await apiUpdateMe({ email_notifs: newVal ? 1 : 0 }); onUserUpdate(u); }
+                  catch { setNotifCorreu(!newVal); }
+                }} />
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-sm text-gray-800 dark:text-zinc-200">Notificacions al portal</div>
+                  <div className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">Mostra la campaneta amb les novetats.</div>
+                </div>
+                <Toggle on={notifPortal} onToggle={() => setNotifPortal(!notifPortal)} />
+              </div>
+            </div>
+          </div>
+
+          {/* Compte */}
+          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+            <div className="flex items-center gap-2 mb-4"><Shield size={15} className="text-gray-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">Compte</h3></div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-700 dark:text-zinc-300">Correu</span>
+                <span className="text-gray-500 dark:text-zinc-400">{currentUser?.email ?? '—'}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-700 dark:text-zinc-300">Departament</span>
+                <span className="text-gray-500 dark:text-zinc-400">{currentUser?.dept ?? '—'}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-700 dark:text-zinc-300">Rol</span>
+                <span className="text-gray-500 dark:text-zinc-400">{currentUser?.role ?? '—'}</span>
+              </div>
+              {onLogout && (
+                <button onClick={onLogout} className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 text-sm font-medium transition-colors">
+                  <LogOut size={14} /> Tancar sessió
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -7537,8 +8197,8 @@ function ChangePasswordModal({ onDone, forced = false }: { onDone: () => void; f
   const inputCls = 'w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-4 py-3 text-sm text-gray-900 dark:text-white outline-none focus:border-red-400 transition-colors';
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 anim-fade-in">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl anim-scale-in">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950/30 flex items-center justify-center text-red-600"><Lock size={20} /></div>
           <div>
@@ -7578,17 +8238,541 @@ function ChangePasswordModal({ onDone, forced = false }: { onDone: () => void; f
   );
 }
 
+// ── Quiz Builder Modal ────────────────────────────────────────────────────────
+
+type QBQuestion = {
+  _key: string;
+  type: 'multiple_choice' | 'multiple_select' | 'true_false' | 'matching' | 'open_text' | 'slide';
+  question: string;
+  explanation: string;
+  points: number;
+  media_url?: string;
+  options: QBOption[];
+};
+type QBOption = {
+  _key: string;
+  text: string;
+  is_correct: number;
+  match_pair: string;
+};
+
+function mkKey() { return Math.random().toString(36).slice(2); }
+
+function QuizBuilderModal({ quiz, onClose, onSaved }: {
+  quiz: Quiz | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isEdit = !!quiz;
+  const [title, setTitle] = useState(quiz?.title ?? '');
+  const [description, setDescription] = useState(quiz?.description ?? '');
+  const [category, setCategory] = useState(quiz?.category ?? '');
+  const [timeLimit, setTimeLimit] = useState(quiz?.time_limit ?? 0);
+  const [passingScore, setPassingScore] = useState(quiz?.passing_score ?? 70);
+  const [active, setActive] = useState(quiz?.active ?? 1);
+  const [image, setImage] = useState(quiz?.image ?? '');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  // date-only format: 'YYYY-MM-DD' — DB returns 'YYYY-MM-DD HH:MM:SS'
+  const dbToLocal = (s: string | null | undefined) => s ? s.slice(0, 10) : '';
+  const localToDb = (s: string) => s ? s + ' 00:00:00' : null;
+  const [startAt, setStartAt] = useState(dbToLocal(quiz?.start_at));
+  const [endAt, setEndAt] = useState(dbToLocal(quiz?.end_at));
+  const [targetDepts, setTargetDepts] = useState<string[]>(quiz?.target_departments ?? []);
+  const [questions, setQuestions] = useState<QBQuestion[]>(() => {
+    if (!quiz?.questions) return [];
+    return quiz.questions.map(q => ({
+      _key: mkKey(),
+      type: q.type as QBQuestion['type'],
+      question: q.question,
+      explanation: q.explanation ?? '',
+      points: q.points,
+      options: (q.options ?? []).map(o => ({
+        _key: mkKey(),
+        text: o.text,
+        is_correct: o.is_correct ?? 0,
+        match_pair: o.match_pair ?? '',
+      })),
+    }));
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [loadingQuiz, setLoadingQuiz] = useState(false);
+
+  // On edit: list endpoint returns quizzes w/o questions. Fetch full quiz.
+  useEffect(() => {
+    if (!quiz?.id) return;
+    if (questions.length > 0) return; // already populated
+    setLoadingQuiz(true);
+    apiGetQuiz(quiz.id)
+      .then(full => {
+        setTitle(full.title ?? '');
+        setDescription(full.description ?? '');
+        setCategory(full.category ?? '');
+        setTimeLimit(full.time_limit ?? 0);
+        setPassingScore(full.passing_score ?? 70);
+        setActive(full.active ?? 1);
+        setImage(full.image ?? '');
+        setStartAt(dbToLocal(full.start_at));
+        setEndAt(dbToLocal(full.end_at));
+        setTargetDepts(full.target_departments ?? []);
+        setQuestions((full.questions ?? []).map(q => ({
+          _key: mkKey(),
+          type: q.type as QBQuestion['type'],
+          question: q.question,
+          explanation: q.explanation ?? '',
+          points: q.points,
+          options: (q.options ?? []).map(o => ({
+            _key: mkKey(),
+            text: o.text,
+            is_correct: o.is_correct ?? 0,
+            match_pair: o.match_pair ?? '',
+          })),
+        })));
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoadingQuiz(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quiz?.id]);
+
+  const addQuestion = (type: QBQuestion['type']) => {
+    const defaultOpts: QBOption[] = type === 'multiple_choice'
+      ? [{ _key: mkKey(), text: '', is_correct: 0, match_pair: '' },
+         { _key: mkKey(), text: '', is_correct: 0, match_pair: '' },
+         { _key: mkKey(), text: '', is_correct: 0, match_pair: '' },
+         { _key: mkKey(), text: '', is_correct: 0, match_pair: '' }]
+      : type === 'matching'
+      ? [{ _key: mkKey(), text: '', is_correct: 0, match_pair: '' },
+         { _key: mkKey(), text: '', is_correct: 0, match_pair: '' }]
+      : [];
+    setQuestions(qs => [...qs, {
+      _key: mkKey(), type, question: '', explanation: '', points: 1, options: defaultOpts
+    }]);
+  };
+
+  const updateQ = (key: string, patch: Partial<QBQuestion>) =>
+    setQuestions(qs => qs.map(q => q._key === key ? { ...q, ...patch } : q));
+
+  const removeQ = (key: string) =>
+    setQuestions(qs => qs.filter(q => q._key !== key));
+
+  const updateOpt = (qKey: string, oKey: string, patch: Partial<QBOption>) =>
+    setQuestions(qs => qs.map(q => q._key === qKey
+      ? { ...q, options: q.options.map(o => o._key === oKey ? { ...o, ...patch } : o) }
+      : q));
+
+  const addOpt = (qKey: string) =>
+    setQuestions(qs => qs.map(q => q._key === qKey
+      ? { ...q, options: [...q.options, { _key: mkKey(), text: '', is_correct: 0, match_pair: '' }] }
+      : q));
+
+  const removeOpt = (qKey: string, oKey: string) =>
+    setQuestions(qs => qs.map(q => q._key === qKey
+      ? { ...q, options: q.options.filter(o => o._key !== oKey) }
+      : q));
+
+  const setCorrect = (qKey: string, oKey: string) =>
+    setQuestions(qs => qs.map(q => q._key === qKey
+      ? { ...q, options: q.options.map(o => ({ ...o, is_correct: o._key === oKey ? 1 : 0 })) }
+      : q));
+
+  const moveQ = (idx: number, dir: -1 | 1) => {
+    const nIdx = idx + dir;
+    if (nIdx < 0 || nIdx >= questions.length) return;
+    setQuestions(qs => {
+      const arr = [...qs];
+      [arr[idx], arr[nIdx]] = [arr[nIdx], arr[idx]];
+      return arr;
+    });
+  };
+
+  const handleSave = async () => {
+    if (!title.trim()) { setError('El títol és obligatori'); return; }
+    setSaving(true); setError('');
+    try {
+      let imageUrl = image;
+      if (imageFile) imageUrl = await apiUploadImage(imageFile);
+      const payload: QuizIn = {
+        title: title.trim(),
+        description: description.trim(),
+        image: imageUrl,
+        category: category.trim(),
+        time_limit: timeLimit,
+        passing_score: passingScore,
+        active,
+        start_at: localToDb(startAt),
+        end_at: localToDb(endAt),
+        target_departments: targetDepts,
+        questions: questions.map((q, qi) => ({
+          type: q.type,
+          question: q.question,
+          explanation: q.explanation,
+          points: q.points,
+          position: qi,
+          options: q.options.map((o, oi) => ({
+            text: o.text,
+            is_correct: o.is_correct,
+            match_pair: o.match_pair,
+            position: oi,
+          })),
+        })),
+      };
+      if (isEdit && quiz) {
+        await apiUpdateQuiz(quiz.id, payload);
+      } else {
+        await apiCreateQuiz(payload);
+      }
+      onSaved();
+    } catch (e: any) {
+      setError(e.message ?? 'Error desconegut');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputCls = 'w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/30';
+  const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1';
+  // macOS-style datetime input: subtle border, rounded, monospaced numerics
+  const dateCls = 'w-full border border-gray-200 dark:border-zinc-700 rounded-xl px-3 py-2.5 text-sm bg-gradient-to-b from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 font-medium tabular-nums shadow-sm';
+
+  // Duration in days
+  const startMs = startAt ? new Date(startAt).getTime() : NaN;
+  const endMs   = endAt   ? new Date(endAt).getTime()   : NaN;
+  const durationDays = (!isNaN(startMs) && !isNaN(endMs) && endMs >= startMs)
+    ? Math.round((endMs - startMs) / 86400000) + 1
+    : NaN;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center anim-fade-in" style={{ background: 'rgba(0,0,0,0.5)' }}>
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 flex flex-col anim-scale-in" style={{ maxHeight: '90vh' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800">
+          <div className="flex items-center gap-2">
+            <GraduationCap size={20} className="text-violet-600" />
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">{isEdit ? 'Editar formació' : 'Nova formació'}</h2>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><X size={18} /></button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5">
+          {error && <p className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2">{error}</p>}
+
+          {/* Image upload (news pattern) */}
+          <div>
+            <label className={labelCls}>Imatge de portada</label>
+            <div className="flex items-center gap-3">
+              {(imageFile || image) && (
+                <img
+                  src={imageFile ? URL.createObjectURL(imageFile) : image}
+                  alt=""
+                  className="w-24 h-16 object-cover rounded-lg border border-gray-200 dark:border-zinc-700 flex-shrink-0"
+                />
+              )}
+              <label className="flex-1 cursor-pointer text-xs px-3 py-2 rounded-lg bg-violet-50 dark:bg-violet-950/20 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-950/40 font-medium border border-dashed border-violet-200 dark:border-violet-800 text-center transition-colors">
+                <input type="file" accept="image/*" className="hidden" onChange={e => setImageFile(e.target.files?.[0] ?? null)} />
+                {imageFile ? imageFile.name : (image ? 'Canviar imatge' : 'Pujar imatge')}
+              </label>
+              {(imageFile || image) && (
+                <button type="button" onClick={() => { setImageFile(null); setImage(''); }} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Treure</button>
+              )}
+            </div>
+          </div>
+
+          {/* macOS-style date pickers — informational */}
+          <div className="rounded-2xl bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/20 dark:to-indigo-950/20 border border-violet-100 dark:border-violet-900/40 p-4 space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Calendar size={14} className="text-violet-600" />
+              <span className="text-xs font-bold text-violet-700 dark:text-violet-300 uppercase tracking-widest">Finestra de la formació</span>
+              <span className="text-[10px] text-violet-500 dark:text-violet-400 ml-auto">informatiu</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Inici</label>
+                <input type="date" value={startAt} onChange={e => setStartAt(e.target.value)} className={dateCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Final</label>
+                <input type="date" value={endAt} onChange={e => setEndAt(e.target.value)} className={dateCls} />
+              </div>
+            </div>
+            <div className="pt-2 border-t border-violet-200/50 dark:border-violet-800/40">
+              <p className="text-[10px] text-violet-500 dark:text-violet-400 uppercase tracking-widest font-semibold">Durada</p>
+              <p className="text-sm font-bold text-violet-700 dark:text-violet-300 tabular-nums">
+                {isNaN(durationDays) ? '—' : `${durationDays} dia${durationDays !== 1 ? 's' : ''}`}
+              </p>
+            </div>
+          </div>
+
+          {/* Metadata */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="md:col-span-2">
+              <label className={labelCls}>Títol *</label>
+              <input value={title} onChange={e => setTitle(e.target.value)} className={inputCls} placeholder="Nom de la formació" />
+            </div>
+            <div className="md:col-span-2">
+              <label className={labelCls}>Descripció</label>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} className={inputCls} rows={2} placeholder="Descripció opcional..." />
+            </div>
+            <div>
+              <label className={labelCls}>Categoria</label>
+              <input value={category} onChange={e => setCategory(e.target.value)} className={inputCls} placeholder="Ex: Seguretat, RRHH..." />
+            </div>
+            <div>
+              <label className={labelCls}>Límit de temps (min, 0 = sense límit)</label>
+              <input type="number" min={0} value={timeLimit} onChange={e => setTimeLimit(Number(e.target.value))} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Puntuació mínima per aprovar (%)</label>
+              <input type="number" min={0} max={100} value={passingScore} onChange={e => setPassingScore(Number(e.target.value))} className={inputCls} />
+            </div>
+            <div className="flex items-end pb-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <button type="button" onClick={() => setActive(a => a === 1 ? 0 : 1)} className={`relative inline-flex w-10 h-6 items-center rounded-full transition-colors ${active === 1 ? 'bg-violet-600' : 'bg-gray-300 dark:bg-zinc-700'}`}>
+                  <span className="inline-block w-5 h-5 bg-white rounded-full shadow transition-transform" style={{ transform: active === 1 ? 'translateX(18px)' : 'translateX(2px)' }} />
+                </button>
+                <span className="text-sm text-gray-700 dark:text-zinc-300">Actiu (visible als empleats)</span>
+              </label>
+            </div>
+            <div className="md:col-span-2">
+              <label className={labelCls}>Departaments destinataris</label>
+              <p className="text-[11px] text-gray-500 dark:text-zinc-400 mb-2">
+                {targetDepts.length === 0 ? 'Cap seleccionat → visible per a tothom.' : `${targetDepts.length} dep. seleccionat${targetDepts.length !== 1 ? 's' : ''}.`}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {DEPT_ORDER.map(d => {
+                  const on = targetDepts.includes(d);
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setTargetDepts(prev => on ? prev.filter(x => x !== d) : [...prev, d])}
+                      className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${on
+                        ? 'bg-violet-600 border-violet-600 text-white'
+                        : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-300 hover:border-violet-400'}`}
+                    >
+                      {d}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Questions */}
+          <div>
+            {loadingQuiz && <div className="text-center py-4 text-gray-400 text-sm">Carregant preguntes...</div>}
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">{questions.length} pregunta{questions.length !== 1 ? 'es' : ''}</p>
+              <div className="flex gap-2 flex-wrap justify-end">
+                <button onClick={() => addQuestion('multiple_choice')} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/20 text-blue-600 hover:bg-blue-100 transition-colors font-medium"><Plus size={12} />Opció múltiple</button>
+                <button onClick={() => addQuestion('matching')} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-600 hover:bg-amber-100 transition-colors font-medium"><Plus size={12} />Relacionar</button>
+                <button onClick={() => addQuestion('open_text')} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-950/20 text-green-600 hover:bg-green-100 transition-colors font-medium"><Plus size={12} />Resposta oberta</button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {questions.map((q, qi) => (
+                <div key={q._key} className="border border-gray-200 dark:border-zinc-700 rounded-xl p-4 space-y-3 bg-gray-50/50 dark:bg-zinc-800/30">
+                  {/* Q header */}
+                  <div className="flex items-start gap-2">
+                    <div className="flex flex-col gap-1 pt-1">
+                      <button onClick={() => moveQ(qi, -1)} disabled={qi === 0} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 transition-colors"><GripVertical size={14} /></button>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          q.type === 'multiple_choice' ? 'bg-blue-100 dark:bg-blue-950/40 text-blue-600' :
+                          q.type === 'matching' ? 'bg-amber-100 dark:bg-amber-950/40 text-amber-600' :
+                          'bg-green-100 dark:bg-green-950/40 text-green-600'
+                        }`}>
+                          {q.type === 'multiple_choice' ? 'Opció múltiple' : q.type === 'matching' ? 'Relacionar' : 'Resposta oberta'}
+                        </span>
+                        <span className="text-[10px] text-gray-400">Pregunta {qi + 1}</span>
+                        <div className="flex gap-1 ml-auto">
+                          <button onClick={() => moveQ(qi, -1)} disabled={qi === 0} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 px-1 transition-colors text-xs">▲</button>
+                          <button onClick={() => moveQ(qi, 1)} disabled={qi === questions.length - 1} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 px-1 transition-colors text-xs">▼</button>
+                          <button onClick={() => removeQ(q._key)} className="text-red-400 hover:text-red-600 ml-2 transition-colors"><X size={14} /></button>
+                        </div>
+                      </div>
+                      <input value={q.question} onChange={e => updateQ(q._key, { question: e.target.value })}
+                        className={inputCls} placeholder="Text de la pregunta..." />
+                    </div>
+                  </div>
+
+                  {/* Points */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest whitespace-nowrap">Punts</label>
+                    <input type="number" min={1} value={q.points} onChange={e => updateQ(q._key, { points: Number(e.target.value) })}
+                      className="w-16 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm text-center bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none" />
+                  </div>
+
+                  {/* Options — multiple choice */}
+                  {q.type === 'multiple_choice' && (
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Opcions (marca la correcta)</p>
+                      {q.options.map((o, oi) => (
+                        <div key={o._key} className="flex items-center gap-2">
+                          <button onClick={() => setCorrect(q._key, o._key)}
+                            className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${o.is_correct ? 'border-blue-500 bg-blue-500' : 'border-gray-300 dark:border-zinc-600'}`}>
+                            {o.is_correct ? <Check size={10} className="text-white" /> : null}
+                          </button>
+                          <span className="text-xs font-bold text-gray-400 w-4">{String.fromCharCode(65 + oi)}</span>
+                          <input value={o.text} onChange={e => updateOpt(q._key, o._key, { text: e.target.value })}
+                            className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-300"
+                            placeholder={`Opció ${String.fromCharCode(65 + oi)}`} />
+                          {q.options.length > 2 && (
+                            <button onClick={() => removeOpt(q._key, o._key)} className="text-gray-300 hover:text-red-500 transition-colors"><X size={14} /></button>
+                          )}
+                        </div>
+                      ))}
+                      <button onClick={() => addOpt(q._key)} className="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1 mt-1 transition-colors"><Plus size={12} />Afegir opció</button>
+                    </div>
+                  )}
+
+                  {/* Options — matching */}
+                  {q.type === 'matching' && (
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Parelles (esquerra → dreta)</p>
+                      {q.options.map((o, oi) => (
+                        <div key={o._key} className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-gray-400 w-4">{oi + 1}</span>
+                          <input value={o.text} onChange={e => updateOpt(q._key, o._key, { text: e.target.value })}
+                            className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-300"
+                            placeholder="Element esquerra..." />
+                          <span className="text-gray-400">→</span>
+                          <input value={o.match_pair} onChange={e => updateOpt(q._key, o._key, { match_pair: e.target.value })}
+                            className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-300"
+                            placeholder="Element dreta..." />
+                          {q.options.length > 2 && (
+                            <button onClick={() => removeOpt(q._key, o._key)} className="text-gray-300 hover:text-red-500 transition-colors"><X size={14} /></button>
+                          )}
+                        </div>
+                      ))}
+                      <button onClick={() => addOpt(q._key)} className="text-xs text-amber-500 hover:text-amber-700 flex items-center gap-1 mt-1 transition-colors"><Plus size={12} />Afegir parella</button>
+                    </div>
+                  )}
+
+                  {/* Open text — just preview */}
+                  {q.type === 'open_text' && (
+                    <div className="bg-green-50 dark:bg-green-950/20 rounded-lg px-3 py-2">
+                      <p className="text-xs text-green-600">L'empleat respondrà amb text lliure. No es corregeix automàticament.</p>
+                    </div>
+                  )}
+
+                  {/* Explanation */}
+                  <div>
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Explicació (opcional, es mostra al corregir)</label>
+                    <input value={q.explanation} onChange={e => updateQ(q._key, { explanation: e.target.value })}
+                      className={inputCls} placeholder="Explicació de la resposta correcta..." />
+                  </div>
+                </div>
+              ))}
+
+              {questions.length === 0 && (
+                <div className="text-center py-8 text-gray-400 text-sm border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-xl">
+                  Afegeix preguntes amb els botons de dalt
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2 justify-end px-6 py-4 border-t border-gray-100 dark:border-zinc-800">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors">Cancel·lar</button>
+          <button onClick={handleSave} disabled={saving || !title.trim()} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors">
+            {saving ? 'Guardant...' : (isEdit ? 'Actualitzar' : 'Crear formació')}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ── Quiz Results Drawer (inline, expands quiz card) ───────────────────────────
+
+function QuizResultsDrawer({ quizId }: { quizId: number }) {
+  const [rows, setRows] = useState<QuizResultRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setLoading(true);
+    apiGetQuizResults(quizId)
+      .then(setRows)
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [quizId]);
+
+  const total  = rows.length;
+  const passed = rows.filter(r => r.passed).length;
+  const avgPct = total ? Math.round(rows.reduce((s, r) => s + r.percentage, 0) / total) : 0;
+
+  return (
+    <div className="border-t border-gray-100 dark:border-zinc-800 mt-3 pt-3 anim-fade-in">
+      {error && <p className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2 mb-2">{error}</p>}
+      {loading ? <div className="text-center py-4 text-gray-400 text-xs">Carregant resultats...</div> : rows.length === 0 ? (
+        <div className="text-center py-4 text-gray-400 text-xs">Cap intent encara.</div>
+      ) : (
+        <div className="space-y-2">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-violet-50 dark:bg-violet-950/20 rounded-lg p-2">
+              <p className="text-[9px] text-violet-600 dark:text-violet-400 uppercase tracking-widest font-semibold">Total</p>
+              <p className="text-lg font-bold text-violet-700 dark:text-violet-300 tabular-nums leading-tight">{total}</p>
+            </div>
+            <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-lg p-2">
+              <p className="text-[9px] text-emerald-600 dark:text-emerald-400 uppercase tracking-widest font-semibold">Aprovats</p>
+              <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300 tabular-nums leading-tight">{passed}</p>
+            </div>
+            <div className="bg-amber-50 dark:bg-amber-950/20 rounded-lg p-2">
+              <p className="text-[9px] text-amber-600 dark:text-amber-400 uppercase tracking-widest font-semibold">Mitjana</p>
+              <p className="text-lg font-bold text-amber-700 dark:text-amber-300 tabular-nums leading-tight">{avgPct}%</p>
+            </div>
+          </div>
+          <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+            {rows.map(r => (
+              <div key={r.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-gray-50 dark:bg-zinc-800/40">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0">
+                  {r.user_name.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-gray-900 dark:text-white truncate leading-tight">{r.user_name}</p>
+                  <p className="text-[10px] text-gray-400 truncate">{r.user_dept} · {new Date(r.completed_at.replace(' ', 'T')).toLocaleString('ca-ES', { dateStyle: 'short', timeStyle: 'short' })}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-xs font-bold tabular-nums text-gray-900 dark:text-white leading-tight">{r.score}/{r.max_score}</p>
+                  <p className={`text-[10px] font-semibold tabular-nums ${r.passed ? 'text-emerald-600' : 'text-red-500'}`}>{r.percentage}% {r.passed ? '✓' : '✗'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Backoffice Tab ────────────────────────────────────────────────────────────
 
 function BackofficeTab({ currentUser }: { currentUser: import('./api').User | null }) {
   const role = currentUser?.role ?? '';
   const isAdmin = role === 'Administrador/a';
-  const canManageNews = isAdmin || role === 'Recursos humans';
+  const canManageNews = isAdmin || role === 'Recursos humans' || role === 'Comunicacions';
+  const canManageFormacions = isAdmin || role === 'Recursos humans' || role === 'Formacions';
 
-  const [subTab, setSubTab] = useState<'usuaris' | 'avisos' | 'notícies'>(() => isAdmin ? 'usuaris' : 'notícies');
+  const defaultSubTab: 'usuaris' | 'avisos' | 'notícies' | 'formacions' =
+    isAdmin ? 'usuaris' : role === 'Formacions' ? 'formacions' : 'notícies';
+  const [subTab, setSubTab] = usePersistedSubTab<'usuaris' | 'avisos' | 'notícies' | 'formacions'>(
+    'backoffice', defaultSubTab, ['usuaris', 'avisos', 'notícies', 'formacions'] as const,
+  );
   const [users, setUsers] = useState<import('./api').User[]>([]);
   const [notices, setNotices] = useState<import('./api').Notice[]>([]);
   const [newsItems, setNewsItems] = useState<NewsArticle[]>([]);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [editQuiz, setEditQuiz] = useState<Quiz | null>(null);
+  const [showQuizBuilder, setShowQuizBuilder] = useState(false);
+  const [expandedQuizId, setExpandedQuizId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -7599,7 +8783,8 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
   const [uEmail, setUEmail] = useState('');
   const [uPass, setUPass] = useState('');
   const [uRole, setURole] = useState('Treballador/a');
-  const [uDept, setUDept] = useState('General');
+  const [uDept, setUDept] = useState(DEPT_ORDER[0]);
+  const [uIsHead, setUIsHead] = useState(false);
   const [uSaving, setUSaving] = useState(false);
 
   // Notice form
@@ -7617,6 +8802,7 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
   const [nnTitle, setNnTitle] = useState('');
   const [nnCategory, setNnCategory] = useState('Comunicats interns');
   const [nnSummary, setNnSummary] = useState('');
+  const [nnContent, setNnContent] = useState('');
   const [nnAuthor, setNnAuthor] = useState('');
   const [nnDate, setNnDate] = useState('');
   const [nnImage, setNnImage] = useState('');
@@ -7636,23 +8822,38 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
     setLoading(true);
     apiGetNews().then(setNewsItems).catch((e: any) => setError(e.message)).finally(() => setLoading(false));
   };
+  const loadQuizzes = () => {
+    setLoading(true);
+    apiGetQuizzes().then(setQuizzes).catch((e: any) => setError(e.message)).finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     if (subTab === 'usuaris') loadUsers();
     else if (subTab === 'avisos') loadNotices();
+    else if (subTab === 'formacions') loadQuizzes();
     else loadNews();
   }, [subTab]);
 
-  const openCreateUser = () => { setEditUser(null); setUName(''); setUEmail(''); setUPass(''); setURole('Treballador/a'); setUDept('General'); setShowUserForm(true); };
-  const openEditUser = (u: import('./api').User) => { setEditUser(u); setUName(u.name); setUEmail(u.email); setUPass(''); setURole(u.role); setUDept(u.dept); setShowUserForm(true); };
+  // Refresh quiz list when editor tab posts back a save event.
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      if ((e.data as any)?.type === 'tavil-quiz-saved' && subTab === 'formacions') loadQuizzes();
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, [subTab]);
+
+  const openCreateUser = () => { setEditUser(null); setUName(''); setUEmail(''); setUPass(''); setURole('Treballador/a'); setUDept(DEPT_ORDER[0]); setUIsHead(false); setShowUserForm(true); };
+  const openEditUser = (u: import('./api').User) => { setEditUser(u); setUName(u.name); setUEmail(u.email); setUPass(''); setURole(u.role); setUDept(u.dept); setUIsHead(!!u.is_head); setShowUserForm(true); };
 
   const saveUser = async () => {
     setUSaving(true); setError('');
     try {
       if (editUser) {
-        await apiAdminUpdateUser(editUser.id, { name: uName, email: uEmail, role: uRole, dept: uDept });
+        await apiAdminUpdateUser(editUser.id, { name: uName, email: uEmail, role: uRole, dept: uDept, is_head: uIsHead ? 1 : 0 });
       } else {
-        await apiAdminCreateUser({ name: uName, email: uEmail, temp_password: uPass, role: uRole, dept: uDept });
+        await apiAdminCreateUser({ name: uName, email: uEmail, temp_password: uPass, role: uRole, dept: uDept, is_head: uIsHead ? 1 : 0 });
       }
       setShowUserForm(false); loadUsers();
     } catch (e: any) { setError(e.message); }
@@ -7683,14 +8884,14 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
     try { await apiDeleteNotice(id); loadNotices(); } catch (e: any) { setError(e.message); }
   };
 
-  const openCreateNews = () => { setEditNewsItem(null); setNnTitle(''); setNnCategory('Comunicats interns'); setNnSummary(''); setNnAuthor(''); setNnDate(''); setNnImage(''); setNnImageFile(null); setNnFeatured(false); setShowNewsForm(true); };
-  const openEditNews = (n: NewsArticle) => { setEditNewsItem(n); setNnTitle(n.title); setNnCategory(n.category); setNnSummary(n.summary); setNnAuthor(n.author); setNnDate(n.date); setNnImage(n.image || ''); setNnImageFile(null); setNnFeatured(n.featured === 1); setShowNewsForm(true); };
+  const openCreateNews = () => { setEditNewsItem(null); setNnTitle(''); setNnCategory('Comunicats interns'); setNnSummary(''); setNnContent(''); setNnAuthor(''); setNnDate(''); setNnImage(''); setNnImageFile(null); setNnFeatured(false); setShowNewsForm(true); };
+  const openEditNews = (n: NewsArticle) => { setEditNewsItem(n); setNnTitle(n.title); setNnCategory(n.category); setNnSummary(n.summary); setNnContent(n.content ?? ''); setNnAuthor(n.author); setNnDate(n.date); setNnImage(n.image || ''); setNnImageFile(null); setNnFeatured(n.featured === 1); setShowNewsForm(true); };
   const saveNews = async () => {
     setNnSaving(true); setError('');
     try {
       let imageUrl = nnImage;
       if (nnImageFile) imageUrl = await apiUploadImage(nnImageFile);
-      const fields = { category: nnCategory, title: nnTitle.trim(), summary: nnSummary.trim(), content: '', author: nnAuthor.trim(), date: nnDate.trim(), image: imageUrl, featured: nnFeatured ? 1 : 0 };
+      const fields = { category: nnCategory, title: nnTitle.trim(), summary: nnSummary.trim(), content: nnContent, author: nnAuthor.trim(), date: nnDate.trim(), image: imageUrl, featured: nnFeatured ? 1 : 0 };
       if (editNewsItem) await apiUpdateNews(editNewsItem.id, fields);
       else await apiCreateNews(fields);
       setShowNewsForm(false); loadNews();
@@ -7703,8 +8904,8 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
   };
 
   const NEWS_CATS = ['Comunicats interns','Notícies corporatives','Recursos humans','Esdeveniments','Innovació','Seguretat'];
-  const ROLES = ['Treballador/a', 'Responsable de departament', 'Recursos humans', 'Administrador/a', 'Manteniment'];
-  const DEPTS = ['General', 'Producció', 'Logística', 'Administració', 'Comercial', 'RRHH', 'IT', 'Qualitat', 'Manteniment'];
+  const ROLES = ['Treballador/a', 'Responsable de departament', 'Recursos humans', 'Administrador/a', 'Manteniment', 'Comunicacions', 'Formacions'];
+  const DEPTS = DEPT_ORDER;
 
   const cardCls = 'bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4';
   const inputCls = 'w-full rounded-lg border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none focus:border-red-400 transition-colors';
@@ -7732,40 +8933,55 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
             <Newspaper size={15} /> Notícies
           </button>
         )}
+        {canManageFormacions && (
+          <button onClick={() => setSubTab('formacions')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subTab === 'formacions' ? 'bg-red-600 text-white' : 'bg-white dark:bg-zinc-900 text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700'}`}>
+            <GraduationCap size={15} /> Formacions
+          </button>
+        )}
       </div>
 
+      {/* ── Sub-tab content ── */}
+      <div key={subTab} className="anim-tab">
+
       {/* ── Usuaris ── */}
-      {subTab === 'usuaris' && (
-        <div className="space-y-3">
-          {/* Inline form — create or edit */}
-          {showUserForm && (
-            <div className={`${cardCls} border-red-200 dark:border-red-800 space-y-3`}>
-              <div className="flex justify-between items-center">
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">{editUser ? 'Editar usuari' : 'Nou usuari'}</p>
-                <button onClick={() => setShowUserForm(false)} className={btnGhost}><X size={16} /></button>
+      {subTab === 'usuaris' && (() => {
+        const userFormBody = (embedded: boolean) => (
+          <div className={`${embedded ? 'border-t border-red-200 dark:border-red-800 bg-red-50/30 dark:bg-red-950/10 px-4 py-3 rounded-b-xl' : `${cardCls} border-red-200 dark:border-red-800`} space-y-3 ${embedded ? '' : 'anim-slide-down'}`}>
+            <div className="flex justify-between items-center">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">{editUser ? 'Editar usuari' : 'Nou usuari'}</p>
+              <button onClick={() => setShowUserForm(false)} className={btnGhost}><X size={16} /></button>
+            </div>
+            {error && <p className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2">{error}</p>}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Nom</label><input value={uName} onChange={e => setUName(e.target.value)} className={inputCls} placeholder="Nom complet" /></div>
+              <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Correu</label><input value={uEmail} onChange={e => setUEmail(e.target.value)} className={inputCls} type="email" placeholder="nom@tavil.net" /></div>
+              {!editUser && <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Contrasenya temporal</label><input value={uPass} onChange={e => setUPass(e.target.value)} className={inputCls} type="text" placeholder="L'usuari la canviarà al primer accés" /></div>}
+              <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Rol</label>
+                <select value={uRole} onChange={e => setURole(e.target.value)} className={inputCls}>
+                  {ROLES.map(r => <option key={r}>{r}</option>)}
+                </select>
               </div>
-              {error && <p className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2">{error}</p>}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Nom</label><input value={uName} onChange={e => setUName(e.target.value)} className={inputCls} placeholder="Nom complet" /></div>
-                <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Correu</label><input value={uEmail} onChange={e => setUEmail(e.target.value)} className={inputCls} type="email" placeholder="nom@tavil.net" /></div>
-                {!editUser && <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Contrasenya temporal</label><input value={uPass} onChange={e => setUPass(e.target.value)} className={inputCls} type="text" placeholder="L'usuari la canviarà al primer accés" /></div>}
-                <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Rol</label>
-                  <select value={uRole} onChange={e => setURole(e.target.value)} className={inputCls}>
-                    {ROLES.map(r => <option key={r}>{r}</option>)}
-                  </select>
-                </div>
-                <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Departament</label>
-                  <select value={uDept} onChange={e => setUDept(e.target.value)} className={inputCls}>
-                    {DEPTS.map(d => <option key={d}>{d}</option>)}
-                  </select>
-                </div>
+              <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Departament</label>
+                <select value={uDept} onChange={e => setUDept(e.target.value)} className={inputCls}>
+                  {DEPTS.map(d => <option key={d}>{d}</option>)}
+                </select>
               </div>
-              <div className="flex gap-2 justify-end pt-1">
-                <button onClick={() => setShowUserForm(false)} className={btnGhost}>Cancel·lar</button>
-                <button onClick={saveUser} disabled={uSaving || !uName || !uEmail || (!editUser && !uPass)} className={btnPrimary}>{uSaving ? 'Guardant...' : 'Guardar'}</button>
+              <div className="md:col-span-2 flex items-center gap-3 pt-1">
+                <input type="checkbox" id="uIsHead" checked={uIsHead} onChange={e => setUIsHead(e.target.checked)} style={{ accentColor: '#bf211e', width: 16, height: 16 }} />
+                <label htmlFor="uIsHead" className="text-sm text-gray-700 dark:text-zinc-300 cursor-pointer select-none">Cap de Departament</label>
               </div>
             </div>
-          )}
+            <div className="flex gap-2 justify-end pt-1">
+              <button onClick={() => setShowUserForm(false)} className={btnGhost}>Cancel·lar</button>
+              <button onClick={saveUser} disabled={uSaving || !uName || !uEmail || (!editUser && !uPass)} className={btnPrimary}>{uSaving ? 'Guardant...' : 'Guardar'}</button>
+            </div>
+          </div>
+        );
+
+        return (
+        <div className="space-y-3">
+          {/* Create form — top */}
+          {showUserForm && !editUser && userFormBody(false)}
 
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-500 dark:text-zinc-400">{users.length} usuari{users.length !== 1 ? 's' : ''}</p>
@@ -7773,33 +8989,44 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
           </div>
           {loading ? <div className="text-center py-8 text-gray-400 text-sm">Carregant...</div> : (
             <div className="space-y-2">
-              {users.map(u => (
-                <div key={u.id} className={`${cardCls} flex items-center gap-3 ${editUser?.id === u.id ? 'border-red-300 dark:border-red-700' : ''}`}>
-                  <div className="w-9 h-9 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                    {u.name.split(' ').slice(0,2).map((n:string) => n[0]).join('').toUpperCase()}
+              {users.map(u => {
+                const isEditing = showUserForm && editUser?.id === u.id;
+                return (
+                  <div key={u.id} className={isEditing ? 'rounded-xl border border-red-300 dark:border-red-700 bg-white dark:bg-zinc-900 overflow-hidden' : ''}>
+                    <div className={`${isEditing ? 'flex items-center gap-3 px-4 py-3' : `${cardCls} flex items-center gap-3`}`}>
+                      <div className="w-9 h-9 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                        {u.name.split(' ').slice(0,2).map((n:string) => n[0]).join('').toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{u.name}</p>
+                        <p className="text-xs text-gray-400 truncate">{u.email} · {u.role} · {u.dept}</p>
+                        {u.must_change_password ? <span className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">Canvi de contrasenya pendent</span> : null}
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button onClick={() => isEditing ? setShowUserForm(false) : openEditUser(u)} className={btnGhost}><Pencil size={14} /></button>
+                        {u.id !== currentUser?.id && <button onClick={() => deleteUser(u.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-sm px-2 py-2 rounded-lg transition-colors"><Trash2 size={14} /></button>}
+                      </div>
+                    </div>
+                    {isEditing && (
+                      <div className="anim-drawer-down">
+                        {userFormBody(true)}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{u.name}</p>
-                    <p className="text-xs text-gray-400 truncate">{u.email} · {u.role} · {u.dept}</p>
-                    {u.must_change_password ? <span className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">Canvi de contrasenya pendent</span> : null}
-                  </div>
-                  <div className="flex gap-1 flex-shrink-0">
-                    <button onClick={() => openEditUser(u)} className={btnGhost}><Pencil size={14} /></button>
-                    {u.id !== currentUser?.id && <button onClick={() => deleteUser(u.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-sm px-2 py-2 rounded-lg transition-colors"><Trash2 size={14} /></button>}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {/* ── Avisos ── */}
       {subTab === 'avisos' && (
         <div className="space-y-3">
           {/* Inline form */}
           {showNoticeForm && (
-            <div className={`${cardCls} border-red-200 dark:border-red-800 space-y-3`}>
+            <div className={`${cardCls} border-red-200 dark:border-red-800 space-y-3 anim-slide-down`}>
               <div className="flex justify-between items-center">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">{editNotice ? 'Editar avís' : 'Nou avís'}</p>
                 <button onClick={() => setShowNoticeForm(false)} className={btnGhost}><X size={16} /></button>
@@ -7811,8 +9038,8 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
               <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Enllaç (opcional)</label><input value={nLink} onChange={e => setNLink(e.target.value)} className={inputCls} placeholder="https://..." /></div>
               <div className="flex items-center gap-3">
                 <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Actiu</label>
-                <button onClick={() => setNActive(nActive ? 0 : 1)} className={`w-10 h-6 rounded-full transition-colors ${nActive ? 'bg-red-600' : 'bg-gray-300 dark:bg-zinc-700'} relative`}>
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${nActive ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                <button type="button" onClick={() => setNActive(nActive ? 0 : 1)} className={`relative inline-flex w-10 h-6 items-center rounded-full transition-colors ${nActive ? 'bg-red-600' : 'bg-gray-300 dark:bg-zinc-700'}`}>
+                  <span className="inline-block w-5 h-5 bg-white rounded-full shadow transition-transform" style={{ transform: nActive ? 'translateX(18px)' : 'translateX(2px)' }} />
                 </button>
               </div>
             </div>
@@ -7853,7 +9080,7 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
       {subTab === 'notícies' && (
         <div className="space-y-3">
           {showNewsForm && (
-            <div className={`${cardCls} border-red-200 dark:border-red-800 space-y-3`}>
+            <div className={`${cardCls} border-red-200 dark:border-red-800 space-y-3 anim-slide-down`}>
               <div className="flex justify-between items-center">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">{editNewsItem ? 'Editar notícia' : 'Nova notícia'}</p>
                 <button onClick={() => setShowNewsForm(false)} className={btnGhost}><X size={16} /></button>
@@ -7867,6 +9094,7 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
                 </div>
                 <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Títol *</label><input value={nnTitle} onChange={e => setNnTitle(e.target.value)} className={inputCls} placeholder="Títol de la notícia" /></div>
                 <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Resum</label><textarea value={nnSummary} onChange={e => setNnSummary(e.target.value)} className={inputCls} rows={2} placeholder="Resum breu" /></div>
+                <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Contingut</label><textarea value={nnContent} onChange={e => setNnContent(e.target.value)} className={inputCls} rows={10} placeholder="Cos complet de la notícia. Suporta múltiples paràgrafs." style={{ fontFamily: 'inherit', whiteSpace: 'pre-wrap' }} /></div>
                 <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Autor</label><input value={nnAuthor} onChange={e => setNnAuthor(e.target.value)} className={inputCls} placeholder="Nom de l'autor" /></div>
                 <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Data</label><input type="date" value={nnDate} onChange={e => setNnDate(e.target.value)} className={inputCls} /></div>
                 <div className="md:col-span-2">
@@ -7876,8 +9104,8 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
                   {nnImageFile && <p className="text-[10px] text-gray-400 mt-1">{nnImageFile.name}</p>}
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setNnFeatured(v => !v)} className={`w-10 h-6 rounded-full transition-colors relative ${nnFeatured ? 'bg-red-600' : 'bg-gray-300 dark:bg-zinc-700'}`}>
-                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${nnFeatured ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  <button type="button" onClick={() => setNnFeatured(v => !v)} className={`relative inline-flex w-10 h-6 items-center rounded-full transition-colors ${nnFeatured ? 'bg-red-600' : 'bg-gray-300 dark:bg-zinc-700'}`}>
+                    <span className="inline-block w-5 h-5 bg-white rounded-full shadow transition-transform" style={{ transform: nnFeatured ? 'translateX(18px)' : 'translateX(2px)' }} />
                   </button>
                   <span className="text-xs text-gray-600 dark:text-zinc-400">Destacada</span>
                 </div>
@@ -7915,6 +9143,77 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
           )}
         </div>
       )}
+
+      {/* ── Formacions ── */}
+      {subTab === 'formacions' && (
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-500 dark:text-zinc-400">{quizzes.length} formació{quizzes.length !== 1 ? 'ns' : ''}</p>
+            <button onClick={() => window.open(`${window.location.pathname}?edit=new`, '_blank')} className={btnPrimary}><Plus size={14} className="inline mr-1" />Nova formació</button>
+          </div>
+          {loading ? <div className="text-center py-8 text-gray-400 text-sm">Carregant...</div> : (
+            <div className="space-y-2">
+              {quizzes.map(q => {
+                const fmtDate = (s: string | null) => s ? new Date(s.replace(' ', 'T')).toLocaleDateString('ca-ES', { day: '2-digit', month: 'short' }) : null;
+                const startStr = fmtDate(q.start_at);
+                const endStr   = fmtDate(q.end_at);
+                const expanded = expandedQuizId === q.id;
+                return (
+                <div key={q.id} className={cardCls}>
+                  <div className="flex items-center gap-3">
+                    {q.image ? (
+                      <img src={resolveImg(q.image)} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0 border border-gray-100 dark:border-zinc-800" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-violet-50 dark:bg-violet-950/20 flex items-center justify-center text-violet-600 flex-shrink-0">
+                        <GraduationCap size={20} />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{q.title}</p>
+                        {q.active === 0 && <span className="text-[10px] bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 px-1.5 py-0.5 rounded font-medium">Inactiu</span>}
+                        {q.category && <span className="text-[10px] bg-violet-50 dark:bg-violet-950/20 text-violet-600 px-1.5 py-0.5 rounded font-medium">{q.category}</span>}
+                        {(startStr || endStr) && (
+                          <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 px-1.5 py-0.5 rounded font-medium tabular-nums">
+                            {startStr ?? '?'} → {endStr ?? '?'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 truncate">
+                        {q.question_count ?? 0} preguntes · {q.passing_score}% per aprovar
+                        {q.time_limit ? ` · ${q.time_limit} min` : ''}
+                      </p>
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button onClick={() => setExpandedQuizId(expanded ? null : q.id)} className={`${btnGhost} ${expanded ? 'text-violet-600 bg-violet-50 dark:bg-violet-950/20' : ''}`} title="Resultats"><BarChart3 size={14} /></button>
+                      <button onClick={() => window.open(`${window.location.pathname}?edit=${q.id}`, '_blank')} className={btnGhost}><Pencil size={14} /></button>
+                      <button onClick={async () => {
+                        if (!window.confirm(`Eliminar "${q.title}"?`)) return;
+                        await apiDeleteQuiz(q.id);
+                        loadQuizzes();
+                      }} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-sm px-2 py-2 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                  {expanded && <QuizResultsDrawer quizId={q.id} />}
+                </div>
+                );
+              })}
+              {quizzes.length === 0 && !loading && (
+                <div className="text-center py-10 text-gray-400 text-sm">Cap formació creada. Crea la primera!</div>
+              )}
+            </div>
+          )}
+          {showQuizBuilder && (
+            <QuizBuilderModal
+              quiz={editQuiz}
+              onClose={() => setShowQuizBuilder(false)}
+              onSaved={() => { setShowQuizBuilder(false); loadQuizzes(); }}
+            />
+          )}
+        </div>
+      )}
+
+      </div>{/* end key={subTab} */}
     </div>
   );
 }
@@ -7939,7 +9238,6 @@ function useSidebarSections(role?: string) {
       items: [
         { id: 'Espai', label: t('nav.espai'), icon: Building2 },
         { id: 'Campus', label: t('nav.campus'), icon: GraduationCap },
-        { id: 'Veu', label: t('nav.veu'), icon: MessageSquare },
       ]
     },
     {
@@ -7949,7 +9247,7 @@ function useSidebarSections(role?: string) {
         { id: 'Perfil', label: t('nav.perfil'), icon: UserCircle },
       ]
     },
-    ...(['Administrador/a', 'Recursos humans'].includes(role ?? '') ? [{
+    ...(['Administrador/a', 'Recursos humans', 'Comunicacions', 'Formacions'].includes(role ?? '') ? [{
       title: 'Admin',
       items: [{ id: 'Backoffice', label: 'Backoffice', icon: Shield }]
     }] : [])
@@ -7963,7 +9261,6 @@ function EmpresaLandingTab({ onNavigate }: { onNavigate?: (tab: string) => void 
     { id: 'Directori', label: 'Directori', icon: Users, desc: 'Troba companys per departament' },
     { id: 'Espai', label: 'Espai corporatiu', icon: Building2, desc: 'Documents, polítiques, plantilles' },
     { id: 'Campus', label: 'Campus TAVIL', icon: GraduationCap, desc: 'Formació i cursos' },
-    { id: 'Veu', label: "Veu de l'empleat", icon: MessageSquare, desc: 'Suggeriments i incidències' },
     { id: 'Activitats', label: 'Activitats', icon: ActivityIcon, desc: "Esdeveniments d'empresa" },
   ];
   return (
@@ -7996,63 +9293,45 @@ function MobileSwipeStack({
   setActiveTab,
   tabOrder,
   renderPageLayout,
-  enterClass,
 }: {
   activeTab: string;
   setActiveTab: (t: string) => void;
   tabOrder: string[];
   renderPageLayout: (t: string) => React.ReactNode;
   enterClass?: string;
+  exitingTab?: string | null;
+  exitClass?: string;
 }) {
-  const [displayTab, setDisplayTab] = useState(activeTab);
-  const [pageEnterClass, setPageEnterClass] = useState('');
+  // Instagram-style permanent strip: every tab in tabOrder is mounted once,
+  // hosted at a fixed slot. Switching tabs only changes which slot the
+  // viewport shows — components never unmount, state/images persist, no flash.
   const [dragX, setDragX] = useState(0);
   const [snapping, setSnapping] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const startRef = useRef<{ x: number; y: number; t: number; axis: 'x' | 'y' | null } | null>(null);
-
-  // External tab change (click on bottom nav / sidebar / search) — animate if adjacent
+  // Tabs that have ever been visited — only render content for these so we
+  // don't pay the cost of mounting every tab up-front. Once mounted, never
+  // unmount (state retained).
+  const [visited, setVisited] = useState<Set<string>>(() => new Set([activeTab]));
   useEffect(() => {
-    if (displayTab === activeTab) return;
-    const oldIdx = tabOrder.indexOf(displayTab);
-    const newIdx = tabOrder.indexOf(activeTab);
-    if (oldIdx === -1 || newIdx === -1 || Math.abs(newIdx - oldIdx) !== 1) {
-      setDisplayTab(activeTab);
-      setPageEnterClass(enterClass ?? '');
-      return;
-    }
-    setPageEnterClass('');
-    const w = containerRef.current?.clientWidth ?? window.innerWidth;
-    const dir = newIdx > oldIdx ? -1 : 1;
-    setSnapping(true);
-    setDragX(dir * w);
-    const timer = window.setTimeout(() => {
-      setSnapping(false);
-      setDragX(0);
-      setDisplayTab(activeTab);
-    }, 340);
-    return () => clearTimeout(timer);
-  }, [activeTab, displayTab, tabOrder, enterClass]);
+    setVisited(prev => prev.has(activeTab) ? prev : new Set(prev).add(activeTab));
+  }, [activeTab]);
 
-  const dIdx = tabOrder.indexOf(displayTab);
-  const prevTab = dIdx > 0 ? tabOrder[dIdx - 1] : null;
-  const nextTab = dIdx >= 0 && dIdx < tabOrder.length - 1 ? tabOrder[dIdx + 1] : null;
+  const activeIdx = tabOrder.indexOf(activeTab);
+  const isOffStrip = activeIdx === -1; // sub-tab (Activitats, Espai, Campus, …)
+  const safeActiveIdx = isOffStrip ? tabOrder.indexOf('Més') : activeIdx;
+  const prevTab = !isOffStrip && safeActiveIdx > 0 ? tabOrder[safeActiveIdx - 1] : null;
+  const nextTab = !isOffStrip && safeActiveIdx < tabOrder.length - 1 ? tabOrder[safeActiveIdx + 1] : null;
+
 
   const onTouchStart = (e: React.TouchEvent) => {
     if (snapping || e.touches.length !== 1) return;
     const tgt = e.target as HTMLElement;
-    // don't hijack gestures that originate inside interactive/scrollable controls
     if (tgt.closest('input, textarea, select, [data-no-swipe], [role="slider"]')) return;
-    // only activate from the edge zones (left or right 10% of screen)
     const w = containerRef.current?.clientWidth ?? window.innerWidth;
     const touchX = e.touches[0].clientX;
     if (touchX > w * 0.10 && touchX < w * 0.90) return;
-    startRef.current = {
-      x: touchX,
-      y: e.touches[0].clientY,
-      t: Date.now(),
-      axis: null,
-    };
+    startRef.current = { x: touchX, y: e.touches[0].clientY, t: Date.now(), axis: null };
   };
   const onTouchMove = (e: React.TouchEvent) => {
     if (!startRef.current) return;
@@ -8073,22 +9352,21 @@ function MobileSwipeStack({
     const axis = startRef.current.axis;
     const t0 = startRef.current.t;
     startRef.current = null;
-    if (axis !== 'x') {
-      setDragX(0);
-      return;
-    }
+    if (axis !== 'x') { setDragX(0); return; }
     const w = containerRef.current?.clientWidth ?? window.innerWidth;
     const dx = dragX;
     const elapsed = Math.max(1, Date.now() - t0);
-    const velocity = Math.abs(dx) / elapsed; // px/ms
+    const velocity = Math.abs(dx) / elapsed;
     const threshold = w * 0.28;
     setSnapping(true);
     if ((dx <= -threshold || (dx < -20 && velocity > 0.45)) && nextTab) {
+      // Animate strip fully off (-w). Then swap active (slot N+1 takes
+      // offset=0 position) and reset drag to 0 in same commit — visually
+      // continuous, no second-snap.
       setDragX(-w);
       window.setTimeout(() => {
         setSnapping(false);
         setDragX(0);
-        setDisplayTab(nextTab);
         setActiveTab(nextTab);
       }, 300);
     } else if ((dx >= threshold || (dx > 20 && velocity > 0.45)) && prevTab) {
@@ -8096,7 +9374,6 @@ function MobileSwipeStack({
       window.setTimeout(() => {
         setSnapping(false);
         setDragX(0);
-        setDisplayTab(prevTab);
         setActiveTab(prevTab);
       }, 300);
     } else {
@@ -8109,31 +9386,1189 @@ function MobileSwipeStack({
     <div
       ref={containerRef}
       className="page-stack w-full"
-      style={{ touchAction: 'pan-y', overflow: 'hidden' }}
+      style={{ touchAction: 'pan-y', overflow: 'hidden', position: 'relative' }}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
       onTouchCancel={onTouchEnd}
     >
       <div
-        className="flex"
         style={{
-          width: '300%',
-          transform: `translate3d(calc(-33.3333% + ${dragX}px), 0, 0)`,
+          position: 'relative',
+          width: '100%',
+          // Active slot anchored at x=0; siblings positioned at ±N*100% via
+          // each slot's own translateX. Drag adds dragX overlay.
+          transform: `translate3d(${dragX}px, 0, 0)`,
           transition: snapping ? 'transform 300ms cubic-bezier(0.22,1,0.36,1)' : 'none',
           willChange: 'transform',
         }}
       >
-        <div className="shrink-0" style={{ width: '33.3333%' }}>
-          {prevTab ? renderPageLayout(prevTab) : null}
-        </div>
-        <div key={displayTab} className={cn('shrink-0', pageEnterClass)} style={{ width: '33.3333%' }}>
-          {renderPageLayout(displayTab)}
-        </div>
-        <div className="shrink-0" style={{ width: '33.3333%' }}>
-          {nextTab ? renderPageLayout(nextTab) : null}
+        {tabOrder.map((tab, idx) => {
+          const offset = idx - safeActiveIdx;
+          const isStripActive = !isOffStrip && idx === safeActiveIdx;
+          const isAdjacent = Math.abs(offset) === 1;
+          // Render only visited tabs (lazy). Once visited, kept mounted forever
+          // — state, scroll position, fetched data persist.
+          const shouldRender = visited.has(tab);
+          return (
+            <div
+              key={tab}
+              aria-hidden={!isStripActive}
+              style={{
+                position: isStripActive ? 'relative' : 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: isStripActive ? undefined : `translateX(${offset * 100}%)`,
+                visibility: isStripActive || (!isOffStrip && isAdjacent) ? 'visible' : 'hidden',
+                pointerEvents: isStripActive ? 'auto' : 'none',
+              }}
+            >
+              {shouldRender ? renderPageLayout(tab) : null}
+            </div>
+          );
+        })}
+        {/* Off-strip pages (sub-tabs reachable via "Més" or sidebar): render
+            on top of the strip when active. Mounted lazily and kept after. */}
+        {isOffStrip && (
+          <div
+            key={activeTab}
+            style={{ position: 'relative', width: '100%', zIndex: 2 }}
+          >
+            {renderPageLayout(activeTab)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Quiz Player Page (full-screen, presentation style) ───────────────────────
+
+function QuizPlayerPage({ quizId }: { quizId: number }) {
+  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [stage, setStage] = useState<'intro' | 'playing' | 'result'>('intro');
+  const [idx, setIdx] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [result, setResult] = useState<QuizAttemptResult | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    document.title = 'Formació · TAVIL';
+    // sessionStorage isn't shared between tabs. If we have no token, try to
+    // pull it from the tab that opened us (same-origin → allowed).
+    try {
+      const haveToken = localStorage.getItem('tavil_token') || sessionStorage.getItem('tavil_token');
+      if (!haveToken && window.opener) {
+        const op = (window.opener as Window | null);
+        const inherited = op?.localStorage?.getItem('tavil_token')
+          ?? op?.sessionStorage?.getItem('tavil_token')
+          ?? null;
+        if (inherited) sessionStorage.setItem('tavil_token', inherited);
+      }
+    } catch { /* cross-origin or null opener */ }
+    apiGetQuiz(quizId)
+      .then(q => setQuiz(q))
+      .catch(e => setError(e.message ?? 'Error carregant la formació'))
+      .finally(() => setLoading(false));
+  }, [quizId]);
+
+  // Keyboard: arrow nav while playing
+  useEffect(() => {
+    if (stage !== 'playing' || !quiz) return;
+    const total = quiz.questions?.length ?? 0;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' && idx < total - 1) setIdx(i => i + 1);
+      if (e.key === 'ArrowLeft' && idx > 0) setIdx(i => i - 1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [stage, idx, quiz]);
+
+  const submit = async () => {
+    if (!quiz) return;
+    setSubmitting(true);
+    try {
+      const r = await apiSubmitQuizAttempt(quiz.id, answers);
+      setResult(r);
+      setStage('result');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e: any) {
+      setError(e.message ?? 'Error enviant respostes');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#181010 0%,#221717 40%,#2a1c1b 75%,#221615 100%)' }}>
+        <div className="text-white/60 text-sm">Carregant formació…</div>
+      </div>
+    );
+  }
+  if (error || !quiz) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center p-6" style={{ background: 'linear-gradient(135deg,#181010 0%,#221717 40%,#2a1c1b 75%,#221615 100%)' }}>
+        <div className="text-center text-white/80 max-w-md">
+          <p className="text-lg font-semibold mb-2">No s'ha pogut carregar la formació</p>
+          <p className="text-sm text-white/50">{error || 'Quiz no disponible'}</p>
+          <button onClick={() => window.close()} className="mt-6 px-5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm">Tancar</button>
         </div>
       </div>
+    );
+  }
+
+  const total = quiz.questions?.length ?? 0;
+  const q = quiz.questions?.[idx];
+  const progress = total > 0 ? ((idx + 1) / total) * 100 : 0;
+  const answered = q
+    ? (q.type === 'slide'
+        ? true
+        : q.type === 'multiple_select'
+          ? Array.isArray(answers[String(q.id)]) && (answers[String(q.id)] as any[]).length > 0
+          : answers[String(q.id)] !== undefined && answers[String(q.id)] !== '')
+    : false;
+  const allAnswered = (quiz.questions ?? []).every(qq => {
+    if (qq.type === 'slide') return true;
+    const a = answers[String(qq.id)];
+    if (qq.type === 'matching') return a && typeof a === 'object' && Object.keys(a).length === (qq.options?.length ?? 0);
+    if (qq.type === 'multiple_select') return Array.isArray(a) && a.length > 0;
+    return a !== undefined && a !== '';
+  });
+
+  // ── Intro screen ──
+  if (stage === 'intro') {
+    return (
+      <div className="fixed inset-0 overflow-y-auto" style={{ background: 'linear-gradient(135deg,#181010 0%,#221717 40%,#2a1c1b 75%,#221615 100%)' }}>
+        <div className="min-h-full flex items-center justify-center p-8">
+          <div className="max-w-2xl w-full text-center text-white">
+            {quiz.image && (
+              <img src={resolveImg(quiz.image)} alt="" className="w-full h-64 object-cover rounded-2xl mb-8 shadow-2xl" />
+            )}
+            <div className="text-xs font-semibold tracking-[0.2em] uppercase text-red-200/80 mb-4">
+              {quiz.category || 'Formació TAVIL'}
+            </div>
+            <h1 style={{ fontFamily: '"Instrument Serif", serif' }} className="text-5xl md:text-6xl font-normal leading-tight mb-6 tracking-tight">
+              {quiz.title}
+            </h1>
+            {quiz.description && (
+              <p className="text-lg text-white/70 mb-10 leading-relaxed">{quiz.description}</p>
+            )}
+            <div className="grid grid-cols-3 gap-4 mb-10 max-w-md mx-auto">
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+                <div className="text-3xl font-bold tabular-nums">{total}</div>
+                <div className="text-[10px] uppercase tracking-widest text-white/50 mt-1">Preguntes</div>
+              </div>
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+                <div className="text-3xl font-bold tabular-nums">{quiz.passing_score}%</div>
+                <div className="text-[10px] uppercase tracking-widest text-white/50 mt-1">Per aprovar</div>
+              </div>
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+                <div className="text-3xl font-bold tabular-nums">{quiz.time_limit || '∞'}</div>
+                <div className="text-[10px] uppercase tracking-widest text-white/50 mt-1">{quiz.time_limit ? 'Minuts' : 'Sense límit'}</div>
+              </div>
+            </div>
+            <button
+              onClick={() => setStage('playing')}
+              className="px-10 py-4 rounded-full text-white font-semibold text-base transition-colors shadow-2xl shadow-red-900/50 hover:brightness-110"
+              style={{ background: '#8a2624' }}
+            >
+              Començar formació →
+            </button>
+            <p className="text-xs text-white/40 mt-4">Fes servir les fletxes ← → per navegar</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Result screen ──
+  if (stage === 'result' && result) {
+    const passed = result.passed;
+    return (
+      <div className="fixed inset-0 overflow-y-auto" style={{ background: passed
+          ? 'linear-gradient(135deg,#064e3b 0%,#065f46 50%,#047857 100%)'
+          : 'linear-gradient(135deg,#450a0a 0%,#7f1d1d 50%,#991b1b 100%)' }}>
+        <div className="min-h-full flex items-center justify-center p-8">
+          <div className="max-w-3xl w-full text-white">
+            <div className="text-center mb-10">
+              <div className="text-xs font-semibold tracking-[0.2em] uppercase text-white/60 mb-4">Resultat final</div>
+              <div style={{ fontFamily: '"Instrument Serif", serif' }} className="text-8xl md:text-9xl font-normal mb-2 tabular-nums">
+                {result.percentage}%
+              </div>
+              <p className="text-2xl font-semibold mb-2">{passed ? 'Aprovat' : 'No aprovat'}</p>
+              <p className="text-sm text-white/60">{result.score} / {result.max_score} punts</p>
+            </div>
+
+            <div className="space-y-3 mb-10">
+              {quiz.questions?.map((qq, qi) => {
+                const r = result.results[String(qq.id)];
+                if (!r) return null;
+                const ok = r.correct === true;
+                const ko = r.correct === false;
+                return (
+                  <div key={qq.id} className={`rounded-2xl border backdrop-blur-sm p-5 ${ok ? 'bg-white/5 border-white/20' : ko ? 'bg-black/20 border-white/10' : 'bg-white/5 border-white/10'}`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${ok ? 'bg-white text-emerald-700' : ko ? 'bg-white/10' : 'bg-white/10'}`}>
+                        {ok ? '✓' : ko ? '✗' : qi + 1}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold mb-1">{qq.question}</p>
+                        {r.correct === null && <p className="text-xs text-white/60 italic">Resposta oberta: {r.answer}</p>}
+                        {qq.explanation && <p className="text-xs text-white/60 mt-2 leading-relaxed">{qq.explanation}</p>}
+                      </div>
+                      <div className="text-xs text-white/50 tabular-nums">{r.points}/{qq.points} pts</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => { setStage('intro'); setIdx(0); setAnswers({}); setResult(null); }}
+                className="px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 text-sm font-semibold transition-colors"
+              >
+                Repetir
+              </button>
+              <button
+                onClick={() => window.close()}
+                className="px-6 py-3 rounded-full bg-white text-slate-900 hover:bg-white/90 text-sm font-semibold transition-colors"
+              >
+                Tancar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Playing — one question per slide ──
+  if (!q) return null;
+  return (
+    <div className="fixed inset-0 flex flex-col" style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%)' }}>
+      {/* Progress bar */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-white/5 z-10">
+        <div className="h-full bg-gradient-to-r from-red-300/70 to-rose-200/60 transition-all duration-500" style={{ width: `${progress}%` }} />
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 md:px-12 py-5 text-white/60 text-xs flex-shrink-0">
+        <span className="font-semibold tracking-widest uppercase">{quiz.title}</span>
+        <span className="tabular-nums">{idx + 1} / {total}</span>
+      </div>
+
+      {/* Question slide */}
+      <div className="flex-1 overflow-y-auto px-6 md:px-12 py-8">
+        <div className="max-w-3xl mx-auto text-white">
+          <div className="text-xs font-semibold tracking-[0.2em] uppercase text-red-200/80 mb-4">
+            {q.type === 'slide' ? `Slide ${idx + 1}` : `Pregunta ${idx + 1}`}
+          </div>
+          <h2 style={{ fontFamily: '"Instrument Serif", serif' }} className="text-3xl md:text-5xl font-normal leading-tight mb-10 tracking-tight">
+            {q.question}
+          </h2>
+
+          {q.type === 'slide' && (
+            <div className="space-y-6">
+              {q.media_url && (
+                /\.(mp4|webm|ogg|mov)(\?|$)/i.test(q.media_url) ? (
+                  <video src={resolveImg(q.media_url)} controls className="w-full max-h-[60vh] rounded-2xl bg-black shadow-2xl" />
+                ) : (
+                  <img src={resolveImg(q.media_url)} alt="" className="w-full max-h-[60vh] object-contain rounded-2xl bg-black/40 shadow-2xl" />
+                )
+              )}
+              {q.explanation && (
+                <p className="text-lg text-white/80 leading-relaxed">{q.explanation}</p>
+              )}
+            </div>
+          )}
+
+          {q.type === 'multiple_choice' && (
+            <div className="space-y-3">
+              {q.options?.map((o, oi) => {
+                const sel = answers[String(q.id)] === String(o.id);
+                return (
+                  <button
+                    key={o.id}
+                    onClick={() => setAnswers(a => ({ ...a, [String(q.id)]: String(o.id) }))}
+                    className={`w-full text-left p-5 rounded-2xl border-2 transition-all flex items-center gap-4 ${sel
+                      ? 'bg-white text-slate-900 border-white shadow-2xl scale-[1.02]'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/30 text-white'}`}
+                  >
+                    <span className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${sel ? 'text-white' : 'bg-white/10 text-white/70'}`} style={sel ? { background: '#8a2624' } : undefined}>
+                      {String.fromCharCode(65 + oi)}
+                    </span>
+                    <span className="text-base md:text-lg font-medium">{o.text}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {q.type === 'multiple_select' && (
+            <div className="space-y-3">
+              <p className="text-sm text-white/60 mb-4">Selecciona totes les correctes</p>
+              {q.options?.map((o, oi) => {
+                const cur = (answers[String(q.id)] as any) ?? [];
+                const arr: string[] = Array.isArray(cur) ? cur : [];
+                const sel = arr.includes(String(o.id));
+                return (
+                  <button
+                    key={o.id}
+                    onClick={() => setAnswers(a => {
+                      const c = (a[String(q.id)] as any) ?? [];
+                      const list: string[] = Array.isArray(c) ? [...c] : [];
+                      const idx2 = list.indexOf(String(o.id));
+                      if (idx2 >= 0) list.splice(idx2, 1); else list.push(String(o.id));
+                      return { ...a, [String(q.id)]: list };
+                    })}
+                    className={`w-full text-left p-5 rounded-2xl border-2 transition-all flex items-center gap-4 ${sel
+                      ? 'bg-white text-slate-900 border-white shadow-xl'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/30 text-white'}`}
+                  >
+                    <span className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-base font-bold ${sel ? 'text-white' : 'bg-white/10 text-white/70'}`} style={sel ? { background: '#8a2624' } : undefined}>
+                      {sel ? '✓' : oi + 1}
+                    </span>
+                    <span className="text-base md:text-lg font-medium">{o.text}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {q.type === 'true_false' && (
+            <div className="grid grid-cols-2 gap-4">
+              {q.options?.slice(0, 2).map(o => {
+                const sel = answers[String(q.id)] === String(o.id);
+                return (
+                  <button
+                    key={o.id}
+                    onClick={() => setAnswers(a => ({ ...a, [String(q.id)]: String(o.id) }))}
+                    className={`p-10 rounded-2xl border-2 transition-all text-3xl font-medium ${sel
+                      ? 'bg-white text-slate-900 border-white shadow-2xl scale-[1.02]'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/30 text-white'}`}
+                    style={{ fontFamily: '"Instrument Serif", serif' }}
+                  >
+                    {o.text}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {q.type === 'matching' && (
+            <div className="space-y-3">
+              <p className="text-sm text-white/60 mb-4">Escriu el valor de la dreta que correspon a cada element</p>
+              {q.options?.map(o => (
+                <div key={o.id} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <span className="flex-1 font-medium text-white/90">{o.text}</span>
+                  <span className="text-white/40">→</span>
+                  <input
+                    value={(answers[String(q.id)] as any)?.[String(o.id)] ?? ''}
+                    onChange={e => setAnswers(a => ({
+                      ...a,
+                      [String(q.id)]: { ...((a[String(q.id)] as any) ?? {}), [String(o.id)]: e.target.value }
+                    }))}
+                    className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-red-300"
+                    placeholder="Resposta…"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {q.type === 'open_text' && (
+            <textarea
+              value={answers[String(q.id)] ?? ''}
+              onChange={e => setAnswers(a => ({ ...a, [String(q.id)]: e.target.value }))}
+              className="w-full bg-white/5 border-2 border-white/10 rounded-2xl px-5 py-4 text-white text-lg placeholder-white/30 focus:outline-none focus:border-red-300 resize-none"
+              rows={6}
+              placeholder="Escriu la teva resposta…"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Footer nav */}
+      <div className="flex-shrink-0 px-6 md:px-12 py-5 border-t border-white/10 flex items-center justify-between bg-black/20 backdrop-blur-sm">
+        <button
+          onClick={() => setIdx(i => Math.max(0, i - 1))}
+          disabled={idx === 0}
+          className="px-5 py-2.5 rounded-full text-white/70 hover:text-white disabled:opacity-30 text-sm font-semibold transition-colors"
+        >
+          ← Anterior
+        </button>
+        <div className="flex items-center gap-1.5">
+          {(quiz.questions ?? []).map((qq, qi) => {
+            const a = answers[String(qq.id)];
+            const has = qq.type === 'matching'
+              ? (a && typeof a === 'object' && Object.keys(a).length > 0)
+              : (a !== undefined && a !== '');
+            return (
+              <button
+                key={qq.id}
+                onClick={() => setIdx(qi)}
+                className={`w-2 h-2 rounded-full transition-all ${qi === idx ? 'w-8 bg-white' : has ? 'bg-red-300/70' : 'bg-white/20'}`}
+                aria-label={`Anar a pregunta ${qi + 1}`}
+              />
+            );
+          })}
+        </div>
+        {idx < total - 1 ? (
+          <button
+            onClick={() => setIdx(i => Math.min(total - 1, i + 1))}
+            disabled={!answered}
+            className="px-6 py-2.5 rounded-full bg-white text-slate-900 disabled:bg-white/20 disabled:text-white/40 text-sm font-semibold transition-colors"
+          >
+            Següent →
+          </button>
+        ) : (
+          <button
+            onClick={submit}
+            disabled={submitting || !allAnswered}
+            className="px-6 py-2.5 rounded-full text-white disabled:opacity-30 disabled:cursor-not-allowed text-sm font-semibold transition-all hover:brightness-110 shadow-lg shadow-red-900/40"
+            style={{ background: '#8a2624' }}
+          >
+            {submitting ? 'Enviant…' : 'Finalitzar ✓'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Quiz Editor Page (full-screen, presentation-style WYSIWYG) ───────────────
+
+function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
+  // Token inherit from opener (sessionStorage isn't shared cross-tab)
+  useEffect(() => {
+    try {
+      const have = localStorage.getItem('tavil_token') || sessionStorage.getItem('tavil_token');
+      if (!have && window.opener) {
+        const op = window.opener as Window | null;
+        const t = op?.localStorage?.getItem('tavil_token') ?? op?.sessionStorage?.getItem('tavil_token') ?? null;
+        if (t) sessionStorage.setItem('tavil_token', t);
+      }
+    } catch { /* cross-origin or null opener */ }
+    document.title = 'Editor formació · TAVIL';
+  }, []);
+
+  const [quizId, setQuizId] = useState<number | null>(initialQuizId);
+  const [loading, setLoading] = useState(initialQuizId !== null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [savedToast, setSavedToast] = useState(false);
+  const [showAddPicker, setShowAddPicker] = useState(false);
+
+  const [title, setTitle] = useState('Nova formació');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
+  const [image, setImage] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [active, setActive] = useState(1);
+  const [passingScore, setPassingScore] = useState(70);
+  const [timeLimit, setTimeLimit] = useState(0);
+  const [startAt, setStartAt] = useState('');
+  const [endAt, setEndAt] = useState('');
+  const [targetDepts, setTargetDepts] = useState<string[]>([]);
+  const [questions, setQuestions] = useState<QBQuestion[]>([]);
+  const [selectedQ, setSelectedQ] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const dragIdxRef = useRef<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  const dbToLocal = (s: string | null | undefined) => s ? s.slice(0, 10) : '';
+  const localToDb = (s: string) => s ? s + ' 00:00:00' : null;
+
+  useEffect(() => {
+    if (initialQuizId === null) return;
+    apiGetQuiz(initialQuizId).then(q => {
+      setTitle(q.title || 'Nova formació');
+      setDescription(q.description || '');
+      setCategory(q.category || '');
+      setImage(q.image || '');
+      setActive(q.active ?? 1);
+      setPassingScore(q.passing_score ?? 70);
+      setTimeLimit(q.time_limit ?? 0);
+      setStartAt(dbToLocal(q.start_at));
+      setEndAt(dbToLocal(q.end_at));
+      setTargetDepts(q.target_departments ?? []);
+      setQuestions((q.questions ?? []).map(qq => ({
+        _key: mkKey(),
+        type: qq.type as QBQuestion['type'],
+        question: qq.question,
+        explanation: qq.explanation ?? '',
+        points: qq.points,
+        media_url: qq.media_url ?? '',
+        options: (qq.options ?? []).map(o => ({
+          _key: mkKey(),
+          text: o.text,
+          is_correct: o.is_correct ?? 0,
+          match_pair: o.match_pair ?? '',
+        })),
+      })));
+    }).catch(e => setError(e.message ?? 'Error carregant'))
+      .finally(() => setLoading(false));
+  }, [initialQuizId]);
+
+  const addQuestion = (type: QBQuestion['type']) => {
+    const blank = (text = '', is_correct = 0): QBOption =>
+      ({ _key: mkKey(), text, is_correct, match_pair: '' });
+    const defaultOpts: QBOption[] =
+      type === 'multiple_choice'  ? [blank(), blank(), blank(), blank()] :
+      type === 'multiple_select'  ? [blank(), blank(), blank(), blank()] :
+      type === 'true_false'       ? [blank('Vertader'), blank('Fals')] :
+      type === 'matching'         ? [blank(), blank()] :
+      [];
+    setQuestions(qs => {
+      const next: QBQuestion[] = [...qs, {
+        _key: mkKey(), type, question: '', explanation: '', points: type === 'slide' ? 0 : 1,
+        media_url: '', options: defaultOpts,
+      }];
+      setSelectedQ(next.length - 1);
+      return next;
+    });
+  };
+
+  const updateQ = (key: string, patch: Partial<QBQuestion>) =>
+    setQuestions(qs => qs.map(q => q._key === key ? { ...q, ...patch } : q));
+  const removeQ = (key: string) => {
+    setQuestions(qs => {
+      const idx = qs.findIndex(q => q._key === key);
+      const next = qs.filter(q => q._key !== key);
+      setSelectedQ(s => Math.min(s, next.length - 1, idx > 0 ? idx - 1 : 0));
+      return next;
+    });
+  };
+  const updateOpt = (qKey: string, oKey: string, patch: Partial<QBOption>) =>
+    setQuestions(qs => qs.map(q => q._key === qKey
+      ? { ...q, options: q.options.map(o => o._key === oKey ? { ...o, ...patch } : o) } : q));
+  const addOpt = (qKey: string) =>
+    setQuestions(qs => qs.map(q => q._key === qKey
+      ? { ...q, options: [...q.options, { _key: mkKey(), text: '', is_correct: 0, match_pair: '' }] } : q));
+  const removeOpt = (qKey: string, oKey: string) =>
+    setQuestions(qs => qs.map(q => q._key === qKey
+      ? { ...q, options: q.options.filter(o => o._key !== oKey) } : q));
+  const setCorrect = (qKey: string, oKey: string) =>
+    setQuestions(qs => qs.map(q => q._key === qKey
+      ? { ...q, options: q.options.map(o => ({ ...o, is_correct: o._key === oKey ? 1 : 0 })) } : q));
+
+  const onDragStart = (i: number) => { dragIdxRef.current = i; };
+  const onDragOver = (i: number, e: React.DragEvent) => { e.preventDefault(); setDragOverIdx(i); };
+  const onDrop = (i: number) => {
+    const from = dragIdxRef.current;
+    dragIdxRef.current = null;
+    setDragOverIdx(null);
+    if (from === null || from === i) return;
+    setQuestions(qs => {
+      const arr = [...qs];
+      const [m] = arr.splice(from, 1);
+      arr.splice(i, 0, m);
+      return arr;
+    });
+    setSelectedQ(i);
+  };
+
+  const handleSave = async () => {
+    if (!title.trim()) { setError('El títol és obligatori'); return; }
+    setSaving(true); setError('');
+    try {
+      let imageUrl = image;
+      if (imageFile) imageUrl = await apiUploadImage(imageFile);
+      const payload: QuizIn = {
+        title: title.trim(), description: description.trim(), image: imageUrl,
+        category: category.trim(), time_limit: timeLimit, passing_score: passingScore,
+        active, start_at: localToDb(startAt), end_at: localToDb(endAt),
+        target_departments: targetDepts,
+        questions: questions.map((q, qi) => ({
+          type: q.type, question: q.question, explanation: q.explanation,
+          points: q.points, position: qi,
+          media_url: q.media_url ?? '',
+          options: q.options.map((o, oi) => ({
+            text: o.text, is_correct: o.is_correct, match_pair: o.match_pair, position: oi,
+          })),
+        })),
+      };
+      const saved = quizId !== null ? await apiUpdateQuiz(quizId, payload) : await apiCreateQuiz(payload);
+      setQuizId(saved.id);
+      setImageFile(null);
+      setImage(saved.image || '');
+      try { window.opener?.postMessage({ type: 'tavil-quiz-saved' }, window.location.origin); } catch {}
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('edit');
+        url.searchParams.set('edit', String(saved.id));
+        window.history.replaceState({}, '', url.toString());
+      } catch {}
+      setSavedToast(true);
+      window.setTimeout(() => setSavedToast(false), 2400);
+    } catch (e: any) {
+      setError(e.message ?? 'Error desconegut');
+    } finally { setSaving(false); }
+  };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#181010 0%,#221717 40%,#2a1c1b 75%,#221615 100%)' }}>
+        <div className="text-white/60 text-sm">Carregant…</div>
+      </div>
+    );
+  }
+
+  const q = questions[selectedQ];
+
+  return (
+    <div className="fixed inset-0 flex flex-col text-white" style={{ background: 'linear-gradient(135deg,#181010 0%,#221717 40%,#2a1c1b 75%,#221615 100%)' }}>
+      {/* Saved toast */}
+      {savedToast && (
+        <div
+          className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 rounded-full text-sm font-medium text-white shadow-2xl flex items-center gap-2 backdrop-blur-md border border-white/15"
+          style={{ background: 'rgba(28,80,40,0.92)', animation: 'fadeInDown 0.25s ease-out' }}
+        >
+          <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs">✓</span>
+          Formació guardada correctament
+        </div>
+      )}
+
+      {/* Top bar */}
+      <div className="flex-shrink-0 flex items-center gap-4 px-6 py-3.5 border-b border-white/10 bg-black/15 backdrop-blur-md">
+        <button onClick={() => window.close()} className="text-white/60 hover:text-white text-sm flex-shrink-0 transition-colors">← Tancar</button>
+        <div className="flex-1 min-w-0">
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            className="w-full bg-transparent text-white text-base font-medium tracking-tight focus:outline-none placeholder-white/40"
+            placeholder="Títol de la formació…"
+          />
+        </div>
+        {error && <span className="text-xs text-red-100 bg-red-500/30 border border-red-400/30 px-3 py-1.5 rounded-full flex-shrink-0">{error}</span>}
+        <button onClick={() => setShowSettings(true)} className="px-4 py-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 text-sm font-medium transition-colors flex-shrink-0">⚙ Configuració</button>
+        <button onClick={handleSave} disabled={saving || !title.trim()} className="px-5 py-2 rounded-full text-white disabled:opacity-40 text-sm font-semibold transition-colors flex-shrink-0 shadow-lg shadow-red-900/40" style={{ background: '#8a2624' }}>
+          {saving ? 'Guardant…' : (quizId !== null ? 'Guardar' : 'Crear')}
+        </button>
+      </div>
+
+      {/* Body: left rail + canvas */}
+      <div className="flex-1 flex min-h-0">
+        {/* Left rail — slide thumbnails */}
+        <div className="flex-shrink-0 w-64 border-r border-white/10 bg-black/20 overflow-y-auto p-3 space-y-2">
+          {questions.map((qq, i) => {
+            const sel = i === selectedQ;
+            const dragOver = dragOverIdx === i;
+            return (
+              <div
+                key={qq._key}
+                draggable
+                onDragStart={() => onDragStart(i)}
+                onDragOver={e => onDragOver(i, e)}
+                onDragLeave={() => setDragOverIdx(null)}
+                onDrop={() => onDrop(i)}
+                onClick={() => setSelectedQ(i)}
+                className={`cursor-grab active:cursor-grabbing rounded-xl p-3 border-2 transition-all ${sel ? 'bg-white/10 border-red-300/60 shadow-lg' : 'bg-white/5 border-white/10 hover:border-white/30'} ${dragOver ? 'border-red-300/80 scale-[1.02]' : ''}`}
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-[10px] font-bold text-white/40 tabular-nums">#{i + 1}</span>
+                  <span className="text-[9px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/10 text-white/60">
+                    {qq.type === 'multiple_choice' ? 'Opció' :
+                     qq.type === 'multiple_select' ? 'Multi' :
+                     qq.type === 'true_false' ? 'V/F' :
+                     qq.type === 'matching' ? 'Parella' :
+                     qq.type === 'slide' ? 'Slide' :
+                     'Oberta'}
+                  </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeQ(qq._key); }}
+                    className="ml-auto text-white/30 hover:text-red-300 text-xs"
+                    aria-label="Eliminar pregunta"
+                  >✕</button>
+                </div>
+                <p className="text-xs text-white/80 line-clamp-2 leading-snug">
+                  {qq.question || <span className="italic text-white/30">Sense text</span>}
+                </p>
+              </div>
+            );
+          })}
+
+          {/* Add picker trigger */}
+          <div className="pt-3 mt-3 border-t border-white/10">
+            <button
+              onClick={() => setShowAddPicker(true)}
+              className="w-full text-sm px-3 py-2.5 rounded-lg text-white font-semibold transition-all hover:brightness-110 shadow-md shadow-red-900/40 flex items-center justify-center gap-2"
+              style={{ background: '#8a2624' }}
+            >
+              <span className="text-lg leading-none">+</span> Afegir pregunta
+            </button>
+          </div>
+          {questions.length === 0 && (
+            <p className="text-[11px] text-white/40 text-center pt-4">Comença afegint una pregunta</p>
+          )}
+        </div>
+
+        {/* Canvas */}
+        <div className="flex-1 overflow-y-auto p-10">
+          {!q ? (
+            <div className="h-full flex items-center justify-center text-white/40 text-sm">
+              Afegeix una pregunta per començar →
+            </div>
+          ) : (
+            <div className="max-w-3xl mx-auto text-white">
+              <div className="text-xs font-semibold tracking-[0.2em] uppercase text-red-200/80 mb-4">
+                {q.type === 'slide' ? `Slide ${selectedQ + 1}` : `Pregunta ${selectedQ + 1}`}
+              </div>
+              <textarea
+                value={q.question}
+                onChange={e => updateQ(q._key, { question: e.target.value })}
+                style={{ fontFamily: '"Instrument Serif", serif' }}
+                rows={2}
+                className="w-full bg-transparent text-3xl md:text-5xl font-normal leading-tight mb-10 tracking-tight focus:outline-none placeholder-white/30 resize-none"
+                placeholder={q.type === 'slide' ? 'Títol del slide…' : 'Escriu la pregunta…'}
+              />
+
+              {q.type === 'multiple_choice' && (
+                <div className="space-y-3">
+                  {q.options.map((o, oi) => (
+                    <div key={o._key} className={`flex items-center gap-4 p-5 rounded-2xl border-2 transition-colors ${o.is_correct ? 'bg-red-300/[0.06] border-red-300/40' : 'bg-white/5 border-white/10'}`}>
+                      <button
+                        onClick={() => setCorrect(q._key, o._key)}
+                        className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${o.is_correct ? 'bg-red-300/80 text-red-950' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
+                        title={o.is_correct ? 'Correcta' : 'Marcar com correcta'}
+                      >
+                        {String.fromCharCode(65 + oi)}
+                      </button>
+                      <input
+                        value={o.text}
+                        onChange={e => updateOpt(q._key, o._key, { text: e.target.value })}
+                        className="flex-1 bg-transparent text-base md:text-lg focus:outline-none placeholder-white/30"
+                        placeholder={`Opció ${String.fromCharCode(65 + oi)}…`}
+                      />
+                      {q.options.length > 2 && (
+                        <button onClick={() => removeOpt(q._key, o._key)} className="text-white/30 hover:text-red-300 text-sm">✕</button>
+                      )}
+                    </div>
+                  ))}
+                  <button onClick={() => addOpt(q._key)} className="text-xs text-white/50 hover:text-white/80 mt-2">+ Afegir opció</button>
+                </div>
+              )}
+
+              {q.type === 'multiple_select' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-white/45 mb-3">Selecció múltiple — l'usuari pot triar diverses correctes.</p>
+                  {q.options.map((o, oi) => (
+                    <div key={o._key} className={`flex items-center gap-4 p-5 rounded-2xl border-2 transition-colors ${o.is_correct ? 'bg-red-300/[0.06] border-red-300/40' : 'bg-white/5 border-white/10'}`}>
+                      <button
+                        onClick={() => updateOpt(q._key, o._key, { is_correct: o.is_correct ? 0 : 1 })}
+                        className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${o.is_correct ? 'bg-red-300/80 text-red-950' : 'bg-white/10 text-white/40 hover:bg-white/20'}`}
+                        title={o.is_correct ? 'Correcta — clica per desmarcar' : 'Marcar com correcta'}
+                      >
+                        {o.is_correct ? '✓' : <span className="text-xs font-bold tabular-nums">{oi + 1}</span>}
+                      </button>
+                      <input
+                        value={o.text}
+                        onChange={e => updateOpt(q._key, o._key, { text: e.target.value })}
+                        className="flex-1 bg-transparent text-base md:text-lg focus:outline-none placeholder-white/30"
+                        placeholder={`Opció ${oi + 1}…`}
+                      />
+                      {q.options.length > 2 && (
+                        <button onClick={() => removeOpt(q._key, o._key)} className="text-white/30 hover:text-red-300 text-sm">✕</button>
+                      )}
+                    </div>
+                  ))}
+                  <button onClick={() => addOpt(q._key)} className="text-xs text-white/50 hover:text-white/80 mt-2">+ Afegir opció</button>
+                </div>
+              )}
+
+              {q.type === 'true_false' && (
+                <div className="grid grid-cols-2 gap-4">
+                  {q.options.slice(0, 2).map((o) => (
+                    <button
+                      key={o._key}
+                      onClick={() => setCorrect(q._key, o._key)}
+                      className={`p-8 rounded-2xl border-2 transition-all text-2xl font-medium ${o.is_correct ? 'bg-red-300/10 border-red-300/50 text-white shadow-md shadow-red-900/20' : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30'}`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <span style={{ fontFamily: '"Instrument Serif", serif' }}>{o.text || (o === q.options[0] ? 'Vertader' : 'Fals')}</span>
+                        {o.is_correct ? <span className="text-[10px] uppercase tracking-widest text-red-200 font-semibold">Correcta</span> : <span className="text-[10px] text-white/30">Clica per marcar</span>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {q.type === 'matching' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-white/50 mb-3">Parelles esquerra → dreta. L'usuari escriurà el valor correcte.</p>
+                  {q.options.map(o => (
+                    <div key={o._key} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-4">
+                      <input
+                        value={o.text}
+                        onChange={e => updateOpt(q._key, o._key, { text: e.target.value })}
+                        className="flex-1 bg-transparent focus:outline-none placeholder-white/30"
+                        placeholder="Element esquerra…"
+                      />
+                      <span className="text-white/40">→</span>
+                      <input
+                        value={o.match_pair}
+                        onChange={e => updateOpt(q._key, o._key, { match_pair: e.target.value })}
+                        className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2 focus:outline-none focus:border-red-300/60 placeholder-white/30"
+                        placeholder="Resposta correcta…"
+                      />
+                      {q.options.length > 2 && (
+                        <button onClick={() => removeOpt(q._key, o._key)} className="text-white/30 hover:text-red-300 text-sm">✕</button>
+                      )}
+                    </div>
+                  ))}
+                  <button onClick={() => addOpt(q._key)} className="text-xs text-white/50 hover:text-white/80 mt-2">+ Afegir parella</button>
+                </div>
+              )}
+
+              {q.type === 'open_text' && (
+                <div className="bg-white/5 border-2 border-dashed border-white/15 rounded-2xl p-8 text-center text-white/40 text-sm">
+                  L'empleat respondrà amb text lliure. No es corregeix automàticament.
+                </div>
+              )}
+
+              {q.type === 'slide' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-red-200/80 font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-300/70" /> Slide d'explicació · sense pregunta
+                  </div>
+                  {q.media_url ? (
+                    <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black/40">
+                      {/\.(mp4|webm|ogg|mov)(\?|$)/i.test(q.media_url) ? (
+                        <video src={resolveImg(q.media_url)} controls className="w-full max-h-[420px] object-contain bg-black" />
+                      ) : (
+                        <img src={resolveImg(q.media_url)} alt="" className="w-full max-h-[420px] object-contain bg-black" />
+                      )}
+                      <button
+                        onClick={() => updateQ(q._key, { media_url: '' })}
+                        className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-black/60 hover:bg-red-500/80 text-xs text-white backdrop-blur transition-colors"
+                      >Treure</button>
+                    </div>
+                  ) : (
+                    <div className="bg-white/5 border-2 border-dashed border-white/15 rounded-2xl p-8 text-center space-y-3">
+                      <p className="text-white/50 text-sm">Imatge o vídeo per il·lustrar el contingut</p>
+                      <label className="inline-block cursor-pointer text-xs px-4 py-2 rounded-full text-white font-semibold transition-all hover:brightness-110 shadow-md shadow-red-900/40" style={{ background: '#8a2624' }}>
+                        <input
+                          type="file"
+                          accept="image/*,video/*"
+                          className="hidden"
+                          onChange={async e => {
+                            const f = e.target.files?.[0];
+                            if (!f) return;
+                            try {
+                              const full = await apiUploadImage(f);
+                              // apiUploadImage returns API_BASE + /uploads/file. Strip API_BASE so
+                              // resolveImg can re-prefix correctly across environments.
+                              const m = full.match(/(\/uploads\/[^?#]+)/);
+                              updateQ(q._key, { media_url: m ? m[1] : full });
+                            } catch (err: any) {
+                              setError(err.message ?? 'Error pujant');
+                            }
+                          }}
+                        />
+                        Pujar fitxer
+                      </label>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-[10px] font-semibold uppercase tracking-widest text-white/40 block mb-2">URL del fitxer (opcional, manual)</label>
+                    <input
+                      value={q.media_url ?? ''}
+                      onChange={e => updateQ(q._key, { media_url: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-300 placeholder-white/30"
+                      placeholder="https://… o /uploads/…"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Explanation + points (hidden for slide — purely informational) */}
+              {q.type !== 'slide' && (
+                <div className="mt-10 pt-6 border-t border-white/10 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="text-[10px] font-semibold uppercase tracking-widest text-white/40 block mb-2">Explicació (mostrada al corregir)</label>
+                    <input
+                      value={q.explanation}
+                      onChange={e => updateQ(q._key, { explanation: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-red-300 focus:bg-white/10 placeholder-white/30 transition-colors"
+                      placeholder="Explicació opcional…"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold uppercase tracking-widest text-white/40 block mb-2">Punts</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={q.points}
+                      onChange={e => updateQ(q._key, { points: Number(e.target.value) || 1 })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm tabular-nums focus:outline-none focus:border-red-300 focus:bg-white/10 transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Settings drawer */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex justify-end backdrop-blur-md" style={{ background: 'rgba(20,14,14,0.55)' }} onClick={() => setShowSettings(false)}>
+          <div onClick={e => e.stopPropagation()} className="w-full max-w-lg h-full border-l border-white/10 overflow-y-auto text-white shadow-2xl shadow-black/60" style={{ background: 'linear-gradient(180deg,#2c1f1e 0%,#2a1d1c 100%)' }}>
+            {/* Header */}
+            <div className="sticky top-0 z-10 flex items-center justify-between px-8 py-5 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(44,31,30,0.92)' }}>
+              <div>
+                <h3 className="text-base font-semibold tracking-tight">Configuració</h3>
+                <p className="text-[11px] text-white/40 mt-0.5">Detalls i visibilitat de la formació</p>
+              </div>
+              <button onClick={() => setShowSettings(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-white hover:bg-white/5 transition-colors" aria-label="Tancar">✕</button>
+            </div>
+
+            <div className="px-8 py-6 space-y-10">
+              {/* SECTION 1: Detalls */}
+              <section>
+                <header className="mb-4">
+                  <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/50">Detalls</h4>
+                  <p className="text-[11px] text-white/35 mt-1">Informació bàsica que veuran els empleats.</p>
+                </header>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-[120px_1fr] gap-x-5 gap-y-1 items-start">
+                    <label className="text-xs text-white/70 pt-2">Imatge portada</label>
+                    <div className="flex items-center gap-3">
+                      {(imageFile || image) && (
+                        <img src={imageFile ? URL.createObjectURL(imageFile) : resolveImg(image)} alt="" className="w-20 h-14 object-cover rounded-lg border border-white/10 flex-shrink-0" />
+                      )}
+                      <label className="flex-1 cursor-pointer text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-dashed border-white/15 text-center transition-colors text-white/70">
+                        <input type="file" accept="image/*" className="hidden" onChange={e => setImageFile(e.target.files?.[0] ?? null)} />
+                        {imageFile ? imageFile.name : (image ? 'Canviar' : 'Pujar imatge')}
+                      </label>
+                      {(imageFile || image) && (
+                        <button onClick={() => { setImageFile(null); setImage(''); }} className="text-xs text-white/40 hover:text-red-300 px-2">Treure</button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-[120px_1fr] gap-x-5 gap-y-1 items-start">
+                    <label className="text-xs text-white/70 pt-2">Descripció</label>
+                    <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-300 focus:bg-white/10 placeholder-white/25 resize-none transition-colors" placeholder="Què aprendran a aquesta formació…" />
+                  </div>
+
+                  <div className="grid grid-cols-[120px_1fr] gap-x-5 gap-y-1 items-center">
+                    <label className="text-xs text-white/70">Categoria</label>
+                    <input value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-300 focus:bg-white/10 placeholder-white/25 transition-colors" placeholder="Seguretat, RRHH, Tècnica…" />
+                  </div>
+                </div>
+              </section>
+
+              {/* SECTION 2: Visibilitat */}
+              <section>
+                <header className="mb-4">
+                  <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/50">Visibilitat</h4>
+                  <p className="text-[11px] text-white/35 mt-1">Qui pot veure i fer aquesta formació.</p>
+                </header>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-4 py-3">
+                    <div>
+                      <div className="text-sm font-medium">Activa</div>
+                      <div className="text-[11px] text-white/40 mt-0.5">{active === 1 ? 'Visible al portal' : 'Esborrany — només admins'}</div>
+                    </div>
+                    <button type="button" onClick={() => setActive(a => a === 1 ? 0 : 1)} className={`relative inline-flex w-11 h-6 items-center rounded-full transition-colors flex-shrink-0 ${active === 1 ? '' : 'bg-white/15'}`} style={active === 1 ? { background: '#8a2624' } : undefined}>
+                      <span className="inline-block w-5 h-5 bg-white rounded-full shadow transition-transform" style={{ transform: active === 1 ? 'translateX(22px)' : 'translateX(2px)' }} />
+                    </button>
+                  </div>
+
+                  <div>
+                    <div className="flex items-baseline justify-between mb-2">
+                      <label className="text-xs text-white/70">Departaments destinataris</label>
+                      <span className="text-[11px] text-white/35">{targetDepts.length === 0 ? 'Tothom' : `${targetDepts.length} dept.`}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 p-3 rounded-lg bg-white/5 border border-white/10">
+                      {DEPT_ORDER.map(d => {
+                        const on = targetDepts.includes(d);
+                        return (
+                          <button
+                            key={d}
+                            onClick={() => setTargetDepts(prev => on ? prev.filter(x => x !== d) : [...prev, d])}
+                            className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${on ? 'border-red-300/40 text-white' : 'bg-transparent border-white/15 text-white/60 hover:border-white/40 hover:text-white/90'}`}
+                            style={on ? { background: 'rgba(138,38,36,0.85)' } : undefined}
+                          >
+                            {d}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {targetDepts.length === 0 && (
+                      <p className="text-[11px] text-white/35 mt-1.5">Cap seleccionat → visible per a tothom.</p>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              {/* SECTION 3: Avaluació */}
+              <section>
+                <header className="mb-4">
+                  <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/50">Avaluació</h4>
+                  <p className="text-[11px] text-white/35 mt-1">Criteris per superar la formació.</p>
+                </header>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-[120px_1fr] gap-x-5 gap-y-1 items-center">
+                    <label className="text-xs text-white/70">Aprovat</label>
+                    <div className="flex items-center gap-2">
+                      <input type="number" min={0} max={100} value={passingScore} onChange={e => setPassingScore(Number(e.target.value) || 0)} className="w-24 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm tabular-nums focus:outline-none focus:border-red-300 focus:bg-white/10 transition-colors" />
+                      <span className="text-xs text-white/40">% mínim</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] gap-x-5 gap-y-1 items-center">
+                    <label className="text-xs text-white/70">Temps límit</label>
+                    <div className="flex items-center gap-2">
+                      <input type="number" min={0} value={timeLimit} onChange={e => setTimeLimit(Number(e.target.value) || 0)} className="w-24 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm tabular-nums focus:outline-none focus:border-red-300 focus:bg-white/10 transition-colors" />
+                      <span className="text-xs text-white/40">minuts {timeLimit === 0 && '(sense límit)'}</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* SECTION 4: Disponibilitat */}
+              <section>
+                <header className="mb-4">
+                  <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/50">Disponibilitat</h4>
+                  <p className="text-[11px] text-white/35 mt-1">Finestra durant la qual la formació està oberta. Buit = sempre.</p>
+                </header>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] text-white/55 block mb-1.5">Inici</label>
+                    <input type="date" value={startAt} onChange={e => setStartAt(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-300 focus:bg-white/10 transition-colors" style={{ colorScheme: 'dark' }} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-white/55 block mb-1.5">Final</label>
+                    <input type="date" value={endAt} onChange={e => setEndAt(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-300 focus:bg-white/10 transition-colors" style={{ colorScheme: 'dark' }} />
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add-question picker */}
+      {showAddPicker && (
+        <div
+          className="fixed inset-0 z-[55] flex items-center justify-center p-6 backdrop-blur-md"
+          style={{ background: 'rgba(20,14,14,0.55)' }}
+          onClick={() => setShowAddPicker(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="w-full max-w-4xl max-h-[85vh] overflow-y-auto rounded-2xl border border-white/10 shadow-2xl shadow-black/60 text-white"
+            style={{ background: 'linear-gradient(180deg,#2c1f1e 0%,#2a1d1c 100%)' }}
+          >
+            <div className="sticky top-0 z-10 flex items-center justify-between px-7 py-5 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(44,31,30,0.92)' }}>
+              <div>
+                <h3 className="text-base font-semibold tracking-tight">Quin tipus de pregunta?</h3>
+                <p className="text-[11px] text-white/45 mt-0.5">Triar el format afecta com l'usuari respon i com es corregeix.</p>
+              </div>
+              <button onClick={() => setShowAddPicker(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-white hover:bg-white/5 transition-colors" aria-label="Tancar">✕</button>
+            </div>
+
+            <div className="px-7 py-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {([
+                {
+                  type: 'multiple_choice' as const, title: 'Opció múltiple', desc: 'Una sola resposta correcta entre vàries opcions.',
+                  preview: (
+                    <div className="space-y-1.5">
+                      {['A','B','C','D'].map((l, i) => (
+                        <div key={l} className={`flex items-center gap-2 px-2 py-1.5 rounded-md border ${i === 1 ? 'bg-red-300/[0.08] border-red-300/30' : 'border-white/10'}`}>
+                          <span className={`w-4 h-4 rounded-full text-[8px] flex items-center justify-center font-bold ${i === 1 ? 'bg-red-300/70 text-red-950' : 'bg-white/10 text-white/40'}`}>{l}</span>
+                          <span className="h-1.5 rounded bg-white/15 flex-1" />
+                        </div>
+                      ))}
+                    </div>
+                  ),
+                },
+                {
+                  type: 'multiple_select' as const, title: 'Selecció múltiple', desc: 'Diverses respostes correctes; cal marcar-les totes.',
+                  preview: (
+                    <div className="space-y-1.5">
+                      {[true,false,true,false].map((on, i) => (
+                        <div key={i} className={`flex items-center gap-2 px-2 py-1.5 rounded-md border ${on ? 'bg-red-300/[0.08] border-red-300/30' : 'border-white/10'}`}>
+                          <span className={`w-4 h-4 rounded text-[8px] flex items-center justify-center font-bold ${on ? 'bg-red-300/70 text-red-950' : 'bg-white/10 text-white/40'}`}>{on ? '✓' : ''}</span>
+                          <span className="h-1.5 rounded bg-white/15 flex-1" />
+                        </div>
+                      ))}
+                    </div>
+                  ),
+                },
+                {
+                  type: 'true_false' as const, title: 'Vertader / Fals', desc: 'Pregunta binària, dues úniques opcions.',
+                  preview: (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="py-3 rounded-md border-2 border-red-300/40 bg-red-300/[0.08] text-center text-xs font-medium text-white" style={{ fontFamily: '"Instrument Serif", serif' }}>Vertader</div>
+                      <div className="py-3 rounded-md border border-white/15 text-center text-xs text-white/50" style={{ fontFamily: '"Instrument Serif", serif' }}>Fals</div>
+                    </div>
+                  ),
+                },
+                {
+                  type: 'matching' as const, title: 'Relacionar parelles', desc: 'Element esquerra → resposta dreta. L\'usuari escriu.',
+                  preview: (
+                    <div className="space-y-1.5">
+                      {[0,1,2].map(i => (
+                        <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-white/10">
+                          <span className="h-1.5 rounded bg-white/20 flex-1" />
+                          <span className="text-white/40 text-[10px]">→</span>
+                          <span className="h-4 rounded bg-white/10 border border-white/15 flex-1" />
+                        </div>
+                      ))}
+                    </div>
+                  ),
+                },
+                {
+                  type: 'open_text' as const, title: 'Resposta oberta', desc: 'Text lliure. Revisió manual per admin (no auto-puntua).',
+                  preview: (
+                    <div className="space-y-1.5">
+                      <div className="bg-white/5 border border-white/10 rounded-md p-2 space-y-1">
+                        <span className="block h-1.5 rounded bg-white/15 w-5/6" />
+                        <span className="block h-1.5 rounded bg-white/15 w-4/6" />
+                        <span className="block h-1.5 rounded bg-white/10 w-3/6" />
+                      </div>
+                      <p className="text-[10px] text-amber-200/70 italic">Pendent de correcció</p>
+                    </div>
+                  ),
+                },
+                {
+                  type: 'slide' as const, title: 'Slide explicació', desc: 'Imatge o vídeo amb text. No puntua, només informa.',
+                  preview: (
+                    <div className="space-y-1.5">
+                      <div className="aspect-video rounded-md border border-white/10 bg-gradient-to-br from-white/15 to-white/5 flex items-center justify-center">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/40"><polygon points="5 3 19 12 5 21" /></svg>
+                      </div>
+                      <span className="block h-1.5 rounded bg-white/15 w-4/6" />
+                    </div>
+                  ),
+                },
+              ]).map(card => (
+                <button
+                  key={card.type}
+                  onClick={() => { addQuestion(card.type); setShowAddPicker(false); }}
+                  className="text-left p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-red-300/30 transition-all flex flex-col gap-3 group"
+                >
+                  <div className="aspect-[5/3] rounded-lg bg-black/25 border border-white/5 p-3 overflow-hidden group-hover:border-white/10 transition-colors">
+                    {card.preview}
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold tracking-tight">{card.title}</div>
+                    <p className="text-[11px] text-white/50 mt-1 leading-snug">{card.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -8141,6 +10576,25 @@ function MobileSwipeStack({
 // ── App ───────────────────────────────────────────────────────────────────────
 
 function App() {
+  // Standalone quiz player route: /?quiz=ID opens full-screen presentation player.
+  const quizRouteId = useMemo(() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get('quiz');
+      const n = v ? parseInt(v, 10) : NaN;
+      return Number.isFinite(n) && n > 0 ? n : null;
+    } catch { return null; }
+  }, []);
+  // Quiz editor route: /?edit=ID (existing) or /?edit=new
+  const editRoute = useMemo<{ id: number | null } | null>(() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get('edit');
+      if (v === null) return null;
+      if (v === 'new') return { id: null };
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) && n > 0 ? { id: n } : null;
+    } catch { return null; }
+  }, []);
+
   const { t } = useTranslation();
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('tavil_dark') === 'true';
@@ -8183,12 +10637,21 @@ function App() {
     if (prevTabRef.current === 'Perfil' && activeTab === 'Més') setExitDirection('fwd');
     // Sub-tabs opened from Més behave like a drill-down submenu:
     // Més → sub-tab = slide from right (fwd); sub-tab → Més = slide from left (back)
-    const MES_SUBTABS = new Set(['Activitats', 'Espai', 'Campus', 'Veu', 'Solicituds']);
+    const MES_SUBTABS = new Set(['Activitats', 'Espai', 'Campus', 'Solicituds']);
     if (prevTabRef.current === 'Més' && MES_SUBTABS.has(activeTab)) setExitDirection('fwd');
     if (activeTab === 'Més' && MES_SUBTABS.has(prevTabRef.current)) setExitDirection('back');
     setExitIsMobile(isMobilePage);
+    // Clear open-article state when leaving Notícies (don't restore on return).
+    if (prevTabRef.current === 'Notícies' && activeTab !== 'Notícies') {
+      try {
+        window.localStorage.removeItem('tavil_selected_news_id');
+        window.localStorage.removeItem('tavil_news_origin');
+      } catch {}
+    }
     goBackRef.current = prevTabRef.current; // save before overwriting
     prevTabRef.current = activeTab;
+    // Always reset scroll to top when switching tabs (subtle animation).
+    scrollPageToTop();
     const duration = isMobilePage ? 380 : 380;
     const timer = setTimeout(() => setExitingTab(null), duration);
     return () => clearTimeout(timer);
@@ -8355,7 +10818,7 @@ function App() {
     const openNotifs = () => setMobileNotifsOpen(true);
     switch (tab) {
       case 'Inici': return <InicialTab onNavigate={setActiveTab} onNavigateToDate={navigateToDate} onOpenDrawer={openDrawer} hasUnread={hasUnread} onOpenNotifs={openNotifs} currentUser={currentUser} />;
-      case 'Notícies': return <NoticiesTab currentUser={currentUser} onOpenDrawer={openDrawer} />;
+      case 'Notícies': return <NoticiesTab currentUser={currentUser} onOpenDrawer={openDrawer} onNavigate={setActiveTab} />;
       case 'Activitats': return <ActivitatsTab currentUser={currentUser} onBack={goBack} />;
       case 'Agenda': return <AgendaTab currentUser={currentUser} initDate={agendaInitDate} onInitDateConsumed={() => setAgendaInitDate(null)} onOpenDrawer={openDrawer} />;
       case 'Directori': return <DirectoriTab onOpenDrawer={openDrawer} />;
@@ -8452,6 +10915,16 @@ function App() {
       </div>
     );
   };
+
+  // Standalone quiz player route — bypass login flow. Token is inherited from
+  // opener tab (sessionStorage isn't shared between tabs, so we copy it once).
+  if (quizRouteId !== null) {
+    return <QuizPlayerPage quizId={quizRouteId} />;
+  }
+  // Standalone quiz editor route — same token-inherit trick.
+  if (editRoute !== null) {
+    return <QuizEditorPage initialQuizId={editRoute.id} />;
+  }
 
   if (!isLoggedIn) {
     if (isMobilePage) {
@@ -8679,6 +11152,7 @@ function App() {
                   <button onClick={() => { setActiveTab('Perfil'); setIsProfileMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-lg transition-colors">
                     <Settings size={14} /> {t('profile.settings')}
                   </button>
+                  {!!currentUser?.is_demo_admin && (
                   <div className="border-t border-gray-100 dark:border-zinc-800 mt-2 pt-2">
                     <p className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">{t('profile.demoRole')}</p>
                     {['Treballador/a', 'Responsable de departament', 'Recursos humans', 'Administrador/a', 'Manteniment'].map(role => (
@@ -8703,6 +11177,7 @@ function App() {
                       </button>
                     ))}
                   </div>
+                  )}
                   <div className="border-t border-gray-100 dark:border-zinc-800 mt-2 pt-2">
                     <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors">
                       <LogOut size={14} /> {t('auth.logout')}
@@ -8722,6 +11197,8 @@ function App() {
             tabOrder={['Inici', 'Notícies', 'Agenda', 'Directori', 'Més']}
             renderPageLayout={renderPageLayout}
             enterClass={enterClass}
+            exitingTab={exitingTab}
+            exitClass={exitClass}
           />
         ) : (
           <div className="page-stack w-full">

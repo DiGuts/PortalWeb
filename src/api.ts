@@ -1,13 +1,7 @@
-// Priority order:
-//   1. REACT_APP_API_URL env var (set at build time to point to any backend)
-//   2. localhost dev → local backend
-//   3. Same-origin (backend on same server)
 export const API_BASE: string =
-  process.env.REACT_APP_API_URL
-    ? process.env.REACT_APP_API_URL.replace(/\/$/, '')
-    : window.location.hostname === 'localhost'
-      ? 'http://localhost:8000'
-      : '';
+  window.location.hostname === 'localhost'
+    ? 'http://localhost:8000'
+    : (process.env.PUBLIC_URL || '') + '/api/index.php';
 
 export interface User {
   id: number;
@@ -21,6 +15,7 @@ export interface User {
   onboarded: number;
   email_notifs: number;
   is_head: number;
+  is_demo_admin: number;
   must_change_password: number;
 }
 
@@ -132,7 +127,11 @@ export async function apiUploadImage(file: File): Promise<string> {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
   });
-  if (!res.ok) throw new Error('Error pujant la imatge');
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try { const j = await res.json(); if (j.detail) detail = j.detail; } catch {}
+    throw new Error('Error pujant: ' + detail);
+  }
   const data = await res.json();
   return API_BASE + data.url;
 }
@@ -639,13 +638,13 @@ export async function apiAdminListUsers(): Promise<User[]> {
 }
 
 export async function apiAdminCreateUser(fields: {
-  name: string; email: string; temp_password: string; role: string; dept: string;
+  name: string; email: string; temp_password: string; role: string; dept: string; is_head: number;
 }): Promise<User> {
   return apiFetch<User>('/api/users', { method: 'POST', body: JSON.stringify(fields) });
 }
 
 export async function apiAdminUpdateUser(id: number, fields: {
-  name?: string; email?: string; role?: string; dept?: string;
+  name?: string; email?: string; role?: string; dept?: string; is_head?: number;
 }): Promise<User> {
   return apiFetch<User>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(fields) });
 }
@@ -670,4 +669,128 @@ export async function apiUpdateNotice(id: number, fields: { title: string; conte
 
 export async function apiDeleteNotice(id: number): Promise<void> {
   await apiFetch(`/api/notices/${id}`, { method: 'DELETE' });
+}
+
+// ── Quizzes / Formacions ──────────────────────────────────────────────────────
+
+export interface QuizOption {
+  id: number;
+  question_id: number;
+  text: string;
+  is_correct?: number;
+  match_pair: string;
+  position: number;
+}
+
+export interface QuizQuestion {
+  id: number;
+  quiz_id: number;
+  type: 'multiple_choice' | 'multiple_select' | 'true_false' | 'matching' | 'open_text' | 'slide';
+  question: string;
+  explanation: string;
+  points: number;
+  position: number;
+  media_url?: string;
+  options: QuizOption[];
+}
+
+export interface Quiz {
+  id: number;
+  title: string;
+  description: string;
+  image: string;
+  category: string;
+  time_limit: number;
+  passing_score: number;
+  active: number;
+  start_at: string | null;
+  end_at: string | null;
+  target_departments: string[];
+  created_at: string;
+  questions: QuizQuestion[];
+  question_count?: number;
+  user_attempt?: { score: number; max_score: number; passed: number; completed_at: string } | null;
+}
+
+export interface QuizOptionIn {
+  text: string;
+  is_correct: number;
+  match_pair: string;
+  position: number;
+}
+
+export interface QuizQuestionIn {
+  type: 'multiple_choice' | 'multiple_select' | 'true_false' | 'matching' | 'open_text' | 'slide';
+  question: string;
+  explanation: string;
+  points: number;
+  position: number;
+  media_url?: string;
+  options: QuizOptionIn[];
+}
+
+export interface QuizIn {
+  title: string;
+  description: string;
+  image: string;
+  category: string;
+  time_limit: number;
+  passing_score: number;
+  active: number;
+  start_at: string | null;
+  end_at: string | null;
+  target_departments: string[];
+  questions: QuizQuestionIn[];
+}
+
+export interface QuizResultRow {
+  id: number;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  user_dept: string;
+  score: number;
+  max_score: number;
+  percentage: number;
+  passed: number;
+  completed_at: string;
+}
+
+export interface QuizAttemptResult {
+  score: number;
+  max_score: number;
+  passed: boolean;
+  percentage: number;
+  results: Record<string, { correct: boolean | null; points: number; correct_id?: number; correct_map?: Record<string, string>; answer?: string }>;
+}
+
+export async function apiGetQuizzes(): Promise<Quiz[]> {
+  return apiFetch<Quiz[]>('/api/quizzes');
+}
+
+export async function apiGetQuiz(id: number): Promise<Quiz> {
+  return apiFetch<Quiz>(`/api/quizzes/${id}`);
+}
+
+export async function apiCreateQuiz(body: QuizIn): Promise<Quiz> {
+  return apiFetch<Quiz>('/api/quizzes', { method: 'POST', body: JSON.stringify(body) });
+}
+
+export async function apiUpdateQuiz(id: number, body: QuizIn): Promise<Quiz> {
+  return apiFetch<Quiz>(`/api/quizzes/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+}
+
+export async function apiDeleteQuiz(id: number): Promise<void> {
+  await apiFetch(`/api/quizzes/${id}`, { method: 'DELETE' });
+}
+
+export async function apiSubmitQuizAttempt(id: number, answers: Record<string, unknown>): Promise<QuizAttemptResult> {
+  return apiFetch<QuizAttemptResult>(`/api/quizzes/${id}/attempt`, {
+    method: 'POST',
+    body: JSON.stringify({ answers }),
+  });
+}
+
+export async function apiGetQuizResults(id: number): Promise<QuizResultRow[]> {
+  return apiFetch<QuizResultRow[]>(`/api/quizzes/${id}/results`);
 }
