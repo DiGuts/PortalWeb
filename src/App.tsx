@@ -20,7 +20,7 @@ import {
   CheckCircle, Star, LogOut, LayoutGrid, List, Check,
   Heart, Gift, Globe, Download, Video, Award, Settings, Eye, EyeOff, Lock, Pencil, Trash2,
   Type, AlignLeft, Image as ImageIcon, Minus, Plus, GripVertical, X, Menu,
-  BarChart3
+  BarChart3, ShieldCheck, KeyRound, PlayCircle, Target,
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -49,7 +49,7 @@ import {
   apiGetAllNotices, apiCreateNotice, apiUpdateNotice, apiDeleteNotice,
   Quiz, QuizIn, QuizQuestionIn, QuizOptionIn, QuizAttemptResult, QuizResultRow,
   apiGetQuizzes, apiGetQuiz, apiCreateQuiz, apiUpdateQuiz, apiDeleteQuiz, apiSubmitQuizAttempt,
-  apiGetQuizResults,
+  apiGetQuizResults, apiGetQuizProgress, apiSaveQuizProgress, apiClearQuizProgress, apiGetQuizInProgressCount,
 } from './api';
 
 function cn(...inputs: ClassValue[]) {
@@ -121,6 +121,33 @@ function timeAgo(isoStr: string): string {
   if (diff < 86400) return `Fa ${Math.floor(diff / 3600)} h`;
   if (diff < 172800) return 'Ahir';
   return `Fa ${Math.floor(diff / 86400)} dies`;
+}
+
+// Smoothly scrolls element into view if its top is below 60% of viewport.
+// Use after opening drawers/modals/inline forms positioned low on the page.
+function scrollIntoViewIfBelowFold(el: HTMLElement | null, opts?: { threshold?: number; block?: ScrollLogicalPosition }) {
+  if (!el || typeof window === 'undefined') return;
+  const rect = el.getBoundingClientRect();
+  const vh = window.innerHeight;
+  const threshold = opts?.threshold ?? 0.6;
+  // Scroll if element is below the fold OR fully above the viewport (clipped).
+  const belowFold = rect.top > vh * threshold;
+  const aboveView = rect.bottom < 0 || rect.top < 0;
+  if (belowFold || aboveView) {
+    el.scrollIntoView({ behavior: 'smooth', block: opts?.block ?? 'center' });
+  }
+}
+
+// Hook: when `active` flips truthy, scrolls the ref'd element into view if below fold.
+function useScrollIntoViewWhen<T extends HTMLElement = HTMLElement>(active: unknown, opts?: { threshold?: number; block?: ScrollLogicalPosition; delay?: number }) {
+  const ref = useRef<T | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    const t = window.setTimeout(() => scrollIntoViewIfBelowFold(ref.current, opts), opts?.delay ?? 60);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+  return ref;
 }
 
 function useIsMobile(breakpoint = 768): boolean {
@@ -244,7 +271,7 @@ function MobileAppHeader({
           <div style={{
             position: 'absolute', top: 8, right: 9,
             width: 8, height: 8, borderRadius: 4,
-            background: '#bf211e', border: '2px solid var(--tavil-card)',
+            background: 'var(--tavil-accent)', border: '2px solid var(--tavil-card)',
           }} />
         )}
       </button>
@@ -344,7 +371,7 @@ function MobileDrawer({
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{
                 width: 42, height: 42, borderRadius: 21,
-                background: '#bf211e', color: '#fff',
+                background: 'var(--tavil-accent)', color: '#fff',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 16, fontWeight: 600, flexShrink: 0,
               }}>{initials}</div>
@@ -376,7 +403,7 @@ function MobileDrawer({
                       padding: '11px 12px',
                       background: isActive ? 'var(--tavil-accent-light, #f9eceb)' : 'transparent',
                       border: 'none', borderRadius: 10,
-                      color: isActive ? '#bf211e' : 'var(--tavil-text)',
+                      color: isActive ? 'var(--tavil-accent)' : 'var(--tavil-text)',
                       cursor: 'pointer', fontSize: 14.5, textAlign: 'left',
                     }}
                   >
@@ -550,14 +577,14 @@ function BottomNavBar({ activeTab, onTabChange, onOpenDrawer, isDarkMode, hidden
                 background: 'none', border: 'none', cursor: 'pointer',
                 padding: '6px 0', display: 'flex', flexDirection: 'column',
                 alignItems: 'center', gap: 3, fontFamily: 'inherit',
-                color: active ? '#bf211e' : 'var(--tavil-muted)',
+                color: active ? 'var(--tavil-accent)' : 'var(--tavil-muted)',
                 position: 'relative',
                 touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
               } as React.CSSProperties}
             >
               {/* Top indicator */}
               <div style={{
-                height: 3, width: active ? 22 : 0, background: '#bf211e',
+                height: 3, width: active ? 22 : 0, background: 'var(--tavil-accent)',
                 borderRadius: 2, position: 'absolute', top: -8,
                 transition: 'width 260ms cubic-bezier(.23,1,.32,1)',
               }} />
@@ -614,7 +641,7 @@ function MobileNotificationsOverlay({ notifications, onClose, onMarkRead, onMark
           >
             <div style={{
               width: 36, height: 36, borderRadius: 18, flexShrink: 0,
-              background: !n.read ? '#bf211e' : 'var(--tavil-bg)',
+              background: !n.read ? 'var(--tavil-accent)' : 'var(--tavil-bg)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: !n.read ? '#fff' : 'var(--tavil-muted)',
             }}>
@@ -628,7 +655,7 @@ function MobileNotificationsOverlay({ notifications, onClose, onMarkRead, onMark
               {n.body && <div style={{ fontSize: 12.5, color: 'var(--tavil-muted)', lineHeight: 1.35 }}>{n.body}</div>}
               {n.tab && <div style={{ fontSize: 11, color: 'var(--tavil-faint)', marginTop: 3 }}>{n.tab}</div>}
             </div>
-            {!n.read && <div style={{ width: 7, height: 7, borderRadius: 4, background: '#bf211e', marginTop: 5, flexShrink: 0 }} />}
+            {!n.read && <div style={{ width: 7, height: 7, borderRadius: 4, background: 'var(--tavil-accent)', marginTop: 5, flexShrink: 0 }} />}
           </button>
         ))}
       </div>
@@ -639,7 +666,7 @@ function MobileNotificationsOverlay({ notifications, onClose, onMarkRead, onMark
     <div className={isDarkMode ? 'dark' : ''} style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'var(--tavil-bg)', overflowY: 'auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 6px', height: 56, flexShrink: 0 }}>
-        <button onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#bf211e', fontFamily: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}>
+        <button onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontFamily: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}>
           <ChevronLeft size={20} strokeWidth={2} /> Enrere
         </button>
         {unread > 0 && (
@@ -651,7 +678,7 @@ function MobileNotificationsOverlay({ notifications, onClose, onMarkRead, onMark
 
       {/* Eyebrow + title */}
       <div style={{ padding: '4px 20px 20px' }}>
-        <div style={{ fontSize: 10.5, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>ACTIVITAT</div>
+        <div style={{ fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>ACTIVITAT</div>
         <h1 style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 32, fontWeight: 400, letterSpacing: '-0.02em', lineHeight: 1.05, margin: '0 0 6px', color: 'var(--tavil-text)' }}>Notificacions</h1>
         <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: 0 }}>
           {unread > 0 ? <>Tens <strong>{unread} sense llegir</strong>.</> : 'Estàs al dia.'}
@@ -946,7 +973,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
 
         {/* Quick access */}
         <div style={{ padding: '24px 20px 4px' }}>
-          <div style={{ fontSize: 11, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Accés ràpid</div>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Accés ràpid</div>
           <div style={{
             fontFamily: '"Instrument Serif","Times New Roman",serif',
             fontSize: 24, fontWeight: 400, lineHeight: 1, letterSpacing: '-0.01em', color: 'var(--tavil-text)', marginBottom: 14,
@@ -961,7 +988,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
               }}>
                 <div style={{
                   width: 34, height: 34, borderRadius: 10,
-                  background: 'rgba(191,33,30,0.08)', color: '#bf211e',
+                  background: 'rgba(191,33,30,0.08)', color: 'var(--tavil-accent)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}><q.Icon size={18} strokeWidth={1.7} /></div>
                 <span style={{ fontSize: 10.5, fontWeight: 500, letterSpacing: '0.01em', textAlign: 'center', lineHeight: 1.2, color: 'var(--tavil-text)' }}>{q.label}</span>
@@ -975,7 +1002,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
           <>
             <div style={{ padding: '28px 20px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
               <div>
-                <div style={{ fontSize: 11, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>{t('news.featured')}</div>
+                <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>{t('news.featured')}</div>
                 <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 24, fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.01em', color: 'var(--tavil-text)' }}>{t('home.latestNews')}</div>
               </div>
               <button onClick={() => onNavigate?.('Notícies')} style={{ background: 'none', border: 'none', color: 'var(--tavil-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -995,7 +1022,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                 )}
                 <div style={{ padding: 16 }}>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: 'rgba(191,33,30,0.08)', color: '#bf211e' }}>{featured.category}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: 'rgba(191,33,30,0.08)', color: 'var(--tavil-accent)' }}>{featured.category}</span>
                     <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 999, background: 'var(--tavil-bg-alt)', color: 'var(--tavil-muted)', border: '1px solid var(--tavil-border)' }}>{featured.date}</span>
                   </div>
                   <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 22, fontWeight: 400, lineHeight: 1.15, letterSpacing: '-0.01em', color: 'var(--tavil-text)', marginBottom: 8 }}>{featured.title}</div>
@@ -1016,7 +1043,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
           <>
             <div style={{ padding: '28px 20px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
               <div>
-                <div style={{ fontSize: 11, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Agenda</div>
+                <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Agenda</div>
                 <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 24, fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.01em', color: 'var(--tavil-text)' }}>{t('home.upcomingAgenda')}</div>
               </div>
               <button onClick={() => onNavigate?.('Agenda')} style={{ background: 'none', border: 'none', color: 'var(--tavil-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -1027,7 +1054,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
               {upcomingThisWeek.map(ev => (
                 <div key={ev.id} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: 14, minWidth: 220, flexShrink: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
-                    <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 28, lineHeight: 1, fontWeight: 400, color: '#bf211e' }}>{ev.day}</div>
+                    <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 28, lineHeight: 1, fontWeight: 400, color: 'var(--tavil-accent)' }}>{ev.day}</div>
                     <div style={{ fontSize: 11, color: 'var(--tavil-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{MONTH_NAMES[ev.month - 1]}</div>
                   </div>
                   <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.25, color: 'var(--tavil-text)', marginBottom: 6 }}>{ev.title}</div>
@@ -1045,7 +1072,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
         {moreNews.length > 0 && (
           <>
             <div style={{ padding: '28px 20px 14px' }}>
-              <div style={{ fontSize: 11, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Novetats</div>
+              <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Novetats</div>
               <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 24, fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.01em', color: 'var(--tavil-text)' }}>Més notícies</div>
             </div>
             <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -2805,7 +2832,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                     {act.capacity > 0 && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                         <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'var(--tavil-faint)', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${pct}%`, background: full ? '#f59e0b' : '#bf211e', transition: 'width 400ms' }} />
+                          <div style={{ height: '100%', width: `${pct}%`, background: full ? '#f59e0b' : 'var(--tavil-accent)', transition: 'width 400ms' }} />
                         </div>
                         <span style={{ fontSize: 11, color: 'var(--tavil-faint)', fontFeatureSettings: '"tnum"' }}>{act.enrolled}/{act.capacity}</span>
                       </div>
@@ -2821,7 +2848,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                           disabled={full && enrolledId !== act.id}
                           style={{
                             padding: '6px 14px', borderRadius: 8, border: 'none', fontSize: 12.5, fontWeight: 600,
-                            background: enrolledId === act.id ? '#22c55e' : full ? 'var(--tavil-faint)' : '#bf211e',
+                            background: enrolledId === act.id ? '#22c55e' : full ? 'var(--tavil-faint)' : 'var(--tavil-accent)',
                             color: enrolledId === act.id || full ? 'var(--tavil-muted)' : '#fff',
                             cursor: full && enrolledId !== act.id ? 'default' : 'pointer', fontFamily: 'inherit',
                           }}
@@ -2833,7 +2860,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                     {isAdmin && (
                       <div style={{ display: 'flex', gap: 16, paddingTop: 10, borderTop: '1px solid var(--tavil-border)', marginTop: 6 }}>
                         <button onClick={e => { e.stopPropagation(); actEditId === act.id ? setActEditId(null) : openActEdit(act); }} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--tavil-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}><Pencil size={12} /> Editar</button>
-                        <button onClick={e => { e.stopPropagation(); handleDeleteActivity(act.id); }} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#bf211e', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}><Trash2 size={12} /> Eliminar</button>
+                        <button onClick={e => { e.stopPropagation(); handleDeleteActivity(act.id); }} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--tavil-accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}><Trash2 size={12} /> Eliminar</button>
                       </div>
                     )}
                   </div>
@@ -2850,7 +2877,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
             onClick={() => setShowActForm(v => !v)}
             style={{
               position: 'fixed', bottom: 90, right: 20, width: 52, height: 52,
-              borderRadius: 26, background: '#bf211e', color: '#fff',
+              borderRadius: 26, background: 'var(--tavil-accent)', color: '#fff',
               border: 'none', fontSize: 24, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: '0 4px 16px rgba(191,33,30,0.35)', zIndex: 40,
@@ -2900,11 +2927,11 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                     <span style={{ color: '#22c55e', fontWeight: 600 }}>{Math.max(0, selectedAct.capacity - selectedAct.enrolled)} disponibles</span>
                   </div>
                   <div style={{ height: 5, borderRadius: 3, background: 'var(--tavil-border)' }}>
-                    <div style={{ height: 5, borderRadius: 3, background: '#bf211e', width: `${Math.min((selectedAct.enrolled / selectedAct.capacity) * 100, 100)}%` }} />
+                    <div style={{ height: 5, borderRadius: 3, background: 'var(--tavil-accent)', width: `${Math.min((selectedAct.enrolled / selectedAct.capacity) * 100, 100)}%` }} />
                   </div>
                 </div>
               )}
-              {enrollError && <p style={{ fontSize: 13, color: '#bf211e', marginBottom: 10 }}>{enrollError}</p>}
+              {enrollError && <p style={{ fontSize: 13, color: 'var(--tavil-accent)', marginBottom: 10 }}>{enrollError}</p>}
               <button
                 onClick={async () => {
                   if (enrolledId === selectedAct.id) return;
@@ -2917,7 +2944,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                 disabled={enrolledId === selectedAct.id}
                 style={{
                   width: '100%', height: 50, borderRadius: 14, border: 'none',
-                  background: enrolledId === selectedAct.id ? '#22c55e' : '#bf211e',
+                  background: enrolledId === selectedAct.id ? '#22c55e' : 'var(--tavil-accent)',
                   color: '#fff', fontSize: 15, fontWeight: 600, cursor: enrolledId === selectedAct.id ? 'default' : 'pointer',
                   fontFamily: 'inherit',
                 }}
@@ -3122,6 +3149,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
   const [currentMonth, setCurrentMonth] = useState(today0.getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(today0.getFullYear());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const dayDetailRef = useScrollIntoViewWhen<HTMLDivElement>(selectedDay, { threshold: 0.5, block: 'center', delay: 80 });
   const isAdmin = ['Administrador/a', 'Recursos humans', 'Comunicacions'].includes(currentUser?.role ?? '');
 
   useEffect(() => {
@@ -3258,7 +3286,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
           'Fira': '#f59e0b',
           'Visita comercial': '#3b82f6',
           'Sessió interna': '#8b5cf6',
-          'Activitat empresa': '#bf211e',
+          'Activitat empresa': 'var(--tavil-accent)',
         };
           // Week strip: 7 days of the current week (Mon–Sun), anchored to today
           const todayDate = new Date();
@@ -3284,7 +3312,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
               <Menu size={18} />
             </button>
             {isAdmin && (
-                <button onClick={() => setShowEventForm(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, padding: '0 14px', borderRadius: 10, background: '#bf211e', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button onClick={() => setShowEventForm(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, padding: '0 14px', borderRadius: 10, background: 'var(--tavil-accent)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                   <Plus size={15} /> Nou
                 </button>
             )}
@@ -3312,7 +3340,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
                   }}>
                     <span style={{ fontSize: 10, fontWeight: 500, opacity: active ? 0.7 : 0.6, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{d.l}</span>
                     <span style={{ fontSize: 18, fontWeight: 600, marginTop: 2, fontFamily: '"Instrument Serif", serif' }}>{d.n}</span>
-                    {isTod && !active && <div style={{ width: 4, height: 4, borderRadius: 2, background: '#bf211e', marginTop: 3 }} />}
+                    {isTod && !active && <div style={{ width: 4, height: 4, borderRadius: 2, background: 'var(--tavil-accent)', marginTop: 3 }} />}
                   </button>
               );
             })}
@@ -3336,7 +3364,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
                     <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--tavil-text)', fontFeatureSettings: '"tnum"' }}>{parts[0]?.trim() || ev.time}</div>
                     {parts[1] && <div style={{ fontSize: 10.5, color: 'var(--tavil-faint)', marginTop: 1 }}>{parts[1].trim()}</div>}
                   </div>
-                  <div style={{ width: 3, background: EVENT_BAR_COLORS[ev.type] ?? '#bf211e', borderRadius: 2, flexShrink: 0, alignSelf: 'stretch' }} />
+                  <div style={{ width: 3, background: EVENT_BAR_COLORS[ev.type] ?? 'var(--tavil-accent)', borderRadius: 2, flexShrink: 0, alignSelf: 'stretch' }} />
                   <div style={{ flex: 1, minWidth: 0, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 14 }}>
                     <div style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1.25, color: 'var(--tavil-text)', marginBottom: 6 }}>{ev.title}</div>
                     {ev.location && (
@@ -3350,7 +3378,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
                     {isAdmin && (
                       <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
                         <button onClick={() => openEvEdit(ev)} style={{ background: 'none', border: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', padding: 0 }}><Pencil size={13} /></button>
-                        <button onClick={() => handleDeleteEvent(ev.id)} style={{ background: 'none', border: 'none', color: '#bf211e', cursor: 'pointer', padding: 0 }}><Trash2 size={13} /></button>
+                        <button onClick={() => handleDeleteEvent(ev.id)} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 0 }}><Trash2 size={13} /></button>
                       </div>
                     )}
                   </div>
@@ -3381,7 +3409,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
                 </div>
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                   <button onClick={closeEventForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
-                  <button onClick={handleCreateEvent} disabled={!eTitle.trim() || !eDate || eSaving} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#bf211e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!eTitle.trim() || !eDate || eSaving) ? 0.5 : 1 }}>{eSaving ? 'Desant...' : 'Crear event'}</button>
+                  <button onClick={handleCreateEvent} disabled={!eTitle.trim() || !eDate || eSaving} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!eTitle.trim() || !eDate || eSaving) ? 0.5 : 1 }}>{eSaving ? 'Desant...' : 'Crear event'}</button>
                 </div>
               </div>
             </div>
@@ -3410,7 +3438,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
                 </div>
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                   <button onClick={() => setEvEditId(null)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
-                  <button onClick={handleSaveEvEdit} disabled={!eeTitle.trim() || !eeDate || eeSaving} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#bf211e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!eeTitle.trim() || !eeDate || eeSaving) ? 0.5 : 1 }}>{eeSaving ? 'Desant...' : 'Desar'}</button>
+                  <button onClick={handleSaveEvEdit} disabled={!eeTitle.trim() || !eeDate || eeSaving} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!eeTitle.trim() || !eeDate || eeSaving) ? 0.5 : 1 }}>{eeSaving ? 'Desant...' : 'Desar'}</button>
                 </div>
               </div>
             </div>
@@ -3522,7 +3550,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
             })}
           </div>
           {selectedDay !== null && (
-            <div className="mt-5 pt-5 border-t border-gray-100 dark:border-zinc-800">
+            <div ref={dayDetailRef} className="mt-5 pt-5 border-t border-gray-100 dark:border-zinc-800">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-bold text-gray-900 dark:text-white text-sm">
                   {selectedDay} {MONTH_NAMES[currentMonth]} {currentYear}
@@ -3924,7 +3952,7 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
               {allDocs.map((doc, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: i < allDocs.length - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
                   <div style={{ width: 38, height: 44, background: 'var(--tavil-bg)', border: '1px solid var(--tavil-border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: '#bf211e', fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.04em' }}>{doc.tag.slice(0, 4).toUpperCase()}</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--tavil-accent)', fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.04em' }}>{doc.tag.slice(0, 4).toUpperCase()}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)', lineHeight: 1.3 }}>{doc.title}</div>
@@ -3943,11 +3971,11 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {ESPAI_CATS.map((c, i) => (
                   <div key={i} onClick={() => setSelectedCat(selectedCat === i ? null : i)} style={{
-                    background: 'var(--tavil-card)', border: `1px solid ${selectedCat === i ? '#bf211e' : 'var(--tavil-border)'}`,
+                    background: 'var(--tavil-card)', border: `1px solid ${selectedCat === i ? 'var(--tavil-accent)' : 'var(--tavil-border)'}`,
                     borderRadius: 14, padding: '14px 14px 12px', cursor: 'pointer',
                   }}>
                     <div style={{ width: 34, height: 34, borderRadius: 10, background: '#fbe4e3', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-                      <c.icon size={17} style={{ color: '#bf211e' }} />
+                      <c.icon size={17} style={{ color: 'var(--tavil-accent)' }} />
                     </div>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)', lineHeight: 1.3, marginBottom: 4 }}>{c.title.split(' ').slice(0, 3).join(' ')}</div>
                     <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)' }}>{c.docs} documents</div>
@@ -3964,7 +3992,7 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
                   {cat.documents.map((doc, di) => (
                     <div key={di} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: di < cat.documents.length - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
                       <div style={{ width: 38, height: 44, background: 'var(--tavil-bg)', border: '1px solid var(--tavil-border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <span style={{ fontSize: 9, fontWeight: 700, color: '#bf211e', fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.04em' }}>{doc.meta.split('·')[0].trim().split(' ')[0]}</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--tavil-accent)', fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.04em' }}>{doc.meta.split('·')[0].trim().split(' ')[0]}</span>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)', lineHeight: 1.3, marginBottom: 2 }}>{doc.title}</div>
@@ -4173,7 +4201,7 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
         {/* 3-stat grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '0 16px 20px' }}>
           {[
-            { value: String(inProgress.length), label: 'En curs', color: '#bf211e' },
+            { value: String(inProgress.length), label: 'En curs', color: 'var(--tavil-accent)' },
             { value: String(completed.length), label: 'Completats', color: '#7a8a6b' },
             { value: `${completedHours}h`, label: 'Aquest any', color: 'var(--tavil-text)' },
           ].map((s, i) => (
@@ -4189,7 +4217,7 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
           <div style={{ padding: '0 16px 20px' }}>
             <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>CONTINUA ON HO DEIXAVES</div>
             <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden' }}>
-              <div style={{ height: 80, background: 'linear-gradient(135deg,#bf211e,#8a2623)', display: 'flex', alignItems: 'center', padding: '0 18px' }}>
+              <div style={{ height: 80, background: 'linear-gradient(135deg,var(--tavil-accent),#8a2623)', display: 'flex', alignItems: 'center', padding: '0 18px' }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.15)', padding: '3px 10px', borderRadius: 999 }}>{inProgress[0].category}</span>
               </div>
               <div style={{ padding: '14px 16px' }}>
@@ -4198,10 +4226,10 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
                   <span>{inProgress[0].hours}</span><span>{inProgress[0].user_progress}% completat</span>
                 </div>
                 <div style={{ height: 5, background: 'var(--tavil-border)', borderRadius: 3 }}>
-                  <div style={{ height: 5, background: '#bf211e', borderRadius: 3, width: `${inProgress[0].user_progress}%`, transition: 'width 400ms ease-out' }} />
+                  <div style={{ height: 5, background: 'var(--tavil-accent)', borderRadius: 3, width: `${inProgress[0].user_progress}%`, transition: 'width 400ms ease-out' }} />
                 </div>
                 {inProgress[0].url && (
-                  <button onClick={() => window.open(inProgress[0].url, '_blank', 'noopener,noreferrer')} style={{ marginTop: 14, width: '100%', height: 42, borderRadius: 12, border: 'none', background: '#bf211e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <button onClick={() => window.open(inProgress[0].url, '_blank', 'noopener,noreferrer')} style={{ marginTop: 14, width: '100%', height: 42, borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Continuar
                   </button>
                 )}
@@ -4240,12 +4268,12 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
                 <div style={{ marginTop: 10 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--tavil-muted)', marginBottom: 5 }}><span>Progrés</span><span>{course.user_progress}%</span></div>
                   <div style={{ height: 4, background: 'var(--tavil-border)', borderRadius: 2 }}>
-                    <div style={{ height: 4, background: '#bf211e', borderRadius: 2, width: `${course.user_progress}%`, transition: 'width 400ms ease-out' }} />
+                    <div style={{ height: 4, background: 'var(--tavil-accent)', borderRadius: 2, width: `${course.user_progress}%`, transition: 'width 400ms ease-out' }} />
                   </div>
                 </div>
               )}
               {course.url && (
-                <button onClick={() => window.open(course.url, '_blank', 'noopener,noreferrer')} style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', height: 38, borderRadius: 10, border: '1px solid #e8d0cf', background: 'transparent', color: '#bf211e', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button onClick={() => window.open(course.url, '_blank', 'noopener,noreferrer')} style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', height: 38, borderRadius: 10, border: '1px solid #e8d0cf', background: 'transparent', color: 'var(--tavil-accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                   <ExternalLink size={13} /> Obrir curs
                 </button>
               )}
@@ -4812,8 +4840,8 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                 </div>
                 {s.description && <p style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginBottom: 10, lineHeight: 1.4 }}>{s.description}</p>}
                 {s.response && (
-                  <div style={{ background: 'var(--tavil-bg)', borderRadius: 10, padding: '8px 12px', marginBottom: 10, borderLeft: '3px solid #bf211e' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#bf211e', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Resposta RRHH</div>
+                  <div style={{ background: 'var(--tavil-bg)', borderRadius: 10, padding: '8px 12px', marginBottom: 10, borderLeft: '3px solid var(--tavil-accent)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--tavil-accent)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Resposta RRHH</div>
                     <p style={{ fontSize: 12.5, color: 'var(--tavil-muted)' }}>{s.response}</p>
                   </div>
                 )}
@@ -4822,20 +4850,20 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                     {s.anonymous ? 'Anònim' : s.author} · {formatDate(s.created_at)}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button onClick={() => handleVote(s.id, 'up')} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: s.user_vote === 'up' ? '#bf211e' : 'var(--tavil-muted)', background: 'var(--tavil-bg)', border: `1px solid ${s.user_vote === 'up' ? '#bf211e' : 'var(--tavil-border)'}`, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <button onClick={() => handleVote(s.id, 'up')} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: s.user_vote === 'up' ? 'var(--tavil-accent)' : 'var(--tavil-muted)', background: 'var(--tavil-bg)', border: `1px solid ${s.user_vote === 'up' ? 'var(--tavil-accent)' : 'var(--tavil-border)'}`, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
                       <ThumbsUp size={13} /> {s.votes}
                     </button>
                     <button onClick={() => handleVote(s.id, 'down')} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: s.user_vote === 'down' ? '#3b82f6' : 'var(--tavil-muted)', background: 'var(--tavil-bg)', border: `1px solid ${s.user_vote === 'down' ? '#3b82f6' : 'var(--tavil-border)'}`, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
                       <ThumbsDown size={13} />
                     </button>
                     {(isRrhhOrAdmin || s.user_id === currentUser?.id) && (
-                      <button onClick={async () => { await apiDeleteSuggestion(s.id); setSuggestions(await apiGetSuggestions()); }} style={{ background: 'none', border: 'none', color: '#bf211e', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
+                      <button onClick={async () => { await apiDeleteSuggestion(s.id); setSuggestions(await apiGetSuggestions()); }} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
                     )}
                   </div>
                 </div>
                 {isRrhhOrAdmin && (
                   <div style={{ paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--tavil-border)' }}>
-                    <button onClick={() => openSuggAdmin(s)} style={{ fontSize: 12, color: '#bf211e', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
+                    <button onClick={() => openSuggAdmin(s)} style={{ fontSize: 12, color: 'var(--tavil-accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
                       Gestionar →
                     </button>
                     {suggAdminOpen === s.id && (
@@ -4846,7 +4874,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                         <textarea value={suggAdminResponse} onChange={e => setSuggAdminResponse(e.target.value)} placeholder="Resposta (opcional)" rows={2} style={{ borderRadius: 8, border: '1px solid var(--tavil-border)', padding: '8px 10px', fontSize: 13, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', resize: 'none', outline: 'none' }} />
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                           <button onClick={() => setSuggAdminOpen(null)} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
-                          <button onClick={() => saveSuggAdmin(s.id)} disabled={suggAdminSaving} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: 'none', background: '#bf211e', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>{suggAdminSaving ? 'Desant...' : 'Desar'}</button>
+                          <button onClick={() => saveSuggAdmin(s.id)} disabled={suggAdminSaving} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--tavil-accent)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>{suggAdminSaving ? 'Desant...' : 'Desar'}</button>
                         </div>
                       </div>
                     )}
@@ -4879,12 +4907,12 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                       {inc.priority && <span style={{ marginLeft: 8, fontWeight: 600 }}>Prioritat: {inc.priority}</span>}
                     </div>
                     {(isRrhhOrAdmin || inc.user_id === currentUser?.id) && (
-                      <button onClick={async () => { await apiDeleteIncidencia(inc.id); setIncidencies(await apiGetIncidencies()); }} style={{ background: 'none', border: 'none', color: '#bf211e', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
+                      <button onClick={async () => { await apiDeleteIncidencia(inc.id); setIncidencies(await apiGetIncidencies()); }} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
                     )}
                   </div>
                   {isRrhhOrAdmin && (
                     <div style={{ paddingTop: 10, marginTop: 6, borderTop: '1px solid var(--tavil-border)' }}>
-                      <button onClick={() => openIncAdmin(inc)} style={{ fontSize: 12, color: '#bf211e', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
+                      <button onClick={() => openIncAdmin(inc)} style={{ fontSize: 12, color: 'var(--tavil-accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
                         Gestionar →
                       </button>
                       {incAdminOpen === inc.id && (
@@ -4896,7 +4924,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                           <textarea value={incAdminResolution} onChange={e => setIncAdminResolution(e.target.value)} placeholder="Resolució" rows={2} style={{ borderRadius: 8, border: '1px solid var(--tavil-border)', padding: '8px 10px', fontSize: 13, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', resize: 'none', outline: 'none' }} />
                           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                             <button onClick={() => setIncAdminOpen(null)} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
-                            <button onClick={() => saveIncAdmin(inc.id)} disabled={incAdminSaving} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: 'none', background: '#bf211e', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>{incAdminSaving ? 'Desant...' : 'Desar'}</button>
+                            <button onClick={() => saveIncAdmin(inc.id)} disabled={incAdminSaving} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--tavil-accent)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>{incAdminSaving ? 'Desant...' : 'Desar'}</button>
                           </div>
                         </div>
                       )}
@@ -4914,7 +4942,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
             onClick={() => setMobileVeuForm(activeTab === 'Suggeriments' ? 'sugg' : 'inc')}
             style={{
               position: 'fixed', bottom: 90, right: 20, width: 52, height: 52,
-              borderRadius: 26, background: '#bf211e', color: '#fff',
+              borderRadius: 26, background: 'var(--tavil-accent)', color: '#fff',
               border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: '0 4px 16px rgba(191,33,30,0.35)', zIndex: 9000,
@@ -4942,7 +4970,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                 {suggSuccess && <p style={{ fontSize: 13, color: '#22c55e', fontWeight: 600 }}>Suggeriment enviat!</p>}
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                   <button onClick={() => setMobileVeuForm(null)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
-                  <button onClick={async () => { await handleSuggSubmit(); setMobileVeuForm(null); }} disabled={!newTitle.trim() || !newCat || suggSubmitting} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#bf211e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!newTitle.trim() || !newCat || suggSubmitting) ? 0.5 : 1 }}>
+                  <button onClick={async () => { await handleSuggSubmit(); setMobileVeuForm(null); }} disabled={!newTitle.trim() || !newCat || suggSubmitting} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!newTitle.trim() || !newCat || suggSubmitting) ? 0.5 : 1 }}>
                     {suggSubmitting ? 'Enviant...' : 'Enviar'}
                   </button>
                 </div>
@@ -4971,7 +4999,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                 {incSuccess && <p style={{ fontSize: 13, color: '#22c55e', fontWeight: 600 }}>Incidència enviada!</p>}
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                   <button onClick={() => setMobileVeuForm(null)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
-                  <button onClick={async () => { await handleIncSubmit(); setMobileVeuForm(null); }} disabled={!incTitle.trim() || !incArea || !incPriority || incSubmitting} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#bf211e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!incTitle.trim() || !incArea || !incPriority || incSubmitting) ? 0.5 : 1 }}>
+                  <button onClick={async () => { await handleIncSubmit(); setMobileVeuForm(null); }} disabled={!incTitle.trim() || !incArea || !incPriority || incSubmitting} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!incTitle.trim() || !incArea || !incPriority || incSubmitting) ? 0.5 : 1 }}>
                     {incSubmitting ? 'Enviant...' : 'Enviar'}
                   </button>
                 </div>
@@ -5749,7 +5777,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
         <div style={{ padding: '0 16px 14px' }}>
           <button
             onClick={() => activeTab === 'Vacances' ? setMobileVacForm(true) : setMobileSolForm(true)}
-            style={{ width: '100%', height: 48, borderRadius: 14, border: 'none', background: '#bf211e', color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            style={{ width: '100%', height: 48, borderRadius: 14, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
           >
             <Plus size={18} /> Nova sol·licitud
           </button>
@@ -5826,7 +5854,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(d.status) }}>{d.status}</span>
                         {(isRRHH || d.author === currentUser?.email) && (
-                          <button onClick={async () => { await apiDeleteSolicitud(d.id); fetchSolicituds(); }} style={{ background: 'none', border: 'none', color: '#bf211e', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
+                          <button onClick={async () => { await apiDeleteSolicitud(d.id); fetchSolicituds(); }} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
                         )}
                       </div>
                     </div>
@@ -5851,10 +5879,10 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                 <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: '14px 16px', marginBottom: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                     <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)' }}>Dies de vacances</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#bf211e' }}>{used} / {ANNUAL_QUOTA_DAYS} dies</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tavil-accent)' }}>{used} / {ANNUAL_QUOTA_DAYS} dies</span>
                   </div>
                   <div style={{ height: 6, borderRadius: 3, background: 'var(--tavil-border)' }}>
-                    <div style={{ height: 6, borderRadius: 3, background: '#bf211e', width: `${pct}%`, transition: 'width 600ms' }} />
+                    <div style={{ height: 6, borderRadius: 3, background: 'var(--tavil-accent)', width: `${pct}%`, transition: 'width 600ms' }} />
                   </div>
                   <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginTop: 6 }}>{ANNUAL_QUOTA_DAYS - used} dies disponibles</div>
                 </div>
@@ -5897,7 +5925,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(v.rrhh_status === 'Aprovada' ? 'Aprovada' : v.rrhh_status === 'Denegada' || v.head_status === 'Denegada' ? 'Denegada' : 'Pendent') }}>{v.rrhh_status === 'Aprovada' ? 'Aprovada' : v.rrhh_status === 'Denegada' || v.head_status === 'Denegada' ? 'Denegada' : 'Pendent'}</span>
                         {(isRRHH || v.user_id === currentUser?.id) && (
-                          <button onClick={async () => { await apiDeleteVacanca(v.id); fetchVacances(); }} style={{ background: 'none', border: 'none', color: '#bf211e', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
+                          <button onClick={async () => { await apiDeleteVacanca(v.id); fetchVacances(); }} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
                         )}
                       </div>
                     </div>
@@ -5926,7 +5954,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                 {success && <p style={{ fontSize: 13, color: '#22c55e', fontWeight: 600 }}>Sol·licitud enviada!</p>}
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                   <button onClick={() => setMobileSolForm(false)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
-                  <button onClick={async () => { await handleSubmit(); setMobileSolForm(false); }} disabled={!selectedDate || submitting} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#bf211e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!selectedDate || submitting) ? 0.5 : 1 }}>
+                  <button onClick={async () => { await handleSubmit(); setMobileSolForm(false); }} disabled={!selectedDate || submitting} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!selectedDate || submitting) ? 0.5 : 1 }}>
                     {submitting ? 'Enviant...' : 'Enviar'}
                   </button>
                 </div>
@@ -5973,7 +6001,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                       finally { setVacSubmitting(false); }
                     }}
                     disabled={!vacStartDate || !vacEndDate || vacSubmitting}
-                    style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#bf211e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!vacStartDate || !vacEndDate || vacSubmitting) ? 0.5 : 1 }}
+                    style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!vacStartDate || !vacEndDate || vacSubmitting) ? 0.5 : 1 }}
                   >
                     {vacSubmitting ? 'Enviant...' : 'Sol·licitar'}
                   </button>
@@ -6603,7 +6631,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
               style={{
                 display: 'flex', alignItems: 'center', gap: 4,
                 background: 'transparent', border: 'none', cursor: 'pointer',
-                color: '#bf211e', fontFamily: 'inherit', fontSize: 16, padding: '4px 0',
+                color: 'var(--tavil-accent)', fontFamily: 'inherit', fontSize: 16, padding: '4px 0',
               }}
             >
               <ChevronLeft size={20} strokeWidth={2} />
@@ -6640,7 +6668,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                     background: n.read ? 'var(--tavil-bg-alt)' : '#fdf2f2',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <Bell size={16} style={{ color: n.read ? 'var(--tavil-muted)' : '#bf211e' }} />
+                    <Bell size={16} style={{ color: n.read ? 'var(--tavil-muted)' : 'var(--tavil-accent)' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
@@ -6653,7 +6681,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                     <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginTop: 4 }}>{timeAgo(n.created_at)}</div>
                   </div>
                   {!n.read && (
-                    <div style={{ width: 8, height: 8, borderRadius: 4, background: '#bf211e', marginTop: 6, flexShrink: 0 }} />
+                    <div style={{ width: 8, height: 8, borderRadius: 4, background: 'var(--tavil-accent)', marginTop: 6, flexShrink: 0 }} />
                   )}
                 </button>
               ))
@@ -6668,7 +6696,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                   width: '100%', padding: '13px 16px', background: 'var(--tavil-card)',
                   border: '1px solid var(--tavil-border)', borderRadius: 14,
                   cursor: 'pointer', fontFamily: 'inherit', fontSize: 14,
-                  color: '#bf211e', fontWeight: 500,
+                  color: 'var(--tavil-accent)', fontWeight: 500,
                 }}
               >
                 Marcar totes com a llegides
@@ -6719,8 +6747,8 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                   style={{
                     padding: '14px 8px 12px', borderRadius: 12,
                     background: active ? '#fdf2f2' : 'transparent',
-                    border: `1px solid ${active ? '#bf211e' : 'var(--tavil-border)'}`,
-                    color: active ? '#bf211e' : 'var(--tavil-text)',
+                    border: `1px solid ${active ? 'var(--tavil-accent)' : 'var(--tavil-border)'}`,
+                    color: active ? 'var(--tavil-accent)' : 'var(--tavil-text)',
                     cursor: 'pointer', fontFamily: 'inherit', fontSize: 13,
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, fontWeight: 500,
                   }}
@@ -6754,7 +6782,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                 }}
               >
                 <span style={{ flex: 1, textAlign: 'left' }}>{l.label}</span>
-                {active && <Check size={16} style={{ color: '#bf211e' }} />}
+                {active && <Check size={16} style={{ color: 'var(--tavil-accent)' }} />}
               </button>
             );
           })}
@@ -6795,10 +6823,10 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
               width: '100%', display: 'flex', alignItems: 'center', gap: 12,
               padding: '14px 16px', background: 'transparent', border: 'none',
               borderBottom: '1px solid var(--tavil-border)',
-              cursor: 'pointer', fontFamily: 'inherit', fontSize: 14.5, color: '#bf211e',
+              cursor: 'pointer', fontFamily: 'inherit', fontSize: 14.5, color: 'var(--tavil-accent)',
             }}
           >
-            <LogOut size={18} style={{ color: '#bf211e' }} />
+            <LogOut size={18} style={{ color: 'var(--tavil-accent)' }} />
             <span style={{ flex: 1, textAlign: 'left' }}>Tanca sessió</span>
           </button>
         </MesSettingsGroup>
@@ -6825,16 +6853,16 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden relative">
             {/* Gradient banner */}
-            <div className="h-24 relative" style={{ background: 'linear-gradient(135deg,#bf211e 0%,#8a2624 60%,#5a1a18 100%)' }}>
+            <div className="h-24 relative z-0" style={{ background: 'linear-gradient(135deg,var(--tavil-accent) 0%,#8a2624 60%,#5a1a18 100%)' }}>
               {editing ? (
-                <div className="absolute top-3 right-3 flex gap-1.5">
-                  <button onClick={handleSave} disabled={!nameInput.trim()} className="text-xs bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-40 px-3 py-1.5 rounded-lg font-medium transition-colors">Desar</button>
-                  <button onClick={handleCancel} className="text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg backdrop-blur transition-colors">Cancel·lar</button>
+                <div className="absolute top-3 right-3 flex gap-1.5 z-20">
+                  <button onClick={handleSave} disabled={!nameInput.trim()} className="text-xs bg-white text-gray-900 hover:bg-gray-50 disabled:opacity-40 px-3 py-1.5 rounded-lg font-semibold transition-colors shadow-sm">Desar</button>
+                  <button onClick={handleCancel} className="text-xs bg-white/95 hover:bg-white text-gray-900 px-3 py-1.5 rounded-lg font-semibold transition-colors shadow-sm">Cancel·lar</button>
                 </div>
               ) : (
                 <button
                   onClick={() => { setEditing(true); setNameInput(currentUser?.name ?? ''); }}
-                  className="absolute top-3 right-3 flex items-center gap-1.5 text-xs bg-white/15 hover:bg-white/25 text-white backdrop-blur px-2.5 py-1.5 rounded-lg transition-colors"
+                  className="absolute top-3 right-3 z-20 flex items-center gap-1.5 text-xs bg-white/95 hover:bg-white text-gray-900 px-2.5 py-1.5 rounded-lg transition-colors shadow-sm font-semibold"
                   title="Editar perfil"
                 >
                   <Pencil size={12} /> Editar
@@ -6842,10 +6870,10 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
               )}
             </div>
 
-            <div className="px-6 pb-6 -mt-12">
+            <div className="px-6 pb-6 -mt-12 relative z-10">
               {/* Avatar (overlap) */}
               <div className="flex justify-center">
-                <div className="w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-semibold shadow-lg ring-4 ring-white dark:ring-zinc-900 select-none"
+                <div className="w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-semibold shadow-lg ring-4 ring-white dark:ring-zinc-900 select-none relative z-10"
                      style={{ background: 'linear-gradient(135deg,#a8201d 0%,#6e1c1a 100%)', letterSpacing: '-0.01em' }}>
                   {initials}
                 </div>
@@ -7289,13 +7317,13 @@ function VerifyEmailPage({ email, onBack, onVerified, isDarkMode, toggleDarkMode
 
         {/* Step indicator — both steps complete */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
-          <div style={{ flex: 1, height: 3, borderRadius: 2, background: '#bf211e' }} />
-          <div style={{ flex: 1, height: 3, borderRadius: 2, background: '#bf211e' }} />
+          <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-accent)' }} />
+          <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-accent)' }} />
         </div>
 
         {/* Heading */}
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 10.5, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
+          <div style={{ fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
             Pas 2 de 2
           </div>
           <h1 style={{
@@ -7330,7 +7358,7 @@ function VerifyEmailPage({ email, onBack, onVerified, isDarkMode, toggleDarkMode
                     fontSize: 18, fontWeight: 500,
                     color: 'var(--tavil-text)',
                     background: 'var(--tavil-card)',
-                    border: `1px solid ${c ? '#bf211e' : 'var(--tavil-border)'}`,
+                    border: `1px solid ${c ? 'var(--tavil-accent)' : 'var(--tavil-border)'}`,
                     borderRadius: 10, outline: 'none', padding: 0,
                     transition: 'all 160ms', textTransform: 'uppercase',
                     boxShadow: c ? '0 0 0 3px rgba(191,33,30,0.12)' : 'none',
@@ -7346,18 +7374,18 @@ function VerifyEmailPage({ email, onBack, onVerified, isDarkMode, toggleDarkMode
           <div style={{ fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 24 }}>
             No l'has rebut?{' '}
             <button type="button" onClick={handleResend} style={{
-              background: 'none', border: 'none', color: '#bf211e',
+              background: 'none', border: 'none', color: 'var(--tavil-accent)',
               fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: 0,
             }}>Reenviar</button>
             {resent && <span style={{ display: 'block', fontSize: 11.5, color: '#3f7a52', marginTop: 4 }}>✓ Codi reenviat</span>}
           </div>
 
-          {error && <p style={{ fontSize: 13, color: '#bf211e', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
+          {error && <p style={{ fontSize: 13, color: 'var(--tavil-accent)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
 
           <div style={{ flex: 1 }} />
           <button type="submit" disabled={loading || !complete} style={{
             width: '100%', height: 52, borderRadius: 14, border: 'none',
-            background: '#bf211e', color: '#fff',
+            background: 'var(--tavil-accent)', color: '#fff',
             fontSize: 15, fontWeight: 600, cursor: (loading || !complete) ? 'not-allowed' : 'pointer',
             transition: 'all 160ms', opacity: (loading || !complete) ? 0.6 : 1, fontFamily: 'inherit',
           }}>
@@ -7579,7 +7607,7 @@ function LoginPage({ onLoginResult, isDarkMode, toggleDarkMode }: {
         {/* Heading */}
         <div style={{ marginBottom: 36 }}>
           <div style={{
-            fontSize: 10.5, color: '#bf211e', fontWeight: 600,
+            fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600,
             textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 12,
           }}>PORTAL INTERN</div>
           <h1 style={{
@@ -7625,20 +7653,20 @@ function LoginPage({ onLoginResult, isDarkMode, toggleDarkMode }: {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)', cursor: 'pointer' }}>
-              <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ accentColor: '#bf211e', width: 15, height: 15 }} />
+              <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ accentColor: 'var(--tavil-accent)', width: 15, height: 15 }} />
               Recorda'm
             </label>
             <button type="button" style={{
-              background: 'none', border: 'none', color: '#bf211e',
+              background: 'none', border: 'none', color: 'var(--tavil-accent)',
               fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'inherit',
             }}>Has oblidat la contrasenya?</button>
           </div>
           {error && (
-            <p style={{ fontSize: 13, color: '#bf211e', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>
+            <p style={{ fontSize: 13, color: 'var(--tavil-accent)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>
           )}
           <button type="submit" disabled={loading} style={{
             height: 52, borderRadius: 14, border: 'none',
-            background: loading ? '#a21b18' : '#bf211e', color: '#fff',
+            background: loading ? '#a21b18' : 'var(--tavil-accent)', color: '#fff',
             fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
             transition: 'all 160ms', opacity: loading ? 0.7 : 1, fontFamily: 'inherit',
           }}>
@@ -7686,7 +7714,7 @@ function LoginPage({ onLoginResult, isDarkMode, toggleDarkMode }: {
 
         {/* Center form */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 440 }}>
-          <div style={{ fontSize: 11, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: 14 }}>
             Portal intern
           </div>
           <h1 style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 52, fontWeight: 400, lineHeight: 1, margin: '0 0 14px', letterSpacing: '-0.03em', color: 'var(--tavil-text)' }}>
@@ -7729,17 +7757,17 @@ function LoginPage({ onLoginResult, isDarkMode, toggleDarkMode }: {
             {/* Remember + forgot */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)', cursor: 'pointer' }}>
-                <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ accentColor: '#bf211e', width: 15, height: 15 }} />
+                <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ accentColor: 'var(--tavil-accent)', width: 15, height: 15 }} />
                 Recorda'm en aquest equip
               </label>
-              <button type="button" style={{ background: 'none', border: 'none', color: '#bf211e', fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 500 }}>
+              <button type="button" style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 500 }}>
                 Has oblidat la contrasenya?
               </button>
             </div>
 
-            {error && <p style={{ fontSize: 13, color: '#bf211e', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
+            {error && <p style={{ fontSize: 13, color: 'var(--tavil-accent)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
 
-            <button type="submit" disabled={loading} style={{ width: '100%', height: 48, borderRadius: 10, border: 'none', background: loading ? '#a21b18' : '#bf211e', color: '#fff', fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'all 160ms', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit' }}>
+            <button type="submit" disabled={loading} style={{ width: '100%', height: 48, borderRadius: 10, border: 'none', background: loading ? '#a21b18' : 'var(--tavil-accent)', color: '#fff', fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'all 160ms', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit' }}>
               {loading ? 'Carregant…' : 'Inicia sessió'}
               {!loading && <ArrowRight size={16} />}
             </button>
@@ -7753,7 +7781,7 @@ function LoginPage({ onLoginResult, isDarkMode, toggleDarkMode }: {
       </div>
 
       {/* ── Right: editorial cover ── */}
-      <div style={{ background: '#bf211e', color: '#fff', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '48px 60px', justifyContent: 'space-between', minHeight: '100vh', boxSizing: 'border-box' }}>
+      <div style={{ background: 'var(--tavil-accent)', color: '#fff', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '48px 60px', justifyContent: 'space-between', minHeight: '100vh', boxSizing: 'border-box' }}>
         {/* Texture + circles */}
         <div style={{ position: 'absolute', inset: 0, opacity: 0.08, background: 'repeating-linear-gradient(45deg, transparent 0 18px, #fff 18px 19px)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: '-18%', right: '-14%', width: 480, height: 480, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', pointerEvents: 'none' }} />
@@ -7893,13 +7921,13 @@ function RegisterPage({ onBack, onRegisterResult, isDarkMode, toggleDarkMode }: 
 
         {/* Step indicator */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
-          <div style={{ flex: 1, height: 3, borderRadius: 2, background: '#bf211e' }} />
+          <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-accent)' }} />
           <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-border)' }} />
         </div>
 
         {/* Heading */}
         <div style={{ marginBottom: 28 }}>
-          <div style={{ fontSize: 10.5, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
+          <div style={{ fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
             Pas 1 de 2
           </div>
           <h1 style={{
@@ -7927,11 +7955,11 @@ function RegisterPage({ onBack, onRegisterResult, isDarkMode, toggleDarkMode }: 
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <Mail size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nom.cognom@tavil.net" required
-                style={{ ...regInputStyle, borderColor: email && !EMAIL_RE.test(email) ? '#bf211e' : 'var(--tavil-border)' }}
+                style={{ ...regInputStyle, borderColor: email && !EMAIL_RE.test(email) ? 'var(--tavil-accent)' : 'var(--tavil-border)' }}
                 inputMode="email" autoComplete="email" />
             </div>
             {email && !EMAIL_RE.test(email) && (
-              <p style={{ fontSize: 12, color: '#bf211e', margin: '4px 0 0' }}>Format: nom@tavil.net</p>
+              <p style={{ fontSize: 12, color: 'var(--tavil-accent)', margin: '4px 0 0' }}>Format: nom@tavil.net</p>
             )}
           </div>
           <div style={{ marginBottom: 14 }}>
@@ -7964,7 +7992,7 @@ function RegisterPage({ onBack, onRegisterResult, isDarkMode, toggleDarkMode }: 
               <Lock size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
               <input type={showConfirm ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
                 placeholder="••••••••" required autoComplete="new-password"
-                style={{ ...regInputStyle, padding: '0 42px 0 42px', borderColor: !passwordsMatch ? '#bf211e' : 'var(--tavil-border)' }} />
+                style={{ ...regInputStyle, padding: '0 42px 0 42px', borderColor: !passwordsMatch ? 'var(--tavil-accent)' : 'var(--tavil-border)' }} />
               <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={{
                 position: 'absolute', right: 14, color: 'var(--tavil-faint)',
                 background: 'none', border: 'none', cursor: 'pointer', display: 'flex',
@@ -7973,14 +8001,14 @@ function RegisterPage({ onBack, onRegisterResult, isDarkMode, toggleDarkMode }: 
               </button>
             </div>
             {!passwordsMatch && (
-              <p style={{ fontSize: 12, color: '#bf211e', margin: '4px 0 0' }}>Les contrasenyes no coincideixen.</p>
+              <p style={{ fontSize: 12, color: 'var(--tavil-accent)', margin: '4px 0 0' }}>Les contrasenyes no coincideixen.</p>
             )}
           </div>
-          {error && <p style={{ fontSize: 13, color: '#bf211e', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
+          {error && <p style={{ fontSize: 13, color: 'var(--tavil-accent)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
           <div style={{ flex: 1, minHeight: 8 }} />
           <button type="submit" disabled={loading || !valid} style={{
             height: 52, borderRadius: 14, border: 'none',
-            background: loading ? '#a21b18' : '#bf211e', color: '#fff',
+            background: loading ? '#a21b18' : 'var(--tavil-accent)', color: '#fff',
             fontSize: 15, fontWeight: 600, cursor: (loading || !valid) ? 'not-allowed' : 'pointer',
             transition: 'all 160ms', opacity: (loading || !valid) ? 0.6 : 1, fontFamily: 'inherit',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -8028,13 +8056,13 @@ function RegisterPage({ onBack, onRegisterResult, isDarkMode, toggleDarkMode }: 
 
         {/* Step progress */}
         <div style={{ display: 'flex', gap: 6, margin: '36px 0 0', maxWidth: 440 }}>
-          <div style={{ flex: 1, height: 3, borderRadius: 2, background: '#bf211e' }} />
+          <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-accent)' }} />
           <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-border)' }} />
         </div>
 
         {/* Center form */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 440 }}>
-          <div style={{ fontSize: 11, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: 14 }}>
             Pas 1 de 2 · Portal intern
           </div>
           <h1 style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 48, fontWeight: 400, lineHeight: 1, margin: '0 0 12px', letterSpacing: '-0.03em', color: 'var(--tavil-text)' }}>
@@ -8066,11 +8094,11 @@ function RegisterPage({ onBack, onRegisterResult, isDarkMode, toggleDarkMode }: 
                 <input
                   type="email" value={email} onChange={e => setEmail(e.target.value)}
                   placeholder="nom.cognom@tavil.net" required autoComplete="email"
-                  style={{ ...deskRegInputStyle, borderColor: email && !EMAIL_RE.test(email) ? '#bf211e' : 'var(--tavil-border)' }}
+                  style={{ ...deskRegInputStyle, borderColor: email && !EMAIL_RE.test(email) ? 'var(--tavil-accent)' : 'var(--tavil-border)' }}
                 />
               </div>
               {email && !EMAIL_RE.test(email) && (
-                <p style={{ fontSize: 12, color: '#bf211e', margin: '4px 0 0' }}>Format: nom@tavil.net</p>
+                <p style={{ fontSize: 12, color: 'var(--tavil-accent)', margin: '4px 0 0' }}>Format: nom@tavil.net</p>
               )}
             </div>
 
@@ -8107,27 +8135,27 @@ function RegisterPage({ onBack, onRegisterResult, isDarkMode, toggleDarkMode }: 
                 <input
                   type={showConfirm ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
                   placeholder="••••••••••" required autoComplete="new-password"
-                  style={{ ...deskRegInputStyle, padding: '0 44px', borderColor: !passwordsMatch ? '#bf211e' : 'var(--tavil-border)' }}
+                  style={{ ...deskRegInputStyle, padding: '0 44px', borderColor: !passwordsMatch ? 'var(--tavil-accent)' : 'var(--tavil-border)' }}
                 />
                 <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={{ position: 'absolute', right: 14, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tavil-faint)', display: 'flex', padding: 0 }}>
                   {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
               {!passwordsMatch && (
-                <p style={{ fontSize: 12, color: '#bf211e', margin: '4px 0 0' }}>Les contrasenyes no coincideixen</p>
+                <p style={{ fontSize: 12, color: 'var(--tavil-accent)', margin: '4px 0 0' }}>Les contrasenyes no coincideixen</p>
               )}
             </div>
 
-            {error && <p style={{ fontSize: 13, color: '#bf211e', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
+            {error && <p style={{ fontSize: 13, color: 'var(--tavil-accent)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
 
-            <button type="submit" disabled={loading || !regValid} style={{ width: '100%', height: 48, borderRadius: 10, border: 'none', background: '#bf211e', color: '#fff', fontSize: 15, fontWeight: 600, cursor: (loading || !regValid) ? 'not-allowed' : 'pointer', opacity: (loading || !regValid) ? 0.6 : 1, transition: 'opacity 160ms', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit' }}>
+            <button type="submit" disabled={loading || !regValid} style={{ width: '100%', height: 48, borderRadius: 10, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 15, fontWeight: 600, cursor: (loading || !regValid) ? 'not-allowed' : 'pointer', opacity: (loading || !regValid) ? 0.6 : 1, transition: 'opacity 160ms', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit' }}>
               {loading ? 'Carregant…' : <> Continua <ArrowRight size={16} /></>}
             </button>
           </form>
 
           <div style={{ marginTop: 28, textAlign: 'center', fontSize: 13, color: 'var(--tavil-faint)' }}>
             Ja tens compte?{' '}
-            <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#bf211e', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+            <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
               Inicia sessió
             </button>
           </div>
@@ -8138,7 +8166,7 @@ function RegisterPage({ onBack, onRegisterResult, isDarkMode, toggleDarkMode }: 
       </div>
 
       {/* ── Right: editorial cover ── */}
-      <div style={{ background: '#bf211e', color: '#fff', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '48px 60px', justifyContent: 'space-between', minHeight: '100vh', boxSizing: 'border-box' }}>
+      <div style={{ background: 'var(--tavil-accent)', color: '#fff', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '48px 60px', justifyContent: 'space-between', minHeight: '100vh', boxSizing: 'border-box' }}>
         <div style={{ position: 'absolute', inset: 0, opacity: 0.08, background: 'repeating-linear-gradient(45deg, transparent 0 18px, #fff 18px 19px)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: '-18%', right: '-14%', width: 480, height: 480, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: '-22%', left: '-12%', width: 420, height: 420, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
@@ -8755,6 +8783,35 @@ function QuizResultsDrawer({ quizId }: { quizId: number }) {
 
 // ── Backoffice Tab ────────────────────────────────────────────────────────────
 
+function MetricCard({
+  icon: Icon, label, value, hint, accent,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  value: number | string;
+  hint?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className="rounded-xl border bg-white dark:bg-zinc-900 p-4 flex items-start gap-3 hover-lift"
+      style={{ borderColor: accent ? 'var(--tavil-accent)' : 'var(--tavil-border)' }}
+    >
+      <div
+        className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+        style={{ background: accent ? 'var(--tavil-accent)' : 'var(--tavil-accent-light)', color: accent ? '#fff' : 'var(--tavil-accent)' }}
+      >
+        <Icon size={18} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-zinc-500">{label}</div>
+        <div className="text-2xl font-bold tabular-nums leading-tight mt-0.5 text-gray-900 dark:text-white">{value}</div>
+        {hint && <div className="text-[11px] text-gray-500 dark:text-zinc-400 mt-0.5 truncate">{hint}</div>}
+      </div>
+    </div>
+  );
+}
+
 function BackofficeTab({ currentUser }: { currentUser: import('./api').User | null }) {
   const role = currentUser?.role ?? '';
   const isAdmin = role === 'Administrador/a';
@@ -8810,6 +8867,13 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
   const [nnFeatured, setNnFeatured] = useState(false);
   const [nnSaving, setNnSaving] = useState(false);
 
+  // Scroll-into-view refs for inline opens (forms + expanded drawers).
+  // Tied to the *id* of the active row so they re-fire when switching between rows.
+  const expandedQuizRef = useScrollIntoViewWhen<HTMLDivElement>(expandedQuizId, { threshold: 0.55, block: 'center', delay: 80 });
+  const userFormRef = useScrollIntoViewWhen<HTMLDivElement>(showUserForm ? (editUser?.id ?? 'new') : null, { threshold: 0.5, block: 'center', delay: 60 });
+  const noticeFormRef = useScrollIntoViewWhen<HTMLDivElement>(showNoticeForm ? (editNotice?.id ?? 'new') : null, { threshold: 0.5, block: 'center', delay: 60 });
+  const newsFormRef = useScrollIntoViewWhen<HTMLDivElement>(showNewsForm ? (editNewsItem?.id ?? 'new') : null, { threshold: 0.5, block: 'center', delay: 60 });
+
   const loadUsers = () => {
     setLoading(true);
     apiAdminListUsers().then(setUsers).catch((e: any) => setError(e.message)).finally(() => setLoading(false));
@@ -8826,11 +8890,15 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
     setLoading(true);
     apiGetQuizzes().then(setQuizzes).catch((e: any) => setError(e.message)).finally(() => setLoading(false));
   };
+  const [inProgressCount, setInProgressCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (subTab === 'usuaris') loadUsers();
     else if (subTab === 'avisos') loadNotices();
-    else if (subTab === 'formacions') loadQuizzes();
+    else if (subTab === 'formacions') {
+      loadQuizzes();
+      apiGetQuizInProgressCount().then(setInProgressCount).catch(() => setInProgressCount(null));
+    }
     else loadNews();
   }, [subTab]);
 
@@ -8967,7 +9035,7 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
                 </select>
               </div>
               <div className="md:col-span-2 flex items-center gap-3 pt-1">
-                <input type="checkbox" id="uIsHead" checked={uIsHead} onChange={e => setUIsHead(e.target.checked)} style={{ accentColor: '#bf211e', width: 16, height: 16 }} />
+                <input type="checkbox" id="uIsHead" checked={uIsHead} onChange={e => setUIsHead(e.target.checked)} style={{ accentColor: 'var(--tavil-accent)', width: 16, height: 16 }} />
                 <label htmlFor="uIsHead" className="text-sm text-gray-700 dark:text-zinc-300 cursor-pointer select-none">Cap de Departament</label>
               </div>
             </div>
@@ -8978,8 +9046,21 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
           </div>
         );
 
+        const usrTotal = users.length;
+        const usrMustChange = users.filter(u => u.must_change_password).length;
+        const usrHeads = users.filter(u => u.is_head).length;
+        const usrDepts = new Set(users.map(u => u.dept)).size;
+
         return (
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* Stats header */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <MetricCard icon={Users} label="Usuaris totals" value={usrTotal} hint={loading ? 'Carregant…' : `${usrDepts} departaments`} />
+            <MetricCard icon={ShieldCheck} label="Caps de dept." value={usrHeads} hint={`${usrDepts} departaments actius`} />
+            <MetricCard icon={KeyRound} label="Pwd pendent" value={usrMustChange} hint={usrMustChange > 0 ? 'Han de canviar-la' : 'Tot al dia'} accent={usrMustChange > 0} />
+            <MetricCard icon={Building2} label="Departaments" value={usrDepts} hint="Únics actius" />
+          </div>
+
           {/* Create form — top */}
           {showUserForm && !editUser && userFormBody(false)}
 
@@ -9008,7 +9089,7 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
                       </div>
                     </div>
                     {isEditing && (
-                      <div className="anim-drawer-down">
+                      <div ref={userFormRef} className="anim-drawer-down">
                         {userFormBody(true)}
                       </div>
                     )}
@@ -9023,10 +9104,18 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
 
       {/* ── Avisos ── */}
       {subTab === 'avisos' && (
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* Stats header */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <MetricCard icon={Bell} label="Avisos totals" value={notices.length} hint={loading ? 'Carregant…' : 'Tots els registres'} />
+            <MetricCard icon={CheckCircle} label="Actius" value={notices.filter(n => n.active).length} hint="Visibles als usuaris" accent />
+            <MetricCard icon={EyeOff} label="Inactius" value={notices.filter(n => !n.active).length} hint="No visibles" />
+            <MetricCard icon={ExternalLink} label="Amb enllaç" value={notices.filter(n => n.link).length} hint="Aporten URL" />
+          </div>
+
           {/* Inline form */}
           {showNoticeForm && (
-            <div className={`${cardCls} border-red-200 dark:border-red-800 space-y-3 anim-slide-down`}>
+            <div ref={noticeFormRef} className={`${cardCls} border-red-200 dark:border-red-800 space-y-3 anim-slide-down`}>
               <div className="flex justify-between items-center">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">{editNotice ? 'Editar avís' : 'Nou avís'}</p>
                 <button onClick={() => setShowNoticeForm(false)} className={btnGhost}><X size={16} /></button>
@@ -9078,9 +9167,22 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
 
       {/* ── Notícies ── */}
       {subTab === 'notícies' && (
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* Stats header */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <MetricCard icon={Newspaper} label="Notícies" value={newsItems.length} hint={loading ? 'Carregant…' : 'Total publicades'} />
+            <MetricCard icon={Star} label="Destacades" value={newsItems.filter(n => n.featured).length} hint="A la portada" accent />
+            <MetricCard icon={ImageIcon} label="Amb imatge" value={newsItems.filter(n => n.image).length} hint="Visualment riques" />
+            <MetricCard
+              icon={Clock}
+              label="Última"
+              value={newsItems[0]?.date ?? '—'}
+              hint={newsItems[0]?.title ? newsItems[0].title.slice(0, 32) : 'Cap entrada'}
+            />
+          </div>
+
           {showNewsForm && (
-            <div className={`${cardCls} border-red-200 dark:border-red-800 space-y-3 anim-slide-down`}>
+            <div ref={newsFormRef} className={`${cardCls} border-red-200 dark:border-red-800 space-y-3 anim-slide-down`}>
               <div className="flex justify-between items-center">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">{editNewsItem ? 'Editar notícia' : 'Nova notícia'}</p>
                 <button onClick={() => setShowNewsForm(false)} className={btnGhost}><X size={16} /></button>
@@ -9146,7 +9248,15 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
 
       {/* ── Formacions ── */}
       {subTab === 'formacions' && (
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* Stats header */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <MetricCard icon={GraduationCap} label="Formacions" value={quizzes.length} hint={loading ? 'Carregant…' : 'Total registrades'} />
+            <MetricCard icon={CheckCircle} label="Actives" value={quizzes.filter(q => q.active).length} hint="Disponibles per fer" accent />
+            <MetricCard icon={PlayCircle} label="En curs" value={inProgressCount ?? '—'} hint="Usuaris a mig fer" />
+            <MetricCard icon={Target} label="Aprov. mitjà" value={`${Math.round(quizzes.reduce((s, q) => s + (q.passing_score || 0), 0) / Math.max(1, quizzes.length))}%`} hint="Llindar mitjà" />
+          </div>
+
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-500 dark:text-zinc-400">{quizzes.length} formació{quizzes.length !== 1 ? 'ns' : ''}</p>
             <button onClick={() => window.open(`${window.location.pathname}?edit=new`, '_blank')} className={btnPrimary}><Plus size={14} className="inline mr-1" />Nova formació</button>
@@ -9194,7 +9304,7 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
                       }} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-sm px-2 py-2 rounded-lg transition-colors"><Trash2 size={14} /></button>
                     </div>
                   </div>
-                  {expanded && <QuizResultsDrawer quizId={q.id} />}
+                  {expanded && <div ref={expandedQuizRef}><QuizResultsDrawer quizId={q.id} /></div>}
                 </div>
                 );
               })}
@@ -9454,6 +9564,8 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [result, setResult] = useState<QuizAttemptResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [resumeOffer, setResumeOffer] = useState<{ idx: number; answers: Record<string, any>; updated_at: string } | null>(null);
+  const progressLoadedRef = useRef(false);
 
   useEffect(() => {
     document.title = 'Formació · TAVIL';
@@ -9469,11 +9581,26 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
         if (inherited) sessionStorage.setItem('tavil_token', inherited);
       }
     } catch { /* cross-origin or null opener */ }
-    apiGetQuiz(quizId)
-      .then(q => setQuiz(q))
+    Promise.all([apiGetQuiz(quizId), apiGetQuizProgress(quizId).catch(() => null)])
+      .then(([q, prog]) => {
+        setQuiz(q);
+        if (prog && prog.current_question_idx > 0) {
+          setResumeOffer({ idx: prog.current_question_idx, answers: prog.answers as Record<string, any>, updated_at: prog.updated_at });
+        }
+      })
       .catch(e => setError(e.message ?? 'Error carregant la formació'))
       .finally(() => setLoading(false));
   }, [quizId]);
+
+  // Auto-save progress (debounced) while playing.
+  useEffect(() => {
+    if (stage !== 'playing' || !quiz) return;
+    if (!progressLoadedRef.current) { progressLoadedRef.current = true; return; }
+    const t = window.setTimeout(() => {
+      apiSaveQuizProgress(quiz.id, idx, answers).catch(() => { /* silent */ });
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [stage, idx, answers, quiz]);
 
   // Keyboard: arrow nav while playing
   useEffect(() => {
@@ -9494,6 +9621,8 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
       const r = await apiSubmitQuizAttempt(quiz.id, answers);
       setResult(r);
       setStage('result');
+      // Backend already clears progress on successful attempt; clear locally too in case of cache.
+      apiClearQuizProgress(quiz.id).catch(() => {});
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e: any) {
       setError(e.message ?? 'Error enviant respostes');
@@ -9539,10 +9668,55 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
     return a !== undefined && a !== '';
   });
 
+  const resumeQuiz = () => {
+    if (!resumeOffer || !quiz) return;
+    const safeIdx = Math.min(Math.max(0, resumeOffer.idx), Math.max(0, total - 1));
+    setIdx(safeIdx);
+    setAnswers(resumeOffer.answers || {});
+    setResumeOffer(null);
+    progressLoadedRef.current = true; // skip first auto-save trigger
+    setStage('playing');
+  };
+  const restartQuiz = () => {
+    if (!quiz) return;
+    apiClearQuizProgress(quiz.id).catch(() => {});
+    setResumeOffer(null);
+    setIdx(0);
+    setAnswers({});
+    setStage('playing');
+  };
+
   // ── Intro screen ──
   if (stage === 'intro') {
     return (
       <div className="fixed inset-0 overflow-y-auto" style={{ background: 'linear-gradient(135deg,#181010 0%,#221717 40%,#2a1c1b 75%,#221615 100%)' }}>
+        {resumeOffer && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+            <div className="max-w-md w-full rounded-2xl bg-[#1a1212] border border-white/10 p-7 text-white shadow-2xl">
+              <div className="text-xs font-semibold tracking-[0.2em] uppercase text-red-200/80 mb-3">Reprendre formació</div>
+              <h3 style={{ fontFamily: '"Instrument Serif", serif' }} className="text-3xl leading-tight mb-3">
+                Tens progrés guardat
+              </h3>
+              <p className="text-sm text-white/70 mb-1">Vas arribar fins a la pregunta <span className="font-semibold text-white">{Math.min(resumeOffer.idx + 1, total)}</span> de {total}.</p>
+              <p className="text-xs text-white/40 mb-6">Última activitat: {resumeOffer.updated_at}</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={resumeQuiz}
+                  className="flex-1 px-5 py-3 rounded-xl text-white font-semibold text-sm transition-colors hover:brightness-110"
+                  style={{ background: '#8a2624' }}
+                >
+                  Continuar →
+                </button>
+                <button
+                  onClick={restartQuiz}
+                  className="flex-1 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 text-sm font-medium border border-white/10"
+                >
+                  Començar de nou
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="min-h-full flex items-center justify-center p-8">
           <div className="max-w-2xl w-full text-center text-white">
             {quiz.image && (
@@ -9650,7 +9824,7 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
   // ── Playing — one question per slide ──
   if (!q) return null;
   return (
-    <div className="fixed inset-0 flex flex-col" style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%)' }}>
+    <div className="fixed inset-0 flex flex-col" style={{ background: 'linear-gradient(135deg,#181010 0%,#221717 40%,#2a1c1b 75%,#221615 100%)' }}>
       {/* Progress bar */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-white/5 z-10">
         <div className="h-full bg-gradient-to-r from-red-300/70 to-rose-200/60 transition-all duration-500" style={{ width: `${progress}%` }} />
@@ -9659,7 +9833,12 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
       {/* Header */}
       <div className="flex items-center justify-between px-6 md:px-12 py-5 text-white/60 text-xs flex-shrink-0">
         <span className="font-semibold tracking-widest uppercase">{quiz.title}</span>
-        <span className="tabular-nums">{idx + 1} / {total}</span>
+        <span
+          className="tabular-nums px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/80 font-semibold"
+          title="Posició actual — el progrés es desa automàticament"
+        >
+          {idx + 1} / {total}
+        </span>
       </div>
 
       {/* Question slide */}

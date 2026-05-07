@@ -794,3 +794,40 @@ export async function apiSubmitQuizAttempt(id: number, answers: Record<string, u
 export async function apiGetQuizResults(id: number): Promise<QuizResultRow[]> {
   return apiFetch<QuizResultRow[]>(`/api/quizzes/${id}/results`);
 }
+
+// ── Quiz progress (resume on reload) ──────────────────────────────────────────
+export interface QuizProgress {
+  quiz_id: number;
+  current_question_idx: number;
+  answers: Record<string, unknown>;
+  updated_at: string;
+}
+
+export async function apiGetQuizProgress(id: number): Promise<QuizProgress | null> {
+  try {
+    return await apiFetch<QuizProgress>(`/api/quizzes/${id}/progress`);
+  } catch (e: any) {
+    if (/No progress|Not found/i.test(String(e?.message ?? ''))) return null;
+    throw e;
+  }
+}
+
+export async function apiSaveQuizProgress(
+  id: number,
+  current_question_idx: number,
+  answers: Record<string, unknown>
+): Promise<void> {
+  await apiFetch(`/api/quizzes/${id}/progress`, {
+    method: 'PUT',
+    body: JSON.stringify({ current_question_idx, answers }),
+  });
+}
+
+export async function apiClearQuizProgress(id: number): Promise<void> {
+  await apiFetch(`/api/quizzes/${id}/progress`, { method: 'DELETE' });
+}
+
+export async function apiGetQuizInProgressCount(): Promise<number> {
+  const r = await apiFetch<{ count: number }>('/api/quizzes/in-progress-count');
+  return r.count;
+}

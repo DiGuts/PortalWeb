@@ -75,7 +75,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
         {/* 36×36 mahogany "T" logo tile */}
         <div style={{
           width: 36, height: 36, borderRadius: 10,
-          background: '#bf211e',
+          background: 'var(--tavil-accent)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: '#fff', fontWeight: 700, fontSize: 18,
           fontFamily: '"Instrument Serif", serif',
@@ -90,7 +90,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
       {/* Eyebrow + H1 + subtitle */}
       <div style={{ marginBottom: 36 }}>
         <div style={{
-          fontSize: 10.5, color: '#bf211e', fontWeight: 600,
+          fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600,
           textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 12,
         }}>
           PORTAL INTERN
@@ -164,7 +164,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
               type="checkbox"
               checked={remember}
               onChange={e => setRemember(e.target.checked)}
-              style={{ accentColor: '#bf211e', width: 15, height: 15 }}
+              style={{ accentColor: 'var(--tavil-accent)', width: 15, height: 15 }}
             />
             {t('auth.rememberMe')}
           </label>
@@ -172,7 +172,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
             type="button"
             onClick={onForgot}
             style={{
-              background: 'none', border: 'none', color: '#bf211e',
+              background: 'none', border: 'none', color: 'var(--tavil-accent)',
               fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'inherit',
             }}
           >
@@ -181,7 +181,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
         </div>
 
         {error && (
-          <p style={{ fontSize: 13, color: '#bf211e', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>
+          <p style={{ fontSize: 13, color: 'var(--tavil-accent)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>
         )}
 
         <button
@@ -191,7 +191,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
             height: 48,
             borderRadius: 12,
             border: 'none',
-            background: '#bf211e',
+            background: 'var(--tavil-accent)',
             color: '#fff',
             fontSize: 15,
             fontWeight: 600,
@@ -215,7 +215,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
           <button
             onClick={onRegister}
             style={{
-              background: 'none', border: 'none', color: '#bf211e',
+              background: 'none', border: 'none', color: 'var(--tavil-accent)',
               fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
               padding: 0, fontFamily: 'inherit',
             }}

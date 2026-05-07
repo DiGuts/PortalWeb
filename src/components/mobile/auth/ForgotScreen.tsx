@@ -60,7 +60,7 @@ export function ForgotScreen({ onBack, isDarkMode }: Props) {
       {!sent && (
         <>
           <div style={{ marginBottom: 32 }}>
-            <div style={{ fontSize: 10.5, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 12 }}>
+            <div style={{ fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 12 }}>
               RECUPERACIÓ
             </div>
             <h1 style={{
@@ -108,7 +108,7 @@ export function ForgotScreen({ onBack, isDarkMode }: Props) {
               disabled={loading || !canSubmit}
               style={{
                 height: 48, borderRadius: 12, border: 'none',
-                background: '#bf211e', color: '#fff',
+                background: 'var(--tavil-accent)', color: '#fff',
                 fontSize: 15, fontWeight: 600,
                 cursor: (loading || !canSubmit) ? 'not-allowed' : 'pointer',
                 opacity: (loading || !canSubmit) ? 0.6 : 1,
@@ -132,7 +132,7 @@ export function ForgotScreen({ onBack, isDarkMode }: Props) {
               background: '#fbe4e3',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <Mail size={28} style={{ color: '#bf211e' }} />
+              <Mail size={28} style={{ color: 'var(--tavil-accent)' }} />
             </div>
 
             <div>
@@ -153,7 +153,7 @@ export function ForgotScreen({ onBack, isDarkMode }: Props) {
             onClick={onBack}
             style={{
               height: 48, borderRadius: 12, border: 'none',
-              background: '#bf211e', color: '#fff',
+              background: 'var(--tavil-accent)', color: '#fff',
               fontSize: 15, fontWeight: 600,
               cursor: 'pointer', fontFamily: 'inherit',
             }}

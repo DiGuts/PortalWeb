@@ -256,7 +256,7 @@ html.dark .skeleton {
 
 /* Focus-visible ring (keyboard only, not mouse) */
 .focus-ring:focus-visible {
-  outline: 2px solid #bf211e;
+  outline: 2px solid var(--tavil-accent);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -365,21 +365,21 @@ html:not(.dark) .border-gray-200 { border-color: #cecec9; }
 html:not(.dark) .divide-gray-50 > * + * { border-color: #eeeee9; }
 
 /* ── Accent — Mahogany Red ── */
-html:not(.dark) .bg-red-600               { background-color: #bf211e; }
-html:not(.dark) .bg-red-700               { background-color: #a21b18; }
-html:not(.dark) .bg-red-50                { background-color: #f9eceb; }
+html:not(.dark) .bg-red-600               { background-color: var(--tavil-accent); }
+html:not(.dark) .bg-red-700               { background-color: var(--tavil-accent-dark); }
+html:not(.dark) .bg-red-50                { background-color: var(--tavil-accent-light); }
 html:not(.dark) .bg-red-100               { background-color: #f1d7d6; }
 
-html:not(.dark) .hover\:bg-red-600:hover  { background-color: #bf211e; }
-html:not(.dark) .hover\:bg-red-700:hover  { background-color: #a21b18; }
-html:not(.dark) .hover\:bg-red-50:hover   { background-color: #f9eceb; }
+html:not(.dark) .hover\:bg-red-600:hover  { background-color: var(--tavil-accent); }
+html:not(.dark) .hover\:bg-red-700:hover  { background-color: var(--tavil-accent-dark); }
+html:not(.dark) .hover\:bg-red-50:hover   { background-color: var(--tavil-accent-light); }
 
-html:not(.dark) .text-red-600  { color: #bf211e; }
-html:not(.dark) .text-red-700  { color: #a21b18; }
+html:not(.dark) .text-red-600  { color: var(--tavil-accent); }
+html:not(.dark) .text-red-700  { color: var(--tavil-accent-dark); }
 html:not(.dark) .text-red-400  { color: #d44442; }
 
 html:not(.dark) .border-red-400 { border-color: #d44442; }
-html:not(.dark) .border-red-600 { border-color: #bf211e; }
+html:not(.dark) .border-red-600 { border-color: var(--tavil-accent); }
 
 html:not(.dark) .focus\:border-red-400:focus { border-color: #d44442; }
 

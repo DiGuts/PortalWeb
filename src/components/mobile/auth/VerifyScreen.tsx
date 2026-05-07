@@ -106,13 +106,13 @@ export function VerifyScreen({ email, onBack, onVerified, isDarkMode }: Props) {
 
       {/* Step indicator — both filled */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
-        <div style={{ flex: 1, height: 3, borderRadius: 2, background: '#bf211e' }} />
-        <div style={{ flex: 1, height: 3, borderRadius: 2, background: '#bf211e' }} />
+        <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-accent)' }} />
+        <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-accent)' }} />
       </div>
 
       {/* Heading */}
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 10.5, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
+        <div style={{ fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
           PAS 2 DE 2
         </div>
         <h1 style={{
@@ -162,7 +162,7 @@ export function VerifyScreen({ email, onBack, onVerified, isDarkMode }: Props) {
                 fontWeight: 500,
                 color: 'var(--tavil-text)',
                 background: 'var(--tavil-card)',
-                border: `1px solid ${c ? '#bf211e' : 'var(--tavil-border)'}`,
+                border: `1px solid ${c ? 'var(--tavil-accent)' : 'var(--tavil-border)'}`,
                 borderRadius: 10,
                 outline: 'none',
                 padding: 0,
@@ -188,14 +188,14 @@ export function VerifyScreen({ email, onBack, onVerified, isDarkMode }: Props) {
           <button
             type="button"
             onClick={handleResend}
-            style={{ background: 'none', border: 'none', color: '#bf211e', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+            style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
           >
             {t('auth.resend')}
           </button>
           {resent && <span style={{ display: 'block', fontSize: 11.5, color: '#3f7a52', marginTop: 4 }}>{t('auth.resentConfirm')}</span>}
         </div>
 
-        {error && <p style={{ fontSize: 13, color: '#bf211e', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
+        {error && <p style={{ fontSize: 13, color: 'var(--tavil-accent)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
 
         <div style={{ flex: 1 }} />
 
@@ -204,7 +204,7 @@ export function VerifyScreen({ email, onBack, onVerified, isDarkMode }: Props) {
           disabled={loading || !complete}
           style={{
             width: '100%', height: 50, borderRadius: 14, border: 'none',
-            background: '#bf211e', color: '#fff',
+            background: 'var(--tavil-accent)', color: '#fff',
             fontSize: 15, fontWeight: 600,
             cursor: (loading || !complete) ? 'not-allowed' : 'pointer',
             opacity: (loading || !complete) ? 0.6 : 1,

@@ -300,6 +300,9 @@ elseif ($method === 'POST' && $id !== null && $sub === 'attempt') {
          ON DUPLICATE KEY UPDATE score=VALUES(score), max_score=VALUES(max_score), passed=VALUES(passed), answers_json=VALUES(answers_json), completed_at=NOW()'
     )->execute([$id, (int)$u['id'], $score, $max_score, $passed ? 1 : 0, json_encode($results)]);
 
+    // Clear in-progress save once attempt is recorded
+    $db->prepare('DELETE FROM quiz_progress WHERE user_id=? AND quiz_id=?')->execute([(int)$u['id'], $id]);
+
     respond([
         'score'      => $score,
         'max_score'  => $max_score,
@@ -340,6 +343,51 @@ elseif ($method === 'GET' && $id !== null && $sub === 'results') {
         ];
     }
     respond($out);
+}
+
+// GET /api/quizzes/in-progress-count  (admin/rrhh)
+elseif ($method === 'GET' && ($segments[1] ?? '') === 'in-progress-count') {
+    require_formacions_or_admin();
+    $cnt = (int)$db->query('SELECT COUNT(*) AS c FROM quiz_progress')->fetch()['c'];
+    respond(['count' => $cnt]);
+}
+
+// GET /api/quizzes/{id}/progress  (current user's saved progress)
+elseif ($method === 'GET' && $id !== null && $sub === 'progress') {
+    $u = auth_user();
+    $stmt = $db->prepare('SELECT current_question_idx, answers_json, updated_at FROM quiz_progress WHERE user_id=? AND quiz_id=?');
+    $stmt->execute([(int)$u['id'], $id]);
+    $row = $stmt->fetch();
+    if (!$row) respond(['detail' => 'No progress'], 404);
+    $answers = json_decode((string)$row['answers_json'], true);
+    respond([
+        'quiz_id'              => $id,
+        'current_question_idx' => (int)$row['current_question_idx'],
+        'answers'              => is_array($answers) ? $answers : [],
+        'updated_at'           => $row['updated_at'],
+    ]);
+}
+
+// PUT /api/quizzes/{id}/progress  (upsert)
+elseif ($method === 'PUT' && $id !== null && $sub === 'progress') {
+    $u = auth_user();
+    $idx     = (int)($body['current_question_idx'] ?? 0);
+    $answers = $body['answers'] ?? [];
+    if (!is_array($answers)) $answers = [];
+    $stmt = $db->prepare(
+        'INSERT INTO quiz_progress (user_id, quiz_id, current_question_idx, answers_json) VALUES (?,?,?,?)
+         ON DUPLICATE KEY UPDATE current_question_idx=VALUES(current_question_idx), answers_json=VALUES(answers_json), updated_at=NOW()'
+    );
+    $stmt->execute([(int)$u['id'], $id, $idx, json_encode($answers, JSON_UNESCAPED_UNICODE)]);
+    respond(['ok' => true]);
+}
+
+// DELETE /api/quizzes/{id}/progress  (clear on submit / restart)
+elseif ($method === 'DELETE' && $id !== null && $sub === 'progress') {
+    $u = auth_user();
+    $stmt = $db->prepare('DELETE FROM quiz_progress WHERE user_id=? AND quiz_id=?');
+    $stmt->execute([(int)$u['id'], $id]);
+    respond(['ok' => true]);
 }
 
 else {

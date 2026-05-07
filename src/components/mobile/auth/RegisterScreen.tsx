@@ -112,13 +112,13 @@ export function RegisterScreen({ onBack, onRegisterResult, isDarkMode }: Props) 
 
       {/* Step indicator */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
-        <div style={{ flex: 1, height: 3, borderRadius: 2, background: '#bf211e' }} />
+        <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-accent)' }} />
         <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-border)' }} />
       </div>
 
       {/* Heading */}
       <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 10.5, color: '#bf211e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
+        <div style={{ fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
           PAS 1 DE 2
         </div>
         <h1 style={{
@@ -157,11 +157,11 @@ export function RegisterScreen({ onBack, onRegisterResult, isDarkMode }: Props) 
               type="email" value={email} onChange={e => setEmail(e.target.value)}
               placeholder="nom.cognom@tavil.net" required
               inputMode="email" autoComplete="email"
-              style={{ ...inputBase, borderColor: email && !EMAIL_RE.test(email) ? '#bf211e' : 'var(--tavil-border)' }}
+              style={{ ...inputBase, borderColor: email && !EMAIL_RE.test(email) ? 'var(--tavil-accent)' : 'var(--tavil-border)' }}
             />
           </div>
           {email && !EMAIL_RE.test(email) && (
-            <p style={{ fontSize: 12, color: '#bf211e', margin: '4px 0 0' }}>Format: nom@tavil.net</p>
+            <p style={{ fontSize: 12, color: 'var(--tavil-accent)', margin: '4px 0 0' }}>Format: nom@tavil.net</p>
           )}
         </div>
 
@@ -204,7 +204,7 @@ export function RegisterScreen({ onBack, onRegisterResult, isDarkMode }: Props) 
               type={showConfirm ? 'text' : 'password'} value={confirm}
               onChange={e => setConfirm(e.target.value)}
               placeholder="••••••••" required autoComplete="new-password"
-              style={{ ...inputBase, padding: '0 44px', borderColor: !pwMatch ? '#bf211e' : 'var(--tavil-border)' }}
+              style={{ ...inputBase, padding: '0 44px', borderColor: !pwMatch ? 'var(--tavil-accent)' : 'var(--tavil-border)' }}
             />
             <button type="button" onClick={() => setShowConfirm(v => !v)} aria-label="Toggle confirm"
               style={{ position: 'absolute', right: 14, color: 'var(--tavil-faint)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 0 }}>
@@ -212,11 +212,11 @@ export function RegisterScreen({ onBack, onRegisterResult, isDarkMode }: Props) 
             </button>
           </div>
           {!pwMatch && (
-            <p style={{ fontSize: 12, color: '#bf211e', margin: '4px 0 0' }}>Les contrasenyes no coincideixen</p>
+            <p style={{ fontSize: 12, color: 'var(--tavil-accent)', margin: '4px 0 0' }}>Les contrasenyes no coincideixen</p>
           )}
         </div>
 
-        {error && <p style={{ fontSize: 13, color: '#bf211e', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
+        {error && <p style={{ fontSize: 13, color: 'var(--tavil-accent)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
 
         <div style={{ flex: 1, minHeight: 8 }} />
 
@@ -225,7 +225,7 @@ export function RegisterScreen({ onBack, onRegisterResult, isDarkMode }: Props) 
           disabled={loading || !valid}
           style={{
             height: 50, borderRadius: 14, border: 'none',
-            background: '#bf211e', color: '#fff',
+            background: 'var(--tavil-accent)', color: '#fff',
             fontSize: 15, fontWeight: 600,
             cursor: (loading || !valid) ? 'not-allowed' : 'pointer',
             opacity: (loading || !valid) ? 0.6 : 1,
