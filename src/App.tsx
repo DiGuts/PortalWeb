@@ -1,14 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
 import { LoginScreen } from './components/mobile/auth/LoginScreen';
 import { VerifyScreen } from './components/mobile/auth/VerifyScreen';
 import { ForgotScreen } from './components/mobile/auth/ForgotScreen';
 import { createPortal } from 'react-dom';
-import {
-  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
-  useDraggable, useDroppable, DragOverlay,
-  type DragEndEvent, type DragStartEvent,
-} from '@dnd-kit/core';
-import { arrayMove } from '@dnd-kit/sortable';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n';
 import {
@@ -19,15 +13,16 @@ import {
   BookOpen, Shield, ThumbsUp, ThumbsDown, Send, ExternalLink, CreditCard,
   CheckCircle, Star, LogOut, LayoutGrid, List, Check,
   Heart, Gift, Globe, Download, Video, Award, Settings, Eye, EyeOff, Lock, Pencil, Trash2,
-  Type, AlignLeft, Image as ImageIcon, Minus, Plus, GripVertical, X, Menu,
+  AlignLeft, Image as ImageIcon, Plus, GripVertical, X, Menu,
   BarChart3, ShieldCheck, KeyRound, PlayCircle, Target,
+  Type as TypeIcon, Heading2, Quote, Minus, Filter,
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { validateVacanca, PERIODS_2026, ANNUAL_QUOTA_DAYS, laboralDaysBetween } from './conveni';
+import { validateVacanca, ANNUAL_QUOTA_DAYS, laboralDaysBetween } from './conveni';
 import {
   User, AuthOut,
-  apiLogin, apiRegister, apiVerifyEmail, apiVerifyOTP, apiResendVerification,
+  apiLogin, apiVerifyEmail, apiVerifyOTP, apiResendVerification,
   apiGetMe, apiUpdateMe, apiUpdateMyRole,
   setToken, clearToken, getToken, registerUnauthorizedHandler,
   apiGetSuggestions, apiCreateSuggestion, apiVoteSuggestion, apiUpdateSuggestionStatus, apiAddSuggestionResponse, apiDeleteSuggestion, Suggestion,
@@ -35,19 +30,19 @@ import {
   apiGetEnquestes, apiRespondreEnquesta, Enquesta,
   apiGetSolicituds, apiCreateSolicitud, apiUpdateSolicitud, apiDeleteSolicitud, Solicitud,
   Notice, apiGetNotices,
-  NewsArticle, apiGetNews, apiCreateNews, apiUpdateNews, apiDeleteNews,
+  NewsArticle, apiGetNews, apiGetNewsArticle, apiCreateNews, apiUpdateNews, apiDeleteNews,
   Activity, apiGetActivities, apiCreateActivity, apiUpdateActivity, apiDeleteActivity, apiEnrollActivity,
   AgendaEvent, apiGetAgendaEvents, apiCreateAgendaEvent, apiUpdateAgendaEvent, apiDeleteAgendaEvent,
-  apiUploadImage, apiGetImages, apiDedupImages, apiDeleteImage, API_BASE,
+  apiUploadImage, API_BASE,
   Employee, apiGetEmployees,
-  Course, apiGetCourses,
+  Course, apiGetCourses, ExternalCoursePayload, apiCreateExternalCourse, apiUpdateExternalCourse, apiDeleteExternalCourse,
   Notification, apiGetNotifications, apiMarkNotifRead, apiMarkAllNotifsRead, apiClearAllNotifications,
   apiGetDeptHead, apiUpdateDept,
   Vacanca, apiGetVacances, apiCreateVacanca, apiUpdateVacancaHead, apiUpdateVacancaRrhh, apiDeleteVacanca,
   apiChangePassword,
   apiAdminListUsers, apiAdminCreateUser, apiAdminUpdateUser, apiAdminDeleteUser,
   apiGetAllNotices, apiCreateNotice, apiUpdateNotice, apiDeleteNotice,
-  Quiz, QuizIn, QuizQuestionIn, QuizOptionIn, QuizAttemptResult, QuizResultRow,
+  Quiz, QuizIn, QuizAttemptResult, QuizResultRow,
   apiGetQuizzes, apiGetQuiz, apiCreateQuiz, apiUpdateQuiz, apiDeleteQuiz, apiSubmitQuizAttempt,
   apiGetQuizResults, apiGetQuizProgress, apiSaveQuizProgress, apiClearQuizProgress, apiGetQuizInProgressCount,
 } from './api';
@@ -169,13 +164,13 @@ function usePersistedSubTab<T extends string>(key: string, fallback: T, allowed?
   const storageKey = `tavil_subtab_${key}`;
   const [value, setValue] = useState<T>(() => {
     if (typeof window === 'undefined') return fallback;
-    const saved = window.localStorage.getItem(storageKey) as T | null;
+    const saved = window.sessionStorage.getItem(storageKey) as T | null;
     if (!saved) return fallback;
     if (allowed && !allowed.includes(saved)) return fallback;
     return saved;
   });
   const update = (v: T) => {
-    try { window.localStorage.setItem(storageKey, v); } catch {}
+    try { window.sessionStorage.setItem(storageKey, v); } catch {}
     setValue(v);
     scrollPageToTop();
   };
@@ -459,7 +454,6 @@ function MesTab({
 }) {
   const name = currentUser?.name ?? '';
   const ini = name.split(' ').map((w: string) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
-  const hue = name.split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0) % 360;
 
   const groups: { label: string; items: { id: string; icon: any; label: string }[] }[] = [
     { label: 'General', items: [
@@ -489,10 +483,12 @@ function MesTab({
         >
           <div style={{
             width: 46, height: 46, borderRadius: 23, flexShrink: 0,
-            background: `oklch(0.88 0.03 ${hue})`,
-            color: `oklch(0.32 0.04 ${hue})`,
+            background: 'linear-gradient(135deg, var(--tavil-accent), var(--tavil-accent-dark))',
+            color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontWeight: 600, fontSize: 17, letterSpacing: '-0.01em',
+            fontFamily: '"Instrument Serif", "Times New Roman", serif',
+            boxShadow: '0 4px 14px -6px rgba(0,0,0,0.18)',
           }}>{ini}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)' }}>
@@ -794,13 +790,12 @@ const UnderlineTab = ({ label, active, onClick }: { label: string; active: boole
 
 const resolveImg = (path: string): string => {
   if (!path) return '';
-  if (path.startsWith('http')) {
-    // Rewrite legacy absolute URLs pointing to old localhost backend
-    const uploadMatch = path.match(/^https?:\/\/[^/]+\/uploads\/.+/);
-    if (uploadMatch) return `${API_BASE}${path.replace(/^https?:\/\/[^/]+(\/uploads\/.+)$/, '$1')}`;
-    return path;
-  }
-  if (path.startsWith('/uploads') || path.startsWith('uploads/')) return `${API_BASE}${path.startsWith('/') ? path : '/' + path}`;
+  // Any path containing /uploads/<file> → normalize to API_BASE + /uploads/<file>.
+  // Handles: legacy localhost http URLs, full prod URLs, double-prefixed paths,
+  // and plain /uploads/ relative paths.
+  const m = path.match(/\/uploads\/([^?#]+)/);
+  if (m) return `${API_BASE}/uploads/${m[1]}`;
+  if (path.startsWith('http')) return path;
   if (path.startsWith('/')) return `${process.env.PUBLIC_URL}${path}`;
   return path;
 };
@@ -915,8 +910,8 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
   // mounts straight into detail view, and back returns to Inici.
   const openArticleFromHome = (id: number) => {
     try {
-      window.localStorage.setItem('tavil_selected_news_id', String(id));
-      window.localStorage.setItem('tavil_news_origin', 'Inici');
+      window.sessionStorage.setItem('tavil_selected_news_id', String(id));
+      window.sessionStorage.setItem('tavil_news_origin', 'Inici');
     } catch {}
     onNavigate?.('Notícies');
   };
@@ -1403,11 +1398,11 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
             <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3">Dreceres</h3>
             <div className="space-y-1.5">
               {[
-                { icon: Building2, title: "Empresa", color: "text-indigo-600", tab: "Empresa" },
+                { icon: Building2, title: "Empresa", color: "text-red-600", tab: "Empresa" },
                 { icon: Mail, title: "Correu corporatiu", color: "text-blue-600" },
                 { icon: Database, title: "ERP — SAP / Gestió", color: "text-green-600" },
                 { icon: FolderOpen, title: "Gestor documental", color: "text-amber-600" },
-                { icon: GraduationCap, title: "Campus TAVIL", color: "text-violet-600", tab: "Campus" },
+                { icon: GraduationCap, title: "Campus TAVIL", color: "text-red-600", tab: "Campus" },
                 { icon: Users, title: "Directori", color: "text-red-600", tab: "Directori" },
                 { icon: ActivityIcon, title: "Activitats", color: "text-green-600", tab: "Activitats" },
               ].map((item, i) => (
@@ -1469,127 +1464,6 @@ function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onCon
   );
 }
 
-function NewsEditForm({ neCategory, setNeCategory, neTitle, setNeTitle, neSummary, setNeSummary,
-  neAuthor, setNeAuthor, neDate, setNeDate, neImage, setNeImage, neImageFile, setNeImageFile,
-  neFeatured, setNeFeatured, neSaving, onSave, onCancel }: any) {
-  const [showPicker, setShowPicker] = useState(false);
-  const [poolImages, setPoolImages] = useState<{ url: string; name: string }[]>([]);
-  const [loadingPool, setLoadingPool] = useState(false);
-  const [deduping, setDeduping] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState<{ name: string; url: string } | null>(null);
-
-  const openPicker = async () => {
-    setShowPicker(true);
-    if (poolImages.length === 0) {
-      setLoadingPool(true);
-      try {
-        const imgs = await apiGetImages();
-        setPoolImages(imgs);
-      } catch { }
-      setLoadingPool(false);
-    }
-  };
-
-  const selectPoolImage = (url: string) => {
-    setNeImage(url);
-    setNeImageFile(null);
-    setShowPicker(false);
-  };
-
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      <select value={neCategory} onChange={(e: any) => setNeCategory(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white">
-        {['Comunicats interns','Notícies corporatives','Recursos humans','Esdeveniments','Innovació','Seguretat'].map((c: string) => <option key={c}>{c}</option>)}
-      </select>
-      <input type="text" value={neTitle} onChange={(e: any) => setNeTitle(e.target.value)} placeholder="Títol *" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-      <textarea value={neSummary} onChange={(e: any) => setNeSummary(e.target.value)} placeholder="Resum" rows={2} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white resize-none" />
-      <input type="text" value={neAuthor} onChange={(e: any) => setNeAuthor(e.target.value)} placeholder="Autor" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-      <input type="date" value={neDate} onChange={(e: any) => setNeDate(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-      <div className="col-span-2 space-y-1.5">
-        {neImage && <img src={resolveImg(neImage)} alt="" className="h-16 rounded object-cover border border-gray-200 dark:border-zinc-700" />}
-        <div className="flex gap-2 items-center">
-          <input type="file" accept="image/*" onChange={(e: any) => { setNeImageFile(e.target.files?.[0] ?? null); setNeImage(''); }} className="flex-1 text-xs text-gray-600 dark:text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-red-50 file:text-red-700" />
-          <button type="button" onClick={openPicker} className="text-xs px-2 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 flex items-center gap-1 whitespace-nowrap flex-shrink-0">
-            📁 Galeria
-          </button>
-        </div>
-        {neImageFile && <p className="text-[10px] text-gray-400">{neImageFile.name}</p>}
-      </div>
-
-      {showPicker && (
-        <div className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-xl p-3 bg-gray-50 dark:bg-zinc-800">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-gray-700 dark:text-zinc-300">Galeria d'imatges</span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={deduping}
-                onClick={async () => {
-                  setDeduping(true);
-                  try {
-                    const res = await apiDedupImages();
-                    if (res.removed_count > 0) {
-                      const imgs = await apiGetImages();
-                      setPoolImages(imgs);
-                    }
-                    alert(`${res.removed_count} duplicats eliminats.`);
-                  } catch { alert('Error eliminant duplicats.'); }
-                  setDeduping(false);
-                }}
-                className="text-[10px] px-2 py-0.5 rounded border border-gray-200 dark:border-zinc-600 text-gray-500 dark:text-zinc-400 hover:border-red-300 hover:text-red-600 disabled:opacity-40 transition-colors"
-              >
-                {deduping ? '...' : '🧹 Netejar duplicats'}
-              </button>
-              <button onClick={() => setShowPicker(false)} className="text-gray-400 hover:text-gray-600 text-xs">✕</button>
-            </div>
-          </div>
-          {loadingPool ? (
-            <p className="text-xs text-gray-400 text-center py-4">Carregant...</p>
-          ) : poolImages.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-4">Cap imatge a la galeria</p>
-          ) : (
-            <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
-              {poolImages.map(img => (
-                <div key={img.name} className="relative group aspect-square">
-                  <button type="button" onClick={() => selectPoolImage(img.url)}
-                    className={cn("w-full h-full rounded-lg overflow-hidden border-2 transition-colors",
-                      neImage === img.url ? "border-red-500" : "border-transparent hover:border-red-300"
-                    )}>
-                    <img src={resolveImg(img.url)} alt={img.name} className="w-full h-full object-cover" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={e => { e.stopPropagation(); setConfirmDelete(img); }}
-                    className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-600 hover:bg-red-700 text-white rounded-full text-[10px] font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                    title="Eliminar imatge"
-                  >✕</button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      {confirmDelete && (
-        <ConfirmModal
-          message={`Eliminar la imatge "${confirmDelete.name}"? Aquesta acció no es pot desfer.`}
-          onConfirm={async () => { try { await apiDeleteImage(confirmDelete.name); setPoolImages(p => p.filter(i => i.name !== confirmDelete.name)); if (neImage === confirmDelete.url) setNeImage(''); } catch {} setConfirmDelete(null); }}
-          onCancel={() => setConfirmDelete(null)}
-        />
-      )}
-
-      <div className="flex items-center gap-2">
-        <button onClick={() => setNeFeatured((v: boolean) => !v)} className={cn("relative inline-flex h-4 w-8 items-center rounded-full transition-colors", neFeatured ? "bg-red-600" : "bg-gray-200 dark:bg-zinc-700")}>
-          <span className="inline-block h-3 w-3 transform rounded-full bg-white shadow-sm transition-transform" style={{ transform: neFeatured ? 'translateX(16px)' : 'translateX(2px)' }} />
-        </button>
-        <span className="text-xs text-gray-600 dark:text-zinc-400">Destacada</span>
-      </div>
-      <div className="flex justify-end gap-2">
-        <button onClick={onCancel} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400">Cancel·lar</button>
-        <button onClick={onSave} disabled={!neTitle.trim() || neSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">{neSaving ? 'Desant...' : 'Desar'}</button>
-      </div>
-    </div>
-  );
-}
 
 // ── Rich Article ──────────────────────────────────────────────────────────────
 type BlockSpan = 1 | 2 | 3;
@@ -1606,25 +1480,63 @@ interface ArticleBlock {
   author?: string;
 }
 
-function genBlockId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-}
-
-function makeBlock(type: BlockType): ArticleBlock {
-  if (type === 'heading') return { id: genBlockId(), type, span: 3, level: 2, content: '' };
-  if (type === 'image')   return { id: genBlockId(), type, span: 1, url: '', caption: '' };
-  if (type === 'quote')   return { id: genBlockId(), type, span: 2, content: '', author: '' };
-  if (type === 'divider') return { id: genBlockId(), type, span: 3 };
-  return { id: genBlockId(), type: 'text', span: 2, content: '' };
-}
 
 function isRichContent(s: string): boolean {
   return s.trimStart().startsWith('[');
 }
 
+function isTileArrayContent(s: string): boolean {
+  try {
+    const a = JSON.parse(s);
+    return Array.isArray(a) && a.length > 0 && a[0]
+      && typeof a[0].x === 'number' && typeof a[0].y === 'number'
+      && typeof a[0].w === 'number' && typeof a[0].h === 'number'
+      && typeof a[0].type === 'string';
+  } catch { return false; }
+}
+
 function parseBlocks(s: string): ArticleBlock[] {
   try { return JSON.parse(s) as ArticleBlock[]; }
   catch { return []; }
+}
+
+// Minimal markdown-lite renderer: # h1, ## h2, ### h3, > quote, --- divider,
+// blank-line paragraphs, **bold**, *italic*.
+function renderMarkdownLite(text: string): React.ReactNode {
+  const inlineFmt = (s: string): React.ReactNode => {
+    const parts: React.ReactNode[] = [];
+    const re = /(\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    let last = 0; let m: RegExpExecArray | null; let key = 0;
+    while ((m = re.exec(s)) !== null) {
+      if (m.index > last) parts.push(s.slice(last, m.index));
+      const tok = m[0];
+      if (tok.startsWith('**')) parts.push(<strong key={key++}>{tok.slice(2, -2)}</strong>);
+      else parts.push(<em key={key++}>{tok.slice(1, -1)}</em>);
+      last = m.index + tok.length;
+    }
+    if (last < s.length) parts.push(s.slice(last));
+    return parts;
+  };
+  const lines = text.split('\n');
+  const out: React.ReactNode[] = [];
+  let para: string[] = [];
+  const flushPara = () => {
+    if (para.length === 0) return;
+    out.push(<p key={`p${out.length}`} className="text-gray-700 dark:text-zinc-300 text-base leading-relaxed mb-4">{inlineFmt(para.join(' '))}</p>);
+    para = [];
+  };
+  lines.forEach((line, i) => {
+    const t = line.trim();
+    if (t === '') { flushPara(); return; }
+    if (t === '---') { flushPara(); out.push(<hr key={`h${i}`} className="border-gray-200 dark:border-zinc-700 my-6" />); return; }
+    if (t.startsWith('### ')) { flushPara(); out.push(<h3 key={`h${i}`} className="text-lg font-bold text-gray-900 dark:text-white mt-5 mb-2">{inlineFmt(t.slice(4))}</h3>); return; }
+    if (t.startsWith('## '))  { flushPara(); out.push(<h2 key={`h${i}`} className="text-2xl font-bold text-gray-900 dark:text-white mt-6 mb-3">{inlineFmt(t.slice(3))}</h2>); return; }
+    if (t.startsWith('# '))   { flushPara(); out.push(<h1 key={`h${i}`} className="text-3xl font-black text-gray-900 dark:text-white mt-6 mb-3 tracking-tight">{inlineFmt(t.slice(2))}</h1>); return; }
+    if (t.startsWith('> '))   { flushPara(); out.push(<blockquote key={`q${i}`} className="border-l-4 border-red-600 pl-5 py-2 my-4 italic text-gray-700 dark:text-zinc-300">{inlineFmt(t.slice(2))}</blockquote>); return; }
+    para.push(t);
+  });
+  flushPara();
+  return <div>{out}</div>;
 }
 
 function RichBlockViewer({ blocks }: { blocks: ArticleBlock[] }) {
@@ -1664,622 +1576,242 @@ function RichBlockViewer({ blocks }: { blocks: ArticleBlock[] }) {
   );
 }
 
-const RICH_BLOCK_TYPES: { type: BlockType; label: string; icon: React.ElementType; color: string }[] = [
-  { type: 'heading', label: 'Títol',      icon: Type,           color: 'text-purple-500' },
-  { type: 'text',    label: 'Text',       icon: AlignLeft,      color: 'text-blue-500'   },
-  { type: 'image',   label: 'Imatge',     icon: ImageIcon,      color: 'text-green-500'  },
-  { type: 'quote',   label: 'Cita',       icon: MessageSquare,  color: 'text-orange-500' },
-  { type: 'divider', label: 'Separador',  icon: Minus,          color: 'text-gray-400'   },
-];
+// ── Article Blocks Editor (drag-and-drop, dotted-grid canvas) ────────────────
 
-// ── Grid layout (ghost cells) ─────────────────────────────────────────────────
-interface GhostCell {
-  id: string;
-  insertBeforeBlockIdx: number; // index in blocks[]; blocks.length = append
-  span: BlockSpan;
-}
-type GridCell = { kind: 'block'; block: ArticleBlock } | { kind: 'ghost'; ghost: GhostCell };
+function mkBlockId() { return Math.random().toString(36).slice(2, 10); }
 
-function buildGridLayout(blocks: ArticleBlock[]): GridCell[][] {
-  const rows: GridCell[][] = [];
-  let row: GridCell[] = [];
-  let colSum = 0;
-
-  const addGhost = (span: BlockSpan, idx: number) =>
-    row.push({ kind: 'ghost', ghost: { id: `ghost-r${rows.length}-c${3 - span}`, insertBeforeBlockIdx: idx, span } });
-
-  for (let i = 0; i < blocks.length; i++) {
-    const b = blocks[i];
-    if (colSum + b.span > 3) { addGhost((3 - colSum) as BlockSpan, i); rows.push(row); row = []; colSum = 0; }
-    row.push({ kind: 'block', block: b });
-    colSum += b.span;
-    if (colSum === 3) { rows.push(row); row = []; colSum = 0; }
-  }
-  if (row.length > 0) { if (colSum < 3) addGhost((3 - colSum) as BlockSpan, blocks.length); rows.push(row); }
-  // Always show a trailing empty full-width row as a drop target
-  rows.push([{ kind: 'ghost', ghost: { id: 'ghost-append', insertBeforeBlockIdx: blocks.length, span: 3 } }]);
-  return rows;
+interface ArticleBlocksEditorProps {
+  value: string;
+  onChange: (s: string) => void;
 }
 
-// ── Ghost drop cell ───────────────────────────────────────────────────────────
-function GhostDropCell({ ghost, isEmpty, activeBlock }: {
-  ghost: GhostCell;
-  isEmpty?: boolean;
-  activeBlock?: ArticleBlock | null;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: ghost.id });
-  const sc = ghost.span === 1 ? 'col-span-1' : ghost.span === 2 ? 'col-span-2' : 'col-span-3';
-  const bt = activeBlock ? RICH_BLOCK_TYPES.find(t => t.type === activeBlock.type)! : null;
-
-  return (
-    <div
-      ref={setNodeRef}
-      data-ghost-id={ghost.id}
-      className={cn(sc, 'rounded-xl border-2 border-dashed transition-all duration-150 overflow-hidden',
-        isEmpty && !isOver ? 'min-h-40 flex flex-col items-center justify-center' : 'min-h-20',
-        isOver && activeBlock
-          ? 'border-red-400 bg-red-50/40 dark:bg-red-950/15'
-          : isOver
-            ? 'border-red-400 bg-red-50/70 dark:bg-red-950/20 scale-[1.01] flex items-center justify-center'
-            : 'border-gray-200/60 dark:border-zinc-700/40 flex flex-col items-center justify-center'
-      )}
-    >
-      {isOver && activeBlock && bt ? (
-        // Preview: ghost silhouette of the dragged block at this slot
-        <div className="w-full opacity-60 pointer-events-none">
-          <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-red-100 dark:border-red-900/30 bg-red-50/60 dark:bg-red-950/20">
-            <bt.icon size={12} className={bt.color} />
-            <span className="text-[11px] font-semibold text-red-400">{bt.label}</span>
-            <span className="ml-auto text-[10px] font-bold text-red-300">
-              {ghost.span === 1 ? '1/3' : ghost.span === 2 ? '2/3' : 'Ple'}
-            </span>
-          </div>
-          <div className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500 truncate">
-            {activeBlock.content ?? activeBlock.url ?? '—'}
-          </div>
-        </div>
-      ) : isOver ? (
-        <span className="text-[11px] font-semibold text-red-400">
-          {ghost.span === 1 ? '1 columna' : ghost.span === 2 ? '2 columnes' : 'Ample complet'}
-        </span>
-      ) : isEmpty ? (
-        <div className="text-center">
-          <LayoutGrid size={32} className="text-gray-200 dark:text-zinc-700 mx-auto mb-2" />
-          <p className="text-xs text-gray-300 dark:text-zinc-600">Afegeix blocs o arrossega aquí</p>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-// ── Palette item (sidebar — pointer-event drag, click-to-add) ─────────────────
-function PaletteDragItem({
-  bt, onAdd, setDragState, onDrop,
-}: {
-  bt: typeof RICH_BLOCK_TYPES[0];
-  onAdd: () => void;
-  setDragState: (s: { type: BlockType; x: number; y: number } | null) => void;
-  onDrop: (type: BlockType, x: number, y: number) => void;
-}) {
-  const isDraggingRef = useRef(false);
-  const startRef = useRef<{ x: number; y: number } | null>(null);
-
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    startRef.current = { x: e.clientX, y: e.clientY };
-    isDraggingRef.current = false;
-  };
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!startRef.current) return;
-    if (!isDraggingRef.current && Math.hypot(e.clientX - startRef.current.x, e.clientY - startRef.current.y) > 5) {
-      isDraggingRef.current = true;
+function ArticleBlocksEditor({ value, onChange }: ArticleBlocksEditorProps) {
+  const [blocks, setBlocks] = useState<ArticleBlock[]>(() => {
+    if (!value || !value.trim()) return [];
+    if (isRichContent(value)) {
+      const parsed = parseBlocks(value);
+      return Array.isArray(parsed) ? parsed : [];
     }
-    if (isDraggingRef.current) setDragState({ type: bt.type, x: e.clientX, y: e.clientY });
-  };
-  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (isDraggingRef.current) onDrop(bt.type, e.clientX, e.clientY);
-    else onAdd();
-    isDraggingRef.current = false;
-    startRef.current = null;
-    setDragState(null);
-  };
-  const onPointerCancel = () => { isDraggingRef.current = false; startRef.current = null; setDragState(null); };
+    // Legacy markdown / plain text → wrap in single full-width text block
+    return [{ id: mkBlockId(), type: 'text', span: 3, content: value }];
+  });
+  const dragRef = useRef<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
+  const lastSyncRef = useRef<string>('');
 
-  return (
-    <div
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
-      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-grab active:cursor-grabbing touch-none select-none border-gray-100 dark:border-zinc-800 hover:border-red-200 dark:hover:border-red-900/40 hover:bg-red-50 dark:hover:bg-red-950/10 transition-colors group"
-    >
-      <bt.icon size={14} className={cn(bt.color, 'flex-shrink-0')} />
-      <span className="text-sm font-medium text-gray-700 dark:text-zinc-300 group-hover:text-red-600 transition-colors">{bt.label}</span>
-      <GripVertical size={13} className="ml-auto text-gray-300 dark:text-zinc-600 group-hover:text-red-400" />
-    </div>
-  );
-}
-
-// ── Block drag overlay preview ────────────────────────────────────────────────
-function BlockDragPreview({ block }: { block: ArticleBlock }) {
-  const bt = RICH_BLOCK_TYPES.find(t => t.type === block.type)!;
-  return (
-    <div className="w-56 bg-white dark:bg-zinc-900 rounded-xl border border-red-300 shadow-2xl overflow-hidden rotate-1 opacity-95 pointer-events-none">
-      <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-50 dark:bg-zinc-800/60 border-b border-gray-100 dark:border-zinc-800">
-        <GripVertical size={13} className="text-gray-400" />
-        <bt.icon size={12} className={bt.color} />
-        <span className="text-[11px] font-semibold text-gray-500 dark:text-zinc-400">{bt.label}</span>
-      </div>
-      <div className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500 truncate">
-        {block.content ?? block.url ?? '—'}
-      </div>
-    </div>
-  );
-}
-
-// ── Active-block ghost slot (keeps ID stable so dnd-kit never loses it) ──────
-function GhostForActiveBlock({ block, activeBlock }: { block: ArticleBlock; activeBlock?: ArticleBlock | null }) {
-  const { setNodeRef, isOver } = useDroppable({ id: block.id });
-  const sc = block.span === 1 ? 'col-span-1' : block.span === 2 ? 'col-span-2' : 'col-span-3';
-  const bt = activeBlock ? RICH_BLOCK_TYPES.find(t => t.type === activeBlock.type)! : null;
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(sc, 'rounded-xl border-2 border-dashed min-h-20 flex flex-col items-center justify-center transition-all duration-150 overflow-hidden',
-        isOver && activeBlock
-          ? 'border-red-400 bg-red-50/40 dark:bg-red-950/15'
-          : 'border-gray-200/60 dark:border-zinc-700/40'
-      )}
-    >
-      {isOver && activeBlock && bt && (
-        <div className="w-full opacity-60 pointer-events-none">
-          <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-red-100 dark:border-red-900/30 bg-red-50/60 dark:bg-red-950/20">
-            <bt.icon size={12} className={bt.color} />
-            <span className="text-[11px] font-semibold text-red-400">{bt.label}</span>
-          </div>
-          <div className="px-3 py-2 text-xs text-gray-400 dark:text-zinc-500 truncate">
-            {activeBlock.content ?? activeBlock.url ?? '—'}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Draggable block card ──────────────────────────────────────────────────────
-function DraggableBlockCard({
-  block, updateBlock, removeBlock, spanLabel, isBeingDragged,
-}: {
-  block: ArticleBlock;
-  updateBlock: (id: string, patch: Partial<ArticleBlock>) => void;
-  removeBlock: (id: string) => void;
-  spanLabel: (s: BlockSpan) => string;
-  isBeingDragged: boolean;
-}) {
-  const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({ id: block.id });
-  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: block.id });
-  const setRef = useCallback((node: HTMLDivElement | null) => { setDragRef(node); setDropRef(node); }, [setDragRef, setDropRef]);
-  const sc = block.span === 1 ? 'col-span-1' : block.span === 2 ? 'col-span-2' : 'col-span-3';
-  const bt = RICH_BLOCK_TYPES.find(t => t.type === block.type)!;
-  const [showGallery, setShowGallery] = useState(false);
-  const [galleryImages, setGalleryImages] = useState<{ name: string; url: string }[]>([]);
-  const [loadingGallery, setLoadingGallery] = useState(false);
-  const [confirmDeleteImg, setConfirmDeleteImg] = useState<{ name: string; url: string } | null>(null);
-
-  return (
-    <div
-      ref={setRef}
-      className={cn(sc, 'rounded-xl border overflow-hidden shadow-sm transition-all duration-150',
-        isBeingDragged
-          ? 'opacity-25 border-dashed border-red-300 dark:border-red-800 bg-red-50/30 dark:bg-red-950/10'
-          : isOver
-            ? 'border-red-400 shadow-md bg-white dark:bg-zinc-900'
-            : 'border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:border-red-300 dark:hover:border-red-800'
-      )}
-    >
-      <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/60">
-        <div className="flex items-center gap-1.5">
-          <button
-            {...attributes} {...listeners}
-            className="p-1 rounded cursor-grab active:cursor-grabbing text-gray-300 dark:text-zinc-600 hover:text-gray-500 dark:hover:text-zinc-400 touch-none"
-            title="Arrossega per moure"
-          >
-            <GripVertical size={13} />
-          </button>
-          <bt.icon size={12} className={bt.color} />
-          <span className="text-[11px] font-semibold text-gray-500 dark:text-zinc-400">{bt.label}</span>
-        </div>
-        <div className="flex items-center gap-0.5">
-          {block.type !== 'divider' && ([1, 2, 3] as BlockSpan[]).map(s => (
-            <button key={s} onClick={() => updateBlock(block.id, { span: s })}
-              className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors',
-                block.span === s ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-gray-700 dark:hover:text-zinc-300'
-              )}>{spanLabel(s)}</button>
-          ))}
-          <div className="w-px h-3 bg-gray-200 dark:bg-zinc-700 mx-1" />
-          <button onClick={() => removeBlock(block.id)}
-            className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-950/20 text-gray-400 hover:text-red-600 transition-colors"><Trash2 size={11} /></button>
-        </div>
-      </div>
-      <div className="p-3">
-        {block.type === 'heading' && (
-          <div className="space-y-2">
-            <div className="flex gap-1">
-              {([1, 2, 3] as const).map(l => (
-                <button key={l} onClick={() => updateBlock(block.id, { level: l })}
-                  className={cn('text-[10px] font-bold px-2 py-0.5 rounded transition-colors',
-                    block.level === l ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300' : 'text-gray-400 hover:text-gray-700')}>H{l}</button>
-              ))}
-            </div>
-            <input value={block.content ?? ''} onChange={e => updateBlock(block.id, { content: e.target.value })}
-              placeholder="Títol..."
-              className={cn('w-full bg-transparent outline-none text-gray-900 dark:text-white font-bold placeholder-gray-300 dark:placeholder-zinc-600',
-                block.level === 1 ? 'text-2xl' : block.level === 3 ? 'text-base' : 'text-xl')} />
-          </div>
-        )}
-        {block.type === 'text' && (
-          <textarea value={block.content ?? ''} onChange={e => updateBlock(block.id, { content: e.target.value })}
-            placeholder="Escriu el text aquí..." rows={5}
-            className="w-full bg-transparent outline-none text-sm text-gray-700 dark:text-zinc-300 leading-relaxed resize-none placeholder-gray-300 dark:placeholder-zinc-600" />
-        )}
-        {block.type === 'image' && (
-          <div className="space-y-2">
-            {block.url ? (
-              <div className="relative">
-                <img src={block.url} alt="" className="w-full rounded-lg object-cover max-h-48" />
-                <button onClick={() => updateBlock(block.id, { url: '' })}
-                  className="absolute top-2 right-2 p-1 bg-white/90 dark:bg-zinc-900/90 rounded-lg text-gray-500 hover:text-red-600 transition-colors"><Trash2 size={12} /></button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-xl py-6 cursor-pointer hover:border-red-300 dark:hover:border-red-800 transition-colors">
-                  <ImageIcon size={22} className="text-gray-300 dark:text-zinc-600" />
-                  <span className="text-xs text-gray-400">Clica per pujar imatge</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={async e => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    try { updateBlock(block.id, { url: await apiUploadImage(file) }); } catch {}
-                  }} />
-                </label>
-                <button type="button" onClick={async () => {
-                  setShowGallery(v => !v);
-                  if (galleryImages.length === 0) {
-                    setLoadingGallery(true);
-                    try { setGalleryImages(await apiGetImages()); } catch {}
-                    setLoadingGallery(false);
-                  }
-                }} className="w-full text-xs px-2 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 flex items-center justify-center gap-1">
-                  📁 Galeria d'imatges
-                </button>
-                {showGallery && (
-                  <div className="border border-gray-200 dark:border-zinc-700 rounded-xl p-3 bg-gray-50 dark:bg-zinc-800">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-gray-700 dark:text-zinc-300">Galeria</span>
-                      <button onClick={() => setShowGallery(false)} className="text-gray-400 hover:text-gray-600 text-xs">✕</button>
-                    </div>
-                    {loadingGallery ? (
-                      <p className="text-xs text-gray-400 text-center py-4">Carregant...</p>
-                    ) : galleryImages.length === 0 ? (
-                      <p className="text-xs text-gray-400 text-center py-4">Cap imatge a la galeria</p>
-                    ) : (
-                      <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
-                        {galleryImages.map(img => (
-                          <div key={img.name} className="relative group aspect-square">
-                            <button type="button"
-                              onClick={() => { updateBlock(block.id, { url: img.url }); setShowGallery(false); }}
-                              className="w-full h-full rounded-lg overflow-hidden border-2 border-transparent hover:border-red-300 transition-colors">
-                              <img src={`${API_BASE}${img.url}`} alt={img.name} className="w-full h-full object-cover" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={e => { e.stopPropagation(); setConfirmDeleteImg(img); }}
-                              className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-600 hover:bg-red-700 text-white rounded-full text-[10px] font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                              title="Eliminar imatge"
-                            >✕</button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {confirmDeleteImg && (
-                  <ConfirmModal
-                    message={`Eliminar la imatge "${confirmDeleteImg.name}"?`}
-                    onConfirm={async () => { try { await apiDeleteImage(confirmDeleteImg.name); setGalleryImages(p => p.filter(i => i.name !== confirmDeleteImg.name)); } catch {} setConfirmDeleteImg(null); }}
-                    onCancel={() => setConfirmDeleteImg(null)}
-                  />
-                )}
-              </div>
-            )}
-            <input value={block.caption ?? ''} onChange={e => updateBlock(block.id, { caption: e.target.value })}
-              placeholder="Peu de foto (opcional)"
-              className="w-full bg-transparent outline-none text-xs text-gray-500 dark:text-zinc-400 placeholder-gray-300 dark:placeholder-zinc-600 border-b border-gray-100 dark:border-zinc-800 pb-1" />
-          </div>
-        )}
-        {block.type === 'quote' && (
-          <div className="space-y-2 border-l-4 border-red-300 pl-3">
-            <textarea value={block.content ?? ''} onChange={e => updateBlock(block.id, { content: e.target.value })}
-              placeholder="Text de la cita..." rows={3}
-              className="w-full bg-transparent outline-none text-sm italic text-gray-700 dark:text-zinc-300 leading-relaxed resize-none placeholder-gray-300 dark:placeholder-zinc-600" />
-            <input value={block.author ?? ''} onChange={e => updateBlock(block.id, { author: e.target.value })}
-              placeholder="Autor de la cita"
-              className="w-full bg-transparent outline-none text-xs text-gray-400 placeholder-gray-300 dark:placeholder-zinc-600" />
-          </div>
-        )}
-        {block.type === 'divider' && (
-          <div className="flex items-center justify-center py-3">
-            <hr className="w-full border-gray-200 dark:border-zinc-700" />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── RichArticleBuilder ────────────────────────────────────────────────────────
-function RichArticleBuilder({
-  onSave, onCancel,
-}: {
-  onSave: (fields: {
-    category: string; title: string; summary: string; content: string;
-    author: string; date: string; image: string; featured: number;
-  }) => Promise<void>;
-  onCancel: () => void;
-}) {
-  const [blocks, setBlocks]         = useState<ArticleBlock[]>([]);
-  const [title, setTitle]           = useState('');
-  const [category, setCategory]     = useState('Comunicats interns');
-  const [summary, setSummary]       = useState('');
-  const [author, setAuthor]         = useState('');
-  const [date, setDate]             = useState('');
-  const [headerFile, setHeaderFile] = useState<File | null>(null);
-  const [featured, setFeatured]     = useState(false);
-  const [saving, setSaving]         = useState(false);
-  const [activeId, setActiveId]     = useState<string | null>(null);
-  const [paletteDrag, setPaletteDrag] = useState<{ type: BlockType; x: number; y: number } | null>(null);
-
-  // Track dark mode via MutationObserver so the single canvas background stays correct
-  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  // Push serialized blocks upward whenever they change
   useEffect(() => {
-    const obs = new MutationObserver(() => setIsDark(document.documentElement.classList.contains('dark')));
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => obs.disconnect();
-  }, []);
-
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
-
-  // Modifier: center the DragOverlay preview under the cursor (no matter where you grab the block)
-  const snapCenterToCursor = useCallback((args: {
-    activatorEvent: Event | null;
-    activeNodeRect: { left: number; top: number; width: number; height: number } | null;
-    draggingNodeRect: { width: number; height: number } | null;
-    transform: { x: number; y: number; scaleX: number; scaleY: number };
-    [key: string]: unknown;
-  }) => {
-    const { activatorEvent, activeNodeRect, draggingNodeRect, transform } = args;
-    if (activeNodeRect && activatorEvent && 'clientX' in activatorEvent) {
-      const ev = activatorEvent as PointerEvent;
-      const w = draggingNodeRect?.width ?? activeNodeRect.width;
-      const h = draggingNodeRect?.height ?? activeNodeRect.height;
-      return {
-        ...transform,
-        x: transform.x + (ev.clientX - activeNodeRect.left) - w / 2,
-        y: transform.y + (ev.clientY - activeNodeRect.top)  - h / 2,
-      };
+    const s = JSON.stringify(blocks);
+    if (s !== lastSyncRef.current) {
+      lastSyncRef.current = s;
+      onChange(s);
     }
-    return transform;
-  }, []);
-  const layout  = useMemo(() => buildGridLayout(blocks), [blocks]);
+  }, [blocks, onChange]);
 
-  const updateBlock = useCallback((id: string, patch: Partial<ArticleBlock>) =>
-    setBlocks(bs => bs.map(b => b.id === id ? { ...b, ...patch } : b)), []);
-  const removeBlock = useCallback((id: string) =>
-    setBlocks(bs => bs.filter(b => b.id !== id)), []);
+  const addBlock = (type: BlockType) => {
+    const base: ArticleBlock = { id: mkBlockId(), type, span: 3 };
+    const nb: ArticleBlock =
+      type === 'heading' ? { ...base, content: '', level: 2 } :
+      type === 'text'    ? { ...base, content: '' } :
+      type === 'quote'   ? { ...base, content: '', author: '' } :
+      type === 'image'   ? { ...base, url: '', caption: '' } :
+      base;
+    setBlocks(b => [...b, nb]);
+  };
+  const updateBlock = (id: string, patch: Partial<ArticleBlock>) =>
+    setBlocks(bs => bs.map(b => b.id === id ? { ...b, ...patch } : b));
+  const removeBlock = (id: string) => setBlocks(bs => bs.filter(b => b.id !== id));
 
-  const handleDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
-
-  const handlePaletteDrop = useCallback((type: BlockType, x: number, y: number) => {
-    const els = document.elementsFromPoint(x, y);
-    const ghostEl = els.find(el => el instanceof HTMLElement && (el as HTMLElement).dataset.ghostId) as HTMLElement | undefined;
-    if (ghostEl?.dataset.ghostId) {
-      const ghostId = ghostEl.dataset.ghostId;
-      setBlocks(bs => {
-        const currentLayout = buildGridLayout(bs);
-        let ghost: GhostCell | undefined;
-        for (const row of currentLayout) {
-          for (const cell of row) {
-            if (cell.kind === 'ghost' && cell.ghost.id === ghostId) { ghost = cell.ghost; break; }
-          }
-          if (ghost) break;
-        }
-        const newBlock = makeBlock(type);
-        if (!ghost) return [...bs, newBlock];
-        const insertAt = Math.max(0, Math.min(ghost.insertBeforeBlockIdx, bs.length));
-        return [...bs.slice(0, insertAt), { ...newBlock, span: ghost.span }, ...bs.slice(insertAt)];
-      });
-    } else {
-      setBlocks(bs => [...bs, makeBlock(type)]);
-    }
-  }, []);
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    setActiveId(null);
-    const { active, over } = event;
-    if (!over) return;
-    const overId    = String(over.id);
-    const activeId_ = String(active.id);
-
-    if (activeId_ === overId) return;
-
-    // ── Block reorder ─────────────────────────────────────────────────────────
-    if (overId.startsWith('ghost-')) {
-      setBlocks(bs => {
-        const currentLayout = buildGridLayout(bs);
-        let ghost: GhostCell | undefined;
-        for (const row of currentLayout) {
-          for (const cell of row) {
-            if (cell.kind === 'ghost' && cell.ghost.id === overId) { ghost = cell.ghost; break; }
-          }
-          if (ghost) break;
-        }
-        if (!ghost) return bs;
-        const dragIdx = bs.findIndex(b => b.id === activeId_);
-        if (dragIdx === -1) return bs;
-        const dragged = { ...bs[dragIdx], span: ghost.span };
-        const rest = bs.filter((_, i) => i !== dragIdx);
-        let insertAt = ghost.insertBeforeBlockIdx;
-        if (dragIdx < insertAt) insertAt--;
-        insertAt = Math.max(0, Math.min(insertAt, rest.length));
-        return [...rest.slice(0, insertAt), dragged, ...rest.slice(insertAt)];
-      });
-    } else {
-      setBlocks(bs => {
-        const from = bs.findIndex(b => b.id === activeId_);
-        const to   = bs.findIndex(b => b.id === overId);
-        if (from === -1 || to === -1) return bs;
-        return arrayMove(bs, from, to);
-      });
-    }
+  const onDragStart = (i: number) => { dragRef.current = i; };
+  const onDragOver = (i: number, e: React.DragEvent) => { e.preventDefault(); setDragOver(i); };
+  const onDrop = (i: number) => {
+    const from = dragRef.current; dragRef.current = null; setDragOver(null);
+    if (from === null || from === i) return;
+    setBlocks(bs => { const arr = [...bs]; const [m] = arr.splice(from, 1); arr.splice(i, 0, m); return arr; });
   };
 
-  const handleSave = async () => {
-    if (!title.trim()) return;
-    setSaving(true);
+  const handleUpload = async (id: string, file: File) => {
     try {
-      let imageUrl = '';
-      if (headerFile) imageUrl = await apiUploadImage(headerFile);
-      await onSave({
-        category, title: title.trim(), summary: summary.trim(),
-        content: JSON.stringify(blocks),
-        author: author.trim(), date: date.trim(),
-        image: imageUrl, featured: featured ? 1 : 0,
-      });
-    } catch (e) { console.error(e); setSaving(false); }
+      const url = await apiUploadImage(file);
+      updateBlock(id, { url });
+    } catch { /* silent */ }
   };
 
-  const spanLabel = (s: BlockSpan) => s === 1 ? '1/3' : s === 2 ? '2/3' : 'Ple';
-  const activeBlock = blocks.find(b => b.id === activeId);
-
-  const canvasBg: React.CSSProperties = {
-    backgroundImage: `radial-gradient(circle, ${isDark ? '#3f3f46' : '#cbd5e1'} 1px, transparent 1px)`,
-    backgroundSize: '24px 24px',
-  };
+  const tools: Array<{ type: BlockType; label: string; Icon: any }> = [
+    { type: 'heading', label: 'Capçalera', Icon: Heading2 },
+    { type: 'text',    label: 'Text',      Icon: TypeIcon },
+    { type: 'image',   label: 'Imatge',    Icon: ImageIcon },
+    { type: 'quote',   label: 'Cita',      Icon: Quote },
+    { type: 'divider', label: 'Separador', Icon: Minus },
+  ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-gray-50 dark:bg-zinc-950 flex flex-col anim-fade-in overflow-hidden">
-      {/* Top bar */}
-      <div className="flex items-center gap-3 px-6 py-3 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 flex-shrink-0">
-        <button onClick={onCancel} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 transition-colors press">
-          <ChevronLeft size={18} />
-        </button>
-        <input
-          value={title} onChange={e => setTitle(e.target.value)}
-          placeholder="Títol de l'article *"
-          className="flex-1 text-xl font-bold text-gray-900 dark:text-white bg-transparent border-none outline-none placeholder-gray-300 dark:placeholder-zinc-600"
-        />
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <button onClick={onCancel} className="px-4 py-2 text-sm text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
-            Cancel·lar
-          </button>
+    <div>
+      {/* Palette */}
+      <div className="flex flex-wrap gap-2 mb-3 p-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg">
+        {tools.map(({ type, label, Icon }) => (
           <button
-            onClick={handleSave}
-            disabled={!title.trim() || saving}
-            className="px-4 py-2 text-sm font-semibold bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg transition-colors press"
+            key={type}
+            type="button"
+            onClick={() => addBlock(type)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-950/40 transition-colors"
           >
-            {saving ? 'Desant...' : 'Publicar article'}
+            <Icon size={13} />
+            <Plus size={11} />
+            {label}
           </button>
-        </div>
+        ))}
+        <span className="ml-auto self-center text-[10px] text-gray-400">{blocks.length} bloc{blocks.length !== 1 ? 's' : ''}</span>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left sidebar */}
-        <div className="bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 flex flex-col overflow-y-auto flex-shrink-0" style={{ width: '272px' }}>
-          <div className="p-4 border-b border-gray-100 dark:border-zinc-800 space-y-3">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Metadades</p>
-            <select value={category} onChange={e => setCategory(e.target.value)}
-              className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white">
-              {['Comunicats interns','Notícies corporatives','Recursos humans','Esdeveniments','Innovació','Seguretat'].map(c => <option key={c}>{c}</option>)}
-            </select>
-            <textarea value={summary} onChange={e => setSummary(e.target.value)}
-              placeholder="Resum breu (targeta de notícia)" rows={3}
-              className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white resize-none" />
-            <input value={author} onChange={e => setAuthor(e.target.value)} placeholder="Autor"
-              className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            <input value={date} onChange={e => setDate(e.target.value)} placeholder="Data (ex: 17 abril 2026)"
-              className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            <div>
-              <p className="text-[10px] text-gray-400 mb-1">Imatge de capçalera</p>
-              <input type="file" accept="image/*" onChange={e => setHeaderFile(e.target.files?.[0] ?? null)}
-                className="w-full text-xs text-gray-600 dark:text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100" />
-              {headerFile && <p className="text-[10px] text-gray-400 mt-1 truncate">{headerFile.name}</p>}
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setFeatured(v => !v)}
-                className={cn("relative inline-flex h-5 w-9 items-center rounded-full transition-colors", featured ? "bg-red-600" : "bg-gray-200 dark:bg-zinc-700")}>
-                <span className="inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform" style={{ transform: featured ? 'translateX(18px)' : 'translateX(2px)' }} />
-              </button>
-              <span className="text-xs text-gray-600 dark:text-zinc-400">Destacada</span>
-            </div>
+      {/* Canvas with dotted-grid background */}
+      <div
+        className="rounded-xl p-4 min-h-[320px] grid grid-cols-3 gap-3 border border-gray-200 dark:border-zinc-700"
+        style={{
+          backgroundColor: 'var(--tavil-card, #fafafa)',
+          backgroundImage: 'radial-gradient(circle, rgba(120,80,80,0.20) 1.2px, transparent 1.4px)',
+          backgroundSize: '20px 20px',
+          backgroundPosition: '0 0',
+        }}
+      >
+        {blocks.length === 0 && (
+          <div className="col-span-3 text-center py-16 text-gray-400 text-xs">
+            <p className="mb-1">Comença a construir l'article.</p>
+            <p>Afegeix blocs des de la barra superior i arrossega'ls per reordenar.</p>
           </div>
-          <div className="p-4 flex-1">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Afegir bloc</p>
-            <div className="space-y-1.5">
-              {RICH_BLOCK_TYPES.map(bt => (
-                <PaletteDragItem
-                  key={bt.type}
-                  bt={bt}
-                  onAdd={() => setBlocks(bs => [...bs, makeBlock(bt.type)])}
-                  setDragState={setPaletteDrag}
-                  onDrop={handlePaletteDrop}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Canvas — DndContext scoped here so overlay coords stay correct */}
-        <div className="flex-1 overflow-y-auto p-8" style={canvasBg}>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveId(null)}>
-            <div className="space-y-4">
-              {layout.map((row, ri) => (
-                <div key={ri} className="grid grid-cols-3 gap-4">
-                  {row.map(cell =>
-                    cell.kind === 'block'
-                      ? activeId === cell.block.id
-                        ? <GhostForActiveBlock key={cell.block.id} block={cell.block} activeBlock={activeBlock} />
-                        : <DraggableBlockCard key={cell.block.id} block={cell.block} updateBlock={updateBlock} removeBlock={removeBlock} spanLabel={spanLabel} isBeingDragged={false} />
-                      : <GhostDropCell key={cell.ghost.id} ghost={cell.ghost} isEmpty={blocks.length === 0} activeBlock={activeBlock} />
-                  )}
-                </div>
-              ))}
-            </div>
-            <DragOverlay dropAnimation={null} modifiers={[snapCenterToCursor as never]}>
-              {activeBlock ? <BlockDragPreview block={activeBlock} /> : null}
-            </DragOverlay>
-          </DndContext>
-        </div>
-      </div>
-
-      {/* Palette drag ghost — follows pointer, pointer-events: none */}
-      {paletteDrag && createPortal(
-        (() => {
-          const bt = RICH_BLOCK_TYPES.find(t => t.type === paletteDrag.type)!;
+        )}
+        {blocks.map((b, i) => {
+          const spanCls = b.span === 1 ? 'col-span-1' : b.span === 2 ? 'col-span-2' : 'col-span-3';
           return (
             <div
-              style={{ position: 'fixed', left: paletteDrag.x - 96, top: paletteDrag.y - 20, zIndex: 99999, pointerEvents: 'none' }}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-red-300 bg-white dark:bg-zinc-900 shadow-2xl w-48 rotate-1 opacity-95"
+              key={b.id}
+              draggable
+              onDragStart={() => onDragStart(i)}
+              onDragOver={e => onDragOver(i, e)}
+              onDragLeave={() => setDragOver(null)}
+              onDrop={() => onDrop(i)}
+              className={`${spanCls} relative group bg-white dark:bg-zinc-900 rounded-lg border p-3 transition-colors ${dragOver === i ? 'border-red-400 ring-2 ring-red-200 dark:ring-red-900/40' : 'border-gray-200 dark:border-zinc-700'}`}
             >
-              <bt.icon size={14} className={bt.color} />
-              <span className="text-sm font-medium text-gray-700 dark:text-zinc-300">{bt.label}</span>
-              <Plus size={13} className="ml-auto text-red-400" />
+              {/* Header row: drag handle + type + span buttons + delete */}
+              <div className="flex items-center justify-between mb-2 gap-2">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-gray-500 dark:text-zinc-400 font-semibold cursor-grab select-none">
+                  <GripVertical size={12} />
+                  {b.type}
+                </div>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3].map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => updateBlock(b.id, { span: s as BlockSpan })}
+                      title={`Amplada ${s}/3`}
+                      className={`w-6 h-5 rounded text-[10px] font-bold transition-colors ${b.span === s ? 'bg-red-600 text-white' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-zinc-700'}`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => removeBlock(b.id)}
+                    title="Eliminar"
+                    className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              {b.type === 'heading' && (
+                <div className="space-y-1">
+                  <select
+                    value={b.level ?? 2}
+                    onChange={e => updateBlock(b.id, { level: Number(e.target.value) as 1 | 2 | 3 })}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 border-none text-gray-600 dark:text-zinc-300"
+                  >
+                    <option value={1}>H1</option>
+                    <option value={2}>H2</option>
+                    <option value={3}>H3</option>
+                  </select>
+                  <input
+                    value={b.content ?? ''}
+                    onChange={e => updateBlock(b.id, { content: e.target.value })}
+                    placeholder="Escriu el títol..."
+                    className={`w-full bg-transparent border-none outline-none font-bold text-gray-900 dark:text-white ${b.level === 1 ? 'text-2xl' : b.level === 3 ? 'text-base' : 'text-xl'}`}
+                  />
+                </div>
+              )}
+
+              {b.type === 'text' && (
+                <textarea
+                  value={b.content ?? ''}
+                  onChange={e => updateBlock(b.id, { content: e.target.value })}
+                  rows={4}
+                  placeholder="Paràgraf de text..."
+                  className="w-full text-sm bg-transparent border-none outline-none resize-y text-gray-700 dark:text-zinc-300 leading-relaxed"
+                />
+              )}
+
+              {b.type === 'quote' && (
+                <div className="space-y-1 border-l-4 border-red-600 pl-3">
+                  <textarea
+                    value={b.content ?? ''}
+                    onChange={e => updateBlock(b.id, { content: e.target.value })}
+                    rows={3}
+                    placeholder="Cita destacada"
+                    className="w-full text-sm italic bg-transparent border-none outline-none resize-y text-gray-700 dark:text-zinc-300"
+                  />
+                  <input
+                    value={b.author ?? ''}
+                    onChange={e => updateBlock(b.id, { author: e.target.value })}
+                    placeholder="— Autor (opcional)"
+                    className="w-full text-xs bg-transparent border-none outline-none text-gray-400"
+                  />
+                </div>
+              )}
+
+              {b.type === 'image' && (
+                <div className="space-y-2">
+                  {b.url ? (
+                    <img src={resolveImg(b.url)} alt="" className="w-full h-32 object-cover rounded" />
+                  ) : (
+                    <div className="w-full h-32 rounded bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-gray-400 text-xs">
+                      Sense imatge
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(b.id, f); }}
+                    className="text-[10px] file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:bg-red-50 file:text-red-700 file:font-semibold"
+                  />
+                  <input
+                    value={b.caption ?? ''}
+                    onChange={e => updateBlock(b.id, { caption: e.target.value })}
+                    placeholder="Peu de foto (opcional)"
+                    className="w-full text-xs bg-transparent border-none outline-none text-gray-500"
+                  />
+                </div>
+              )}
+
+              {b.type === 'divider' && (
+                <hr className="border-t-2 border-gray-300 dark:border-zinc-700 my-2" />
+              )}
             </div>
           );
-        })(),
-        document.body
-      )}
+        })}
+      </div>
     </div>
   );
 }
+
+
+
+
+
+
+
+
 
 function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: User | null; onOpenDrawer?: () => void; onNavigate?: (tab: string) => void }) {
   const { t } = useTranslation();
@@ -2292,8 +1824,8 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
   const setSelectedNews = (n: NewsArticle | null, origin?: string) => {
     if (n) {
       try {
-        window.localStorage.setItem('tavil_selected_news_id', String(n.id));
-        if (origin !== undefined) window.localStorage.setItem('tavil_news_origin', origin);
+        window.sessionStorage.setItem('tavil_selected_news_id', String(n.id));
+        if (origin !== undefined) window.sessionStorage.setItem('tavil_news_origin', origin);
       } catch {}
     } else {
       try {
@@ -2306,7 +1838,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
   const closeArticleMobile = useIsMobile();
   const closeArticle = () => {
     let origin = '';
-    try { origin = window.localStorage.getItem('tavil_news_origin') ?? ''; } catch {}
+    try { origin = window.sessionStorage.getItem('tavil_news_origin') ?? ''; } catch {}
     setSelectedNews(null);
     if (closeArticleMobile) return;
     if (origin && origin !== 'Notícies' && onNavigate) onNavigate(origin);
@@ -2318,7 +1850,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
     // Restore selected article from localStorage (reload or cross-tab open).
     const restoreFromCache = (d: NewsArticle[]) => {
       try {
-        const savedId = window.localStorage.getItem('tavil_selected_news_id');
+        const savedId = window.sessionStorage.getItem('tavil_selected_news_id');
         if (savedId) {
           const article = d.find(n => n.id === Number(savedId));
           if (article) setSelectedNewsRaw(article);
@@ -2382,9 +1914,11 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
             <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 26, fontWeight: 400, lineHeight: 1.15, margin: '0 0 12px', letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>{selectedNews.title}</h1>
             {selectedNews.summary && <p style={{ fontSize: 14, color: 'var(--tavil-muted)', lineHeight: 1.5, margin: '0 0 16px' }}>{selectedNews.summary}</p>}
             {selectedNews.content && (
-              isRichContent(selectedNews.content)
-                ? <RichBlockViewer blocks={parseBlocks(selectedNews.content)} />
-                : <div style={{ fontSize: 14, color: 'var(--tavil-text)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{selectedNews.content}</div>
+              isTileArrayContent(selectedNews.content)
+                ? <NewsTilesViewer content={selectedNews.content} />
+                : isRichContent(selectedNews.content)
+                  ? <RichBlockViewer blocks={parseBlocks(selectedNews.content)} />
+                  : <div style={{ fontSize: 14, color: 'var(--tavil-text)', lineHeight: 1.65 }}>{renderMarkdownLite(selectedNews.content)}</div>
             )}
           </div>
         </div>
@@ -2504,7 +2038,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
 
   if (selectedNews) {
     return (
-      <div className={cn("mx-auto", isRichContent(selectedNews.content) ? "max-w-5xl" : "max-w-3xl")}>
+      <div className={cn("mx-auto", (isTileArrayContent(selectedNews.content) || isRichContent(selectedNews.content)) ? "max-w-5xl" : "max-w-3xl")}>
         <button
           onClick={closeArticle}
           className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors mb-6"
@@ -2513,7 +2047,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
         </button>
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
           {selectedNews.image && (
-            <img src={selectedNews.image} alt={selectedNews.title} className="w-full h-72 object-cover" />
+            <img src={resolveImg(selectedNews.image)} alt={selectedNews.title} className="w-full h-72 object-cover" />
           )}
           <div className="p-8">
             <div className="flex items-center gap-3 mb-4">
@@ -2527,9 +2061,11 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
             </div>
             {selectedNews.summary && <p className="text-gray-600 dark:text-zinc-300 text-base leading-relaxed mb-6 font-medium">{selectedNews.summary}</p>}
             {selectedNews.content && (
-              isRichContent(selectedNews.content)
-                ? <RichBlockViewer blocks={parseBlocks(selectedNews.content)} />
-                : <div className="text-gray-700 dark:text-zinc-400 text-sm leading-relaxed whitespace-pre-wrap">{selectedNews.content}</div>
+              isTileArrayContent(selectedNews.content)
+                ? <NewsTilesViewer content={selectedNews.content} />
+                : isRichContent(selectedNews.content)
+                  ? <RichBlockViewer blocks={parseBlocks(selectedNews.content)} />
+                  : <div className="text-gray-700 dark:text-zinc-400 text-sm leading-relaxed">{renderMarkdownLite(selectedNews.content)}</div>
             )}
           </div>
         </div>
@@ -3148,9 +2684,22 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
   const today0 = new Date();
   const [currentMonth, setCurrentMonth] = useState(today0.getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(today0.getFullYear());
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number | null>(today0.getDate());
   const dayDetailRef = useScrollIntoViewWhen<HTMLDivElement>(selectedDay, { threshold: 0.5, block: 'center', delay: 80 });
   const isAdmin = ['Administrador/a', 'Recursos humans', 'Comunicacions'].includes(currentUser?.role ?? '');
+  const { t } = useTranslation();
+
+  const eventRailColor = (ev: AgendaEvent): string => {
+    if (['Visita comercial', 'Activitat empresa'].includes(ev.type)) return 'var(--tavil-accent)';
+    if (['Festiu', 'Fira'].includes(ev.type)) return '#788475';
+    return 'var(--tavil-text)';
+  };
+
+  const dayNameCa = (d: number, m: number, y: number): string =>
+    ['Diumenge','Dilluns','Dimarts','Dimecres','Dijous','Divendres','Dissabte'][new Date(y, m - 1, d).getDay()];
+
+  const monthGenitiu = (m: number): string =>
+    ['','de gener','de febrer','de març',"d'abril",'de maig','de juny','de juliol',"d'agost",'de setembre',"d'octubre",'de novembre','de desembre'][m] ?? '';
 
   useEffect(() => {
     if (initDate) {
@@ -3461,12 +3010,24 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
     );
   }
 
+  const selDay = selectedDay ?? today.getDate();
+  const selEvents = agendaEvents.filter(e => e.day === selDay && e.month === currentMonth);
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-gray-500 dark:text-zinc-400 text-sm">Calendari d'esdeveniments i dates importants</p>
-        {isAdmin && <button onClick={() => setShowEventForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">+ Nou event</button>}
+      {/* Page header */}
+      <div style={{ marginBottom: 28, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: 11, color: 'var(--tavil-faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+          {t('agenda.subtitle')}
+        </div>
+        {isAdmin && (
+          <button onClick={() => setShowEventForm(v => !v)} style={{ height: 36, padding: '0 14px', borderRadius: 10, background: 'var(--tavil-accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Plus size={14} /> {t('agenda.newEvent')}
+          </button>
+        )}
       </div>
+
+      {/* New event modal */}
       {isAdmin && showEventForm && (
         <EditModal title="Nou event" onClose={() => setShowEventForm(false)}>
           <div className="grid grid-cols-2 gap-3">
@@ -3475,7 +3036,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
             <input type="text" value={eTime} onChange={e => setETime(e.target.value)} placeholder="Hora (ex: 10:00)" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
             <input type="text" value={eLocation} onChange={e => setELocation(e.target.value)} placeholder="Lloc" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
             <select value={eType} onChange={e => setEType(e.target.value)} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white">
-              {Object.keys(EVENT_COLORS).map(t => <option key={t}>{t}</option>)}
+              {Object.keys(EVENT_COLORS).map(tp => <option key={tp}>{tp}</option>)}
             </select>
             <div className="col-span-2 flex justify-end gap-2 items-center">
               <button onClick={() => setShowEventForm(false)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800">Cancel·lar</button>
@@ -3484,142 +3045,119 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
           </div>
         </EditModal>
       )}
-      <div className="flex items-center justify-between mb-5 gap-3">
-        <div className="flex gap-2 overflow-x-auto flex-nowrap md:flex-wrap scrollbar-hide -mx-1 px-1 flex-1 min-w-0">
-          {filters.map(f => (
-            <FilterChip key={f} label={f} active={activeFilter === f} onClick={() => setActiveFilter(f)} />
-          ))}
-        </div>
-        <div className="flex items-center border border-gray-200 dark:border-zinc-700 rounded-lg overflow-hidden flex-shrink-0">
-          <button onClick={() => setView('calendar')} className={cn("flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors", view === 'calendar' ? "bg-red-600 text-white" : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
-            <Calendar size={15} /> Calendari
-          </button>
-          <button onClick={() => setView('list')} className={cn("flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors", view === 'list' ? "bg-red-600 text-white" : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
-            <List size={15} /> Llista
-          </button>
-        </div>
-      </div>
 
-      <div key={view} className="anim-tab">
-      {view === 'calendar' ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-3 md:p-6">
-          <div className="flex items-center justify-between mb-4 md:mb-6">
-            <button onClick={() => navigateMonth(-1)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><ChevronLeft size={18} className="text-gray-500" /></button>
-            <h3 className="font-bold text-gray-900 dark:text-white">{MONTH_NAMES[currentMonth]} {currentYear}</h3>
-            <button onClick={() => navigateMonth(1)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><ChevronRight size={18} className="text-gray-500" /></button>
+      {/* Two-column grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 28, alignItems: 'start' }}>
+
+        {/* Left: calendar card */}
+        <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: 20, boxShadow: '0 1px 3px rgba(34,39,37,0.06)' }}>
+          {/* Month nav */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+            <div style={{ fontFamily: '"Instrument Serif", serif', fontSize: 24, letterSpacing: '-0.01em', color: 'var(--tavil-text)' }}>
+              {MONTH_NAMES[currentMonth]} {currentYear}
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button onClick={() => navigateMonth(-1)} style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)' }}>
+                <ChevronLeft size={14} />
+              </button>
+              <button onClick={() => navigateMonth(1)} style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)' }}>
+                <ChevronRight size={14} />
+              </button>
+            </div>
           </div>
-          <div className="grid grid-cols-7">
-            {days.map(d => (
-              <div key={d} className="px-1 md:px-2 py-2 text-center text-[10px] md:text-xs font-semibold text-gray-500 dark:text-zinc-400 border-b border-gray-100 dark:border-zinc-800">{d}</div>
+
+          {/* Weekday labels */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, marginBottom: 10 }}>
+            {['Dl','Dt','Dc','Dj','Dv','Ds','Dg'].map(w => (
+              <div key={w} style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.1em', textAlign: 'center', padding: '6px 0' }}>{w}</div>
             ))}
-            {cells.map((day, i) => {
-              const isSel = day !== null && selectedDay === day;
-              const dayEvents = day !== null ? (calendarEvents[day] || []) : [];
-              const maxChipsMobile = 1;
+          </div>
+
+          {/* Day cells */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+            {cells.map((d, i) => {
+              if (d === null) return <div key={i} />;
+              const evs = calendarEvents[d] || [];
+              const active = d === selDay;
+              const todayCell = isToday(d);
               return (
-                <div
-                  key={i}
-                  onClick={() => day !== null && setSelectedDay(day === selectedDay ? null : day)}
-                  className={cn(
-                    "min-h-[56px] md:min-h-[80px] p-1 md:p-1.5 border-b border-r border-gray-50 dark:border-zinc-800/50 transition-colors",
-                    day !== null && "cursor-pointer hover:bg-red-50/60 dark:hover:bg-red-950/20",
-                    day !== null && isToday(day) && "bg-red-50/50 dark:bg-red-950/10",
-                    isSel && "ring-2 ring-inset ring-red-500 bg-red-50 dark:bg-red-950/30"
+                <button key={i} onClick={() => setSelectedDay(d === selectedDay ? null : d)} style={{
+                  aspectRatio: '1/1.05', borderRadius: 10,
+                  background: active ? 'var(--tavil-text)' : 'var(--tavil-bgAlt)',
+                  color: active ? 'var(--tavil-bg)' : 'var(--tavil-text)',
+                  border: `1px solid ${active ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
+                  padding: 8, cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start',
+                  position: 'relative', transition: 'opacity 120ms',
+                }}>
+                  <div style={{ fontSize: 15, fontWeight: todayCell ? 700 : 500, fontFamily: '"Instrument Serif", serif', letterSpacing: '-0.01em' }}>{d}</div>
+                  <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginTop: 'auto' }}>
+                    {evs.slice(0, 3).map((ev, ei) => (
+                      <div key={ei} style={{ width: 5, height: 5, borderRadius: 3, background: active ? 'var(--tavil-bg)' : eventRailColor(ev), opacity: active ? 0.9 : 1 }} />
+                    ))}
+                  </div>
+                  {todayCell && !active && (
+                    <div style={{ position: 'absolute', top: 6, right: 6, width: 5, height: 5, borderRadius: 3, background: 'var(--tavil-accent)' }} />
                   )}
-                >
-                  {day && (
-                    <>
-                      <span className={cn("text-[11px] md:text-xs font-medium w-5 md:w-6 h-5 md:h-6 flex items-center justify-center rounded-full mb-0.5 md:mb-1", isToday(day) ? "bg-red-600 text-white" : isSel ? "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-bold" : "text-gray-700 dark:text-zinc-300")}>{day}</span>
-                      <div className="hidden md:block">
-                        {dayEvents.map((ev, j) => (
-                          <div key={j} className={cn("text-[10px] px-1.5 py-0.5 rounded truncate mb-0.5 font-medium", EVENT_COLORS[ev.type])}>{ev.title}</div>
-                        ))}
-                      </div>
-                      <div className="md:hidden">
-                        {dayEvents.slice(0, maxChipsMobile).map((ev, j) => (
-                          <div key={j} className={cn("text-[9px] px-1 py-0.5 rounded truncate font-medium", EVENT_COLORS[ev.type])}>{ev.title}</div>
-                        ))}
-                        {dayEvents.length > maxChipsMobile && (
-                          <div className="text-[9px] px-1 text-gray-500 dark:text-zinc-400 font-medium">+{dayEvents.length - maxChipsMobile}</div>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
+                </button>
               );
             })}
           </div>
-          {selectedDay !== null && (
-            <div ref={dayDetailRef} className="mt-5 pt-5 border-t border-gray-100 dark:border-zinc-800">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-bold text-gray-900 dark:text-white text-sm">
-                  {selectedDay} {MONTH_NAMES[currentMonth]} {currentYear}
-                </h4>
-                <button onClick={() => setSelectedDay(null)} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300">Tancar</button>
-              </div>
-              {(calendarEvents[selectedDay] || []).length === 0 ? (
-                <p className="text-xs text-gray-400 dark:text-zinc-500 italic">No hi ha esdeveniments aquest dia.</p>
-              ) : (
-                <div className="space-y-2">
-                  {(calendarEvents[selectedDay] || []).map((ev, j) => (
-                    <div key={j} className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800">
-                      <span className={cn("text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0", EVENT_COLORS[ev.type])}>{ev.type}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 dark:text-white text-sm">{ev.title}</p>
-                        {(ev.time || ev.location) && (
-                          <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500 dark:text-zinc-400">
-                            {ev.time && <span className="flex items-center gap-1"><Clock size={11} />{ev.time}</span>}
-                            {ev.location && <span className="flex items-center gap-1"><MapPin size={11} />{ev.location}</span>}
-                          </div>
-                        )}
+        </div>
+
+        {/* Right: day detail */}
+        <div>
+          <div style={{ fontSize: 11, color: 'var(--tavil-faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>
+            {isToday(selDay) ? t('agenda.today') : `${selDay} ${monthGenitiu(currentMonth)}`}
+          </div>
+          <div style={{ fontFamily: '"Instrument Serif", serif', fontSize: 32, letterSpacing: '-0.015em', marginBottom: 6, color: 'var(--tavil-text)' }}>
+            {selEvents.length} {selEvents.length === 1 ? 'esdeveniment' : 'esdeveniments'}
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 20 }}>
+            {dayNameCa(selDay, currentMonth, currentYear)} {selDay} {monthGenitiu(currentMonth)} · hora local Barcelona
+          </div>
+
+          {selEvents.length === 0 ? (
+            <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: 28, textAlign: 'center', color: 'var(--tavil-faint)', fontSize: 13 }}>
+              Cap esdeveniment aquest dia
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {selEvents.sort((a, b) => (a.time || '').localeCompare(b.time || '')).map(ev => {
+                const parts = ev.time ? ev.time.split(/[-–]/) : [];
+                const color = eventRailColor(ev);
+                return (
+                  <div key={ev.id} style={{ display: 'flex', gap: 14 }}>
+                    <div style={{ width: 64, flexShrink: 0, paddingTop: 2 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tavil-text)', fontFeatureSettings: '"tnum"' }}>{parts[0]?.trim() || ev.time}</div>
+                      {parts[1] && <div style={{ fontSize: 11, color: 'var(--tavil-faint)', marginTop: 1 }}>{parts[1].trim()}</div>}
+                    </div>
+                    <div style={{ width: 3, background: color, borderRadius: 2, flexShrink: 0, alignSelf: 'stretch' }} />
+                    <div style={{ flex: 1, minWidth: 0, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 14 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25, color: 'var(--tavil-text)', marginBottom: 6 }}>{ev.title}</div>
+                      {ev.location && (
+                        <div style={{ fontSize: 12, color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+                          <MapPin size={12} />{ev.location}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 12, color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 600, background: 'var(--tavil-bgAlt)', color: 'var(--tavil-muted)', borderRadius: 5, padding: '2px 7px' }}>{ev.type}</span>
                       </div>
                       {isAdmin && (
-                        <div className="flex gap-1 flex-shrink-0">
-                          <button onClick={() => evEditId === ev.id ? setEvEditId(null) : openEvEdit(ev)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 hover:text-red-600 transition-colors"><Pencil size={13} /></button>
-                          <button onClick={() => handleDeleteEvent(ev.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-400 hover:text-red-600 transition-colors"><Trash2 size={13} /></button>
+                        <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
+                          <button onClick={() => evEditId === ev.id ? setEvEditId(null) : openEvEdit(ev)} style={{ background: 'none', border: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', padding: 0 }}><Pencil size={13} /></button>
+                          <button onClick={() => handleDeleteEvent(ev.id)} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 0 }}><Trash2 size={13} /></button>
                         </div>
                       )}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredEvents.length === 0 && (
-            <p className="text-gray-400 text-sm text-center py-12">No hi ha esdeveniments per a aquest filtre.</p>
-          )}
-          {filteredEvents.map((ev, i) => (
-            <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
-              <div className="flex items-center gap-4">
-                <div className="flex flex-col items-center justify-center w-14 h-14 rounded-xl bg-red-50 dark:bg-red-950/20 flex-shrink-0">
-                  <span className="text-red-600 font-bold text-lg leading-none">{ev.day}</span>
-                  <span className="text-red-400 text-[10px] font-bold uppercase">{MONTH_ABBR[ev.month] ?? ev.month}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 dark:text-white text-sm">{ev.title}</p>
-                  {ev.time && (
-                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-zinc-400">
-                      <span className="flex items-center gap-1"><Clock size={11} />{ev.time}</span>
-                      {ev.location && <span className="flex items-center gap-1"><MapPin size={11} />{ev.location}</span>}
-                    </div>
-                  )}
-                </div>
-                <span className={cn("text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0", EVENT_COLORS[ev.type])}>{ev.type}</span>
-                {isAdmin && (
-                  <div className="flex gap-1 flex-shrink-0">
-                    <button onClick={() => evEditId === ev.id ? setEvEditId(null) : openEvEdit(ev)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 hover:text-red-600 transition-colors"><Pencil size={13} /></button>
-                    <button onClick={() => handleDeleteEvent(ev.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-gray-400 hover:text-red-600 transition-colors"><Trash2 size={13} /></button>
                   </div>
-                )}
-              </div>
+                );
+              })}
             </div>
-          ))}
+          )}
         </div>
-      )}
       </div>
+
       {evEditId !== null && (
         <EditModal title="Editar event" onClose={() => setEvEditId(null)}>
           <div className="grid grid-cols-2 gap-2">
@@ -3628,7 +3166,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
             <input type="text" value={eeTime} onChange={e => setEeTime(e.target.value)} placeholder="Hora" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
             <input type="text" value={eeLocation} onChange={e => setEeLocation(e.target.value)} placeholder="Lloc" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
             <select value={eeType} onChange={e => setEeType(e.target.value)} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white">
-              {Object.keys(EVENT_COLORS).map(t => <option key={t}>{t}</option>)}
+              {Object.keys(EVENT_COLORS).map(tp => <option key={tp}>{tp}</option>)}
             </select>
             <div className="col-span-2 flex justify-end gap-2">
               <button onClick={() => setEvEditId(null)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400">Cancel·lar</button>
@@ -4530,8 +4068,8 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
                 <div className="text-center py-10 text-gray-400 text-sm">No hi ha proves disponibles de moment</div>
               )}
               {quizList.map(q => (
-                <div key={q.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 flex items-center gap-4 hover:border-violet-300 dark:hover:border-violet-700 transition-colors">
-                  <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950/20 flex items-center justify-center text-violet-600 flex-shrink-0">
+                <div key={q.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 flex items-center gap-4 hover:border-red-300 dark:hover:border-red-700 transition-colors">
+                  <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/20 flex items-center justify-center text-red-600 flex-shrink-0">
                     <GraduationCap size={20} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -4551,10 +4089,10 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
                     {q.description && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1 truncate">{q.description}</p>}
                   </div>
                   <button
-                    onClick={() => window.open(`${window.location.pathname}?quiz=${q.id}`, '_blank')}
-                    className="flex-shrink-0 px-4 py-2 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition-colors"
+                    onClick={() => window.open(`${window.location.pathname}?quiz=${q.id}${q.in_progress ? '&resume=1' : ''}`, '_blank')}
+                    className={`flex-shrink-0 px-4 py-2 rounded-lg text-white text-xs font-semibold transition-colors ${q.in_progress ? 'bg-amber-600 hover:bg-amber-700' : 'bg-red-600 hover:bg-red-700'}`}
                   >
-                    {q.user_attempt ? 'Repetir' : 'Començar'}
+                    {q.in_progress ? 'Continuar' : (q.user_attempt ? 'Repetir' : 'Començar')}
                   </button>
                 </div>
               ))}
@@ -4612,6 +4150,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
 
   useEffect(() => {
     if (initialSubTab) { setActiveTab(initialSubTab); onSubTabConsumed?.(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSubTab]);
 
   // Suggestions state
@@ -5635,6 +5174,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
 
   useEffect(() => {
     if (initialSubTab) { setActiveTab(initialSubTab); onSubTabConsumed?.(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSubTab]);
   const [diesNoOrdinaris, setDiesNoOrdinaris] = useState<Solicitud[]>(() => tabPrefetch.solicituds ?? []);
   const [selectedDate, setSelectedDate] = useState('');
@@ -6604,6 +6144,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
   };
 
   const [showNotifs, setShowNotifs] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
   const [notifList, setNotifList] = useState<Notification[]>([]);
 
   useEffect(() => {
@@ -6616,7 +6157,72 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
   if (isMobilePerfil) {
     const name = currentUser?.name ?? '';
     const ini = name.split(' ').map((w: string) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
-    const hue = name.split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0) % 360;
+
+    // ── Configuració sub-view ──────────────────────────────
+    if (showConfig) {
+      return (
+        <div className="anim-page-enter-h-fwd" style={{ margin: '0 -12px', paddingBottom: 96 }}>
+          {/* Back header */}
+          <div style={{
+            display: 'flex', alignItems: 'center', padding: '14px 16px 6px', gap: 4,
+          }}>
+            <button
+              onClick={() => setShowConfig(false)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                color: 'var(--tavil-accent)', fontFamily: 'inherit', fontSize: 16, padding: '4px 0',
+              }}
+            >
+              <ChevronLeft size={20} strokeWidth={2} />
+              Perfil
+            </button>
+          </div>
+          <div style={{
+            fontSize: 28, fontFamily: '"Instrument Serif","Times New Roman",serif',
+            fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--tavil-text)',
+            padding: '4px 24px 18px',
+          }}>Configuració</div>
+
+          <MesSettingsGroup label="NOTIFICACIONS">
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14.5, color: 'var(--tavil-text)' }}>Per correu</div>
+                <div style={{ fontSize: 12, color: 'var(--tavil-muted)', marginTop: 2 }}>Email per cada notificació nova.</div>
+              </div>
+              <Toggle on={notifCorreu} onToggle={async () => {
+                const newVal = !notifCorreu;
+                setNotifCorreu(newVal);
+                try { const u = await apiUpdateMe({ email_notifs: newVal ? 1 : 0 }); onUserUpdate(u); }
+                catch { setNotifCorreu(!newVal); }
+              }} />
+            </div>
+            <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14.5, color: 'var(--tavil-text)' }}>Al portal</div>
+                <div style={{ fontSize: 12, color: 'var(--tavil-muted)', marginTop: 2 }}>Mostra la campaneta amb les novetats.</div>
+              </div>
+              <Toggle on={notifPortal} onToggle={() => setNotifPortal(!notifPortal)} />
+            </div>
+          </MesSettingsGroup>
+
+          <MesSettingsGroup label="COMPTE">
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 14, color: 'var(--tavil-muted)', flex: 1 }}>Correu</span>
+              <span style={{ fontSize: 13.5, color: 'var(--tavil-text)' }}>{currentUser?.email ?? '—'}</span>
+            </div>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 14, color: 'var(--tavil-muted)', flex: 1 }}>ID</span>
+              <span style={{ fontSize: 13.5, color: 'var(--tavil-text)' }}>{`TAV-0${String(currentUser?.id ?? 0).padStart(3, '0')}`}</span>
+            </div>
+            <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 14, color: 'var(--tavil-muted)', flex: 1 }}>Rol</span>
+              <span style={{ fontSize: 13.5, color: 'var(--tavil-text)' }}>{currentUser?.role ?? '—'}</span>
+            </div>
+          </MesSettingsGroup>
+        </div>
+      );
+    }
 
     // ── Notifications sub-view ─────────────────────────────
     if (showNotifs) {
@@ -6665,7 +6271,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                 >
                   <div style={{
                     width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                    background: n.read ? 'var(--tavil-bg-alt)' : '#fdf2f2',
+                    background: n.read ? 'var(--tavil-bg-alt)' : 'var(--tavil-accent-light)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     <Bell size={16} style={{ color: n.read ? 'var(--tavil-muted)' : 'var(--tavil-accent)' }} />
@@ -6714,10 +6320,12 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
         <div style={{ padding: '10px 20px 22px', textAlign: 'center' }}>
           <div style={{
             width: 84, height: 84, borderRadius: 42, margin: '0 auto 14px',
-            background: `oklch(0.88 0.03 ${hue})`,
-            color: `oklch(0.32 0.04 ${hue})`,
+            background: 'linear-gradient(135deg, var(--tavil-accent), var(--tavil-accent-dark))',
+            color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontWeight: 600, fontSize: 32, letterSpacing: '-0.01em',
+            boxShadow: '0 6px 20px -8px rgba(0,0,0,0.18)',
+            fontFamily: '"Instrument Serif", "Times New Roman", serif',
           }}>{ini}</div>
           <div style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 28, letterSpacing: '-0.01em', lineHeight: 1.1, color: 'var(--tavil-text)' }}>
             {name || 'Usuari'}
@@ -6746,7 +6354,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                   onClick={toggleDarkMode}
                   style={{
                     padding: '14px 8px 12px', borderRadius: 12,
-                    background: active ? '#fdf2f2' : 'transparent',
+                    background: active ? 'var(--tavil-accent-light)' : 'transparent',
                     border: `1px solid ${active ? 'var(--tavil-accent)' : 'var(--tavil-border)'}`,
                     color: active ? 'var(--tavil-accent)' : 'var(--tavil-text)',
                     cursor: 'pointer', fontFamily: 'inherit', fontSize: 13,
@@ -6805,6 +6413,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
             <ChevronRight size={16} style={{ color: 'var(--tavil-faint)' }} />
           </button>
           <button
+            onClick={() => setShowConfig(true)}
             style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 12,
               padding: '14px 16px', background: 'transparent',
@@ -7157,69 +6766,6 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
 
 // ── Onboarding Modal ─────────────────────────────────────────────────────────
 
-function OnboardingModal({ onComplete }: { onComplete: (dept: string, isHead: boolean) => Promise<void> }) {
-  const [dept, setDept] = useState(DEPT_ORDER[0]);
-  const [isHead, setIsHead] = useState(false);
-  const [deptHasHead, setDeptHasHead] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    apiGetDeptHead(dept).then(r => { setDeptHasHead(r.has_head); if (r.has_head) setIsHead(false); }).catch(() => {});
-  }, [dept]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    await onComplete(dept, isHead);
-    setLoading(false);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 anim-fade-in">
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-8 w-full max-w-sm shadow-xl anim-scale-in">
-        <div className="text-center mb-6">
-          <div className="w-12 h-12 bg-red-50 dark:bg-red-950/30 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Users size={22} className="text-red-600" />
-          </div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Benvingut/da a TAVIL</h2>
-          <p className="text-sm text-gray-500 dark:text-zinc-400">Digues-nos una mica més sobre tu per configurar el teu espai.</p>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Departament</label>
-            <select
-              value={dept}
-              onChange={e => setDept(e.target.value)}
-              className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white"
-            >
-              {DEPT_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </div>
-          <label className={cn("flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-gray-100 dark:border-zinc-800 transition-colors", deptHasHead ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-50 dark:hover:bg-zinc-800")}>
-            <input
-              type="checkbox"
-              checked={isHead}
-              disabled={deptHasHead}
-              onChange={e => setIsHead(e.target.checked)}
-              className="rounded text-red-600 focus:ring-red-400"
-            />
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">Sóc el/la responsable d'aquest departament</p>
-              <p className="text-xs text-gray-400">{deptHasHead ? 'Aquest departament ja té un responsable assignat' : 'Marca si ets el/la cap de departament'}</p>
-            </div>
-          </label>
-          <button
-            type="submit"
-            disabled={loading}
-            className="press w-full bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold py-3 rounded-lg transition-colors mt-2"
-          >
-            Continuar
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 // ── Auth pages ────────────────────────────────────────────────────────────────
 
@@ -7262,7 +6808,6 @@ function VerifyEmailPage({ email, onBack, onVerified, isDarkMode, toggleDarkMode
   const CODE_LEN = 8;
   const [slots, setSlots] = useState<string[]>(Array(CODE_LEN).fill(''));
   const slotRefs = React.useRef<(HTMLInputElement | null)[]>([]);
-  const singleCode = code || slots.join('');
 
   const setSlot = (i: number, v: string) => {
     v = v.toUpperCase().replace(/[^0-9A-F]/g, '').slice(0, 1);
@@ -7819,387 +7364,6 @@ function LoginPage({ onLoginResult, isDarkMode, toggleDarkMode }: {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function RegisterPage({ onBack, onRegisterResult, isDarkMode, toggleDarkMode }: {
-  onBack: () => void;
-  onRegisterResult: (data: AuthOut) => void;
-  isDarkMode: boolean;
-  toggleDarkMode: () => void;
-}) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const passwordsMatch = confirmPassword === '' || password === confirmPassword;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (!EMAIL_RE.test(email.trim())) { setError('El correu ha de tenir el format nom@tavil.net'); return; }
-    if (!email.trim().toLowerCase().endsWith('@tavil.net')) { setError('Només es permeten correus @tavil.net'); return; }
-    if (password.length < 6) { setError('La contrasenya ha de tenir mínim 6 caràcters.'); return; }
-    if (password !== confirmPassword) { setError('Les contrasenyes no coincideixen.'); return; }
-    setLoading(true);
-    try {
-      const data = await apiRegister(name.trim(), email.trim().toLowerCase(), password);
-      onRegisterResult(data);
-    } catch (err: any) {
-      setError(err.message ?? 'Error desconegut.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const regStrength = (() => {
-    let s = 0;
-    if (password.length >= 6) s++; if (password.length >= 10) s++;
-    if (/[A-Z]/.test(password)) s++; if (/[0-9]/.test(password)) s++; if (/[^A-Za-z0-9]/.test(password)) s++;
-    return Math.min(s, 4);
-  })();
-  const REG_STRENGTH_COLORS = ['var(--tavil-border)', '#c87158', '#b6833a', '#7a8a6b', '#3f7a52'];
-  const REG_STRENGTH_LABELS = ['—', 'Feble', 'Correcta', 'Bona', 'Forta'];
-  const regValid = !!(name.trim() && EMAIL_RE.test(email.trim()) && password.length >= 6 && password === confirmPassword);
-
-  const isMobileReg = typeof window !== 'undefined' && window.innerWidth < 768;
-  const [regLang, setRegLang] = useState<'ca'|'es'|'en'>('ca');
-
-  const regInputStyle: React.CSSProperties = {
-    width: '100%', height: 50, padding: '0 14px 0 42px',
-    background: 'var(--tavil-card)', color: 'var(--tavil-text)',
-    border: '1px solid var(--tavil-border)',
-    borderRadius: 14, fontSize: 15, outline: 'none', boxSizing: 'border-box',
-    fontFamily: 'inherit',
-  };
-  const regLabelStyle: React.CSSProperties = {
-    fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 6, fontWeight: 500, display: 'block',
-  };
-
-  // ── Mobile layout ───────────────────────────────────────────────────────────
-  if (isMobileReg) {
-    // password strength
-    const strength = (() => {
-      let s = 0;
-      if (password.length >= 6) s++; if (password.length >= 10) s++;
-      if (/[A-Z]/.test(password)) s++; if (/[0-9]/.test(password)) s++; if (/[^A-Za-z0-9]/.test(password)) s++;
-      return Math.min(s, 4);
-    })();
-    const strengthColors = ['var(--tavil-border)', '#c87158', '#b6833a', '#7a8a6b', '#3f7a52'];
-    const strengthLabels = ['—', 'Feble', 'Correcta', 'Bona', 'Forta'];
-    const valid = name.trim() && EMAIL_RE.test(email.trim()) && password.length >= 6 && password === confirmPassword;
-
-    return (
-      <div className={cn("min-h-screen flex flex-col transition-colors", isDarkMode && "dark")}
-        style={{ background: 'var(--tavil-bg)', color: 'var(--tavil-text)', padding: '10px 24px 28px', overflowY: 'auto' }}>
-
-        {/* Top: back + language switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
-          <button onClick={onBack} style={{
-            width: 40, height: 40, borderRadius: 20,
-            background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0,
-          }}>
-            <ChevronLeft size={18} />
-          </button>
-          <div style={{ display: 'inline-flex', background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 999, padding: 3, gap: 0 }}>
-            {(['ca','es','en'] as const).map(l => (
-              <button key={l} onClick={() => setRegLang(l)} style={{
-                padding: '5px 10px', fontSize: 11, fontWeight: 600,
-                background: regLang === l ? 'var(--tavil-text)' : 'transparent',
-                color: regLang === l ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
-                border: 'none', borderRadius: 999, cursor: 'pointer',
-                textTransform: 'uppercase', letterSpacing: '0.06em',
-                fontFamily: 'inherit', transition: 'all 200ms',
-              }}>{l}</button>
-            ))}
-          </div>
-        </div>
-
-        {/* Step indicator */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
-          <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-accent)' }} />
-          <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-border)' }} />
-        </div>
-
-        {/* Heading */}
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
-            Pas 1 de 2
-          </div>
-          <h1 style={{
-            fontFamily: '"Instrument Serif", "Times New Roman", serif',
-            fontSize: 36, fontWeight: 400, lineHeight: 1.02, margin: '0 0 8px',
-            letterSpacing: '-0.02em', color: 'var(--tavil-text)',
-          }}>Crea un compte</h1>
-          <p style={{ fontSize: 14, color: 'var(--tavil-muted)', margin: 0, lineHeight: 1.4 }}>
-            Registra't amb el teu correu corporatiu
-          </p>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          <div style={{ marginBottom: 14 }}>
-            <span style={regLabelStyle}>Nom complet</span>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <UserCircle size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
-              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nom i cognoms" required
-                style={regInputStyle} autoComplete="name" />
-            </div>
-          </div>
-          <div style={{ marginBottom: 14 }}>
-            <span style={regLabelStyle}>Correu electrònic</span>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Mail size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nom.cognom@tavil.net" required
-                style={{ ...regInputStyle, borderColor: email && !EMAIL_RE.test(email) ? 'var(--tavil-accent)' : 'var(--tavil-border)' }}
-                inputMode="email" autoComplete="email" />
-            </div>
-            {email && !EMAIL_RE.test(email) && (
-              <p style={{ fontSize: 12, color: 'var(--tavil-accent)', margin: '4px 0 0' }}>Format: nom@tavil.net</p>
-            )}
-          </div>
-          <div style={{ marginBottom: 14 }}>
-            <span style={regLabelStyle}>
-              Contrasenya{password ? ` · Seguretat: ${strengthLabels[strength]}` : ' · Mínim 6 caràcters'}
-            </span>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Lock size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
-              <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••" required autoComplete="new-password"
-                style={{ ...regInputStyle, padding: '0 42px 0 42px' }} />
-              <button type="button" onClick={() => setShowPass(!showPass)} style={{
-                position: 'absolute', right: 14, color: 'var(--tavil-faint)',
-                background: 'none', border: 'none', cursor: 'pointer', display: 'flex',
-              }}>
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            {password && (
-              <div style={{ display: 'flex', gap: 3, marginTop: 6 }}>
-                {[1,2,3,4].map(i => (
-                  <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= strength ? strengthColors[strength] : 'var(--tavil-border)', transition: 'all 200ms' }} />
-                ))}
-              </div>
-            )}
-          </div>
-          <div style={{ marginBottom: 24 }}>
-            <span style={regLabelStyle}>Confirma la contrasenya</span>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Lock size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
-              <input type={showConfirm ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
-                placeholder="••••••••" required autoComplete="new-password"
-                style={{ ...regInputStyle, padding: '0 42px 0 42px', borderColor: !passwordsMatch ? 'var(--tavil-accent)' : 'var(--tavil-border)' }} />
-              <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={{
-                position: 'absolute', right: 14, color: 'var(--tavil-faint)',
-                background: 'none', border: 'none', cursor: 'pointer', display: 'flex',
-              }}>
-                {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            {!passwordsMatch && (
-              <p style={{ fontSize: 12, color: 'var(--tavil-accent)', margin: '4px 0 0' }}>Les contrasenyes no coincideixen.</p>
-            )}
-          </div>
-          {error && <p style={{ fontSize: 13, color: 'var(--tavil-accent)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
-          <div style={{ flex: 1, minHeight: 8 }} />
-          <button type="submit" disabled={loading || !valid} style={{
-            height: 52, borderRadius: 14, border: 'none',
-            background: loading ? '#a21b18' : 'var(--tavil-accent)', color: '#fff',
-            fontSize: 15, fontWeight: 600, cursor: (loading || !valid) ? 'not-allowed' : 'pointer',
-            transition: 'all 160ms', opacity: (loading || !valid) ? 0.6 : 1, fontFamily: 'inherit',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          }}>
-            {loading ? 'Carregant…' : <>Continuar <ChevronRight size={16} /></>}
-          </button>
-        </form>
-      </div>
-    );
-  }
-
-  // ── Desktop layout — split panel ─────────────────────────────────────────
-  const deskRegInputStyle: React.CSSProperties = {
-    width: '100%', height: 46, padding: '0 14px 0 42px',
-    background: 'var(--tavil-card)', color: 'var(--tavil-text)',
-    border: '1px solid var(--tavil-border)',
-    borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box',
-    fontFamily: 'inherit', transition: 'border-color 160ms',
-  };
-  const deskRegLabelStyle: React.CSSProperties = {
-    fontSize: 12.5, color: 'var(--tavil-muted)', marginBottom: 6, fontWeight: 500, display: 'block',
-  };
-  return (
-    <div className={cn("min-h-screen", isDarkMode && "dark")} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.1fr)', background: 'var(--tavil-bg)', color: 'var(--tavil-text)' }}>
-
-      {/* ── Left: form panel ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', padding: '48px 60px', minHeight: '100vh', boxSizing: 'border-box', overflowY: 'auto' }}>
-        {/* Logo + dark toggle + back */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            {isDarkMode
-              ? <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoDark.png`} alt="TAVIL" style={{ height: 18 }} />
-              : <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`} alt="TAVIL" style={{ height: 18 }} />
-            }
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--tavil-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
-              <ChevronLeft size={15} /> Tornar al login
-            </button>
-            <button onClick={toggleDarkMode} style={{ width: 36, height: 36, borderRadius: 18, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-muted)' }}>
-              {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Step progress */}
-        <div style={{ display: 'flex', gap: 6, margin: '36px 0 0', maxWidth: 440 }}>
-          <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-accent)' }} />
-          <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-border)' }} />
-        </div>
-
-        {/* Center form */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 440 }}>
-          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: 14 }}>
-            Pas 1 de 2 · Portal intern
-          </div>
-          <h1 style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 48, fontWeight: 400, lineHeight: 1, margin: '0 0 12px', letterSpacing: '-0.03em', color: 'var(--tavil-text)' }}>
-            Crea el teu compte
-          </h1>
-          <p style={{ fontSize: 15, color: 'var(--tavil-muted)', margin: '0 0 28px', lineHeight: 1.5 }}>
-            Uneix-te al portal intern amb el teu correu corporatiu
-          </p>
-
-          <form onSubmit={handleSubmit}>
-            {/* Name */}
-            <div style={{ marginBottom: 16 }}>
-              <span style={deskRegLabelStyle}>Nom complet</span>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <UserCircle size={15} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
-                <input
-                  type="text" value={name} onChange={e => setName(e.target.value)}
-                  placeholder="Nom i cognoms" required autoComplete="name"
-                  style={deskRegInputStyle}
-                />
-              </div>
-            </div>
-
-            {/* Email */}
-            <div style={{ marginBottom: 16 }}>
-              <span style={deskRegLabelStyle}>Correu electrònic</span>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <Mail size={15} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
-                <input
-                  type="email" value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="nom.cognom@tavil.net" required autoComplete="email"
-                  style={{ ...deskRegInputStyle, borderColor: email && !EMAIL_RE.test(email) ? 'var(--tavil-accent)' : 'var(--tavil-border)' }}
-                />
-              </div>
-              {email && !EMAIL_RE.test(email) && (
-                <p style={{ fontSize: 12, color: 'var(--tavil-accent)', margin: '4px 0 0' }}>Format: nom@tavil.net</p>
-              )}
-            </div>
-
-            {/* Password + strength */}
-            <div style={{ marginBottom: 16 }}>
-              <span style={deskRegLabelStyle}>
-                Contrasenya{password ? ` · ${REG_STRENGTH_LABELS[regStrength]}` : ' · Mínim 6 caràcters'}
-              </span>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <Lock size={15} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
-                <input
-                  type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••••" required autoComplete="new-password"
-                  style={{ ...deskRegInputStyle, padding: '0 44px' }}
-                />
-                <button type="button" onClick={() => setShowPass(!showPass)} style={{ position: 'absolute', right: 14, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tavil-faint)', display: 'flex', padding: 0 }}>
-                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
-              </div>
-              {password && (
-                <div style={{ display: 'flex', gap: 3, marginTop: 6 }}>
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= regStrength ? REG_STRENGTH_COLORS[regStrength] : 'var(--tavil-border)', transition: 'background 200ms' }} />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Confirm password */}
-            <div style={{ marginBottom: 24 }}>
-              <span style={deskRegLabelStyle}>Confirma la contrasenya</span>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <Lock size={15} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
-                <input
-                  type={showConfirm ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••••" required autoComplete="new-password"
-                  style={{ ...deskRegInputStyle, padding: '0 44px', borderColor: !passwordsMatch ? 'var(--tavil-accent)' : 'var(--tavil-border)' }}
-                />
-                <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={{ position: 'absolute', right: 14, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tavil-faint)', display: 'flex', padding: 0 }}>
-                  {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
-              </div>
-              {!passwordsMatch && (
-                <p style={{ fontSize: 12, color: 'var(--tavil-accent)', margin: '4px 0 0' }}>Les contrasenyes no coincideixen</p>
-              )}
-            </div>
-
-            {error && <p style={{ fontSize: 13, color: 'var(--tavil-accent)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
-
-            <button type="submit" disabled={loading || !regValid} style={{ width: '100%', height: 48, borderRadius: 10, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 15, fontWeight: 600, cursor: (loading || !regValid) ? 'not-allowed' : 'pointer', opacity: (loading || !regValid) ? 0.6 : 1, transition: 'opacity 160ms', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit' }}>
-              {loading ? 'Carregant…' : <> Continua <ArrowRight size={16} /></>}
-            </button>
-          </form>
-
-          <div style={{ marginTop: 28, textAlign: 'center', fontSize: 13, color: 'var(--tavil-faint)' }}>
-            Ja tens compte?{' '}
-            <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
-              Inicia sessió
-            </button>
-          </div>
-          <div style={{ marginTop: 24, fontSize: 12.5, color: 'var(--tavil-faint)', textAlign: 'center' }}>
-            © 2026 TAVIL S.A. · Portal intern · v4.2
-          </div>
-        </div>
-      </div>
-
-      {/* ── Right: editorial cover ── */}
-      <div style={{ background: 'var(--tavil-accent)', color: '#fff', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '48px 60px', justifyContent: 'space-between', minHeight: '100vh', boxSizing: 'border-box' }}>
-        <div style={{ position: 'absolute', inset: 0, opacity: 0.08, background: 'repeating-linear-gradient(45deg, transparent 0 18px, #fff 18px 19px)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', top: '-18%', right: '-14%', width: 480, height: 480, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '-22%', left: '-12%', width: 420, height: 420, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
-
-        <div style={{ position: 'relative', fontSize: 11, fontWeight: 600, letterSpacing: '0.18em', opacity: 0.9, textTransform: 'uppercase' }}>
-          Abril 2026 · Número 142
-        </div>
-
-        <div style={{ position: 'relative' }}>
-          <div style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 88, lineHeight: 0.95, letterSpacing: '-0.04em', marginBottom: 20, fontStyle: 'italic' }}>
-            Uneix-te<br />a nosaltres.
-          </div>
-          <div style={{ fontSize: 16, lineHeight: 1.5, opacity: 0.92, maxWidth: 460 }}>
-            Crea el teu compte i accedeix a tot el portal intern de TAVIL — notícies, agenda, formació i la veu de cadascú.
-          </div>
-          <div style={{ display: 'flex', gap: 40, marginTop: 44 }}>
-            {[{ n: '128', l: 'persones' }, { n: '3', l: 'seus' }, { n: '40+', l: 'anys' }].map(s => (
-              <div key={s.l}>
-                <div style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 44, lineHeight: 1, letterSpacing: '-0.025em' }}>{s.n}</div>
-                <div style={{ fontSize: 11, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: 6 }}>{s.l}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ position: 'relative', fontSize: 11, opacity: 0.75, letterSpacing: '0.06em', display: 'flex', justifyContent: 'space-between' }}>
-          <span>Barcelona · Terrassa · Milà · Lió</span>
-          <span>tavil.com</span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Change Password Modal ─────────────────────────────────────────────────────
 
@@ -8460,7 +7624,7 @@ function QuizBuilderModal({ quiz, onClose, onSaved }: {
   const inputCls = 'w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/30';
   const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1';
   // macOS-style datetime input: subtle border, rounded, monospaced numerics
-  const dateCls = 'w-full border border-gray-200 dark:border-zinc-700 rounded-xl px-3 py-2.5 text-sm bg-gradient-to-b from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 font-medium tabular-nums shadow-sm';
+  const dateCls = 'w-full border border-gray-200 dark:border-zinc-700 rounded-xl px-3 py-2.5 text-sm bg-gradient-to-b from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/30 font-medium tabular-nums shadow-sm';
 
   // Duration in days
   const startMs = startAt ? new Date(startAt).getTime() : NaN;
@@ -8475,7 +7639,7 @@ function QuizBuilderModal({ quiz, onClose, onSaved }: {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800">
           <div className="flex items-center gap-2">
-            <GraduationCap size={20} className="text-violet-600" />
+            <GraduationCap size={20} className="text-red-600" />
             <h2 className="text-base font-bold text-gray-900 dark:text-white">{isEdit ? 'Editar formació' : 'Nova formació'}</h2>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><X size={18} /></button>
@@ -8496,7 +7660,7 @@ function QuizBuilderModal({ quiz, onClose, onSaved }: {
                   className="w-24 h-16 object-cover rounded-lg border border-gray-200 dark:border-zinc-700 flex-shrink-0"
                 />
               )}
-              <label className="flex-1 cursor-pointer text-xs px-3 py-2 rounded-lg bg-violet-50 dark:bg-violet-950/20 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-950/40 font-medium border border-dashed border-violet-200 dark:border-violet-800 text-center transition-colors">
+              <label className="flex-1 cursor-pointer text-xs px-3 py-2 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-950/40 font-medium border border-dashed border-red-200 dark:border-red-800 text-center transition-colors">
                 <input type="file" accept="image/*" className="hidden" onChange={e => setImageFile(e.target.files?.[0] ?? null)} />
                 {imageFile ? imageFile.name : (image ? 'Canviar imatge' : 'Pujar imatge')}
               </label>
@@ -8507,11 +7671,11 @@ function QuizBuilderModal({ quiz, onClose, onSaved }: {
           </div>
 
           {/* macOS-style date pickers — informational */}
-          <div className="rounded-2xl bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/20 dark:to-indigo-950/20 border border-violet-100 dark:border-violet-900/40 p-4 space-y-3">
+          <div className="rounded-2xl bg-gradient-to-br from-red-50 to-red-50 dark:from-red-950/20 dark:to-red-950/20 border border-red-100 dark:border-red-900/40 p-4 space-y-3">
             <div className="flex items-center gap-2 mb-1">
-              <Calendar size={14} className="text-violet-600" />
-              <span className="text-xs font-bold text-violet-700 dark:text-violet-300 uppercase tracking-widest">Finestra de la formació</span>
-              <span className="text-[10px] text-violet-500 dark:text-violet-400 ml-auto">informatiu</span>
+              <Calendar size={14} className="text-red-600" />
+              <span className="text-xs font-bold text-red-700 dark:text-red-300 uppercase tracking-widest">Finestra de la formació</span>
+              <span className="text-[10px] text-red-500 dark:text-red-400 ml-auto">informatiu</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
@@ -8523,9 +7687,9 @@ function QuizBuilderModal({ quiz, onClose, onSaved }: {
                 <input type="date" value={endAt} onChange={e => setEndAt(e.target.value)} className={dateCls} />
               </div>
             </div>
-            <div className="pt-2 border-t border-violet-200/50 dark:border-violet-800/40">
-              <p className="text-[10px] text-violet-500 dark:text-violet-400 uppercase tracking-widest font-semibold">Durada</p>
-              <p className="text-sm font-bold text-violet-700 dark:text-violet-300 tabular-nums">
+            <div className="pt-2 border-t border-red-200/50 dark:border-red-800/40">
+              <p className="text-[10px] text-red-500 dark:text-red-400 uppercase tracking-widest font-semibold">Durada</p>
+              <p className="text-sm font-bold text-red-700 dark:text-red-300 tabular-nums">
                 {isNaN(durationDays) ? '—' : `${durationDays} dia${durationDays !== 1 ? 's' : ''}`}
               </p>
             </div>
@@ -8555,7 +7719,7 @@ function QuizBuilderModal({ quiz, onClose, onSaved }: {
             </div>
             <div className="flex items-end pb-1">
               <label className="flex items-center gap-2 cursor-pointer select-none">
-                <button type="button" onClick={() => setActive(a => a === 1 ? 0 : 1)} className={`relative inline-flex w-10 h-6 items-center rounded-full transition-colors ${active === 1 ? 'bg-violet-600' : 'bg-gray-300 dark:bg-zinc-700'}`}>
+                <button type="button" onClick={() => setActive(a => a === 1 ? 0 : 1)} className={`relative inline-flex w-10 h-6 items-center rounded-full transition-colors ${active === 1 ? 'bg-red-600' : 'bg-gray-300 dark:bg-zinc-700'}`}>
                   <span className="inline-block w-5 h-5 bg-white rounded-full shadow transition-transform" style={{ transform: active === 1 ? 'translateX(18px)' : 'translateX(2px)' }} />
                 </button>
                 <span className="text-sm text-gray-700 dark:text-zinc-300">Actiu (visible als empleats)</span>
@@ -8575,8 +7739,8 @@ function QuizBuilderModal({ quiz, onClose, onSaved }: {
                       type="button"
                       onClick={() => setTargetDepts(prev => on ? prev.filter(x => x !== d) : [...prev, d])}
                       className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${on
-                        ? 'bg-violet-600 border-violet-600 text-white'
-                        : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-300 hover:border-violet-400'}`}
+                        ? 'bg-red-600 border-red-600 text-white'
+                        : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-300 hover:border-red-400'}`}
                     >
                       {d}
                     </button>
@@ -8745,9 +7909,9 @@ function QuizResultsDrawer({ quizId }: { quizId: number }) {
       ) : (
         <div className="space-y-2">
           <div className="grid grid-cols-3 gap-2">
-            <div className="bg-violet-50 dark:bg-violet-950/20 rounded-lg p-2">
-              <p className="text-[9px] text-violet-600 dark:text-violet-400 uppercase tracking-widest font-semibold">Total</p>
-              <p className="text-lg font-bold text-violet-700 dark:text-violet-300 tabular-nums leading-tight">{total}</p>
+            <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-2">
+              <p className="text-[9px] text-red-600 dark:text-red-400 uppercase tracking-widest font-semibold">Total</p>
+              <p className="text-lg font-bold text-red-700 dark:text-red-300 tabular-nums leading-tight">{total}</p>
             </div>
             <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-lg p-2">
               <p className="text-[9px] text-emerald-600 dark:text-emerald-400 uppercase tracking-widest font-semibold">Aprovats</p>
@@ -8761,7 +7925,7 @@ function QuizResultsDrawer({ quizId }: { quizId: number }) {
           <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
             {rows.map(r => (
               <div key={r.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-gray-50 dark:bg-zinc-800/40">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-400 to-red-500 flex items-center justify-center text-white font-bold text-[10px] flex-shrink-0">
                   {r.user_name.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -8812,6 +7976,153 @@ function MetricCard({
   );
 }
 
+// ── ExternalCourseModal ───────────────────────────────────────────────────────
+const COURSE_CATEGORIES = ['Seguretat', 'Qualitat', 'Sistemes', 'Comercial', 'Compliance', 'Acollida', 'Producció', 'Habilitats', 'Idiomes', 'Altres'];
+
+function ExternalCourseModal({ course, onClose, onSaved }: {
+  course?: Course | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isEdit = !!course;
+  const [title, setTitle] = useState(course?.title ?? '');
+  const [description, setDescription] = useState(course?.description ?? '');
+  const [url, setUrl] = useState(course?.url ?? '');
+  const [category, setCategory] = useState(course?.category ?? '');
+  const [hours, setHours] = useState(course?.hours ?? '');
+  const [mandatory, setMandatory] = useState(!!(course?.mandatory));
+  const [depts, setDepts] = useState<string[]>(() => {
+    try { return JSON.parse(course?.departments || '[]'); } catch { return []; }
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  const toggleDept = (d: string) => setDepts(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+
+  const handleSave = async () => {
+    if (!title.trim()) { setErr('El títol és obligatori'); return; }
+    if (!url.trim()) { setErr('L\'URL és obligatòria'); return; }
+    setSaving(true); setErr('');
+    const payload: ExternalCoursePayload = { title: title.trim(), description: description.trim(), url: url.trim(), category: category.trim(), hours: hours.trim(), mandatory: mandatory ? 1 : 0, departments: depts };
+    try {
+      if (isEdit) await apiUpdateExternalCourse(course!.id, payload);
+      else await apiCreateExternalCourse(payload);
+      onSaved();
+    } catch (e: any) { setErr(e.message || 'Error desant'); setSaving(false); }
+  };
+
+  const labelCls = 'block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1';
+  const inputCls = 'w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-400';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center backdrop-blur-sm bg-black/50 p-0 sm:p-6" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-zinc-800 flex-shrink-0">
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <div className="w-6 h-6 rounded-md bg-red-50 dark:bg-red-950/40 flex items-center justify-center">
+                <ExternalLink size={13} className="text-red-600" />
+              </div>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white">{isEdit ? 'Editar formació externa' : 'Nova formació externa'}</h2>
+            </div>
+            <p className="text-[11px] text-gray-400 dark:text-zinc-500 pl-8">El curs s'obre a una URL externa</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors text-gray-400"><X size={16} /></button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-5 flex-1 overflow-y-auto">
+          {/* Títol */}
+          <div className="space-y-1.5">
+            <label className={labelCls}>Títol <span className="text-red-500">*</span></label>
+            <input className={inputCls} value={title} onChange={e => setTitle(e.target.value)} placeholder="Nom de la formació" autoFocus />
+          </div>
+
+          {/* URL */}
+          <div className="space-y-1.5">
+            <label className={labelCls}>URL del curs <span className="text-red-500">*</span></label>
+            <div className="relative">
+              <ExternalLink size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input className={`${inputCls} pl-8`} value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." type="url" />
+            </div>
+          </div>
+
+          {/* Categoria + Hores */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className={labelCls}>Categoria</label>
+              <select className={inputCls} value={category} onChange={e => setCategory(e.target.value)}>
+                <option value="">— Cap —</option>
+                {COURSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className={labelCls}>Durada</label>
+              <input className={inputCls} value={hours} onChange={e => setHours(e.target.value)} placeholder="p.ex. 4h" />
+            </div>
+          </div>
+
+          {/* Descripció */}
+          <div className="space-y-1.5">
+            <label className={labelCls}>Descripció</label>
+            <textarea className={`${inputCls} resize-none`} rows={3} value={description} onChange={e => setDescription(e.target.value)} placeholder="Breu descripció del contingut..." />
+          </div>
+
+          {/* Obligatòria toggle */}
+          <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-gray-50 dark:bg-zinc-800/60 border border-gray-100 dark:border-zinc-700/50">
+            <div>
+              <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">Formació obligatòria</p>
+              <p className="text-[11px] text-gray-400 dark:text-zinc-500">Apareix destacada al catàleg</p>
+            </div>
+            <button type="button" onClick={() => setMandatory(m => !m)}
+              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${mandatory ? 'bg-red-600' : 'bg-gray-200 dark:bg-zinc-600'}`}>
+              <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${mandatory ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+
+          {/* Departaments */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className={labelCls}>Departaments destinataris</label>
+              <span className="text-[10px] text-gray-400 dark:text-zinc-500">
+                {depts.length === 0 ? 'Tots els departaments' : `${depts.length} seleccionat${depts.length !== 1 ? 's' : ''}`}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {DEPT_ORDER.map(d => {
+                const on = depts.includes(d);
+                return (
+                  <button key={d} type="button" onClick={() => toggleDept(d)}
+                    className={`text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${on ? 'bg-red-600 text-white border-red-600 shadow-sm' : 'bg-white dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 border-gray-200 dark:border-zinc-700 hover:border-red-300 hover:text-red-600'}`}>
+                    {d}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {err && (
+            <div className="flex items-center gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-lg">
+              <span className="text-xs text-red-600">{err}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-100 dark:border-zinc-800 flex-shrink-0 bg-gray-50/50 dark:bg-zinc-900">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-800 transition-colors">Cancel·lar</button>
+          <button onClick={handleSave} disabled={saving}
+            className="px-5 py-2 text-sm font-medium rounded-xl bg-red-600 text-white hover:bg-red-700 active:bg-red-800 transition-colors disabled:opacity-50 flex items-center gap-2">
+            {saving && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+            {saving ? 'Desant…' : isEdit ? 'Desar canvis' : 'Crear formació'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BackofficeTab({ currentUser }: { currentUser: import('./api').User | null }) {
   const role = currentUser?.role ?? '';
   const isAdmin = role === 'Administrador/a';
@@ -8827,11 +8138,16 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
   const [notices, setNotices] = useState<import('./api').Notice[]>([]);
   const [newsItems, setNewsItems] = useState<NewsArticle[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [editQuiz, setEditQuiz] = useState<Quiz | null>(null);
+  const [editQuiz] = useState<Quiz | null>(null);
   const [showQuizBuilder, setShowQuizBuilder] = useState(false);
   const [expandedQuizId, setExpandedQuizId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // External courses
+  const [externalCourses, setExternalCourses] = useState<Course[]>([]);
+  const [showExtCourseModal, setShowExtCourseModal] = useState(false);
+  const [editExtCourse, setEditExtCourse] = useState<Course | null>(null);
 
   // User creation form
   const [showUserForm, setShowUserForm] = useState(false);
@@ -8890,6 +8206,9 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
     setLoading(true);
     apiGetQuizzes().then(setQuizzes).catch((e: any) => setError(e.message)).finally(() => setLoading(false));
   };
+  const loadExternalCourses = () => {
+    apiGetCourses().then(all => setExternalCourses(all.filter(c => c.is_external))).catch(console.error);
+  };
   const [inProgressCount, setInProgressCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -8897,6 +8216,7 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
     else if (subTab === 'avisos') loadNotices();
     else if (subTab === 'formacions') {
       loadQuizzes();
+      loadExternalCourses();
       apiGetQuizInProgressCount().then(setInProgressCount).catch(() => setInProgressCount(null));
     }
     else loadNews();
@@ -9196,7 +8516,41 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
                 </div>
                 <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Títol *</label><input value={nnTitle} onChange={e => setNnTitle(e.target.value)} className={inputCls} placeholder="Títol de la notícia" /></div>
                 <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Resum</label><textarea value={nnSummary} onChange={e => setNnSummary(e.target.value)} className={inputCls} rows={2} placeholder="Resum breu" /></div>
-                <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Contingut</label><textarea value={nnContent} onChange={e => setNnContent(e.target.value)} className={inputCls} rows={10} placeholder="Cos complet de la notícia. Suporta múltiples paràgrafs." style={{ fontFamily: 'inherit', whiteSpace: 'pre-wrap' }} /></div>
+                <div className="md:col-span-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Contingut</label>
+                    <span className="text-[10px] text-gray-400 tabular-nums">{nnContent.length} caràcters</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {[
+                      { label: 'H1', insert: '\n# ' },
+                      { label: 'H2', insert: '\n## ' },
+                      { label: 'H3', insert: '\n### ' },
+                      { label: 'B',  insert: '**text**' },
+                      { label: 'I',  insert: '*text*' },
+                      { label: 'Cita', insert: '\n> ' },
+                      { label: '— Separador', insert: '\n\n---\n\n' },
+                    ].map(b => (
+                      <button
+                        key={b.label}
+                        type="button"
+                        onClick={() => setNnContent(c => c + b.insert)}
+                        className="text-[10px] px-2 py-1 rounded border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-300 hover:bg-red-50 dark:hover:bg-red-950/20 hover:border-red-300 dark:hover:border-red-800 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+                      >{b.label}</button>
+                    ))}
+                  </div>
+                  <textarea
+                    value={nnContent}
+                    onChange={e => setNnContent(e.target.value)}
+                    className={inputCls}
+                    rows={20}
+                    placeholder={`# Títol principal\n\nParagraf inicial amb **negreta** o *cursiva*.\n\n## Secció\n\nText llarg amb múltiples paràgrafs separats per línia en blanc.\n\n> Cita destacada\n\n---\n\n### Subsecció\n\nMés contingut.`}
+                    style={{ fontFamily: '"JetBrains Mono", "Courier New", monospace', fontSize: 13, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
+                    Format Markdown lite: <code className="text-red-600">#</code>/<code className="text-red-600">##</code>/<code className="text-red-600">###</code> capçaleres, <code className="text-red-600">**negreta**</code>, <code className="text-red-600">*cursiva*</code>, <code className="text-red-600">&gt;</code> cita, <code className="text-red-600">---</code> separador. Per article amb blocs visuals: usa "Notícia extensa".
+                  </p>
+                </div>
                 <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Autor</label><input value={nnAuthor} onChange={e => setNnAuthor(e.target.value)} className={inputCls} placeholder="Nom de l'autor" /></div>
                 <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Data</label><input type="date" value={nnDate} onChange={e => setNnDate(e.target.value)} className={inputCls} /></div>
                 <div className="md:col-span-2">
@@ -9221,7 +8575,14 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
 
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-500 dark:text-zinc-400">{newsItems.length} notícia{newsItems.length !== 1 ? 'es' : ''}</p>
-            {!showNewsForm && <button onClick={openCreateNews} className={btnPrimary}><Plus size={14} className="inline mr-1" />Nova notícia</button>}
+            {!showNewsForm && (
+              <div className="flex gap-2">
+                <button onClick={() => window.open(`${window.location.pathname}?article=new`, '_blank')} className={btnGhost} title="Editor amb blocs visuals i drag-and-drop">
+                  <LayoutGrid size={14} className="inline mr-1" />Notícia extensa
+                </button>
+                <button onClick={openCreateNews} className={btnPrimary}><Plus size={14} className="inline mr-1" />Nova notícia</button>
+              </div>
+            )}
           </div>
           {loading ? <div className="text-center py-8 text-gray-400 text-sm">Carregant...</div> : (
             <div className="space-y-2">
@@ -9236,7 +8597,8 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
                     <p className="text-xs text-gray-400 truncate">{n.category} · {n.date} · {n.author}</p>
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
-                    <button onClick={() => openEditNews(n)} className={btnGhost}><Pencil size={14} /></button>
+                    <button onClick={() => window.open(`${window.location.pathname}?article=${n.id}`, '_blank')} className={btnGhost} title="Editor extens (blocs)"><LayoutGrid size={14} /></button>
+                    <button onClick={() => openEditNews(n)} className={btnGhost} title="Edició ràpida"><Pencil size={14} /></button>
                     <button onClick={() => deleteNewsItem(n.id)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-sm px-2 py-2 rounded-lg transition-colors"><Trash2 size={14} /></button>
                   </div>
                 </div>
@@ -9259,7 +8621,10 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
 
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-500 dark:text-zinc-400">{quizzes.length} formació{quizzes.length !== 1 ? 'ns' : ''}</p>
-            <button onClick={() => window.open(`${window.location.pathname}?edit=new`, '_blank')} className={btnPrimary}><Plus size={14} className="inline mr-1" />Nova formació</button>
+            <div className="flex gap-2">
+              <button onClick={() => { setEditExtCourse(null); setShowExtCourseModal(true); }} className={btnGhost}><Plus size={14} className="inline mr-1" />Formació externa</button>
+              <button onClick={() => window.open(`${window.location.pathname}?edit=new`, '_blank')} className={btnPrimary}><Plus size={14} className="inline mr-1" />Nova formació</button>
+            </div>
           </div>
           {loading ? <div className="text-center py-8 text-gray-400 text-sm">Carregant...</div> : (
             <div className="space-y-2">
@@ -9274,7 +8639,7 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
                     {q.image ? (
                       <img src={resolveImg(q.image)} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0 border border-gray-100 dark:border-zinc-800" />
                     ) : (
-                      <div className="w-12 h-12 rounded-lg bg-violet-50 dark:bg-violet-950/20 flex items-center justify-center text-violet-600 flex-shrink-0">
+                      <div className="w-12 h-12 rounded-lg bg-red-50 dark:bg-red-950/20 flex items-center justify-center text-red-600 flex-shrink-0">
                         <GraduationCap size={20} />
                       </div>
                     )}
@@ -9282,9 +8647,9 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{q.title}</p>
                         {q.active === 0 && <span className="text-[10px] bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 px-1.5 py-0.5 rounded font-medium">Inactiu</span>}
-                        {q.category && <span className="text-[10px] bg-violet-50 dark:bg-violet-950/20 text-violet-600 px-1.5 py-0.5 rounded font-medium">{q.category}</span>}
+                        {q.category && <span className="text-[10px] bg-red-50 dark:bg-red-950/20 text-red-600 px-1.5 py-0.5 rounded font-medium">{q.category}</span>}
                         {(startStr || endStr) && (
-                          <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 px-1.5 py-0.5 rounded font-medium tabular-nums">
+                          <span className="text-[10px] bg-red-50 dark:bg-red-950/20 text-red-600 px-1.5 py-0.5 rounded font-medium tabular-nums">
                             {startStr ?? '?'} → {endStr ?? '?'}
                           </span>
                         )}
@@ -9295,7 +8660,7 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
                       </p>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
-                      <button onClick={() => setExpandedQuizId(expanded ? null : q.id)} className={`${btnGhost} ${expanded ? 'text-violet-600 bg-violet-50 dark:bg-violet-950/20' : ''}`} title="Resultats"><BarChart3 size={14} /></button>
+                      <button onClick={() => setExpandedQuizId(expanded ? null : q.id)} className={`${btnGhost} ${expanded ? 'text-red-600 bg-red-50 dark:bg-red-950/20' : ''}`} title="Resultats"><BarChart3 size={14} /></button>
                       <button onClick={() => window.open(`${window.location.pathname}?edit=${q.id}`, '_blank')} className={btnGhost}><Pencil size={14} /></button>
                       <button onClick={async () => {
                         if (!window.confirm(`Eliminar "${q.title}"?`)) return;
@@ -9313,11 +8678,64 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
               )}
             </div>
           )}
+
+          {/* External courses section */}
+          {externalCourses.length > 0 && (
+            <div className="pt-2">
+              <div className="flex items-center gap-2 mb-2">
+                <ExternalLink size={14} className="text-gray-400" />
+                <p className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Formacions externes al catàleg</p>
+              </div>
+              <div className="space-y-2">
+                {externalCourses.map(c => {
+                  let depts: string[] = [];
+                  try { depts = JSON.parse(c.departments || '[]'); } catch { /* */ }
+                  return (
+                    <div key={c.id} className={cardCls}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gray-50 dark:bg-zinc-800 flex items-center justify-center text-gray-400 flex-shrink-0 border border-gray-100 dark:border-zinc-700">
+                          <ExternalLink size={16} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{c.title}</p>
+                            {c.mandatory === 1 && <span className="text-[10px] bg-red-50 dark:bg-red-950/20 text-red-600 px-1.5 py-0.5 rounded font-medium">Obligatòria</span>}
+                            {c.category && <span className="text-[10px] bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 px-1.5 py-0.5 rounded">{c.category}</span>}
+                          </div>
+                          <p className="text-xs text-gray-400 truncate">
+                            {c.hours ? `${c.hours} · ` : ''}
+                            {depts.length > 0 ? depts.join(', ') : 'Tots els departaments'}
+                          </p>
+                        </div>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <button onClick={() => window.open(c.url, '_blank', 'noopener,noreferrer')} className={btnGhost} title="Obrir curs"><ExternalLink size={14} /></button>
+                          <button onClick={() => { setEditExtCourse(c); setShowExtCourseModal(true); }} className={btnGhost}><Pencil size={14} /></button>
+                          <button onClick={async () => {
+                            if (!window.confirm(`Eliminar "${c.title}"?`)) return;
+                            await apiDeleteExternalCourse(c.id);
+                            loadExternalCourses();
+                          }} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-sm px-2 py-2 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {showQuizBuilder && (
             <QuizBuilderModal
               quiz={editQuiz}
               onClose={() => setShowQuizBuilder(false)}
               onSaved={() => { setShowQuizBuilder(false); loadQuizzes(); }}
+            />
+          )}
+          {showExtCourseModal && (
+            <ExternalCourseModal
+              course={editExtCourse}
+              onClose={() => { setShowExtCourseModal(false); setEditExtCourse(null); }}
+              onSaved={() => { setShowExtCourseModal(false); setEditExtCourse(null); loadExternalCourses(); }}
             />
           )}
         </div>
@@ -9340,12 +8758,12 @@ function useSidebarSections(role?: string) {
         { id: 'Notícies', label: t('nav.noticies'), icon: Newspaper },
         { id: 'Activitats', label: t('nav.activitats'), icon: ActivityIcon },
         { id: 'Agenda', label: t('nav.agenda'), icon: Calendar },
-        { id: 'Directori', label: t('nav.directori'), icon: Users },
       ]
     },
     {
       title: t('nav.empresa'),
       items: [
+        { id: 'Directori', label: t('nav.directori'), icon: Users },
         { id: 'Espai', label: t('nav.espai'), icon: Building2 },
         { id: 'Campus', label: t('nav.campus'), icon: GraduationCap },
       ]
@@ -9581,11 +8999,25 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
         if (inherited) sessionStorage.setItem('tavil_token', inherited);
       }
     } catch { /* cross-origin or null opener */ }
-    Promise.all([apiGetQuiz(quizId), apiGetQuizProgress(quizId).catch(() => null)])
+    // Resume on F5 in same tab (sessionStorage marker) OR explicit ?resume=1
+    // from list "Continuar" button. sessionStorage is per-tab so new tab needs the
+    // query flag. Otherwise fresh open clears server progress.
+    const sessionKey = `quiz_active_${quizId}`;
+    const isReload = sessionStorage.getItem(sessionKey) === '1';
+    const explicitResume = new URLSearchParams(window.location.search).get('resume') === '1';
+    const wantResume = isReload || explicitResume;
+    Promise.all([
+      apiGetQuiz(quizId),
+      wantResume ? apiGetQuizProgress(quizId).catch(() => null) : Promise.resolve(null),
+    ])
       .then(([q, prog]) => {
         setQuiz(q);
         if (prog && prog.current_question_idx > 0) {
           setResumeOffer({ idx: prog.current_question_idx, answers: prog.answers as Record<string, any>, updated_at: prog.updated_at });
+          if (explicitResume) sessionStorage.setItem(sessionKey, '1');
+        } else if (!wantResume) {
+          // Fresh visit — discard any stale server progress.
+          apiClearQuizProgress(quizId).catch(() => {});
         }
       })
       .catch(e => setError(e.message ?? 'Error carregant la formació'))
@@ -9623,6 +9055,7 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
       setStage('result');
       // Backend already clears progress on successful attempt; clear locally too in case of cache.
       apiClearQuizProgress(quiz.id).catch(() => {});
+      sessionStorage.removeItem(`quiz_active_${quiz.id}`);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e: any) {
       setError(e.message ?? 'Error enviant respostes');
@@ -9671,6 +9104,7 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
   const resumeQuiz = () => {
     if (!resumeOffer || !quiz) return;
     const safeIdx = Math.min(Math.max(0, resumeOffer.idx), Math.max(0, total - 1));
+    sessionStorage.setItem(`quiz_active_${quiz.id}`, '1');
     setIdx(safeIdx);
     setAnswers(resumeOffer.answers || {});
     setResumeOffer(null);
@@ -9680,6 +9114,7 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
   const restartQuiz = () => {
     if (!quiz) return;
     apiClearQuizProgress(quiz.id).catch(() => {});
+    sessionStorage.setItem(`quiz_active_${quiz.id}`, '1');
     setResumeOffer(null);
     setIdx(0);
     setAnswers({});
@@ -9746,11 +9181,15 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
               </div>
             </div>
             <button
-              onClick={() => setStage('playing')}
+              onClick={() => {
+                if (resumeOffer) { resumeQuiz(); return; }
+                if (quiz) sessionStorage.setItem(`quiz_active_${quiz.id}`, '1');
+                setStage('playing');
+              }}
               className="px-10 py-4 rounded-full text-white font-semibold text-base transition-colors shadow-2xl shadow-red-900/50 hover:brightness-110"
               style={{ background: '#8a2624' }}
             >
-              Començar formació →
+              {resumeOffer ? 'Continuar formació →' : 'Començar formació →'}
             </button>
             <p className="text-xs text-white/40 mt-4">Fes servir les fletxes ← → per navegar</p>
           </div>
@@ -9778,7 +9217,7 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
             </div>
 
             <div className="space-y-3 mb-10">
-              {quiz.questions?.map((qq, qi) => {
+              {quiz.questions?.filter(qq => qq.type !== 'slide').map((qq, qi) => {
                 const r = result.results[String(qq.id)];
                 if (!r) return null;
                 const ok = r.correct === true;
@@ -10202,32 +9641,32 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
   const q = questions[selectedQ];
 
   return (
-    <div className="fixed inset-0 flex flex-col text-white" style={{ background: 'linear-gradient(135deg,#181010 0%,#221717 40%,#2a1c1b 75%,#221615 100%)' }}>
+    <div className="fixed inset-0 flex flex-col text-[#f0e8d8]" style={{ background: 'linear-gradient(135deg,#181010 0%,#221717 40%,#2a1c1b 75%,#221615 100%)' }}>
       {/* Saved toast */}
       {savedToast && (
         <div
-          className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 rounded-full text-sm font-medium text-white shadow-2xl flex items-center gap-2 backdrop-blur-md border border-white/15"
-          style={{ background: 'rgba(28,80,40,0.92)', animation: 'fadeInDown 0.25s ease-out' }}
+          className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 rounded-full text-sm font-medium text-white shadow-2xl flex items-center gap-2 backdrop-blur-md border border-white/20"
+          style={{ background: 'rgba(58,116,72,0.95)', animation: 'fadeInDown 0.25s ease-out' }}
         >
-          <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs">✓</span>
+          <span className="w-5 h-5 rounded-full bg-white/[0.12] flex items-center justify-center text-xs">✓</span>
           Formació guardada correctament
         </div>
       )}
 
       {/* Top bar */}
-      <div className="flex-shrink-0 flex items-center gap-4 px-6 py-3.5 border-b border-white/10 bg-black/15 backdrop-blur-md">
-        <button onClick={() => window.close()} className="text-white/60 hover:text-white text-sm flex-shrink-0 transition-colors">← Tancar</button>
+      <div className="flex-shrink-0 flex items-center gap-4 px-6 py-3.5 border-b border-white/[0.08] bg-white/[0.06] backdrop-blur-md">
+        <button onClick={() => window.close()} className="text-white/60 hover:text-[#f0e8d8] text-sm flex-shrink-0 transition-colors">← Tancar</button>
         <div className="flex-1 min-w-0">
           <input
             value={title}
             onChange={e => setTitle(e.target.value)}
-            className="w-full bg-transparent text-white text-base font-medium tracking-tight focus:outline-none placeholder-white/40"
+            className="w-full bg-transparent text-[#f0e8d8] text-base font-medium tracking-tight focus:outline-none placeholder-white/30"
             placeholder="Títol de la formació…"
           />
         </div>
-        {error && <span className="text-xs text-red-100 bg-red-500/30 border border-red-400/30 px-3 py-1.5 rounded-full flex-shrink-0">{error}</span>}
-        <button onClick={() => setShowSettings(true)} className="px-4 py-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 text-sm font-medium transition-colors flex-shrink-0">⚙ Configuració</button>
-        <button onClick={handleSave} disabled={saving || !title.trim()} className="px-5 py-2 rounded-full text-white disabled:opacity-40 text-sm font-semibold transition-colors flex-shrink-0 shadow-lg shadow-red-900/40" style={{ background: '#8a2624' }}>
+        {error && <span className="text-xs text-[#bf211e] bg-[#bf211e]/15 border border-[#bf211e]/30 px-3 py-1.5 rounded-full flex-shrink-0">{error}</span>}
+        <button onClick={() => setShowSettings(true)} className="px-4 py-2 rounded-full text-white/70 hover:text-[#f0e8d8] hover:bg-white/[0.08] text-sm font-medium transition-colors flex-shrink-0">⚙ Configuració</button>
+        <button onClick={handleSave} disabled={saving || !title.trim()} className="px-5 py-2 rounded-full text-white disabled:opacity-40 text-sm font-semibold transition-colors flex-shrink-0 shadow-lg shadow-[#bf211e]/25" style={{ background: '#bf211e' }}>
           {saving ? 'Guardant…' : (quizId !== null ? 'Guardar' : 'Crear')}
         </button>
       </div>
@@ -10235,7 +9674,7 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
       {/* Body: left rail + canvas */}
       <div className="flex-1 flex min-h-0">
         {/* Left rail — slide thumbnails */}
-        <div className="flex-shrink-0 w-64 border-r border-white/10 bg-black/20 overflow-y-auto p-3 space-y-2">
+        <div className="flex-shrink-0 w-64 border-r border-white/[0.08] bg-black/20 overflow-y-auto p-3 space-y-2">
           {questions.map((qq, i) => {
             const sel = i === selectedQ;
             const dragOver = dragOverIdx === i;
@@ -10248,11 +9687,11 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                 onDragLeave={() => setDragOverIdx(null)}
                 onDrop={() => onDrop(i)}
                 onClick={() => setSelectedQ(i)}
-                className={`cursor-grab active:cursor-grabbing rounded-xl p-3 border-2 transition-all ${sel ? 'bg-white/10 border-red-300/60 shadow-lg' : 'bg-white/5 border-white/10 hover:border-white/30'} ${dragOver ? 'border-red-300/80 scale-[1.02]' : ''}`}
+                className={`cursor-grab active:cursor-grabbing rounded-xl p-3 border-2 transition-all ${sel ? 'bg-white/[0.08] border-[#bf211e]/55 shadow-lg' : 'bg-white/[0.06] border-white/[0.08] hover:border-[#bf211e]/30'} ${dragOver ? 'border-red-300/80 scale-[1.02]' : ''}`}
               >
                 <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-[10px] font-bold text-white/40 tabular-nums">#{i + 1}</span>
-                  <span className="text-[9px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/10 text-white/60">
+                  <span className="text-[10px] font-bold text-white/50 tabular-nums">#{i + 1}</span>
+                  <span className="text-[9px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/[0.08] text-white/60">
                     {qq.type === 'multiple_choice' ? 'Opció' :
                      qq.type === 'multiple_select' ? 'Multi' :
                      qq.type === 'true_false' ? 'V/F' :
@@ -10262,41 +9701,41 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   </span>
                   <button
                     onClick={(e) => { e.stopPropagation(); removeQ(qq._key); }}
-                    className="ml-auto text-white/30 hover:text-red-300 text-xs"
+                    className="ml-auto text-white/40 hover:text-[#bf211e] text-xs"
                     aria-label="Eliminar pregunta"
                   >✕</button>
                 </div>
-                <p className="text-xs text-white/80 line-clamp-2 leading-snug">
-                  {qq.question || <span className="italic text-white/30">Sense text</span>}
+                <p className="text-xs text-[#f0e8d8] line-clamp-2 leading-snug">
+                  {qq.question || <span className="italic text-white/40">Sense text</span>}
                 </p>
               </div>
             );
           })}
 
           {/* Add picker trigger */}
-          <div className="pt-3 mt-3 border-t border-white/10">
+          <div className="pt-3 mt-3 border-t border-white/[0.08]">
             <button
               onClick={() => setShowAddPicker(true)}
-              className="w-full text-sm px-3 py-2.5 rounded-lg text-white font-semibold transition-all hover:brightness-110 shadow-md shadow-red-900/40 flex items-center justify-center gap-2"
-              style={{ background: '#8a2624' }}
+              className="w-full text-sm px-3 py-2.5 rounded-lg text-white font-semibold transition-all hover:brightness-110 shadow-md shadow-[#bf211e]/25 flex items-center justify-center gap-2"
+              style={{ background: '#bf211e' }}
             >
               <span className="text-lg leading-none">+</span> Afegir pregunta
             </button>
           </div>
           {questions.length === 0 && (
-            <p className="text-[11px] text-white/40 text-center pt-4">Comença afegint una pregunta</p>
+            <p className="text-[11px] text-white/50 text-center pt-4">Comença afegint una pregunta</p>
           )}
         </div>
 
         {/* Canvas */}
         <div className="flex-1 overflow-y-auto p-10">
           {!q ? (
-            <div className="h-full flex items-center justify-center text-white/40 text-sm">
+            <div className="h-full flex items-center justify-center text-white/50 text-sm">
               Afegeix una pregunta per començar →
             </div>
           ) : (
-            <div className="max-w-3xl mx-auto text-white">
-              <div className="text-xs font-semibold tracking-[0.2em] uppercase text-red-200/80 mb-4">
+            <div className="max-w-3xl mx-auto text-[#f0e8d8]">
+              <div className="text-xs font-semibold tracking-[0.2em] uppercase text-[#bf211e] mb-4">
                 {q.type === 'slide' ? `Slide ${selectedQ + 1}` : `Pregunta ${selectedQ + 1}`}
               </div>
               <textarea
@@ -10304,17 +9743,17 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                 onChange={e => updateQ(q._key, { question: e.target.value })}
                 style={{ fontFamily: '"Instrument Serif", serif' }}
                 rows={2}
-                className="w-full bg-transparent text-3xl md:text-5xl font-normal leading-tight mb-10 tracking-tight focus:outline-none placeholder-white/30 resize-none"
+                className="w-full bg-transparent text-white/70xl md:text-white/70xl font-normal leading-tight mb-10 tracking-tight focus:outline-none placeholder-white/30 resize-none"
                 placeholder={q.type === 'slide' ? 'Títol del slide…' : 'Escriu la pregunta…'}
               />
 
               {q.type === 'multiple_choice' && (
                 <div className="space-y-3">
                   {q.options.map((o, oi) => (
-                    <div key={o._key} className={`flex items-center gap-4 p-5 rounded-2xl border-2 transition-colors ${o.is_correct ? 'bg-red-300/[0.06] border-red-300/40' : 'bg-white/5 border-white/10'}`}>
+                    <div key={o._key} className={`flex items-center gap-4 p-5 rounded-2xl border-2 transition-colors ${o.is_correct ? 'bg-[#bf211e]/[0.06] border-[#bf211e]/40' : 'bg-white/[0.06] border-white/[0.08]'}`}>
                       <button
                         onClick={() => setCorrect(q._key, o._key)}
-                        className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${o.is_correct ? 'bg-red-300/80 text-red-950' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
+                        className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${o.is_correct ? 'bg-[#bf211e] text-white' : 'bg-white/[0.08] text-white/70 hover:bg-white/[0.12]'}`}
                         title={o.is_correct ? 'Correcta' : 'Marcar com correcta'}
                       >
                         {String.fromCharCode(65 + oi)}
@@ -10326,22 +9765,22 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                         placeholder={`Opció ${String.fromCharCode(65 + oi)}…`}
                       />
                       {q.options.length > 2 && (
-                        <button onClick={() => removeOpt(q._key, o._key)} className="text-white/30 hover:text-red-300 text-sm">✕</button>
+                        <button onClick={() => removeOpt(q._key, o._key)} className="text-white/40 hover:text-[#bf211e] text-sm">✕</button>
                       )}
                     </div>
                   ))}
-                  <button onClick={() => addOpt(q._key)} className="text-xs text-white/50 hover:text-white/80 mt-2">+ Afegir opció</button>
+                  <button onClick={() => addOpt(q._key)} className="text-xs text-white/50 hover:text-[#f0e8d8] mt-2">+ Afegir opció</button>
                 </div>
               )}
 
               {q.type === 'multiple_select' && (
                 <div className="space-y-3">
-                  <p className="text-xs text-white/45 mb-3">Selecció múltiple — l'usuari pot triar diverses correctes.</p>
+                  <p className="text-xs text-white/50 mb-3">Selecció múltiple — l'usuari pot triar diverses correctes.</p>
                   {q.options.map((o, oi) => (
-                    <div key={o._key} className={`flex items-center gap-4 p-5 rounded-2xl border-2 transition-colors ${o.is_correct ? 'bg-red-300/[0.06] border-red-300/40' : 'bg-white/5 border-white/10'}`}>
+                    <div key={o._key} className={`flex items-center gap-4 p-5 rounded-2xl border-2 transition-colors ${o.is_correct ? 'bg-[#bf211e]/[0.06] border-[#bf211e]/40' : 'bg-white/[0.06] border-white/[0.08]'}`}>
                       <button
                         onClick={() => updateOpt(q._key, o._key, { is_correct: o.is_correct ? 0 : 1 })}
-                        className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${o.is_correct ? 'bg-red-300/80 text-red-950' : 'bg-white/10 text-white/40 hover:bg-white/20'}`}
+                        className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${o.is_correct ? 'bg-[#bf211e] text-white' : 'bg-white/[0.08] text-white/50 hover:bg-white/[0.12]'}`}
                         title={o.is_correct ? 'Correcta — clica per desmarcar' : 'Marcar com correcta'}
                       >
                         {o.is_correct ? '✓' : <span className="text-xs font-bold tabular-nums">{oi + 1}</span>}
@@ -10353,11 +9792,11 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                         placeholder={`Opció ${oi + 1}…`}
                       />
                       {q.options.length > 2 && (
-                        <button onClick={() => removeOpt(q._key, o._key)} className="text-white/30 hover:text-red-300 text-sm">✕</button>
+                        <button onClick={() => removeOpt(q._key, o._key)} className="text-white/40 hover:text-[#bf211e] text-sm">✕</button>
                       )}
                     </div>
                   ))}
-                  <button onClick={() => addOpt(q._key)} className="text-xs text-white/50 hover:text-white/80 mt-2">+ Afegir opció</button>
+                  <button onClick={() => addOpt(q._key)} className="text-xs text-white/50 hover:text-[#f0e8d8] mt-2">+ Afegir opció</button>
                 </div>
               )}
 
@@ -10367,11 +9806,11 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                     <button
                       key={o._key}
                       onClick={() => setCorrect(q._key, o._key)}
-                      className={`p-8 rounded-2xl border-2 transition-all text-2xl font-medium ${o.is_correct ? 'bg-red-300/10 border-red-300/50 text-white shadow-md shadow-red-900/20' : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30'}`}
+                      className={`p-8 rounded-2xl border-2 transition-all text-2xl font-medium ${o.is_correct ? 'bg-[#bf211e]/8 border-[#bf211e]/45 text-white shadow-md shadow-[#bf211e]/15' : 'bg-white/[0.06] border-white/[0.08] text-white/60 hover:border-[#bf211e]/30'}`}
                     >
                       <div className="flex flex-col items-center gap-2">
                         <span style={{ fontFamily: '"Instrument Serif", serif' }}>{o.text || (o === q.options[0] ? 'Vertader' : 'Fals')}</span>
-                        {o.is_correct ? <span className="text-[10px] uppercase tracking-widest text-red-200 font-semibold">Correcta</span> : <span className="text-[10px] text-white/30">Clica per marcar</span>}
+                        {o.is_correct ? <span className="text-[10px] uppercase tracking-widest text-[#bf211e] font-semibold">Correcta</span> : <span className="text-[10px] text-white/40">Clica per marcar</span>}
                       </div>
                     </button>
                   ))}
@@ -10382,42 +9821,42 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                 <div className="space-y-3">
                   <p className="text-sm text-white/50 mb-3">Parelles esquerra → dreta. L'usuari escriurà el valor correcte.</p>
                   {q.options.map(o => (
-                    <div key={o._key} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-4">
+                    <div key={o._key} className="flex items-center gap-3 bg-white/[0.06] border border-white/[0.08] rounded-2xl p-4">
                       <input
                         value={o.text}
                         onChange={e => updateOpt(q._key, o._key, { text: e.target.value })}
                         className="flex-1 bg-transparent focus:outline-none placeholder-white/30"
                         placeholder="Element esquerra…"
                       />
-                      <span className="text-white/40">→</span>
+                      <span className="text-white/50">→</span>
                       <input
                         value={o.match_pair}
                         onChange={e => updateOpt(q._key, o._key, { match_pair: e.target.value })}
-                        className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2 focus:outline-none focus:border-red-300/60 placeholder-white/30"
+                        className="flex-1 bg-white/[0.08] border border-white/[0.12] rounded-xl px-4 py-2 focus:outline-none focus:border-[#bf211e]/55 placeholder-white/30"
                         placeholder="Resposta correcta…"
                       />
                       {q.options.length > 2 && (
-                        <button onClick={() => removeOpt(q._key, o._key)} className="text-white/30 hover:text-red-300 text-sm">✕</button>
+                        <button onClick={() => removeOpt(q._key, o._key)} className="text-white/40 hover:text-[#bf211e] text-sm">✕</button>
                       )}
                     </div>
                   ))}
-                  <button onClick={() => addOpt(q._key)} className="text-xs text-white/50 hover:text-white/80 mt-2">+ Afegir parella</button>
+                  <button onClick={() => addOpt(q._key)} className="text-xs text-white/50 hover:text-[#f0e8d8] mt-2">+ Afegir parella</button>
                 </div>
               )}
 
               {q.type === 'open_text' && (
-                <div className="bg-white/5 border-2 border-dashed border-white/15 rounded-2xl p-8 text-center text-white/40 text-sm">
+                <div className="bg-white/[0.06] border-2 border-dashed border-white/10 rounded-2xl p-8 text-center text-white/50 text-sm">
                   L'empleat respondrà amb text lliure. No es corregeix automàticament.
                 </div>
               )}
 
               {q.type === 'slide' && (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-red-200/80 font-semibold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-300/70" /> Slide d'explicació · sense pregunta
+                  <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-[#bf211e] font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#bf211e]/85" /> Slide d'explicació · sense pregunta
                   </div>
                   {q.media_url ? (
-                    <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black/40">
+                    <div className="relative rounded-2xl overflow-hidden border border-white/[0.08] bg-[#bf211e]/[0.04]">
                       {/\.(mp4|webm|ogg|mov)(\?|$)/i.test(q.media_url) ? (
                         <video src={resolveImg(q.media_url)} controls className="w-full max-h-[420px] object-contain bg-black" />
                       ) : (
@@ -10425,13 +9864,13 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                       )}
                       <button
                         onClick={() => updateQ(q._key, { media_url: '' })}
-                        className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-black/60 hover:bg-red-500/80 text-xs text-white backdrop-blur transition-colors"
+                        className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-[#bf211e]/[0.04] hover:bg-[#bf211e] text-xs text-[#f0e8d8] backdrop-blur transition-colors"
                       >Treure</button>
                     </div>
                   ) : (
-                    <div className="bg-white/5 border-2 border-dashed border-white/15 rounded-2xl p-8 text-center space-y-3">
+                    <div className="bg-white/[0.06] border-2 border-dashed border-white/10 rounded-2xl p-8 text-center space-y-3">
                       <p className="text-white/50 text-sm">Imatge o vídeo per il·lustrar el contingut</p>
-                      <label className="inline-block cursor-pointer text-xs px-4 py-2 rounded-full text-white font-semibold transition-all hover:brightness-110 shadow-md shadow-red-900/40" style={{ background: '#8a2624' }}>
+                      <label className="inline-block cursor-pointer text-xs px-4 py-2 rounded-full text-white font-semibold transition-all hover:brightness-110 shadow-md shadow-[#bf211e]/25" style={{ background: '#bf211e' }}>
                         <input
                           type="file"
                           accept="image/*,video/*"
@@ -10455,11 +9894,11 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                     </div>
                   )}
                   <div>
-                    <label className="text-[10px] font-semibold uppercase tracking-widest text-white/40 block mb-2">URL del fitxer (opcional, manual)</label>
+                    <label className="text-[10px] font-semibold uppercase tracking-widest text-white/50 block mb-2">URL del fitxer (opcional, manual)</label>
                     <input
                       value={q.media_url ?? ''}
                       onChange={e => updateQ(q._key, { media_url: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-300 placeholder-white/30"
+                      className="w-full bg-white/[0.06] border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-300 placeholder-white/30"
                       placeholder="https://… o /uploads/…"
                     />
                   </div>
@@ -10468,24 +9907,24 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
 
               {/* Explanation + points (hidden for slide — purely informational) */}
               {q.type !== 'slide' && (
-                <div className="mt-10 pt-6 border-t border-white/10 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="mt-10 pt-6 border-t border-white/[0.08] grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="md:col-span-2">
-                    <label className="text-[10px] font-semibold uppercase tracking-widest text-white/40 block mb-2">Explicació (mostrada al corregir)</label>
+                    <label className="text-[10px] font-semibold uppercase tracking-widest text-white/50 block mb-2">Explicació (mostrada al corregir)</label>
                     <input
                       value={q.explanation}
                       onChange={e => updateQ(q._key, { explanation: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-red-300 focus:bg-white/10 placeholder-white/30 transition-colors"
+                      className="w-full bg-white/[0.06] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-red-300 focus:bg-white/[0.08] placeholder-white/30 transition-colors"
                       placeholder="Explicació opcional…"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-semibold uppercase tracking-widest text-white/40 block mb-2">Punts</label>
+                    <label className="text-[10px] font-semibold uppercase tracking-widest text-white/50 block mb-2">Punts</label>
                     <input
                       type="number"
                       min={1}
                       value={q.points}
                       onChange={e => updateQ(q._key, { points: Number(e.target.value) || 1 })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm tabular-nums focus:outline-none focus:border-red-300 focus:bg-white/10 transition-colors"
+                      className="w-full bg-white/[0.06] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm tabular-nums focus:outline-none focus:border-red-300 focus:bg-white/[0.08] transition-colors"
                     />
                   </div>
                 </div>
@@ -10497,15 +9936,15 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
 
       {/* Settings drawer */}
       {showSettings && (
-        <div className="fixed inset-0 z-50 flex justify-end backdrop-blur-md" style={{ background: 'rgba(20,14,14,0.55)' }} onClick={() => setShowSettings(false)}>
-          <div onClick={e => e.stopPropagation()} className="w-full max-w-lg h-full border-l border-white/10 overflow-y-auto text-white shadow-2xl shadow-black/60" style={{ background: 'linear-gradient(180deg,#2c1f1e 0%,#2a1d1c 100%)' }}>
+        <div className="fixed inset-0 z-50 flex justify-end backdrop-blur-md" style={{ background: 'rgba(80,50,40,0.35)' }} onClick={() => setShowSettings(false)}>
+          <div onClick={e => e.stopPropagation()} className="w-full max-w-lg h-full border-l border-white/[0.08] overflow-y-auto text-[#f0e8d8] shadow-2xl shadow-black/15" style={{ background: 'linear-gradient(180deg,#1e1312 0%,#231615 100%)' }}>
             {/* Header */}
-            <div className="sticky top-0 z-10 flex items-center justify-between px-8 py-5 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(44,31,30,0.92)' }}>
+            <div className="sticky top-0 z-10 flex items-center justify-between px-8 py-5 border-b border-white/[0.08] backdrop-blur-md" style={{ background: 'rgba(24,16,16,0.96)' }}>
               <div>
                 <h3 className="text-base font-semibold tracking-tight">Configuració</h3>
-                <p className="text-[11px] text-white/40 mt-0.5">Detalls i visibilitat de la formació</p>
+                <p className="text-[11px] text-white/50 mt-0.5">Detalls i visibilitat de la formació</p>
               </div>
-              <button onClick={() => setShowSettings(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-white hover:bg-white/5 transition-colors" aria-label="Tancar">✕</button>
+              <button onClick={() => setShowSettings(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-[#f0e8d8] hover:bg-white/[0.06] transition-colors" aria-label="Tancar">✕</button>
             </div>
 
             <div className="px-8 py-6 space-y-10">
@@ -10513,33 +9952,33 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
               <section>
                 <header className="mb-4">
                   <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/50">Detalls</h4>
-                  <p className="text-[11px] text-white/35 mt-1">Informació bàsica que veuran els empleats.</p>
+                  <p className="text-[11px] text-white/40 mt-1">Informació bàsica que veuran els empleats.</p>
                 </header>
                 <div className="space-y-4">
                   <div className="grid grid-cols-[120px_1fr] gap-x-5 gap-y-1 items-start">
                     <label className="text-xs text-white/70 pt-2">Imatge portada</label>
                     <div className="flex items-center gap-3">
                       {(imageFile || image) && (
-                        <img src={imageFile ? URL.createObjectURL(imageFile) : resolveImg(image)} alt="" className="w-20 h-14 object-cover rounded-lg border border-white/10 flex-shrink-0" />
+                        <img src={imageFile ? URL.createObjectURL(imageFile) : resolveImg(image)} alt="" className="w-20 h-14 object-cover rounded-lg border border-white/[0.08] flex-shrink-0" />
                       )}
-                      <label className="flex-1 cursor-pointer text-xs px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-dashed border-white/15 text-center transition-colors text-white/70">
+                      <label className="flex-1 cursor-pointer text-xs px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.08] border border-dashed border-white/10 text-center transition-colors text-white/70">
                         <input type="file" accept="image/*" className="hidden" onChange={e => setImageFile(e.target.files?.[0] ?? null)} />
                         {imageFile ? imageFile.name : (image ? 'Canviar' : 'Pujar imatge')}
                       </label>
                       {(imageFile || image) && (
-                        <button onClick={() => { setImageFile(null); setImage(''); }} className="text-xs text-white/40 hover:text-red-300 px-2">Treure</button>
+                        <button onClick={() => { setImageFile(null); setImage(''); }} className="text-xs text-white/50 hover:text-[#bf211e] px-2">Treure</button>
                       )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-[120px_1fr] gap-x-5 gap-y-1 items-start">
                     <label className="text-xs text-white/70 pt-2">Descripció</label>
-                    <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-300 focus:bg-white/10 placeholder-white/25 resize-none transition-colors" placeholder="Què aprendran a aquesta formació…" />
+                    <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-white/[0.06] border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-300 focus:bg-white/[0.08] placeholder-white/30 resize-none transition-colors" placeholder="Què aprendran a aquesta formació…" />
                   </div>
 
                   <div className="grid grid-cols-[120px_1fr] gap-x-5 gap-y-1 items-center">
                     <label className="text-xs text-white/70">Categoria</label>
-                    <input value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-300 focus:bg-white/10 placeholder-white/25 transition-colors" placeholder="Seguretat, RRHH, Tècnica…" />
+                    <input value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-white/[0.06] border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-300 focus:bg-white/[0.08] placeholder-white/30 transition-colors" placeholder="Seguretat, RRHH, Tècnica…" />
                   </div>
                 </div>
               </section>
@@ -10548,15 +9987,15 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
               <section>
                 <header className="mb-4">
                   <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/50">Visibilitat</h4>
-                  <p className="text-[11px] text-white/35 mt-1">Qui pot veure i fer aquesta formació.</p>
+                  <p className="text-[11px] text-white/40 mt-1">Qui pot veure i fer aquesta formació.</p>
                 </header>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-4 py-3">
+                  <div className="flex items-center justify-between bg-white/[0.06] border border-white/[0.08] rounded-lg px-4 py-3">
                     <div>
                       <div className="text-sm font-medium">Activa</div>
-                      <div className="text-[11px] text-white/40 mt-0.5">{active === 1 ? 'Visible al portal' : 'Esborrany — només admins'}</div>
+                      <div className="text-[11px] text-white/50 mt-0.5">{active === 1 ? 'Visible al portal' : 'Esborrany — només admins'}</div>
                     </div>
-                    <button type="button" onClick={() => setActive(a => a === 1 ? 0 : 1)} className={`relative inline-flex w-11 h-6 items-center rounded-full transition-colors flex-shrink-0 ${active === 1 ? '' : 'bg-white/15'}`} style={active === 1 ? { background: '#8a2624' } : undefined}>
+                    <button type="button" onClick={() => setActive(a => a === 1 ? 0 : 1)} className={`relative inline-flex w-11 h-6 items-center rounded-full transition-colors flex-shrink-0 ${active === 1 ? '' : 'bg-white/[0.08]'}`} style={active === 1 ? { background: '#bf211e' } : undefined}>
                       <span className="inline-block w-5 h-5 bg-white rounded-full shadow transition-transform" style={{ transform: active === 1 ? 'translateX(22px)' : 'translateX(2px)' }} />
                     </button>
                   </div>
@@ -10564,17 +10003,17 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   <div>
                     <div className="flex items-baseline justify-between mb-2">
                       <label className="text-xs text-white/70">Departaments destinataris</label>
-                      <span className="text-[11px] text-white/35">{targetDepts.length === 0 ? 'Tothom' : `${targetDepts.length} dept.`}</span>
+                      <span className="text-[11px] text-white/40">{targetDepts.length === 0 ? 'Tothom' : `${targetDepts.length} dept.`}</span>
                     </div>
-                    <div className="flex flex-wrap gap-1.5 p-3 rounded-lg bg-white/5 border border-white/10">
+                    <div className="flex flex-wrap gap-1.5 p-3 rounded-lg bg-white/[0.06] border border-white/[0.08]">
                       {DEPT_ORDER.map(d => {
                         const on = targetDepts.includes(d);
                         return (
                           <button
                             key={d}
                             onClick={() => setTargetDepts(prev => on ? prev.filter(x => x !== d) : [...prev, d])}
-                            className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${on ? 'border-red-300/40 text-white' : 'bg-transparent border-white/15 text-white/60 hover:border-white/40 hover:text-white/90'}`}
-                            style={on ? { background: 'rgba(138,38,36,0.85)' } : undefined}
+                            className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${on ? 'border-[#bf211e] text-white' : 'bg-transparent border-white/10 text-white/60 hover:border-black/20 hover:text-[#f0e8d8]'}`}
+                            style={on ? { background: '#bf211e' } : undefined}
                           >
                             {d}
                           </button>
@@ -10582,7 +10021,7 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                       })}
                     </div>
                     {targetDepts.length === 0 && (
-                      <p className="text-[11px] text-white/35 mt-1.5">Cap seleccionat → visible per a tothom.</p>
+                      <p className="text-[11px] text-white/40 mt-1.5">Cap seleccionat → visible per a tothom.</p>
                     )}
                   </div>
                 </div>
@@ -10592,21 +10031,21 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
               <section>
                 <header className="mb-4">
                   <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/50">Avaluació</h4>
-                  <p className="text-[11px] text-white/35 mt-1">Criteris per superar la formació.</p>
+                  <p className="text-[11px] text-white/40 mt-1">Criteris per superar la formació.</p>
                 </header>
                 <div className="space-y-4">
                   <div className="grid grid-cols-[120px_1fr] gap-x-5 gap-y-1 items-center">
                     <label className="text-xs text-white/70">Aprovat</label>
                     <div className="flex items-center gap-2">
-                      <input type="number" min={0} max={100} value={passingScore} onChange={e => setPassingScore(Number(e.target.value) || 0)} className="w-24 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm tabular-nums focus:outline-none focus:border-red-300 focus:bg-white/10 transition-colors" />
-                      <span className="text-xs text-white/40">% mínim</span>
+                      <input type="number" min={0} max={100} value={passingScore} onChange={e => setPassingScore(Number(e.target.value) || 0)} className="w-24 bg-white/[0.06] border border-white/[0.08] rounded-lg px-3 py-2 text-sm tabular-nums focus:outline-none focus:border-red-300 focus:bg-white/[0.08] transition-colors" />
+                      <span className="text-xs text-white/50">% mínim</span>
                     </div>
                   </div>
                   <div className="grid grid-cols-[120px_1fr] gap-x-5 gap-y-1 items-center">
                     <label className="text-xs text-white/70">Temps límit</label>
                     <div className="flex items-center gap-2">
-                      <input type="number" min={0} value={timeLimit} onChange={e => setTimeLimit(Number(e.target.value) || 0)} className="w-24 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm tabular-nums focus:outline-none focus:border-red-300 focus:bg-white/10 transition-colors" />
-                      <span className="text-xs text-white/40">minuts {timeLimit === 0 && '(sense límit)'}</span>
+                      <input type="number" min={0} value={timeLimit} onChange={e => setTimeLimit(Number(e.target.value) || 0)} className="w-24 bg-white/[0.06] border border-white/[0.08] rounded-lg px-3 py-2 text-sm tabular-nums focus:outline-none focus:border-red-300 focus:bg-white/[0.08] transition-colors" />
+                      <span className="text-xs text-white/50">minuts {timeLimit === 0 && '(sense límit)'}</span>
                     </div>
                   </div>
                 </div>
@@ -10616,16 +10055,16 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
               <section>
                 <header className="mb-4">
                   <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/50">Disponibilitat</h4>
-                  <p className="text-[11px] text-white/35 mt-1">Finestra durant la qual la formació està oberta. Buit = sempre.</p>
+                  <p className="text-[11px] text-white/40 mt-1">Finestra durant la qual la formació està oberta. Buit = sempre.</p>
                 </header>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] text-white/55 block mb-1.5">Inici</label>
-                    <input type="date" value={startAt} onChange={e => setStartAt(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-300 focus:bg-white/10 transition-colors" style={{ colorScheme: 'dark' }} />
+                    <label className="text-[11px] text-white/50 block mb-1.5">Inici</label>
+                    <input type="date" value={startAt} onChange={e => setStartAt(e.target.value)} className="w-full bg-white/[0.06] border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-300 focus:bg-white/[0.08] transition-colors" style={{ colorScheme: 'light' }} />
                   </div>
                   <div>
-                    <label className="text-[11px] text-white/55 block mb-1.5">Final</label>
-                    <input type="date" value={endAt} onChange={e => setEndAt(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-300 focus:bg-white/10 transition-colors" style={{ colorScheme: 'dark' }} />
+                    <label className="text-[11px] text-white/50 block mb-1.5">Final</label>
+                    <input type="date" value={endAt} onChange={e => setEndAt(e.target.value)} className="w-full bg-white/[0.06] border border-white/[0.08] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-300 focus:bg-white/[0.08] transition-colors" style={{ colorScheme: 'light' }} />
                   </div>
                 </div>
               </section>
@@ -10638,20 +10077,20 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
       {showAddPicker && (
         <div
           className="fixed inset-0 z-[55] flex items-center justify-center p-6 backdrop-blur-md"
-          style={{ background: 'rgba(20,14,14,0.55)' }}
+          style={{ background: 'rgba(80,50,40,0.35)' }}
           onClick={() => setShowAddPicker(false)}
         >
           <div
             onClick={e => e.stopPropagation()}
-            className="w-full max-w-4xl max-h-[85vh] overflow-y-auto rounded-2xl border border-white/10 shadow-2xl shadow-black/60 text-white"
-            style={{ background: 'linear-gradient(180deg,#2c1f1e 0%,#2a1d1c 100%)' }}
+            className="w-full max-w-4xl max-h-[85vh] overflow-y-auto rounded-2xl border border-white/[0.08] shadow-2xl shadow-black/15 text-[#f0e8d8]"
+            style={{ background: 'linear-gradient(180deg,#1e1312 0%,#231615 100%)' }}
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between px-7 py-5 border-b border-white/10 backdrop-blur-md" style={{ background: 'rgba(44,31,30,0.92)' }}>
+            <div className="sticky top-0 z-10 flex items-center justify-between px-7 py-5 border-b border-white/[0.08] backdrop-blur-md" style={{ background: 'rgba(24,16,16,0.96)' }}>
               <div>
                 <h3 className="text-base font-semibold tracking-tight">Quin tipus de pregunta?</h3>
-                <p className="text-[11px] text-white/45 mt-0.5">Triar el format afecta com l'usuari respon i com es corregeix.</p>
+                <p className="text-[11px] text-white/50 mt-0.5">Triar el format afecta com l'usuari respon i com es corregeix.</p>
               </div>
-              <button onClick={() => setShowAddPicker(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-white hover:bg-white/5 transition-colors" aria-label="Tancar">✕</button>
+              <button onClick={() => setShowAddPicker(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-[#f0e8d8] hover:bg-white/[0.06] transition-colors" aria-label="Tancar">✕</button>
             </div>
 
             <div className="px-7 py-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -10661,9 +10100,9 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   preview: (
                     <div className="space-y-1.5">
                       {['A','B','C','D'].map((l, i) => (
-                        <div key={l} className={`flex items-center gap-2 px-2 py-1.5 rounded-md border ${i === 1 ? 'bg-red-300/[0.08] border-red-300/30' : 'border-white/10'}`}>
-                          <span className={`w-4 h-4 rounded-full text-[8px] flex items-center justify-center font-bold ${i === 1 ? 'bg-red-300/70 text-red-950' : 'bg-white/10 text-white/40'}`}>{l}</span>
-                          <span className="h-1.5 rounded bg-white/15 flex-1" />
+                        <div key={l} className={`flex items-center gap-2 px-2 py-1.5 rounded-md border ${i === 1 ? 'bg-[#bf211e]/[0.07] border-[#bf211e]/30' : 'border-white/[0.08]'}`}>
+                          <span className={`w-4 h-4 rounded-full text-[8px] flex items-center justify-center font-bold ${i === 1 ? 'bg-[#bf211e]/85 text-white' : 'bg-white/[0.08] text-white/50'}`}>{l}</span>
+                          <span className="h-1.5 rounded bg-white/[0.08] flex-1" />
                         </div>
                       ))}
                     </div>
@@ -10674,9 +10113,9 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   preview: (
                     <div className="space-y-1.5">
                       {[true,false,true,false].map((on, i) => (
-                        <div key={i} className={`flex items-center gap-2 px-2 py-1.5 rounded-md border ${on ? 'bg-red-300/[0.08] border-red-300/30' : 'border-white/10'}`}>
-                          <span className={`w-4 h-4 rounded text-[8px] flex items-center justify-center font-bold ${on ? 'bg-red-300/70 text-red-950' : 'bg-white/10 text-white/40'}`}>{on ? '✓' : ''}</span>
-                          <span className="h-1.5 rounded bg-white/15 flex-1" />
+                        <div key={i} className={`flex items-center gap-2 px-2 py-1.5 rounded-md border ${on ? 'bg-[#bf211e]/[0.07] border-[#bf211e]/30' : 'border-white/[0.08]'}`}>
+                          <span className={`w-4 h-4 rounded text-[8px] flex items-center justify-center font-bold ${on ? 'bg-[#bf211e]/85 text-white' : 'bg-white/[0.08] text-white/50'}`}>{on ? '✓' : ''}</span>
+                          <span className="h-1.5 rounded bg-white/[0.08] flex-1" />
                         </div>
                       ))}
                     </div>
@@ -10686,8 +10125,8 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   type: 'true_false' as const, title: 'Vertader / Fals', desc: 'Pregunta binària, dues úniques opcions.',
                   preview: (
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="py-3 rounded-md border-2 border-red-300/40 bg-red-300/[0.08] text-center text-xs font-medium text-white" style={{ fontFamily: '"Instrument Serif", serif' }}>Vertader</div>
-                      <div className="py-3 rounded-md border border-white/15 text-center text-xs text-white/50" style={{ fontFamily: '"Instrument Serif", serif' }}>Fals</div>
+                      <div className="py-3 rounded-md border-2 border-[#bf211e]/40 bg-[#bf211e]/[0.07] text-center text-xs font-medium text-[#f0e8d8]" style={{ fontFamily: '"Instrument Serif", serif' }}>Vertader</div>
+                      <div className="py-3 rounded-md border border-white/10 text-center text-xs text-white/50" style={{ fontFamily: '"Instrument Serif", serif' }}>Fals</div>
                     </div>
                   ),
                 },
@@ -10696,10 +10135,10 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   preview: (
                     <div className="space-y-1.5">
                       {[0,1,2].map(i => (
-                        <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-white/10">
-                          <span className="h-1.5 rounded bg-white/20 flex-1" />
-                          <span className="text-white/40 text-[10px]">→</span>
-                          <span className="h-4 rounded bg-white/10 border border-white/15 flex-1" />
+                        <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-white/[0.08]">
+                          <span className="h-1.5 rounded bg-white/[0.12] flex-1" />
+                          <span className="text-white/50 text-[10px]">→</span>
+                          <span className="h-4 rounded bg-white/[0.08] border border-white/10 flex-1" />
                         </div>
                       ))}
                     </div>
@@ -10709,12 +10148,12 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   type: 'open_text' as const, title: 'Resposta oberta', desc: 'Text lliure. Revisió manual per admin (no auto-puntua).',
                   preview: (
                     <div className="space-y-1.5">
-                      <div className="bg-white/5 border border-white/10 rounded-md p-2 space-y-1">
-                        <span className="block h-1.5 rounded bg-white/15 w-5/6" />
-                        <span className="block h-1.5 rounded bg-white/15 w-4/6" />
-                        <span className="block h-1.5 rounded bg-white/10 w-3/6" />
+                      <div className="bg-white/[0.06] border border-white/[0.08] rounded-md p-2 space-y-1">
+                        <span className="block h-1.5 rounded bg-white/[0.08] w-5/6" />
+                        <span className="block h-1.5 rounded bg-white/[0.08] w-4/6" />
+                        <span className="block h-1.5 rounded bg-white/[0.08] w-3/6" />
                       </div>
-                      <p className="text-[10px] text-amber-200/70 italic">Pendent de correcció</p>
+                      <p className="text-[10px] text-[#a36a16] italic">Pendent de correcció</p>
                     </div>
                   ),
                 },
@@ -10722,10 +10161,10 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   type: 'slide' as const, title: 'Slide explicació', desc: 'Imatge o vídeo amb text. No puntua, només informa.',
                   preview: (
                     <div className="space-y-1.5">
-                      <div className="aspect-video rounded-md border border-white/10 bg-gradient-to-br from-white/15 to-white/5 flex items-center justify-center">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/40"><polygon points="5 3 19 12 5 21" /></svg>
+                      <div className="aspect-video rounded-md border border-white/[0.08] bg-gradient-to-br from-white/15 to-white/5 flex items-center justify-center">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/50"><polygon points="5 3 19 12 5 21" /></svg>
                       </div>
-                      <span className="block h-1.5 rounded bg-white/15 w-4/6" />
+                      <span className="block h-1.5 rounded bg-white/[0.08] w-4/6" />
                     </div>
                   ),
                 },
@@ -10733,9 +10172,9 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                 <button
                   key={card.type}
                   onClick={() => { addQuestion(card.type); setShowAddPicker(false); }}
-                  className="text-left p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-red-300/30 transition-all flex flex-col gap-3 group"
+                  className="text-left p-4 rounded-xl border border-white/[0.08] bg-white/[0.06] hover:bg-white/[0.08] hover:border-[#bf211e]/30 transition-all flex flex-col gap-3 group"
                 >
-                  <div className="aspect-[5/3] rounded-lg bg-black/25 border border-white/5 p-3 overflow-hidden group-hover:border-white/10 transition-colors">
+                  <div className="aspect-[5/3] rounded-lg bg-[#bf211e]/[0.04] border border-white/[0.05] p-3 overflow-hidden group-hover:border-white/[0.08] transition-colors">
                     {card.preview}
                   </div>
                   <div>
@@ -10744,6 +10183,1103 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   </div>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── News Editor Page (12-col freeform grid composer, editorial theme) ────────
+// Implements design handoff: drag from palette → drop on 12×row grid, tiles can
+// move/resize, inline edit on dblclick. Pointer events, not HTML5 DnD.
+
+const NEWS_CATS_FULL = ['Comunicats interns','Notícies corporatives','Recursos humans','Esdeveniments','Innovació','Seguretat'];
+
+type NewsTileType =
+  | 'headline'|'subhead'|'byline'|'paragraph'|'pullquote'|'list'|'caption'
+  | 'image'|'gallery'|'video'|'audio'|'embed'
+  | 'stat'|'chart'|'table'
+  | 'divider'|'spacer';
+
+type NewsTileCat = 'Text'|'Media'|'Data'|'Structure';
+
+interface NewsTile {
+  id: string;
+  type: NewsTileType;
+  x: number; y: number; w: number; h: number;
+  content?: string;
+  url?: string;     // image upload (TAVIL extension; null on first drop)
+}
+
+const NEWS_TYPES: Record<NewsTileType, { label: string; icon: string; cat: NewsTileCat; w: number; h: number; content?: string }> = {
+  headline:  { label: 'Titular',         icon: 'H₁', cat: 'Text',      w: 12, h: 2, content: 'Titular sense definir que travessa tota la pàgina' },
+  subhead:   { label: 'Subtítol',        icon: 'H₂', cat: 'Text',      w: 9,  h: 1, content: 'Una entradeta breu que situa la història' },
+  byline:    { label: 'Firma',           icon: '✎',  cat: 'Text',      w: 12, h: 1, content: 'Per Nom Cognom · 8 maig 2026 · 12 min lectura' },
+  paragraph: { label: 'Paràgraf',        icon: '¶',  cat: 'Text',      w: 7,  h: 4, content: 'El primer paràgraf situa el lector: què passa, on, per què importa ara. Llenguatge senzill; després l\'estructura fa la resta.' },
+  pullquote: { label: 'Cita destacada',  icon: '"',  cat: 'Text',      w: 4,  h: 3, content: '"No s\'esperaven que la temporada canviés tan ràpid."' },
+  list:      { label: 'Llista',          icon: '☰',  cat: 'Text',      w: 4,  h: 4, content: 'Tres coses\nQue han passat\nEn ordre\nAquesta setmana' },
+  caption:   { label: 'Peu de foto',     icon: '—',  cat: 'Text',      w: 6,  h: 1, content: 'Foto de — · Peu opcional aquí.' },
+  image:     { label: 'Imatge',          icon: '▦',  cat: 'Media',     w: 6,  h: 5 },
+  gallery:   { label: 'Galeria',         icon: '⊞',  cat: 'Media',     w: 12, h: 4 },
+  video:     { label: 'Vídeo',           icon: '▶',  cat: 'Media',     w: 8,  h: 5 },
+  audio:     { label: 'Àudio',           icon: '♪',  cat: 'Media',     w: 6,  h: 2 },
+  embed:     { label: 'Embed',           icon: '⊕',  cat: 'Media',     w: 6,  h: 3, content: 'Embed' },
+  stat:      { label: 'Xifra',           icon: '#',  cat: 'Data',      w: 3,  h: 3, content: '37%|del personal enquestat' },
+  chart:     { label: 'Gràfic',          icon: '⌁',  cat: 'Data',      w: 6,  h: 4 },
+  table:     { label: 'Taula',           icon: '⊟',  cat: 'Data',      w: 8,  h: 4 },
+  divider:   { label: 'Separador',       icon: '⎯',  cat: 'Structure', w: 12, h: 1 },
+  spacer:    { label: 'Espai',           icon: '∅',  cat: 'Structure', w: 12, h: 1 },
+};
+
+const NEWS_TYPE_CATS: NewsTileCat[] = ['Text','Media','Data','Structure'];
+
+const NG_COLS = 12;
+const NG_ROW_H = 44;
+const NG_GAP = 8;
+
+// Editorial theme tokens — cream/bone (per design handoff).
+const NT = {
+  bg: '#efece4',
+  panel: '#faf8f1',
+  surface: '#ffffff',
+  ink: '#1a1714',
+  mute: 'rgba(26,23,20,0.55)',
+  soft: 'rgba(26,23,20,0.08)',
+  accent: '#bf211e',
+  accentInk: '#ffffff',
+  grid: 'rgba(26,23,20,0.06)',
+  headlineFont: '"Instrument Serif", "Newsreader", Georgia, serif',
+  bodyFont: '"Instrument Serif", "Newsreader", Georgia, serif',
+  uiFont: '"Inter", ui-sans-serif, system-ui, sans-serif',
+  radius: 4,
+  tileRadius: 4,
+  headlineWeight: 500,
+};
+
+const newsTileBox = (t: { x:number;y:number;w:number;h:number }, cw: number, rh: number) => ({
+  left: t.x * (cw + NG_GAP),
+  top: t.y * (rh + NG_GAP),
+  width: t.w * cw + (t.w - 1) * NG_GAP,
+  height: t.h * rh + (t.h - 1) * NG_GAP,
+});
+
+const newsClamp = (t: NewsTile): NewsTile => ({
+  ...t,
+  x: Math.max(0, Math.min(NG_COLS - 1, t.x)),
+  w: Math.max(1, Math.min(NG_COLS - t.x, t.w)),
+  h: Math.max(1, t.h),
+  y: Math.max(0, t.y),
+});
+
+const newsUid = () => Math.random().toString(36).slice(2, 9);
+
+// ─── Striped media placeholder ───────────────────────────────────────────────
+function NewsStriped({ label, mediaType }: { label: string; mediaType: string }) {
+  return (
+    <div style={{
+      width: '100%', height: '100%', position: 'relative',
+      background: `repeating-linear-gradient(135deg, ${NT.soft}, ${NT.soft} 1px, transparent 1px, transparent 12px)`,
+      border: `1px dashed ${NT.soft}`,
+      borderRadius: NT.tileRadius, overflow: 'hidden',
+      display: 'grid', placeItems: 'center',
+    }}>
+      <div style={{
+        fontFamily: 'ui-monospace, SF Mono, Menlo, monospace',
+        fontSize: 10, color: NT.mute, letterSpacing: '0.06em',
+        background: NT.panel, padding: '4px 8px', borderRadius: 999,
+        border: `1px solid ${NT.soft}`,
+      }}>
+        ⌖ drop {mediaType} · {label}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tile content (per type) ─────────────────────────────────────────────────
+function NewsTileContent({ tile, editable, onChange, onRequestImage }: {
+  tile: NewsTile;
+  editable: boolean;
+  onChange: (content: string) => void;
+  onRequestImage: () => void;
+}) {
+  const editProps: any = editable ? {
+    contentEditable: true,
+    suppressContentEditableWarning: true,
+    onBlur: (e: React.FocusEvent<HTMLDivElement>) => onChange(e.currentTarget.innerText),
+    onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+  } : {};
+  const editStyle = editable ? { outline: 'none', cursor: 'text', background: 'rgba(191,33,30,0.06)', borderRadius: 4 } : {};
+
+  switch (tile.type) {
+    case 'headline':
+      return <div {...editProps} style={{
+        fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight,
+        fontSize: 'clamp(28px, 4vw, 52px)', lineHeight: 1.05,
+        letterSpacing: '-0.02em', color: NT.ink,
+        ...editStyle,
+      }}>{tile.content}</div>;
+    case 'subhead':
+      return <div {...editProps} style={{
+        fontFamily: NT.headlineFont, fontWeight: 400,
+        fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3,
+        color: NT.mute, ...editStyle,
+      }}>{tile.content}</div>;
+    case 'byline':
+      return <div {...editProps} style={{
+        fontFamily: NT.uiFont, fontSize: 11, fontWeight: 500,
+        letterSpacing: '0.04em', textTransform: 'uppercase',
+        color: NT.mute, ...editStyle,
+      }}>{tile.content}</div>;
+    case 'paragraph':
+      return <div {...editProps} style={{
+        fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55,
+        color: NT.ink, ...editStyle,
+      }}>{tile.content}</div>;
+    case 'pullquote':
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%' }}>
+          <div style={{ width: 32, height: 2, background: NT.accent }} />
+          <div {...editProps} style={{
+            fontFamily: NT.headlineFont, fontWeight: 500,
+            fontSize: 'clamp(18px, 1.8vw, 24px)', lineHeight: 1.25,
+            color: NT.ink, fontStyle: 'italic', flex: 1,
+            ...editStyle,
+          }}>{tile.content}</div>
+        </div>
+      );
+    case 'list': {
+      const items = String(tile.content || '').split('\n').filter(Boolean);
+      return (
+        <div {...editProps} style={{
+          fontFamily: NT.bodyFont, fontSize: 14, lineHeight: 1.6,
+          color: NT.ink, ...editStyle,
+        }}>
+          {editable
+            ? tile.content
+            : items.map((li, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10, padding: '2px 0' }}>
+                <span style={{ color: NT.accent, fontFamily: NT.uiFont, fontSize: 12, minWidth: 18 }}>{String(i + 1).padStart(2, '0')}</span>
+                <span>{li}</span>
+              </div>
+            ))}
+        </div>
+      );
+    }
+    case 'caption':
+      return <div {...editProps} style={{
+        fontFamily: NT.bodyFont, fontSize: 12, lineHeight: 1.5,
+        color: NT.mute, fontStyle: 'italic', ...editStyle,
+      }}>{tile.content}</div>;
+    case 'image':
+      if (tile.url) {
+        return <img src={resolveImg(tile.url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />;
+      }
+      return (
+        <div style={{ position: 'relative', width: '100%', height: '100%' }} onDoubleClick={(e) => { e.stopPropagation(); onRequestImage(); }}>
+          <NewsStriped label="Imatge" mediaType="image" />
+          {editable && (
+            <button
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onRequestImage(); }}
+              style={{
+                position: 'absolute', left: '50%', bottom: 12, transform: 'translateX(-50%)',
+                background: NT.accent, color: NT.accentInk, border: 0,
+                padding: '6px 12px', borderRadius: 999,
+                fontFamily: NT.uiFont, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              }}
+            >Pujar imatge</button>
+          )}
+        </div>
+      );
+    case 'gallery':
+      return (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, height: '100%' }}>
+          {[0,1,2,3].map(i => <NewsStriped key={i} label={`#${i+1}`} mediaType="img" />)}
+        </div>
+      );
+    case 'video':
+      return <NewsStriped label="Vídeo" mediaType="video" />;
+    case 'audio':
+      return (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, height: '100%',
+          padding: '0 14px', background: NT.soft, borderRadius: NT.tileRadius,
+        }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: NT.accent, color: NT.accentInk, display: 'grid', placeItems: 'center' }}>▶</div>
+          <div style={{ flex: 1, height: 4, background: 'rgba(0,0,0,0.08)', borderRadius: 2, position: 'relative' }}>
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '32%', background: NT.accent, borderRadius: 2 }} />
+          </div>
+          <div style={{ fontFamily: NT.uiFont, fontSize: 11, color: NT.mute, fontVariantNumeric: 'tabular-nums' }}>2:14 / 6:42</div>
+        </div>
+      );
+    case 'embed':
+      return <NewsStriped label="Embed" mediaType="embed" />;
+    case 'stat': {
+      const [num, lab] = String(tile.content || '|').split('|');
+      const numProps: any = editable ? {
+        contentEditable: true, suppressContentEditableWarning: true,
+        onBlur: (e: React.FocusEvent<HTMLDivElement>) => onChange(`${e.currentTarget.innerText}|${lab}`),
+        onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+      } : {};
+      const labProps: any = editable ? {
+        contentEditable: true, suppressContentEditableWarning: true,
+        onBlur: (e: React.FocusEvent<HTMLDivElement>) => onChange(`${num}|${e.currentTarget.innerText}`),
+        onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+      } : {};
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
+          <div {...numProps} style={{
+            fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight,
+            fontSize: 'clamp(36px, 4vw, 56px)', lineHeight: 1, color: NT.accent,
+            letterSpacing: '-0.03em', ...editStyle,
+          }}>{num}</div>
+          <div {...labProps} style={{
+            fontFamily: NT.uiFont, fontSize: 11, lineHeight: 1.3, color: NT.mute,
+            textTransform: 'uppercase', letterSpacing: '0.06em', ...editStyle,
+          }}>{lab}</div>
+        </div>
+      );
+    }
+    case 'chart':
+      return (
+        <div style={{ height: '100%', position: 'relative', padding: '8px 4px 4px' }}>
+          <svg viewBox="0 0 200 80" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
+            <polyline fill="none" stroke={NT.accent} strokeWidth="1.5"
+              points="0,60 20,55 40,42 60,48 80,30 100,35 120,18 140,22 160,12 180,16 200,8" />
+            <polyline fill={NT.accent} fillOpacity="0.08" stroke="none"
+              points="0,60 20,55 40,42 60,48 80,30 100,35 120,18 140,22 160,12 180,16 200,8 200,80 0,80" />
+          </svg>
+        </div>
+      );
+    case 'table':
+      return (
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', fontFamily: NT.uiFont, fontSize: 12 }}>
+          {[['Regió','Llars','Variació'],['Costa','1.240','−18%'],['Interior','3.810','+4%'],['Total','5.050','−2%']].map((r, i) => (
+            <div key={i} style={{
+              display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8,
+              padding: '6px 8px', borderBottom: `1px solid ${NT.soft}`,
+              fontWeight: i === 0 ? 600 : 400,
+              color: i === 0 ? NT.mute : NT.ink,
+              fontSize: i === 0 ? 10 : 12,
+              letterSpacing: i === 0 ? '0.06em' : 0,
+              textTransform: i === 0 ? 'uppercase' : 'none',
+            }}>
+              {r.map((c, j) => <div key={j} style={{ textAlign: j === 0 ? 'left' : 'right', fontVariantNumeric: 'tabular-nums' }}>{c}</div>)}
+            </div>
+          ))}
+        </div>
+      );
+    case 'divider':
+      return (
+        <div style={{ height: '100%', display: 'grid', placeItems: 'center' }}>
+          <div style={{ width: '100%', height: 1, background: NT.ink, opacity: 0.6 }} />
+        </div>
+      );
+    case 'spacer':
+      return null;
+    default:
+      return null;
+  }
+}
+
+// ─── Read-only tiles viewer (used in news article view) ──────────────────────
+function NewsTilesViewer({ content }: { content: string }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [cw, setCw] = useState(80);
+  const tiles: NewsTile[] = useMemo(() => {
+    try {
+      const parsed = JSON.parse(content);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((t: any) => ({
+        id: t.id || newsUid(),
+        type: t.type, x: t.x|0, y: t.y|0, w: t.w|0, h: t.h|0,
+        content: t.content, url: t.url,
+      } as NewsTile));
+    } catch { return []; }
+  }, [content]);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = ref.current; if (!el) return;
+      const w = el.clientWidth;
+      setCw((w - NG_GAP * (NG_COLS - 1)) / NG_COLS);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (ref.current) ro.observe(ref.current);
+    window.addEventListener('resize', measure);
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
+  }, []);
+
+  const minRows = tiles.length ? Math.max(1, ...tiles.map(t => t.y + t.h)) : 1;
+  const totalH = minRows * NG_ROW_H + (minRows - 1) * NG_GAP;
+
+  return (
+    <div ref={ref} style={{
+      position: 'relative', width: '100%', height: totalH,
+      fontFamily: NT.bodyFont, color: NT.ink, marginTop: 12,
+    }}>
+      {tiles.map(t => {
+        const padded = !['image','video','gallery','embed','spacer','divider','audio'].includes(t.type);
+        return (
+          <div key={t.id} style={{
+            position: 'absolute', ...newsTileBox(t, cw, NG_ROW_H),
+            padding: padded ? '6px 4px' : 0, overflow: 'hidden',
+          }}>
+            <NewsTileContent tile={t} editable={false} onChange={() => {}} onRequestImage={() => {}} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Tile chrome ─────────────────────────────────────────────────────────────
+function NewsTileEl({ tile, selected, editing, gridLines, onSelect, onEdit, onChange, onDelete, onPointerDown, onResizePointerDown, onRequestImage }: {
+  tile: NewsTile; selected: boolean; editing: string | null; gridLines: boolean;
+  onSelect: (id: string) => void;
+  onEdit: (id: string) => void;
+  onChange: (id: string, content: string) => void;
+  onDelete: (id: string) => void;
+  onPointerDown: (e: React.PointerEvent, t: NewsTile) => void;
+  onResizePointerDown: (e: React.PointerEvent, t: NewsTile, dir: 'se'|'e'|'s') => void;
+  onRequestImage: (id: string) => void;
+}) {
+  const def = NEWS_TYPES[tile.type];
+  const padded = !['image','video','gallery','embed','spacer','divider','audio'].includes(tile.type);
+  return (
+    <div
+      data-tile={tile.id}
+      onPointerDown={(e) => onPointerDown(e, tile)}
+      onClick={(e) => { e.stopPropagation(); onSelect(tile.id); }}
+      onDoubleClick={(e) => { e.stopPropagation(); onEdit(tile.id); }}
+      style={{
+        position: 'absolute', inset: 0, width: '100%', height: '100%',
+        background: tile.type === 'spacer' ? 'transparent' : NT.surface,
+        border: selected
+          ? `1.5px solid ${NT.accent}`
+          : (gridLines || tile.type === 'spacer' ? `1px dashed ${NT.soft}` : `1px solid ${NT.soft}`),
+        borderRadius: NT.tileRadius,
+        padding: padded ? '14px 16px' : 0,
+        boxShadow: selected ? `0 6px 20px ${NT.soft}` : 'none',
+        cursor: editing === tile.id ? 'text' : 'grab',
+        userSelect: editing === tile.id ? 'text' : 'none',
+        touchAction: 'none',
+        overflow: 'hidden',
+        transition: 'box-shadow .12s, border-color .12s',
+        boxSizing: 'border-box',
+      }}
+    >
+      <NewsTileContent
+        tile={tile}
+        editable={editing === tile.id}
+        onChange={(v) => onChange(tile.id, v)}
+        onRequestImage={() => onRequestImage(tile.id)}
+      />
+      {selected && (
+        <>
+          <div style={{ position: 'absolute', top: -1, right: -1, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <div style={{
+              background: NT.accent, color: NT.accentInk,
+              fontFamily: NT.uiFont, fontSize: 10, fontWeight: 500,
+              padding: '3px 8px',
+              borderRadius: `0 ${NT.tileRadius}px 0 4px`,
+              letterSpacing: '0.02em',
+            }}>{def.label} · {tile.w}×{tile.h}</div>
+            <button
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onDelete(tile.id); }}
+              style={{
+                background: NT.accent, color: NT.accentInk,
+                border: 0, padding: '3px 8px', fontSize: 12, lineHeight: 1,
+                cursor: 'pointer', borderRadius: '0 0 0 4px',
+              }}
+            >✕</button>
+          </div>
+          <div onPointerDown={(e) => onResizePointerDown(e, tile, 'se')}
+            style={{ position: 'absolute', right: -4, bottom: -4, width: 14, height: 14, background: NT.accent, borderRadius: '50%', cursor: 'nwse-resize', boxShadow: '0 0 0 2px white' }} />
+          <div onPointerDown={(e) => onResizePointerDown(e, tile, 'e')}
+            style={{ position: 'absolute', right: -3, top: '50%', width: 6, height: 28, background: NT.accent, transform: 'translateY(-50%)', borderRadius: 3, cursor: 'ew-resize' }} />
+          <div onPointerDown={(e) => onResizePointerDown(e, tile, 's')}
+            style={{ position: 'absolute', bottom: -3, left: '50%', width: 28, height: 6, background: NT.accent, transform: 'translateX(-50%)', borderRadius: 3, cursor: 'ns-resize' }} />
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Sidebar palette ─────────────────────────────────────────────────────────
+function NewsPalette({ onPointerDownItem }: { onPointerDownItem: (e: React.PointerEvent, type: NewsTileType) => void }) {
+  const grouped = useMemo(() => {
+    const by: Record<string, Array<[NewsTileType, typeof NEWS_TYPES[NewsTileType]]>> = { Text: [], Media: [], Data: [], Structure: [] };
+    (Object.entries(NEWS_TYPES) as Array<[NewsTileType, typeof NEWS_TYPES[NewsTileType]]>).forEach(([k, v]) => { by[v.cat].push([k, v]); });
+    return by;
+  }, []);
+  return (
+    <div style={{
+      width: 240, flexShrink: 0, background: NT.panel,
+      borderRight: `1px solid ${NT.soft}`,
+      display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    }}>
+      <div style={{ padding: '14px 16px 10px', borderBottom: `1px solid ${NT.soft}` }}>
+        <div style={{ fontFamily: NT.uiFont, fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>
+          Llibreria
+        </div>
+        <div style={{ fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 18, color: NT.ink, lineHeight: 1.15 }}>
+          Components
+        </div>
+        <div style={{ fontFamily: NT.uiFont, fontSize: 11, color: NT.mute, marginTop: 6, lineHeight: 1.4 }}>
+          Arrossega qualsevol bloc al canvas. Redimensiona des de la cantonada.
+        </div>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 24px' }}>
+        {NEWS_TYPE_CATS.map((c) => (
+          <div key={c} style={{ marginBottom: 16 }}>
+            <div style={{
+              fontFamily: NT.uiFont, fontSize: 9, fontWeight: 600, letterSpacing: '0.1em',
+              textTransform: 'uppercase', color: NT.mute, padding: '0 4px 6px',
+            }}>{c}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {grouped[c].map(([k, v]) => (
+                <div
+                  key={k}
+                  data-palette={k}
+                  onPointerDown={(e) => onPointerDownItem(e, k)}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = NT.soft; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.transform = 'none'; }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
+                    background: 'transparent', border: `1px solid ${NT.soft}`, borderRadius: NT.radius,
+                    color: NT.ink, cursor: 'grab', userSelect: 'none', touchAction: 'none',
+                    fontFamily: NT.uiFont, fontSize: 12, fontWeight: 500,
+                    transition: 'background .12s, transform .12s',
+                  }}
+                >
+                  <span style={{
+                    width: 22, height: 22, display: 'grid', placeItems: 'center', flexShrink: 0,
+                    background: NT.soft, borderRadius: Math.max(2, NT.radius - 2),
+                    fontSize: 12, fontFamily: NT.bodyFont, color: NT.ink,
+                  }}>{v.icon}</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>{v.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function NewsEditorPage({ initialId }: { initialId: number | null }) {
+  useEffect(() => {
+    try {
+      const have = localStorage.getItem('tavil_token') || sessionStorage.getItem('tavil_token');
+      if (!have && window.opener) {
+        const op = window.opener as Window | null;
+        const tok = op?.localStorage?.getItem('tavil_token') ?? op?.sessionStorage?.getItem('tavil_token') ?? null;
+        if (tok) sessionStorage.setItem('tavil_token', tok);
+      }
+    } catch { /* cross-origin */ }
+    document.title = 'Editor article · TAVIL';
+  }, []);
+
+  const [articleId, setArticleId] = useState<number | null>(initialId);
+  const [loading, setLoading] = useState(initialId !== null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [savedToast, setSavedToast] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [preview, setPreview] = useState(false);
+
+  // Article metadata (settings modal)
+  const [title, setTitle] = useState('Esborrany sense títol');
+  const [category, setCategory] = useState(NEWS_CATS_FULL[0]);
+  const [summary, setSummary] = useState('');
+  const [author, setAuthor] = useState('');
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [coverImage, setCoverImage] = useState('');
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [featured, setFeatured] = useState(false);
+
+  // Composer state
+  const [tiles, setTiles] = useState<NewsTile[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [drag, setDrag] = useState<any>(null);
+  const [hoverGrid, setHoverGrid] = useState<{x:number;y:number;w:number;h:number} | null>(null);
+  const [metrics, setMetrics] = useState({ cw: 80, rh: NG_ROW_H });
+
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingImageId = useRef<string | null>(null);
+
+  // Load existing article
+  useEffect(() => {
+    if (initialId === null) return;
+    apiGetNewsArticle(initialId)
+      .then(a => {
+        setTitle(a.title || 'Esborrany sense títol');
+        setCategory(a.category || NEWS_CATS_FULL[0]);
+        setSummary(a.summary || '');
+        setAuthor(a.author || '');
+        setDate((a.date || '').slice(0, 10));
+        setCoverImage(a.image || '');
+        setFeatured(a.featured === 1);
+        const c = (a.content || '').trim();
+        if (!c) { setTiles([]); return; }
+        // Try parse new tile-array format
+        try {
+          const parsed = JSON.parse(c);
+          if (Array.isArray(parsed) && parsed.length && parsed[0] && typeof parsed[0].x === 'number' && typeof parsed[0].type === 'string') {
+            setTiles(parsed.map(t => newsClamp({ ...t, id: t.id || newsUid() })));
+            return;
+          }
+        } catch { /* not JSON or wrong shape — fall through */ }
+        // Legacy fallback: dump as single paragraph
+        setTiles([{ id: newsUid(), type: 'paragraph', x: 0, y: 0, w: 12, h: 4, content: c.replace(/<[^>]+>/g, '') }]);
+      })
+      .catch(e => setError(e.message ?? 'Error carregant article'))
+      .finally(() => setLoading(false));
+  }, [initialId]);
+
+  // Recompute cell width on resize
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = canvasRef.current;
+      if (!el) return;
+      const w = el.clientWidth;
+      const cw = (w - NG_GAP * (NG_COLS - 1)) / NG_COLS;
+      setMetrics({ cw, rh: NG_ROW_H });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (canvasRef.current) ro.observe(canvasRef.current);
+    window.addEventListener('resize', measure);
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
+  }, []);
+
+  const minRows = useMemo(
+    () => Math.max(20, ...tiles.map(t => t.y + t.h + 4)),
+    [tiles],
+  );
+
+  // ── Drag handlers ──────────────────────────────────────────────────────────
+  const startPaletteDrag = useCallback((e: React.PointerEvent, type: NewsTileType) => {
+    e.preventDefault();
+    const def = NEWS_TYPES[type];
+    setDrag({ kind: 'palette', type, w: def.w, h: def.h, x: e.clientX, y: e.clientY });
+  }, []);
+
+  const startTileDrag = useCallback((e: React.PointerEvent, tile: NewsTile) => {
+    if (editingId === tile.id) return;
+    e.preventDefault();
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setDrag({
+      kind: 'move', id: tile.id,
+      offX: e.clientX - r.left, offY: e.clientY - r.top,
+      x: e.clientX, y: e.clientY, w: tile.w, h: tile.h,
+    });
+    setSelectedId(tile.id);
+  }, [editingId]);
+
+  const startResize = useCallback((e: React.PointerEvent, tile: NewsTile, dir: 'se'|'e'|'s') => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDrag({
+      kind: 'resize', id: tile.id, dir,
+      x: e.clientX, y: e.clientY,
+      origin: { x: tile.x, y: tile.y, w: tile.w, h: tile.h },
+    });
+    setSelectedId(tile.id);
+  }, []);
+
+  // ── Pointer move/up while drag is active ──────────────────────────────────
+  useEffect(() => {
+    if (!drag) return;
+    const move = (e: PointerEvent) => {
+      const c = canvasRef.current;
+      if (drag.kind === 'palette') {
+        setDrag((d: any) => ({ ...d, x: e.clientX, y: e.clientY }));
+        if (!c) return;
+        const r = c.getBoundingClientRect();
+        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+          const localX = e.clientX - r.left - (drag.w * metrics.cw) / 2;
+          const localY = e.clientY - r.top;
+          const gx = Math.round(localX / (metrics.cw + NG_GAP));
+          const gy = Math.round(localY / (metrics.rh + NG_GAP));
+          setHoverGrid({ x: Math.max(0, Math.min(NG_COLS - drag.w, gx)), y: Math.max(0, gy), w: drag.w, h: drag.h });
+        } else setHoverGrid(null);
+      } else if (drag.kind === 'move') {
+        if (!c) return;
+        const r = c.getBoundingClientRect();
+        const localX = e.clientX - r.left - drag.offX;
+        const localY = e.clientY - r.top - drag.offY;
+        const gx = Math.round(localX / (metrics.cw + NG_GAP));
+        const gy = Math.round(localY / (metrics.rh + NG_GAP));
+        const tile = tiles.find(t => t.id === drag.id);
+        if (!tile) return;
+        const nx = Math.max(0, Math.min(NG_COLS - tile.w, gx));
+        const ny = Math.max(0, gy);
+        setHoverGrid({ x: nx, y: ny, w: tile.w, h: tile.h });
+      } else if (drag.kind === 'resize') {
+        const dx = (e.clientX - drag.x) / (metrics.cw + NG_GAP);
+        const dy = (e.clientY - drag.y) / (metrics.rh + NG_GAP);
+        const o = drag.origin;
+        let nw = o.w, nh = o.h;
+        if (drag.dir.includes('e')) nw = Math.round(o.w + dx);
+        if (drag.dir.includes('s')) nh = Math.round(o.h + dy);
+        nw = Math.max(1, Math.min(NG_COLS - o.x, nw));
+        nh = Math.max(1, nh);
+        setTiles(prev => prev.map(t => t.id === drag.id ? { ...t, w: nw, h: nh } : t));
+      }
+    };
+    const up = () => {
+      if (drag.kind === 'palette') {
+        if (hoverGrid) {
+          const def = NEWS_TYPES[drag.type as NewsTileType];
+          setTiles(prev => [...prev, newsClamp({
+            id: newsUid(), type: drag.type, x: hoverGrid.x, y: hoverGrid.y,
+            w: drag.w, h: drag.h, content: def.content,
+          })]);
+        }
+      } else if (drag.kind === 'move') {
+        if (hoverGrid) {
+          setTiles(prev => prev.map(tt => tt.id === drag.id
+            ? newsClamp({ ...tt, x: hoverGrid.x, y: hoverGrid.y })
+            : tt));
+        }
+      }
+      setDrag(null); setHoverGrid(null);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+  }, [drag, hoverGrid, tiles, metrics]);
+
+  // Exit edit on click outside the editing tile
+  useEffect(() => {
+    if (!editingId) return;
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest(`[data-tile="${editingId}"]`)) setEditingId(null);
+    };
+    window.addEventListener('pointerdown', onDown);
+    return () => window.removeEventListener('pointerdown', onDown);
+  }, [editingId]);
+
+  // Keyboard: delete selected, escape clears
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (editingId) return;
+      if ((e.key === 'Backspace' || e.key === 'Delete') && selectedId) {
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+        e.preventDefault();
+        setTiles(prev => prev.filter(t => t.id !== selectedId));
+        setSelectedId(null);
+      }
+      if (e.key === 'Escape') { setSelectedId(null); setEditingId(null); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedId, editingId]);
+
+  const updateTileContent = (id: string, content: string) =>
+    setTiles(prev => prev.map(t => t.id === id ? { ...t, content } : t));
+  const deleteTile = (id: string) => {
+    setTiles(prev => prev.filter(t => t.id !== id));
+    setSelectedId(null);
+  };
+  const requestImageUpload = (id: string) => {
+    pendingImageId.current = id;
+    fileInputRef.current?.click();
+  };
+  const handleImageFile = async (file: File) => {
+    const id = pendingImageId.current;
+    pendingImageId.current = null;
+    if (!id || !file) return;
+    try {
+      const full = await apiUploadImage(file);
+      const m = full.match(/(\/uploads\/[^?#]+)/);
+      const url = m ? m[1] : full;
+      setTiles(prev => prev.map(t => t.id === id ? { ...t, url } : t));
+    } catch (e: any) {
+      setError(e.message ?? 'Error pujant imatge');
+    }
+  };
+
+  const handleSave = async () => {
+    if (!title.trim()) { setError("El títol és obligatori"); return; }
+    setSaving(true); setError('');
+    try {
+      let imageUrl = coverImage;
+      if (coverFile) {
+        const full = await apiUploadImage(coverFile);
+        const m = full.match(/(\/uploads\/[^?#]+)/);
+        imageUrl = m ? m[1] : full;
+      }
+      const fields = {
+        category, title: title.trim(), summary: summary.trim(),
+        content: JSON.stringify(tiles),
+        author: author.trim(), date,
+        image: imageUrl, featured: featured ? 1 : 0,
+      };
+      if (articleId !== null) {
+        await apiUpdateNews(articleId, fields);
+      } else {
+        const created = await apiCreateNews(fields);
+        setArticleId(created.id);
+        try {
+          const u = new URL(window.location.href);
+          u.searchParams.set('article', String(created.id));
+          window.history.replaceState(null, '', u.toString());
+        } catch {}
+      }
+      setCoverFile(null);
+      setCoverImage(imageUrl);
+      setSavedToast(true);
+      setTimeout(() => setSavedToast(false), 1800);
+    } catch (e: any) {
+      setError(e.message ?? 'Error guardant');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, background: NT.bg, color: NT.mute,
+        display: 'grid', placeItems: 'center', fontFamily: NT.uiFont, fontSize: 13,
+      }}>Carregant article…</div>
+    );
+  }
+
+  const totalH = minRows * metrics.rh + (minRows - 1) * NG_GAP;
+  const gridLines = !preview;
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: NT.bg, color: NT.ink,
+      fontFamily: NT.uiFont, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    }}>
+      {/* Saved toast */}
+      {savedToast && (
+        <div style={{
+          position: 'fixed', top: 18, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 60, padding: '8px 14px', borderRadius: 999,
+          background: '#3a7448', color: '#fff', fontFamily: NT.uiFont, fontSize: 12, fontWeight: 600,
+          boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+        }}>✓ Article guardat</div>
+      )}
+
+      {/* Hidden file input for image tile upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.currentTarget.value = ''; }}
+      />
+
+      {/* Top bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px',
+        background: NT.panel, borderBottom: `1px solid ${NT.soft}`, flexShrink: 0,
+      }}>
+        <button
+          onClick={() => window.close()}
+          style={{
+            background: 'transparent', border: `1px solid ${NT.soft}`,
+            color: NT.ink, padding: '6px 10px', borderRadius: NT.radius,
+            fontFamily: NT.uiFont, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+          }}
+        >← Tancar</button>
+        <div style={{
+          width: 24, height: 24, borderRadius: 4, background: NT.ink,
+          display: 'grid', placeItems: 'center', color: NT.bg,
+          fontFamily: NT.headlineFont, fontWeight: 700, fontSize: 14,
+        }}>T</div>
+        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <div style={{ fontSize: 10, color: NT.mute, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>
+            Portal · Notícia extensa
+          </div>
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Títol de l'article…"
+            style={{
+              fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 14,
+              color: NT.ink, lineHeight: 1.2, background: 'transparent',
+              border: 'none', outline: 'none', padding: 0, minWidth: 200, maxWidth: 360,
+            }}
+          />
+        </div>
+        <div style={{ flex: 1 }} />
+        {error && (
+          <span style={{
+            fontFamily: NT.uiFont, fontSize: 11, color: NT.accent,
+            background: 'rgba(191,33,30,0.08)', padding: '4px 10px', borderRadius: 999,
+            border: `1px solid ${NT.accent}33`,
+          }}>{error}</span>
+        )}
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={() => setPreview(p => !p)} style={{
+            background: 'transparent', border: `1px solid ${NT.soft}`,
+            color: NT.ink, padding: '6px 12px', borderRadius: NT.radius,
+            fontFamily: NT.uiFont, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+          }}>{preview ? '◐ Edició' : '◑ Vista prèvia'}</button>
+          <button onClick={() => setShowSettings(true)} style={{
+            background: 'transparent', border: `1px solid ${NT.soft}`,
+            color: NT.ink, padding: '6px 12px', borderRadius: NT.radius,
+            fontFamily: NT.uiFont, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+          }}>⚙ Configuració</button>
+          <button onClick={handleSave} disabled={saving || !title.trim()} style={{
+            background: NT.accent, color: NT.accentInk, border: 0,
+            padding: '6px 14px', borderRadius: NT.radius,
+            fontFamily: NT.uiFont, fontSize: 12, fontWeight: 600,
+            cursor: (saving || !title.trim()) ? 'not-allowed' : 'pointer',
+            opacity: (saving || !title.trim()) ? 0.5 : 1,
+          }}>{saving ? 'Guardant…' : (articleId !== null ? 'Guardar' : 'Publicar')}</button>
+        </div>
+      </div>
+
+      {/* Body: sidebar palette + canvas */}
+      <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative' }}>
+        {!preview && <NewsPalette onPointerDownItem={startPaletteDrag} />}
+
+        <div
+          onClick={() => { setSelectedId(null); setEditingId(null); }}
+          style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 32, position: 'relative' }}
+        >
+          <div style={{
+            maxWidth: 1200, margin: '0 auto',
+            background: NT.surface, borderRadius: NT.radius,
+            border: preview ? 'none' : `1px solid ${NT.soft}`,
+            padding: preview ? 'clamp(20px, 4vw, 64px)' : 20,
+            boxShadow: preview ? 'none' : '0 1px 0 rgba(0,0,0,0.02)',
+            position: 'relative',
+          }}>
+            <div
+              ref={canvasRef}
+              style={{
+                position: 'relative',
+                width: '100%', height: totalH, minHeight: 600,
+                backgroundImage: gridLines ? `
+                  linear-gradient(to right, ${NT.grid} 1px, transparent 1px),
+                  linear-gradient(to bottom, ${NT.grid} 1px, transparent 1px)
+                ` : 'none',
+                backgroundSize: gridLines ? `${metrics.cw + NG_GAP}px 100%, 100% ${metrics.rh + NG_GAP}px` : 'auto',
+              }}
+            >
+              {/* Drop indicator */}
+              {hoverGrid && drag && (drag.kind === 'palette' || drag.kind === 'move') && (
+                <div style={{
+                  position: 'absolute',
+                  ...newsTileBox(hoverGrid, metrics.cw, metrics.rh),
+                  background: 'rgba(191,33,30,0.14)',
+                  border: `1.5px dashed ${NT.accent}`,
+                  borderRadius: NT.tileRadius,
+                  pointerEvents: 'none',
+                  transition: 'left .08s, top .08s, width .08s, height .08s',
+                }} />
+              )}
+
+              {/* Tiles */}
+              {tiles.map(tt => (
+                <div key={tt.id} style={{
+                  position: 'absolute',
+                  ...newsTileBox(tt, metrics.cw, metrics.rh),
+                  opacity: drag?.kind === 'move' && drag.id === tt.id && hoverGrid ? 0.35 : 1,
+                  transition: drag ? 'none' : 'left .15s, top .15s',
+                }}>
+                  <NewsTileEl
+                    tile={tt}
+                    selected={!preview && selectedId === tt.id}
+                    editing={preview ? null : editingId}
+                    gridLines={gridLines}
+                    onSelect={preview ? () => {} : setSelectedId}
+                    onEdit={preview ? () => {} : setEditingId}
+                    onChange={updateTileContent}
+                    onDelete={deleteTile}
+                    onPointerDown={preview ? () => {} : startTileDrag}
+                    onResizePointerDown={startResize}
+                    onRequestImage={requestImageUpload}
+                  />
+                </div>
+              ))}
+
+              {/* Empty state */}
+              {tiles.length === 0 && (
+                <div style={{
+                  position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
+                  pointerEvents: 'none',
+                }}>
+                  <div style={{ textAlign: 'center', color: NT.mute }}>
+                    <div style={{
+                      fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight,
+                      fontSize: 28, color: NT.ink, marginBottom: 6,
+                    }}>Comença la teva història</div>
+                    <div style={{ fontFamily: NT.uiFont, fontSize: 13 }}>
+                      Arrossega qualsevol bloc del panell esquerre cap a aquesta pàgina.
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Status bar */}
+          {!preview && (
+            <div style={{
+              position: 'sticky', bottom: 0,
+              display: 'flex', gap: 16, alignItems: 'center',
+              padding: '8px 14px', maxWidth: 1200, margin: '16px auto 0',
+              background: NT.panel, border: `1px solid ${NT.soft}`,
+              borderRadius: NT.radius,
+              fontFamily: NT.uiFont, fontSize: 11, color: NT.mute,
+            }}>
+              <span><b style={{ color: NT.ink }}>{tiles.length}</b> blocs</span>
+              <span style={{ width: 1, height: 12, background: NT.soft }} />
+              <span>{minRows} files × 12 cols</span>
+              <span style={{ width: 1, height: 12, background: NT.soft }} />
+              <span style={{ color: NT.ink }}>⌫ esborrar · Esc desseleccionar</span>
+              <span style={{ flex: 1 }} />
+              <span>{articleId !== null ? `#${articleId}` : 'Esborrany nou'}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Floating drag ghost */}
+      {drag?.kind === 'palette' && (
+        <div style={{
+          position: 'fixed', left: drag.x, top: drag.y,
+          transform: 'translate(-50%, -50%)',
+          padding: '8px 14px', background: NT.accent, color: NT.accentInk,
+          borderRadius: 999, fontFamily: NT.uiFont, fontSize: 12, fontWeight: 600,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+          pointerEvents: 'none', zIndex: 1000,
+        }}>{NEWS_TYPES[drag.type as NewsTileType].label} · {drag.w}×{drag.h}</div>
+      )}
+
+      {/* Settings modal */}
+      {showSettings && (
+        <div
+          onClick={() => setShowSettings(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 50,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(26,23,20,0.45)', backdropFilter: 'blur(4px)',
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 560,
+              background: NT.surface, borderRadius: 8,
+              border: `1px solid ${NT.soft}`,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+              padding: 24, fontFamily: NT.uiFont, color: NT.ink,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div>
+                <div style={{ fontSize: 10, color: NT.mute, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>Article</div>
+                <div style={{ fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 22 }}>Configuració</div>
+              </div>
+              <button onClick={() => setShowSettings(false)} style={{
+                background: 'transparent', border: 'none', color: NT.mute,
+                fontSize: 18, cursor: 'pointer', padding: 4,
+              }}>✕</button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>Categoria</label>
+                <select value={category} onChange={e => setCategory(e.target.value)} style={{
+                  width: '100%', padding: '8px 10px', fontFamily: NT.uiFont, fontSize: 13,
+                  background: NT.surface, color: NT.ink,
+                  border: `1px solid ${NT.soft}`, borderRadius: NT.radius, outline: 'none',
+                }}>
+                  {NEWS_CATS_FULL.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>Data</label>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{
+                  width: '100%', padding: '8px 10px', fontFamily: NT.uiFont, fontSize: 13,
+                  background: NT.surface, color: NT.ink,
+                  border: `1px solid ${NT.soft}`, borderRadius: NT.radius, outline: 'none',
+                }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>Autor</label>
+                <input value={author} onChange={e => setAuthor(e.target.value)} placeholder="Nom de l'autor" style={{
+                  width: '100%', padding: '8px 10px', fontFamily: NT.uiFont, fontSize: 13,
+                  background: NT.surface, color: NT.ink,
+                  border: `1px solid ${NT.soft}`, borderRadius: NT.radius, outline: 'none',
+                }} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>Resum</label>
+                <textarea value={summary} onChange={e => setSummary(e.target.value)} rows={2}
+                  placeholder="Resum breu (1-2 frases)" style={{
+                    width: '100%', padding: '8px 10px', fontFamily: NT.bodyFont, fontSize: 13, lineHeight: 1.4,
+                    background: NT.surface, color: NT.ink,
+                    border: `1px solid ${NT.soft}`, borderRadius: NT.radius, outline: 'none', resize: 'vertical',
+                  }} />
+              </div>
+              <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button type="button" onClick={() => setFeatured(v => !v)} style={{
+                  position: 'relative', width: 40, height: 22, borderRadius: 999, border: 'none',
+                  background: featured ? NT.accent : NT.soft, cursor: 'pointer', padding: 0, transition: 'background .15s',
+                }}>
+                  <span style={{
+                    position: 'absolute', top: 2, left: featured ? 20 : 2,
+                    width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.15)', transition: 'left .15s',
+                  }} />
+                </button>
+                <span style={{ fontSize: 13 }}>Notícia destacada</span>
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>Imatge de portada</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {(coverFile || coverImage) && (
+                    <img
+                      src={coverFile ? URL.createObjectURL(coverFile) : resolveImg(coverImage)}
+                      alt=""
+                      style={{ width: 96, height: 64, objectFit: 'cover', borderRadius: NT.radius, border: `1px solid ${NT.soft}` }}
+                    />
+                  )}
+                  <input type="file" accept="image/*" onChange={e => setCoverFile(e.target.files?.[0] ?? null)}
+                    style={{ fontSize: 12, fontFamily: NT.uiFont, color: NT.mute }} />
+                  {coverImage && !coverFile && (
+                    <button type="button" onClick={() => setCoverImage('')} style={{
+                      background: 'transparent', border: 'none', color: NT.accent,
+                      fontSize: 12, cursor: 'pointer',
+                    }}>Treure</button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}>
+              <button onClick={() => setShowSettings(false)} style={{
+                background: NT.accent, color: NT.accentInk, border: 0,
+                padding: '8px 16px', borderRadius: NT.radius,
+                fontFamily: NT.uiFont, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}>Fet</button>
             </div>
           </div>
         </div>
@@ -10773,6 +11309,16 @@ function App() {
       return Number.isFinite(n) && n > 0 ? { id: n } : null;
     } catch { return null; }
   }, []);
+  // News article editor route: /?article=ID or /?article=new
+  const articleRoute = useMemo<{ id: number | null } | null>(() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get('article');
+      if (v === null) return null;
+      if (v === 'new') return { id: null };
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) && n > 0 ? { id: n } : null;
+    } catch { return null; }
+  }, []);
 
   const { t } = useTranslation();
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -10786,9 +11332,17 @@ function App() {
   const [authView, setAuthView] = useState<'login' | 'register' | 'verify-email' | 'otp' | 'forgot'>('login');
   const [pendingEmail, setPendingEmail] = useState('');
 
-  const [activeTab, setActiveTabState] = useState(() => localStorage.getItem('tavil_active_tab') ?? 'Inici');
+  const [activeTab, setActiveTabState] = useState(() => sessionStorage.getItem('tavil_active_tab') ?? 'Inici');
   const [notifSubTab, setNotifSubTab] = useState<string | null>(null);
-  const setActiveTab = (tab: string) => { localStorage.setItem('tavil_active_tab', tab); setActiveTabState(tab); };
+  const setActiveTab = (tab: string) => {
+    // Clear sub-tab memory so returning to any section starts at its default.
+    // F5 (page reload) doesn't call this, so F5-restore still works.
+    ['activitats','campus','veu','solicituds','perfil','backoffice'].forEach(k =>
+      sessionStorage.removeItem(`tavil_subtab_${k}`)
+    );
+    sessionStorage.setItem('tavil_active_tab', tab);
+    setActiveTabState(tab);
+  };
 
   // Page transition — push style: both old and new pages rendered during the
   // transition window, old slides out while new slides in. Direction derived
@@ -10908,9 +11462,6 @@ function App() {
     setNotifications([]);
     resetTabPrefetch();
   };
-
-  const currentSection = SIDEBAR_SECTIONS.flatMap(s => s.items).find(i => i.id === activeTab)
-    ?? (activeTab === 'Empresa' ? { id: 'Empresa', label: 'Empresa', icon: Building2 } : undefined);
 
   useEffect(() => {
     registerUnauthorizedHandler(handleLogout);
@@ -11103,6 +11654,10 @@ function App() {
   // Standalone quiz editor route — same token-inherit trick.
   if (editRoute !== null) {
     return <QuizEditorPage initialQuizId={editRoute.id} />;
+  }
+  // Standalone news article editor route.
+  if (articleRoute !== null) {
+    return <NewsEditorPage initialId={articleRoute.id} />;
   }
 
   if (!isLoggedIn) {

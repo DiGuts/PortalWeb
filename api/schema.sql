@@ -123,13 +123,14 @@ CREATE TABLE IF NOT EXISTS `activities` (
 
 CREATE TABLE IF NOT EXISTS `agenda_events` (
   `id`       INT          NOT NULL AUTO_INCREMENT,
-  `title`    TEXT         NOT NULL,
+  `title`    VARCHAR(255) NOT NULL,
   `day`      INT          NOT NULL,
   `month`    INT          NOT NULL,
   `time`     VARCHAR(20)  NOT NULL DEFAULT '',
   `location` VARCHAR(255) NOT NULL DEFAULT '',
   `type`     VARCHAR(100) NOT NULL DEFAULT 'Sessió interna',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_event` (`title`, `day`, `month`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `notices` (
