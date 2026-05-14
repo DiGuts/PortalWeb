@@ -166,6 +166,33 @@ elseif ($method === 'POST' && $action === 'resend-verification') {
     respond(['status' => 'sent']);
 }
 
+elseif ($method === 'PATCH' && $action === 'change-password') {
+    require_once __DIR__ . '/../auth_middleware.php';
+    $user = require_auth();
+    $newPwd  = str_val($body, 'new_password');
+    $curPwd  = $body['current_password'] ?? null;
+    if (strlen($newPwd) < 8) {
+        respond(['detail' => 'Mínim 8 caràcters'], 400);
+    }
+    // Fetch current hash
+    $stmt = $db->prepare('SELECT password, must_change_password FROM users WHERE id=?');
+    $stmt->execute([$user['id']]);
+    $row = $stmt->fetch();
+    if (!$row) respond(['detail' => 'Usuari no trobat'], 404);
+    // If not forced change, verify current password
+    if (!$row['must_change_password'] && $curPwd !== null) {
+        if (!password_verify($curPwd, $row['password'])) {
+            respond(['detail' => 'Contrasenya actual incorrecta'], 400);
+        }
+    } elseif (!$row['must_change_password'] && $curPwd === null) {
+        respond(['detail' => 'Cal la contrasenya actual'], 400);
+    }
+    $hashed = password_hash($newPwd, PASSWORD_BCRYPT);
+    $db->prepare('UPDATE users SET password=?, must_change_password=0 WHERE id=?')
+       ->execute([$hashed, $user['id']]);
+    respond(['status' => 'ok']);
+}
+
 else {
     respond(['detail' => 'Not found'], 404);
 }

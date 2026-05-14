@@ -473,7 +473,9 @@ export interface Notice {
   title: string;
   content: string;
   link: string;
+  link_text: string;
   active: number;
+  kind: 'warning' | 'danger' | 'neutral';
 }
 
 export async function apiGetNotices(): Promise<Notice[]> {
@@ -560,6 +562,8 @@ export interface Course {
   mandatory: number;
   cert: number;
   url: string;
+  is_external: number;
+  departments: string; // JSON array string e.g. '["Comercial","RRHH"]'
   user_status: string;
   user_progress: number;
 }
@@ -573,6 +577,34 @@ export async function apiUpdateCourseProgress(id: number, status: string, progre
     method: 'PATCH',
     body: JSON.stringify({ status, progress }),
   });
+}
+
+export interface ExternalCoursePayload {
+  title: string;
+  description: string;
+  url: string;
+  category: string;
+  hours: string;
+  mandatory: number;
+  departments: string[];
+}
+
+export async function apiCreateExternalCourse(data: ExternalCoursePayload): Promise<{ id: number }> {
+  return apiFetch<{ id: number }>('/api/courses', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateExternalCourse(id: number, data: ExternalCoursePayload): Promise<void> {
+  await apiFetch(`/api/courses/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteExternalCourse(id: number): Promise<void> {
+  await apiFetch(`/api/courses/${id}`, { method: 'DELETE' });
 }
 
 // ── Vacances ──────────────────────────────────────────────────────────────────
@@ -644,7 +676,7 @@ export async function apiAdminCreateUser(fields: {
 }
 
 export async function apiAdminUpdateUser(id: number, fields: {
-  name?: string; email?: string; role?: string; dept?: string; is_head?: number;
+  name?: string; email?: string; role?: string; dept?: string; is_head?: number; new_password?: string;
 }): Promise<User> {
   return apiFetch<User>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(fields) });
 }
@@ -659,11 +691,11 @@ export async function apiGetAllNotices(): Promise<Notice[]> {
   return apiFetch<Notice[]>('/api/notices/all');
 }
 
-export async function apiCreateNotice(fields: { title: string; content: string; link: string; active: number }): Promise<Notice> {
+export async function apiCreateNotice(fields: { title: string; content: string; link: string; link_text: string; active: number; kind: string }): Promise<Notice> {
   return apiFetch<Notice>('/api/notices', { method: 'POST', body: JSON.stringify(fields) });
 }
 
-export async function apiUpdateNotice(id: number, fields: { title: string; content: string; link: string; active: number }): Promise<Notice> {
+export async function apiUpdateNotice(id: number, fields: { title: string; content: string; link: string; link_text: string; active: number; kind: string }): Promise<Notice> {
   return apiFetch<Notice>(`/api/notices/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
 }
 
@@ -710,6 +742,7 @@ export interface Quiz {
   questions: QuizQuestion[];
   question_count?: number;
   user_attempt?: { score: number; max_score: number; passed: number; completed_at: string } | null;
+  in_progress?: boolean;
 }
 
 export interface QuizOptionIn {

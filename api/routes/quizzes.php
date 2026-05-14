@@ -126,6 +126,14 @@ if ($method === 'GET' && $id === null) {
         $c = $db->prepare('SELECT COUNT(*) AS cnt FROM quiz_questions WHERE quiz_id=?');
         $c->execute([(int)$row['id']]);
         $cnt = (int)$c->fetch()['cnt'];
+        try {
+            $p = $db->prepare('SELECT current_question_idx FROM quiz_progress WHERE quiz_id=? AND user_id=?');
+            $p->execute([(int)$row['id'], (int)$u['id']]);
+            $progRow = $p->fetch();
+            $in_progress = $progRow && (int)$progRow['current_question_idx'] > 0;
+        } catch (\Throwable $e) {
+            $in_progress = false;
+        }
 
         $row['id']            = (int)$row['id'];
         $row['time_limit']    = (int)$row['time_limit'];
@@ -142,6 +150,7 @@ if ($method === 'GET' && $id === null) {
         }
         $row['user_attempt']   = $attempt ?: null;
         $row['question_count'] = $cnt;
+        $row['in_progress']    = $in_progress;
         $result[] = $row;
     }
     respond($result);
@@ -254,19 +263,31 @@ elseif ($method === 'POST' && $id !== null && $sub === 'attempt') {
             ];
         } elseif ($q['type'] === 'multiple_select') {
             // user_answer expected as array of option-id strings.
+            // Partial credit: ratio = max(0, (correct_picked - wrong_picked) / total_correct).
             $os = $db->prepare('SELECT id, is_correct FROM quiz_options WHERE question_id=?');
             $os->execute([$q['id']]);
             $opts = $os->fetchAll();
             $correct_ids = [];
             foreach ($opts as $o) if ((int)$o['is_correct'] === 1) $correct_ids[] = (string)$o['id'];
-            sort($correct_ids);
             $sel = is_array($user_answer) ? array_map('strval', $user_answer) : [];
-            sort($sel);
-            $is_correct = $correct_ids === $sel && !empty($correct_ids);
-            if ($is_correct) $score += $points;
+            $total_correct  = count($correct_ids);
+            $picked_correct = count(array_intersect($sel, $correct_ids));
+            $picked_wrong   = count(array_diff($sel, $correct_ids));
+            $ratio = $total_correct > 0
+                ? max(0.0, ($picked_correct - $picked_wrong) / $total_correct)
+                : 0.0;
+            $ratio = min(1.0, $ratio);
+            $earned       = (int)round($points * $ratio);
+            $is_correct   = $ratio >= 0.999 && !empty($correct_ids);
+            $is_partial   = $ratio > 0.0 && $ratio < 0.999;
+            $score += $earned;
+            sort($correct_ids);
             $results[$q_id_str] = [
-                'correct'     => (bool)$is_correct,
-                'points'      => $is_correct ? $points : 0,
+                'correct'     => $is_partial ? null : (bool)$is_correct,
+                'partial'     => $is_partial,
+                'ratio'       => round($ratio, 3),
+                'points'      => $earned,
+                'max_points'  => $points,
                 'correct_ids' => array_map('intval', $correct_ids),
             ];
         } elseif ($q['type'] === 'matching') {

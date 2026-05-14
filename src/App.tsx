@@ -9,7 +9,7 @@ import {
   Home, Newspaper, Activity as ActivityIcon, Calendar, Users, Building2,
   GraduationCap, MessageSquare, UserCircle, Search, Bell,
   Moon, ChevronLeft, ChevronRight, ChevronDown, Mail, Database, FolderOpen,
-  AlertTriangle, ArrowRight, Sun, MapPin, Clock, Phone, FileText,
+  AlertTriangle, Info, ArrowRight, Sun, MapPin, Clock, Phone, FileText,
   BookOpen, Shield, ThumbsUp, ThumbsDown, Send, ExternalLink, CreditCard,
   CheckCircle, Star, LogOut, LayoutGrid, List, Check,
   Heart, Gift, Globe, Download, Video, Award, Settings, Eye, EyeOff, Lock, Pencil, Trash2,
@@ -949,22 +949,31 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
         </div>
 
         {/* Urgent banner */}
-        {notice && (
+        {notice && (() => {
+          const nk = notice.kind ?? 'warning';
+          const ms = nk === 'danger'
+            ? { bg: '#fef2f2', color: '#7f1d1d', border: '1px solid #fecaca', iconColor: '#dc2626', NIcon: AlertTriangle }
+            : nk === 'neutral'
+            ? { bg: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', iconColor: '#6b7280', NIcon: Info }
+            : { bg: '#fef3c7', color: '#78350f', border: '1px solid #fde68a', iconColor: '#b45309', NIcon: AlertTriangle };
+          return (
           <div style={{ padding: '14px 16px 0' }}>
-            <div style={{
-              background: '#fef3c7', color: '#78350f', borderRadius: 14, padding: '14px 16px',
-              display: 'flex', alignItems: 'center', gap: 12,
-              border: '1px solid #fde68a',
-            }}>
-              <AlertTriangle size={20} strokeWidth={1.8} style={{ flexShrink: 0, color: '#b45309' }} />
+            <div style={{ background: ms.bg, color: ms.color, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 12, border: ms.border }}>
+              <ms.NIcon size={20} strokeWidth={1.8} style={{ flexShrink: 0, color: ms.iconColor, marginTop: 1 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.3 }}>{notice.title}</div>
                 {notice.content && <div style={{ fontSize: 12, fontWeight: 400, lineHeight: 1.35, marginTop: 2, opacity: 0.85 }}>{notice.content}</div>}
+                {notice.link && (
+                  <button onClick={() => { if (notice.link.startsWith('http')) window.open(notice.link, '_blank', 'noopener,noreferrer'); }}
+                    style={{ marginTop: 6, fontSize: 11.5, fontWeight: 600, color: ms.iconColor, display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {notice.link_text || notice.link} <ArrowRight size={11} />
+                  </button>
+                )}
               </div>
-              <ChevronRight size={18} style={{ flexShrink: 0 }} />
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Quick access */}
         <div style={{ padding: '24px 20px 4px' }}>
@@ -1145,34 +1154,42 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
 
       {!loading && (<>
       {/* Urgent notice (optional — only if notices exist) */}
-      {notice && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl p-4 mb-6 flex items-start gap-3">
-          <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+      {notice && (() => {
+        const nk = notice.kind ?? 'warning';
+        const ns = nk === 'danger'
+          ? { wrap: 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/40', icon: 'text-red-600 dark:text-red-400', title: 'text-red-900 dark:text-red-100', body: 'text-red-800/80 dark:text-red-200/80', link: 'text-red-700 dark:text-red-300', nav: 'hover:bg-red-100 dark:hover:bg-red-900/30 text-red-700 dark:text-red-300', counter: 'text-red-700 dark:text-red-300', NIcon: AlertTriangle }
+          : nk === 'neutral'
+          ? { wrap: 'bg-gray-100 dark:bg-zinc-800/40 border-gray-200 dark:border-zinc-700/40', icon: 'text-gray-500 dark:text-gray-400', title: 'text-gray-800 dark:text-gray-100', body: 'text-gray-600/80 dark:text-gray-300/80', link: 'text-gray-600 dark:text-gray-300', nav: 'hover:bg-gray-200 dark:hover:bg-zinc-700/30 text-gray-600 dark:text-gray-300', counter: 'text-gray-500 dark:text-gray-400', NIcon: Info }
+          : { wrap: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/40', icon: 'text-amber-600 dark:text-amber-400', title: 'text-amber-900 dark:text-amber-100', body: 'text-amber-800/80 dark:text-amber-200/80', link: 'text-amber-700 dark:text-amber-300', nav: 'hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-300', counter: 'text-amber-700 dark:text-amber-300', NIcon: AlertTriangle };
+        return (
+        <div className={`${ns.wrap} border rounded-xl p-4 mb-6 flex items-start gap-3`}>
+          <ns.NIcon size={16} className={`${ns.icon} mt-0.5 flex-shrink-0`} />
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-amber-900 dark:text-amber-100 text-sm">{notice.title}</p>
-            <p className="text-xs text-amber-800/80 dark:text-amber-200/80 mt-0.5">{notice.content}</p>
+            <p className={`font-semibold ${ns.title} text-sm`}>{notice.title}</p>
+            {notice.content && <p className={`text-xs ${ns.body} mt-0.5`}>{notice.content}</p>}
             {notice.link && (
               <button
                 onClick={() => { if (notice.link.startsWith('http')) window.open(notice.link, '_blank', 'noopener,noreferrer'); }}
-                className={cn("text-amber-700 dark:text-amber-300 text-xs font-medium mt-1 flex items-center gap-1 hover:underline", !notice.link.startsWith('http') && "cursor-default")}
+                className={cn(`${ns.link} text-xs font-medium mt-1 flex items-center gap-1 hover:underline`, !notice.link.startsWith('http') && 'cursor-default')}
               >
-                {notice.link} <ArrowRight size={11} />
+                {notice.link_text || notice.link} <ArrowRight size={11} />
               </button>
             )}
           </div>
           {notices.length > 1 && (
             <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-              <span className="text-xs text-amber-700 dark:text-amber-300">{noticeIndex + 1}/{notices.length}</span>
-              <button onClick={() => setNoticeIndex((noticeIndex - 1 + notices.length) % notices.length)} className="p-1 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded">
-                <ChevronLeft size={14} className="text-amber-700 dark:text-amber-300" />
+              <span className={`text-xs ${ns.counter}`}>{noticeIndex + 1}/{notices.length}</span>
+              <button onClick={() => setNoticeIndex((noticeIndex - 1 + notices.length) % notices.length)} className={`p-1 ${ns.nav} rounded`}>
+                <ChevronLeft size={14} />
               </button>
-              <button onClick={() => setNoticeIndex((noticeIndex + 1) % notices.length)} className="p-1 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded">
-                <ChevronRight size={14} className="text-amber-700 dark:text-amber-300" />
+              <button onClick={() => setNoticeIndex((noticeIndex + 1) % notices.length)} className={`p-1 ${ns.nav} rounded`}>
+                <ChevronRight size={14} />
               </button>
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {/* Comunicats interns — horizontal banner */}
       {comunicats.length > 0 && (
@@ -8143,6 +8160,9 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
   const [expandedQuizId, setExpandedQuizId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
   // External courses
   const [externalCourses, setExternalCourses] = useState<Course[]>([]);
@@ -8158,6 +8178,7 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
   const [uRole, setURole] = useState('Treballador/a');
   const [uDept, setUDept] = useState(DEPT_ORDER[0]);
   const [uIsHead, setUIsHead] = useState(false);
+  const [uNewPass, setUNewPass] = useState('');
   const [uSaving, setUSaving] = useState(false);
 
   // Notice form
@@ -8166,7 +8187,9 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
   const [nTitle, setNTitle] = useState('');
   const [nContent, setNContent] = useState('');
   const [nLink, setNLink] = useState('');
+  const [nLinkText, setNLinkText] = useState('');
   const [nActive, setNActive] = useState(1);
+  const [nKind, setNKind] = useState<'warning'|'danger'|'neutral'>('warning');
   const [nSaving, setNSaving] = useState(false);
 
   // News form
@@ -8232,44 +8255,54 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
     return () => window.removeEventListener('message', onMsg);
   }, [subTab]);
 
-  const openCreateUser = () => { setEditUser(null); setUName(''); setUEmail(''); setUPass(''); setURole('Treballador/a'); setUDept(DEPT_ORDER[0]); setUIsHead(false); setShowUserForm(true); };
-  const openEditUser = (u: import('./api').User) => { setEditUser(u); setUName(u.name); setUEmail(u.email); setUPass(''); setURole(u.role); setUDept(u.dept); setUIsHead(!!u.is_head); setShowUserForm(true); };
+  const openCreateUser = () => { setEditUser(null); setUName(''); setUEmail(''); setUPass(''); setUNewPass(''); setURole('Treballador/a'); setUDept(DEPT_ORDER[0]); setUIsHead(false); setShowUserForm(true); };
+  const openEditUser = (u: import('./api').User) => { setEditUser(u); setUName(u.name); setUEmail(u.email); setUPass(''); setUNewPass(''); setURole(u.role); setUDept(u.dept); setUIsHead(!!u.is_head); setShowUserForm(true); };
 
   const saveUser = async () => {
     setUSaving(true); setError('');
     try {
       if (editUser) {
-        await apiAdminUpdateUser(editUser.id, { name: uName, email: uEmail, role: uRole, dept: uDept, is_head: uIsHead ? 1 : 0 });
+        await apiAdminUpdateUser(editUser.id, { name: uName, email: uEmail, role: uRole, dept: uDept, is_head: uIsHead ? 1 : 0, ...(uNewPass ? { new_password: uNewPass } : {}) });
       } else {
         await apiAdminCreateUser({ name: uName, email: uEmail, temp_password: uPass, role: uRole, dept: uDept, is_head: uIsHead ? 1 : 0 });
       }
-      setShowUserForm(false); loadUsers();
+      setShowUserForm(false); loadUsers(); showToast(editUser ? 'Usuari actualitzat correctament' : 'Usuari creat correctament');
     } catch (e: any) { setError(e.message); }
     finally { setUSaving(false); }
   };
 
-  const deleteUser = async (id: number) => {
-    if (!window.confirm('Eliminar aquest usuari?')) return;
-    try { await apiAdminDeleteUser(id); loadUsers(); } catch (e: any) { setError(e.message); }
+  const deleteUser = (id: number) => {
+    setConfirmModal({
+      message: 'Segur que vols eliminar aquest usuari? Aquesta acció no es pot desfer.',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try { await apiAdminDeleteUser(id); loadUsers(); showToast('Usuari eliminat correctament'); } catch (e: any) { setError(e.message); }
+      },
+    });
   };
 
-  const openCreateNotice = () => { setEditNotice(null); setNTitle(''); setNContent(''); setNLink(''); setNActive(1); setShowNoticeForm(true); };
-  const openEditNotice = (n: import('./api').Notice) => { setEditNotice(n); setNTitle(n.title); setNContent(n.content); setNLink(n.link); setNActive(n.active); setShowNoticeForm(true); };
+  const openCreateNotice = () => { setEditNotice(null); setNTitle(''); setNContent(''); setNLink(''); setNLinkText(''); setNActive(1); setNKind('warning'); setShowNoticeForm(true); };
+  const openEditNotice = (n: import('./api').Notice) => { setEditNotice(n); setNTitle(n.title); setNContent(n.content); setNLink(n.link); setNLinkText(n.link_text ?? ''); setNActive(n.active); setNKind((n.kind ?? 'warning') as 'warning'|'danger'|'neutral'); setShowNoticeForm(true); };
 
   const saveNotice = async () => {
     setNSaving(true); setError('');
     try {
-      const fields = { title: nTitle, content: nContent, link: nLink, active: nActive };
+      const fields = { title: nTitle, content: nContent, link: nLink, link_text: nLinkText, active: nActive, kind: nKind };
       if (editNotice) await apiUpdateNotice(editNotice.id, fields);
       else await apiCreateNotice(fields);
-      setShowNoticeForm(false); loadNotices();
+      setShowNoticeForm(false); loadNotices(); showToast(editNotice ? 'Avís actualitzat correctament' : 'Avís creat correctament');
     } catch (e: any) { setError(e.message); }
     finally { setNSaving(false); }
   };
 
-  const deleteNotice = async (id: number) => {
-    if (!window.confirm('Eliminar aquest avís?')) return;
-    try { await apiDeleteNotice(id); loadNotices(); } catch (e: any) { setError(e.message); }
+  const deleteNotice = (id: number) => {
+    setConfirmModal({
+      message: 'Segur que vols eliminar aquest avís? Aquesta acció no es pot desfer.',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try { await apiDeleteNotice(id); loadNotices(); showToast('Avís eliminat correctament'); } catch (e: any) { setError(e.message); }
+      },
+    });
   };
 
   const openCreateNews = () => { setEditNewsItem(null); setNnTitle(''); setNnCategory('Comunicats interns'); setNnSummary(''); setNnContent(''); setNnAuthor(''); setNnDate(''); setNnImage(''); setNnImageFile(null); setNnFeatured(false); setShowNewsForm(true); };
@@ -8282,13 +8315,18 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
       const fields = { category: nnCategory, title: nnTitle.trim(), summary: nnSummary.trim(), content: nnContent, author: nnAuthor.trim(), date: nnDate.trim(), image: imageUrl, featured: nnFeatured ? 1 : 0 };
       if (editNewsItem) await apiUpdateNews(editNewsItem.id, fields);
       else await apiCreateNews(fields);
-      setShowNewsForm(false); loadNews();
+      setShowNewsForm(false); loadNews(); showToast(editNewsItem ? 'Notícia actualitzada correctament' : 'Notícia creada correctament');
     } catch (e: any) { setError(e.message); }
     finally { setNnSaving(false); }
   };
-  const deleteNewsItem = async (id: number) => {
-    if (!window.confirm('Eliminar aquesta notícia?')) return;
-    try { await apiDeleteNews(id); loadNews(); } catch (e: any) { setError(e.message); }
+  const deleteNewsItem = (id: number) => {
+    setConfirmModal({
+      message: 'Segur que vols eliminar aquesta notícia? Aquesta acció no es pot desfer.',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try { await apiDeleteNews(id); loadNews(); showToast('Notícia eliminada correctament'); } catch (e: any) { setError(e.message); }
+      },
+    });
   };
 
   const NEWS_CATS = ['Comunicats interns','Notícies corporatives','Recursos humans','Esdeveniments','Innovació','Seguretat'];
@@ -8344,6 +8382,7 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
               <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Nom</label><input value={uName} onChange={e => setUName(e.target.value)} className={inputCls} placeholder="Nom complet" /></div>
               <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Correu</label><input value={uEmail} onChange={e => setUEmail(e.target.value)} className={inputCls} type="email" placeholder="nom@tavil.net" /></div>
               {!editUser && <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Contrasenya temporal</label><input value={uPass} onChange={e => setUPass(e.target.value)} className={inputCls} type="text" placeholder="L'usuari la canviarà al primer accés" /></div>}
+              {editUser && <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Nova contrasenya <span className="normal-case font-normal">(deixar en blanc per no canviar)</span></label><input value={uNewPass} onChange={e => setUNewPass(e.target.value)} className={inputCls} type="password" placeholder="Mínim 8 caràcters" autoComplete="new-password" /></div>}
               <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Rol</label>
                 <select value={uRole} onChange={e => setURole(e.target.value)} className={inputCls}>
                   {ROLES.map(r => <option key={r}>{r}</option>)}
@@ -8381,12 +8420,9 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
             <MetricCard icon={Building2} label="Departaments" value={usrDepts} hint="Únics actius" />
           </div>
 
-          {/* Create form — top */}
-          {showUserForm && !editUser && userFormBody(false)}
-
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-500 dark:text-zinc-400">{users.length} usuari{users.length !== 1 ? 's' : ''}</p>
-            {!showUserForm && <button onClick={openCreateUser} className={btnPrimary}><Plus size={14} className="inline mr-1" />Nou usuari</button>}
+            {(!showUserForm || editUser) && <button onClick={openCreateUser} className={btnPrimary}><Plus size={14} className="inline mr-1" />Nou usuari</button>}
           </div>
           {loading ? <div className="text-center py-8 text-gray-400 text-sm">Carregant...</div> : (
             <div className="space-y-2">
@@ -8444,7 +8480,25 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
             <div className="space-y-3">
               <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Títol</label><input value={nTitle} onChange={e => setNTitle(e.target.value)} className={inputCls} placeholder="Títol de l'avís" /></div>
               <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Contingut</label><textarea value={nContent} onChange={e => setNContent(e.target.value)} className={inputCls} rows={3} placeholder="Text de l'avís (opcional)" /></div>
-              <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Enllaç (opcional)</label><input value={nLink} onChange={e => setNLink(e.target.value)} className={inputCls} placeholder="https://..." /></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Text de l'enllaç (opcional)</label><input value={nLinkText} onChange={e => setNLinkText(e.target.value)} className={inputCls} placeholder="Més informació" /></div>
+                <div><label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">URL de l'enllaç (opcional)</label><input value={nLink} onChange={e => setNLink(e.target.value)} className={inputCls} placeholder="https://..." /></div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide block mb-2">Tipus</label>
+                <div className="flex gap-2">
+                  {([
+                    { v: 'warning', label: 'Avís', bg: 'bg-amber-100 dark:bg-amber-900/30', txt: 'text-amber-800 dark:text-amber-300', ring: 'ring-amber-400' },
+                    { v: 'danger',  label: 'Perill', bg: 'bg-red-100 dark:bg-red-900/30', txt: 'text-red-800 dark:text-red-300', ring: 'ring-red-500' },
+                    { v: 'neutral', label: 'Neutral', bg: 'bg-gray-100 dark:bg-zinc-700', txt: 'text-gray-700 dark:text-gray-300', ring: 'ring-gray-400' },
+                  ] as const).map(({ v, label, bg, txt, ring }) => (
+                    <button key={v} type="button" onClick={() => setNKind(v)}
+                      className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all border-2 ${bg} ${txt} ${nKind === v ? `border-current ring-2 ${ring}` : 'border-transparent opacity-60 hover:opacity-90'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex items-center gap-3">
                 <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide">Actiu</label>
                 <button type="button" onClick={() => setNActive(nActive ? 0 : 1)} className={`relative inline-flex w-10 h-6 items-center rounded-full transition-colors ${nActive ? 'bg-red-600' : 'bg-gray-300 dark:bg-zinc-700'}`}>
@@ -8468,9 +8522,12 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
               {notices.map(n => (
                 <div key={n.id} className={`${cardCls} flex items-center gap-3 ${editNotice?.id === n.id ? 'border-red-300 dark:border-red-700' : ''}`}>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{n.title}</p>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${n.active ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500'}`}>{n.active ? 'Actiu' : 'Inactiu'}</span>
+                      {(n.kind === 'danger') && <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-400">Perill</span>}
+                      {(n.kind === 'neutral') && <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400">Neutral</span>}
+                      {(!n.kind || n.kind === 'warning') && <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">Avís</span>}
                     </div>
                     {n.content && <p className="text-xs text-gray-400 truncate">{n.content}</p>}
                   </div>
@@ -8710,11 +8767,15 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
                         <div className="flex gap-1 flex-shrink-0">
                           <button onClick={() => window.open(c.url, '_blank', 'noopener,noreferrer')} className={btnGhost} title="Obrir curs"><ExternalLink size={14} /></button>
                           <button onClick={() => { setEditExtCourse(c); setShowExtCourseModal(true); }} className={btnGhost}><Pencil size={14} /></button>
-                          <button onClick={async () => {
-                            if (!window.confirm(`Eliminar "${c.title}"?`)) return;
-                            await apiDeleteExternalCourse(c.id);
-                            loadExternalCourses();
-                          }} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-sm px-2 py-2 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                          <button onClick={() => setConfirmModal({
+                            message: `Segur que vols eliminar "${c.title}"? Aquesta acció no es pot desfer.`,
+                            onConfirm: async () => {
+                              setConfirmModal(null);
+                              await apiDeleteExternalCourse(c.id);
+                              loadExternalCourses();
+                              showToast('Formació externa eliminada correctament');
+                            },
+                          })} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-sm px-2 py-2 rounded-lg transition-colors"><Trash2 size={14} /></button>
                         </div>
                       </div>
                     </div>
@@ -8742,6 +8803,43 @@ function BackofficeTab({ currentUser }: { currentUser: import('./api').User | nu
       )}
 
       </div>{/* end key={subTab} */}
+      {toast && createPortal(
+        <div style={{ position: 'fixed', top: 12, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 10001, pointerEvents: 'none' }}>
+          <div className="anim-scale-in" style={{ whiteSpace: 'nowrap', padding: '10px 22px', borderRadius: 999, fontSize: 13.5, fontWeight: 500, color: '#fff', background: 'rgba(34,110,54,0.96)', backdropFilter: 'blur(8px)', boxShadow: '0 4px 24px rgba(0,0,0,0.18)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 15, lineHeight: 1 }}>✓</span>{toast}
+          </div>
+        </div>,
+        document.body
+      )}
+      {showUserForm && !editUser && (
+        <EditModal title="Nou usuari" onClose={() => setShowUserForm(false)}>
+          {error && <p className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2 mb-3">{error}</p>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Nom</label><input value={uName} onChange={e => setUName(e.target.value)} className={inputCls} placeholder="Nom complet" /></div>
+            <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Correu</label><input value={uEmail} onChange={e => setUEmail(e.target.value)} className={inputCls} type="email" placeholder="nom@tavil.net" /></div>
+            <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Contrasenya temporal</label><input value={uPass} onChange={e => setUPass(e.target.value)} className={inputCls} type="text" placeholder="L'usuari la canviarà al primer accés" /></div>
+            <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Rol</label>
+              <select value={uRole} onChange={e => setURole(e.target.value)} className={inputCls}>
+                {ROLES.map(r => <option key={r}>{r}</option>)}
+              </select>
+            </div>
+            <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Departament</label>
+              <select value={uDept} onChange={e => setUDept(e.target.value)} className={inputCls}>
+                {DEPTS.map(d => <option key={d}>{d}</option>)}
+              </select>
+            </div>
+            <div className="md:col-span-2 flex items-center gap-3 pt-1">
+              <input type="checkbox" id="uIsHeadModal" checked={uIsHead} onChange={e => setUIsHead(e.target.checked)} style={{ accentColor: 'var(--tavil-accent)', width: 16, height: 16 }} />
+              <label htmlFor="uIsHeadModal" className="text-sm text-gray-700 dark:text-zinc-300 cursor-pointer select-none">Cap de Departament</label>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end pt-4">
+            <button onClick={() => setShowUserForm(false)} className={btnGhost}>Cancel·lar</button>
+            <button onClick={saveUser} disabled={uSaving || !uName || !uEmail || !uPass} className={btnPrimary}>{uSaving ? 'Guardant...' : 'Crear usuari'}</button>
+          </div>
+        </EditModal>
+      )}
+      {confirmModal && <ConfirmModal message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} />}
     </div>
   );
 }

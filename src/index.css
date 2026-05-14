@@ -397,6 +397,7 @@ code {
 /* ── Mobile design tokens ─────────────────────────────────────────────────── */
 :root {
   --tavil-bg: #eeeee9;
+  --tavil-bgAlt: #efefe9;
   --tavil-card: #ffffff;
   --tavil-border: #e3e2db;
   --tavil-text: #222725;
@@ -408,6 +409,7 @@ code {
 }
 html.dark {
   --tavil-bg: #121212;
+  --tavil-bgAlt: #141614;
   --tavil-card: #242624;
   --tavil-border: #33362f;
   --tavil-text: #f0efe8;

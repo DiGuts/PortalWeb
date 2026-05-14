@@ -141,6 +141,12 @@ elseif ($method === 'PATCH' && is_numeric($seg1) && $seg2 === '') {
             $updates[$k] = ($k === 'is_head') ? (bool_val($body,'is_head') ? 1 : 0) : $body[$k];
         }
     }
+    if (array_key_exists('new_password', $body)) {
+        $np = str_val($body, 'new_password');
+        if (strlen($np) < 8) respond(['detail' => 'Mínim 8 caràcters'], 400);
+        $updates['password'] = password_hash($np, PASSWORD_BCRYPT);
+        $updates['must_change_password'] = 1;
+    }
     if (!empty($updates)) {
         $set  = implode(', ', array_map(fn($k) => "$k=?", array_keys($updates)));
         $vals = array_values($updates);
@@ -155,6 +161,10 @@ elseif ($method === 'DELETE' && is_numeric($seg1) && $seg2 === '') {
     $admin = require_admin();
     $user_id = (int)$seg1;
     if ($user_id === (int)$admin['id']) respond(['detail' => 'No et pots eliminar a tu mateix'], 400);
+    // Remove child rows that reference this user before deleting
+    foreach (['notifications','quiz_progress','user_course_progress','suggestion_votes','vacances'] as $tbl) {
+        $db->prepare("DELETE FROM `$tbl` WHERE user_id=?")->execute([$user_id]);
+    }
     $db->prepare('DELETE FROM users WHERE id=?')->execute([$user_id]);
     http_response_code(204); exit;
 }

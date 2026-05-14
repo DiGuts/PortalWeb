@@ -11,11 +11,13 @@ $id   = is_numeric($seg1) ? (int)$seg1 : null;
 
 function _notice_out(array $r): array {
     return [
-        'id'      => (int)$r['id'],
-        'title'   => $r['title'],
-        'content' => $r['content'] ?? '',
-        'link'    => $r['link'] ?? '',
-        'active'  => (int)($r['active'] ?? 0),
+        'id'        => (int)$r['id'],
+        'title'     => $r['title'],
+        'content'   => $r['content'] ?? '',
+        'link'      => $r['link'] ?? '',
+        'link_text' => $r['link_text'] ?? '',
+        'active'    => (int)($r['active'] ?? 0),
+        'kind'      => $r['kind'] ?? 'warning',
     ];
 }
 
@@ -36,12 +38,16 @@ elseif ($method === 'GET' && $seg1 === 'all') {
 // POST /api/notices
 elseif ($method === 'POST' && $seg1 === null) {
     require_comunicacions_or_admin();
-    $db->prepare('INSERT INTO notices (title,content,link,active) VALUES (?,?,?,?)')
+    $allowed_kinds = ['warning','danger','neutral'];
+    $kind = in_array($body['kind'] ?? '', $allowed_kinds) ? $body['kind'] : 'warning';
+    $db->prepare('INSERT INTO notices (title,content,link,link_text,active,kind) VALUES (?,?,?,?,?,?)')
        ->execute([
            str_val($body,'title'),
            str_val($body,'content'),
            str_val($body,'link'),
+           str_val($body,'link_text'),
            (int)($body['active'] ?? 1),
+           $kind,
        ]);
     $row = $db->query('SELECT * FROM notices WHERE id=' . $db->lastInsertId())->fetch();
     respond(_notice_out($row), 201);
@@ -50,12 +56,16 @@ elseif ($method === 'POST' && $seg1 === null) {
 // PUT /api/notices/{id}
 elseif ($method === 'PUT' && $id !== null) {
     require_comunicacions_or_admin();
-    $db->prepare('UPDATE notices SET title=?, content=?, link=?, active=? WHERE id=?')
+    $allowed_kinds = ['warning','danger','neutral'];
+    $kind = in_array($body['kind'] ?? '', $allowed_kinds) ? $body['kind'] : 'warning';
+    $db->prepare('UPDATE notices SET title=?, content=?, link=?, link_text=?, active=?, kind=? WHERE id=?')
        ->execute([
            str_val($body,'title'),
            str_val($body,'content'),
            str_val($body,'link'),
+           str_val($body,'link_text'),
            (int)($body['active'] ?? 1),
+           $kind,
            $id,
        ]);
     $row = $db->query('SELECT * FROM notices WHERE id=' . $id)->fetch();
