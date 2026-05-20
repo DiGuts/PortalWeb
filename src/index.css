@@ -9,14 +9,16 @@
   --ease-out-cubic:   cubic-bezier(.33, 1, .68, 1);
   --ease-in-out-cubic:cubic-bezier(.645, .045, .355, 1);
   --ease-spring:      cubic-bezier(.34, 1.56, .64, 1);
+  --ease-spring-soft: cubic-bezier(.22, 1.4,  .36, 1);   /* gentle overshoot — cards, panels */
+  --ease-spring-firm: cubic-bezier(.28, 1.6,  .5,  1);   /* snappier overshoot — chips, badges */
 
   /* ── Motion system (TAVIL Handoff spec) ────────────────────────────────── */
   --motion-ease:      cubic-bezier(0.32, 0.72, 0.24, 1); /* arrivals — corporate ease-out */
   --motion-ease-out:  cubic-bezier(0.22, 1, 0.36, 1);    /* departures — quick exit */
-  --motion-dur-in:    380ms;  /* arrivals */
-  --motion-dur-out:   220ms;  /* departures */
-  --motion-dur-quick: 160ms;  /* hovers, toggles, micro-state */
-  --motion-stagger:   60ms;   /* sequential child reveals */
+  --motion-dur-in:    320ms;  /* arrivals */
+  --motion-dur-out:   200ms;  /* departures */
+  --motion-dur-quick: 150ms;  /* hovers, toggles, micro-state */
+  --motion-stagger:   50ms;   /* sequential child reveals */
 }
 
 @keyframes tavil-fade-in {
@@ -28,24 +30,30 @@
   to   { opacity: 0; }
 }
 @keyframes tavil-sheet-enter {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
+  from { transform: translateY(100%) scale(0.98); }
+  to   { transform: translateY(0)    scale(1); }
 }
 @keyframes tavil-sheet-exit {
   from { transform: translateY(0); }
   to   { transform: translateY(100%); }
 }
 @keyframes tavil-scale-in {
-  from { opacity: 0; transform: scale(.96); }
-  to   { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: scale(0.92) translateY(10px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
 }
+/* Desktop page transition — very subtle scale so full-page feels like arrival, not drama */
+@keyframes tavil-page-enter-desk {
+  from { opacity: 0; transform: scale(0.985) translateY(6px); }
+  to   { opacity: 1; transform: scale(1)     translateY(0); }
+}
+.anim-page-enter-desk { animation: tavil-page-enter-desk 280ms var(--ease-out-cubic) both; }
 @keyframes tavil-slide-down {
-  from { opacity: 0; transform: translateY(-6px) scale(.98); }
-  to   { opacity: 1; transform: translateY(0)    scale(1); }
+  from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)     scale(1); }
 }
 @keyframes tavil-slide-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
 }
 @keyframes tavil-pulse-soft {
   0%, 100% { transform: scale(1);   opacity: 1; }
@@ -57,13 +65,44 @@
 }
 
 .anim-fade-in     { animation: tavil-fade-in     220ms var(--ease-out-cubic)    both; }
-.anim-fade-out    { animation: tavil-fade-out    220ms var(--ease-out-cubic)    both; }
-.anim-scale-in    { animation: tavil-scale-in    240ms var(--ease-out-quint)    both; }
-.anim-slide-down  { animation: tavil-slide-down  220ms var(--ease-out-quint)    both; }
-.anim-slide-up    { animation: tavil-slide-up    280ms var(--ease-out-quint)    both; }
-.anim-sheet-enter { animation: tavil-sheet-enter 320ms var(--ease-out-quint)    both; }
-.anim-sheet-exit  { animation: tavil-sheet-exit  260ms var(--ease-in-out-cubic) both; }
+.anim-fade-out    { animation: tavil-fade-out    160ms var(--ease-out-cubic)    both; }
+.anim-scale-in    { animation: tavil-scale-in    320ms var(--ease-spring-soft)   both; }
+.anim-slide-down  { animation: tavil-slide-down  280ms var(--ease-spring-soft)   both; }
+.anim-slide-up    { animation: tavil-slide-up    340ms var(--ease-spring-soft)   both; }
+.anim-sheet-enter { animation: tavil-sheet-enter 380ms var(--ease-spring-soft)   both; }
+.anim-sheet-exit  { animation: tavil-sheet-exit  220ms var(--motion-ease-out)   both; }
+
+/* Modal scale-out — paired exit for anim-scale-in */
+@keyframes tavil-scale-out {
+  from { opacity: 1; transform: scale(1)    translateY(0); }
+  to   { opacity: 0; transform: scale(0.95) translateY(6px); }
+}
+.anim-scale-out { animation: tavil-scale-out 200ms var(--ease-out-cubic) both; }
 .anim-pulse-soft { animation: tavil-pulse-soft 2.2s  var(--ease-in-out-cubic) infinite; }
+
+@keyframes tavil-bubble-in {
+  from { transform: scale(0.06); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+.anim-bubble-in { animation: tavil-bubble-in 440ms var(--ease-out-quint) both; }
+
+@keyframes tavil-bubble-out {
+  from { transform: scale(1);    opacity: 1; }
+  to   { transform: scale(0.96); opacity: 0; }
+}
+.anim-bubble-out { animation: tavil-bubble-out 200ms var(--ease-out-cubic) both; }
+
+/* Skeleton veil: covers the entering page, fades out after a brief pause so
+   page content reveals itself smoothly without a jarring flash. */
+.skeleton-veil {
+  position: absolute;
+  inset: 0;
+  background: var(--tavil-bg);
+  pointer-events: none;
+  z-index: 5;
+  animation: tavil-fade-out 200ms var(--ease-out-cubic) both;
+  animation-delay: 80ms;
+}
 
 /* Drawer expand — height grows from 0 below host card. Reliable max-height
    animation, works in all browsers. Set --drawer-max if 1200px not enough. */
@@ -73,7 +112,7 @@
 }
 .anim-drawer-down {
   overflow: hidden;
-  animation: tavil-drawer-down 360ms var(--ease-out-quint) both;
+  animation: tavil-drawer-down 280ms var(--ease-out-quint) both;
 }
 
 /* Smooth tab/view transition — used when switching tabs, views, sub-tabs,
@@ -149,17 +188,44 @@
 /* ── Inner-content stagger — major sections within a freshly mounted page ──
    Apply .stagger-1 … .stagger-5 to section-level wrappers, not list rows.  */
 @keyframes tavil-stagger-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
 }
-.stagger-1 { animation: tavil-stagger-in 420ms var(--motion-ease) both; animation-delay: 0ms; }
-.stagger-2 { animation: tavil-stagger-in 420ms var(--motion-ease) both; animation-delay: var(--motion-stagger); }
-.stagger-3 { animation: tavil-stagger-in 420ms var(--motion-ease) both; animation-delay: calc(var(--motion-stagger) * 2); }
-.stagger-4 { animation: tavil-stagger-in 420ms var(--motion-ease) both; animation-delay: calc(var(--motion-stagger) * 3); }
-.stagger-5 { animation: tavil-stagger-in 420ms var(--motion-ease) both; animation-delay: calc(var(--motion-stagger) * 4); }
+.stagger-1 { animation: tavil-stagger-in 360ms var(--motion-ease) both; animation-delay: 0ms; }
+.stagger-2 { animation: tavil-stagger-in 360ms var(--motion-ease) both; animation-delay: var(--motion-stagger); }
+.stagger-3 { animation: tavil-stagger-in 360ms var(--motion-ease) both; animation-delay: calc(var(--motion-stagger) * 2); }
+.stagger-4 { animation: tavil-stagger-in 360ms var(--motion-ease) both; animation-delay: calc(var(--motion-stagger) * 3); }
+
+/* ── Per-item stagger — cards and list rows on mount or filter change ───────
+   Set --i (0-based index) via inline style on each item. Parent container
+   needs key= so items remount when content changes. Delay capped at 9 items
+   so large lists don't have an unbearable tail.                              */
+@keyframes tavil-item-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+/* Rise — same physics as tavil-item-in but without index-based stagger.
+   Use on standalone elements (section headers, form cards, hero rows). */
+@keyframes tavil-rise {
+  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+/* Pop — spring overshoot for small interactive elements: toasts, badges, chips. */
+@keyframes tavil-pop {
+  0%   { opacity: 0; transform: scale(0.78); }
+  55%  { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.anim-item {
+  animation: tavil-item-in 380ms var(--ease-out-quint) both;
+  animation-delay: calc(min(var(--i, 0), 9) * 45ms);
+}
+.anim-rise { animation: tavil-rise 360ms var(--ease-out-quint) both; }
+.anim-pop  { animation: tavil-pop  380ms var(--ease-out-quint) both; }
+.stagger-5 { animation: tavil-stagger-in 360ms var(--motion-ease) both; animation-delay: calc(var(--motion-stagger) * 4); }
 
 .page-viewport {
-  will-change: transform, opacity, filter;
+  will-change: transform, opacity;
 }
 .page-stack {
   position: relative;
@@ -178,13 +244,13 @@
 
 /* Reusable interaction helpers */
 .hover-lift {
-  transition: transform 220ms var(--ease-out-quint),
-              box-shadow 220ms var(--ease-out-quint);
+  transition: transform 280ms var(--ease-out-quint),
+              box-shadow 280ms var(--ease-out-quint);
   will-change: transform;
 }
 .hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px -12px rgba(34, 39, 37, .18);
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 14px 36px -10px rgba(34, 39, 37, .22);
 }
 
 .press {
@@ -274,6 +340,11 @@ html.dark .skeleton {
   .anim-pulse-soft,
   .anim-tab,
   .anim-crossfade,
+  .anim-drawer-down,
+  .anim-item,
+  .anim-scale-out,
+  .anim-rise,
+  .anim-pop,
   .stagger-1, .stagger-2, .stagger-3, .stagger-4, .stagger-5 {
     animation: none !important;
   }
@@ -281,14 +352,21 @@ html.dark .skeleton {
   .anim-page-enter-v-fwd,
   .anim-page-enter-v-back,
   .anim-page-enter-h-fwd,
-  .anim-page-enter-h-back {
+  .anim-page-enter-h-back,
+  .anim-page-enter-desk,
+  .anim-bubble-in {
     animation: tavil-fade-in 120ms linear both !important;
   }
   .anim-page-exit-v-fwd,
   .anim-page-exit-v-back,
   .anim-page-exit-h-fwd,
-  .anim-page-exit-h-back {
+  .anim-page-exit-h-back,
+  .anim-bubble-out {
     animation: tavil-fade-out 120ms linear both !important;
+  }
+  .skeleton-veil {
+    animation: tavil-fade-out 80ms linear both !important;
+    animation-delay: 0ms !important;
   }
   .page-stack > .page-exiting { display: none !important; }
   .hover-lift:hover { transform: none; }
@@ -415,6 +493,133 @@ html.dark {
   --tavil-text: #f0efe8;
   --tavil-muted: #a8afa6;
   --tavil-faint: #7a8178;
+}
+
+/* ── Quiz editor: placeholders inherit theme ──────────────────────────────── */
+.quiz-editor-surface input::placeholder,
+.quiz-editor-surface textarea::placeholder {
+  color: var(--q-text-50);
+  opacity: 1;
+}
+
+/* ── Quiz / Formació full-screen surfaces ─────────────────────────────────── */
+.quiz-surface {
+  background: #f7f7f2;
+  --q-text:    #222725;
+  --q-text-90: rgba(34,39,37,0.9);
+  --q-text-80: rgba(34,39,37,0.82);
+  --q-text-70: rgba(34,39,37,0.72);
+  --q-text-60: rgba(34,39,37,0.65);
+  --q-text-55: rgba(34,39,37,0.60);
+  --q-text-50: rgba(34,39,37,0.55);
+  --q-text-40: rgba(34,39,37,0.50);
+  --q-surface:    rgba(34,39,37,0.04);
+  --q-surface-10: rgba(34,39,37,0.08);
+  --q-surface-20: rgba(34,39,37,0.12);
+  --q-border:     rgba(34,39,37,0.10);
+  --q-border-20:  rgba(34,39,37,0.15);
+  --q-footer-bg:  rgba(240,239,232,0.85);
+  --q-overlay:    rgba(34,39,37,0.40);
+  --q-modal-bg:   #f0efe8;
+  --q-progress-bg: rgba(34,39,37,0.06);
+  --q-kicker:     #9b2725;
+}
+html.dark .quiz-surface {
+  background: linear-gradient(135deg,#181010 0%,#221717 40%,#2a1c1b 75%,#221615 100%);
+  --q-text:    #ffffff;
+  --q-text-90: rgba(255,255,255,0.9);
+  --q-text-80: rgba(255,255,255,0.8);
+  --q-text-70: rgba(255,255,255,0.7);
+  --q-text-60: rgba(255,255,255,0.6);
+  --q-text-55: rgba(255,255,255,0.55);
+  --q-text-50: rgba(255,255,255,0.5);
+  --q-text-40: rgba(255,255,255,0.4);
+  --q-surface:    rgba(255,255,255,0.05);
+  --q-surface-10: rgba(255,255,255,0.10);
+  --q-surface-20: rgba(255,255,255,0.20);
+  --q-border:     rgba(255,255,255,0.10);
+  --q-border-20:  rgba(255,255,255,0.20);
+  --q-footer-bg:  rgba(0,0,0,0.20);
+  --q-overlay:    rgba(0,0,0,0.60);
+  --q-modal-bg:   #1a1212;
+  --q-progress-bg: rgba(255,255,255,0.05);
+  --q-kicker:     #fca5a5;
+}
+.quiz-surface-pass {
+  background: #f0fdf4;
+  --q-text: #14532d;
+  --q-text-60: rgba(20,83,45,0.65);
+  --q-text-50: rgba(20,83,45,0.55);
+  --q-surface: rgba(20,83,45,0.05);
+  --q-border: rgba(20,83,45,0.12);
+}
+html.dark .quiz-surface-pass {
+  background: linear-gradient(135deg,#064e3b 0%,#065f46 50%,#047857 100%);
+  --q-text: #ffffff;
+  --q-text-60: rgba(255,255,255,0.6);
+  --q-text-50: rgba(255,255,255,0.5);
+  --q-surface: rgba(255,255,255,0.05);
+  --q-border: rgba(255,255,255,0.20);
+}
+.quiz-surface-fail {
+  background: #fff1f2;
+  --q-text: #7f1d1d;
+  --q-text-60: rgba(127,29,29,0.65);
+  --q-text-50: rgba(127,29,29,0.55);
+  --q-surface: rgba(127,29,29,0.05);
+  --q-border: rgba(127,29,29,0.12);
+}
+html.dark .quiz-surface-fail {
+  background: linear-gradient(135deg,#450a0a 0%,#7f1d1d 50%,#991b1b 100%);
+  --q-text: #ffffff;
+  --q-text-60: rgba(255,255,255,0.6);
+  --q-text-50: rgba(255,255,255,0.5);
+  --q-surface: rgba(255,255,255,0.05);
+  --q-border: rgba(255,255,255,0.20);
+}
+.quiz-editor-surface {
+  background: #f7f7f2;
+  color: #222725;
+  --q-text:    #222725;
+  --q-text-90: rgba(34,39,37,0.9);
+  --q-text-80: rgba(34,39,37,0.82);
+  --q-text-70: rgba(34,39,37,0.72);
+  --q-text-60: rgba(34,39,37,0.65);
+  --q-text-55: rgba(34,39,37,0.60);
+  --q-text-50: rgba(34,39,37,0.55);
+  --q-text-40: rgba(34,39,37,0.50);
+  --q-surface:    rgba(34,39,37,0.04);
+  --q-surface-08: rgba(34,39,37,0.06);
+  --q-surface-10: rgba(34,39,37,0.08);
+  --q-border:     rgba(34,39,37,0.10);
+  --q-border-12:  rgba(34,39,37,0.12);
+  --q-topbar-bg:  rgba(247,247,242,0.96);
+  --q-panel-bg:   rgba(34,39,37,0.04);
+  --q-settings-bg: #f0efe8;
+  --q-overlay:    rgba(34,39,37,0.35);
+  --q-kicker:     #9b2725;
+}
+html.dark .quiz-editor-surface {
+  background: linear-gradient(135deg,#181010 0%,#221717 40%,#2a1c1b 75%,#221615 100%);
+  color: #f0e8d8;
+  --q-text:    #f0e8d8;
+  --q-text-90: rgba(240,232,216,0.9);
+  --q-text-80: rgba(240,232,216,0.8);
+  --q-text-70: rgba(240,232,216,0.7);
+  --q-text-60: rgba(240,232,216,0.6);
+  --q-text-55: rgba(240,232,216,0.55);
+  --q-text-50: rgba(240,232,216,0.5);
+  --q-text-40: rgba(240,232,216,0.4);
+  --q-surface:    rgba(255,255,255,0.06);
+  --q-surface-08: rgba(255,255,255,0.06);
+  --q-surface-10: rgba(255,255,255,0.10);
+  --q-border:     rgba(255,255,255,0.08);
+  --q-border-12:  rgba(255,255,255,0.12);
+  --q-topbar-bg:  rgba(24,16,16,0.96);
+  --q-panel-bg:   rgba(0,0,0,0.20);
+  --q-settings-bg: linear-gradient(180deg,#1e1312 0%,#231615 100%);
+  --q-overlay:    rgba(80,50,40,0.35);
+  --q-kicker:     #fca5a5;
 }
 @media (max-width: 767px) {
 

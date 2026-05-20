@@ -168,7 +168,7 @@ elseif ($method === 'POST' && $action === 'resend-verification') {
 
 elseif ($method === 'PATCH' && $action === 'change-password') {
     require_once __DIR__ . '/../auth_middleware.php';
-    $user = require_auth();
+    $user = auth_user();
     $newPwd  = str_val($body, 'new_password');
     $curPwd  = $body['current_password'] ?? null;
     if (strlen($newPwd) < 8) {
@@ -191,6 +191,27 @@ elseif ($method === 'PATCH' && $action === 'change-password') {
     $db->prepare('UPDATE users SET password=?, must_change_password=0 WHERE id=?')
        ->execute([$hashed, $user['id']]);
     respond(['status' => 'ok']);
+}
+
+elseif ($method === 'POST' && $action === 'impersonate') {
+    require_once __DIR__ . '/../auth_middleware.php';
+    $caller = auth_user();
+    if (($caller['email'] ?? '') !== 'unaiclapers@tavil.net') {
+        respond(['detail' => 'No autoritzat'], 403);
+    }
+    $target_id = (int)($segments[2] ?? 0);
+    if (!$target_id) respond(['detail' => 'ID invàlid'], 400);
+    $stmt = $db->prepare('SELECT ' . _USER_FIELDS_AUTH . ' FROM users WHERE id=?');
+    $stmt->execute([$target_id]);
+    $row = $stmt->fetch();
+    if (!$row) respond(['detail' => 'Usuari no trobat'], 404);
+    $token = jwt_encode([
+        'sub'  => $row['email'],
+        'id'   => $row['id'],
+        'role' => $row['role'],
+        'exp'  => time() + JWT_EXPIRY,
+    ]);
+    respond(['access_token' => $token, 'token_type' => 'bearer', 'user' => _user_out($row)]);
 }
 
 else {

@@ -1,6 +1,6 @@
 export const API_BASE: string =
   window.location.hostname === 'localhost'
-    ? 'http://localhost:8000'
+    ? 'http://192.168.10.168/public_html/portal_web/api/index.php'
     : (process.env.PUBLIC_URL || '') + '/api/index.php';
 
 export interface User {
@@ -61,9 +61,14 @@ export function clearToken(): void {
 
 type OnUnauthorized = () => void;
 let onUnauthorizedCallback: OnUnauthorized | null = null;
+let onMustChangePasswordCallback: (() => void) | null = null;
 
 export function registerUnauthorizedHandler(cb: OnUnauthorized): void {
   onUnauthorizedCallback = cb;
+}
+
+export function registerMustChangePasswordHandler(cb: () => void): void {
+  onMustChangePasswordCallback = cb;
 }
 
 export async function apiFetch<T>(
@@ -83,6 +88,15 @@ export async function apiFetch<T>(
     clearToken();
     onUnauthorizedCallback?.();
     throw new Error('No autoritzat');
+  }
+
+  if (res.status === 403) {
+    let detail: unknown;
+    try { detail = (await res.json()).detail; } catch {}
+    if (detail === 'must_change_password') {
+      onMustChangePasswordCallback?.();
+      throw new Error('must_change_password');
+    }
   }
 
   if (!res.ok) {
@@ -118,9 +132,33 @@ export async function apiDeleteImage(filename: string): Promise<void> {
   await apiFetch(`/api/upload/images/${encodeURIComponent(filename)}`, { method: 'DELETE' });
 }
 
+async function resizeImageFile(file: File, maxPx = 1400, quality = 0.88): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const { width, height } = img;
+      const scale = Math.min(1, maxPx / Math.max(width, height));
+      const w = Math.round(width * scale);
+      const h = Math.round(height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => {
+        if (!blob) { resolve(file); return; }
+        resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
 export async function apiUploadImage(file: File): Promise<string> {
+  const toUpload = file.size > 1.5 * 1024 * 1024 ? await resizeImageFile(file) : file;
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', toUpload);
   const token = getToken();
   const res = await fetch(`${API_BASE}/api/upload`, {
     method: 'POST',
@@ -443,16 +481,17 @@ export interface AgendaEvent {
   time: string;
   location: string;
   type: string;
+  target_departments?: string[]; // null/undefined = visible to all
 }
 
 export async function apiCreateAgendaEvent(fields: {
-  title: string; day: number; month: number; time: string; location: string; type: string;
+  title: string; day: number; month: number; time: string; location: string; type: string; target_departments?: string[];
 }): Promise<AgendaEvent> {
   return apiFetch<AgendaEvent>('/api/agenda', { method: 'POST', body: JSON.stringify(fields) });
 }
 
 export async function apiUpdateAgendaEvent(id: number, fields: {
-  title: string; day: number; month: number; time: string; location: string; type: string;
+  title: string; day: number; month: number; time: string; location: string; type: string; target_departments?: string[];
 }): Promise<void> {
   await apiFetch(`/api/agenda/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
 }
@@ -564,6 +603,7 @@ export interface Course {
   url: string;
   is_external: number;
   departments: string; // JSON array string e.g. '["Comercial","RRHH"]'
+  target_users: number[];
   user_status: string;
   user_progress: number;
 }
@@ -587,6 +627,7 @@ export interface ExternalCoursePayload {
   hours: string;
   mandatory: number;
   departments: string[];
+  target_users: number[];
 }
 
 export async function apiCreateExternalCourse(data: ExternalCoursePayload): Promise<{ id: number }> {
@@ -738,6 +779,9 @@ export interface Quiz {
   start_at: string | null;
   end_at: string | null;
   target_departments: string[];
+  target_users: number[];
+  is_presential: number;
+  location: string;
   created_at: string;
   questions: QuizQuestion[];
   question_count?: number;
@@ -773,6 +817,9 @@ export interface QuizIn {
   start_at: string | null;
   end_at: string | null;
   target_departments: string[];
+  target_users: number[];
+  is_presential?: number;
+  location?: string;
   questions: QuizQuestionIn[];
 }
 
@@ -863,4 +910,18 @@ export async function apiClearQuizProgress(id: number): Promise<void> {
 export async function apiGetQuizInProgressCount(): Promise<number> {
   const r = await apiFetch<{ count: number }>('/api/quizzes/in-progress-count');
   return r.count;
+}
+
+export interface NonCompletersResult {
+  non_completers: { id: number; name: string; email: string; dept: string }[];
+  total_audience: number;
+  completed: number;
+}
+
+export async function apiGetQuizNonCompleters(id: number): Promise<NonCompletersResult> {
+  return apiFetch<NonCompletersResult>(`/api/quizzes/${id}/non-completers`);
+}
+
+export async function apiImpersonate(userId: number): Promise<TokenOut> {
+  return apiFetch<TokenOut>(`/api/auth/impersonate/${userId}`, { method: 'POST' });
 }

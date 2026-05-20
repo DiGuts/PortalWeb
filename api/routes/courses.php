@@ -15,14 +15,20 @@ if ($method === 'GET' && $id === null) {
     $uid  = (int)$u['id'];
     $rows = $db->query('SELECT * FROM courses ORDER BY mandatory DESC, title')->fetchAll();
 
-    // Non-manager users only see external courses targeted at their dept (or no dept restriction)
+    // Non-manager users only see external courses targeted at their dept/user (or no restriction)
     $isManager = in_array($u['role'], ['Administrador/a', 'Recursos humans', 'Formacions'], true);
     if (!$isManager) {
-        $userDept = $u['dept'];
-        $rows = array_values(array_filter($rows, function ($r) use ($userDept) {
+        $userDept = (string)($u['dept'] ?? '');
+        $userId   = (int)$u['id'];
+        $rows = array_values(array_filter($rows, function ($r) use ($userDept, $userId) {
             if (!(int)$r['is_external']) return true;
-            $depts = json_decode($r['departments'] ?: '[]', true);
-            return empty($depts) || in_array($userDept, $depts, true);
+            $depts      = json_decode($r['departments'] ?: '[]', true) ?: [];
+            $tgt_users  = json_decode($r['target_users'] ?? '[]', true) ?: [];
+            // No restriction = visible to all
+            if (empty($depts) && empty($tgt_users)) return true;
+            $dept_ok = !empty($depts) && in_array($userDept, $depts, true);
+            $user_ok = !empty($tgt_users) && in_array($userId, $tgt_users, true);
+            return $dept_ok || $user_ok;
         }));
     }
 
@@ -37,6 +43,7 @@ if ($method === 'GET' && $id === null) {
         $r['cert']        = (int)$r['cert'];
         $r['is_external'] = (int)$r['is_external'];
         $r['departments'] = $r['departments'] ?: '[]';
+        $r['target_users'] = json_decode($r['target_users'] ?? '[]', true) ?: [];
         $p = $prog_map[$r['id']] ?? null;
         $r['user_status']   = $p ? $p['status']   : 'Pendent';
         $r['user_progress'] = $p ? (int)$p['progress'] : 0;
@@ -54,9 +61,12 @@ elseif ($method === 'POST' && $id === null) {
     $hours = str_val($body, 'hours');
     $mand  = int_val($body, 'mandatory');
     $depts = json_encode($body['departments'] ?? []);
+    $tgt_users = !empty($body['target_users']) && is_array($body['target_users'])
+        ? json_encode(array_values(array_filter(array_map('intval', $body['target_users']))))
+        : null;
 
-    $db->prepare('INSERT INTO courses (title, description, url, category, hours, mandatory, is_external, departments) VALUES (?,?,?,?,?,?,1,?)')
-       ->execute([$title, $desc, $url, $cat, $hours, $mand, $depts]);
+    $db->prepare('INSERT INTO courses (title, description, url, category, hours, mandatory, is_external, departments, target_users) VALUES (?,?,?,?,?,?,1,?,?)')
+       ->execute([$title, $desc, $url, $cat, $hours, $mand, $depts, $tgt_users]);
     respond(['id' => (int)$db->lastInsertId(), 'status' => 'ok'], 201);
 }
 
@@ -70,9 +80,12 @@ elseif ($method === 'PUT' && $id !== null && $sub === '') {
     $hours = str_val($body, 'hours');
     $mand  = int_val($body, 'mandatory');
     $depts = json_encode($body['departments'] ?? []);
+    $tgt_users = !empty($body['target_users']) && is_array($body['target_users'])
+        ? json_encode(array_values(array_filter(array_map('intval', $body['target_users']))))
+        : null;
 
-    $db->prepare('UPDATE courses SET title=?, description=?, url=?, category=?, hours=?, mandatory=?, departments=? WHERE id=? AND is_external=1')
-       ->execute([$title, $desc, $url, $cat, $hours, $mand, $depts, $id]);
+    $db->prepare('UPDATE courses SET title=?, description=?, url=?, category=?, hours=?, mandatory=?, departments=?, target_users=? WHERE id=? AND is_external=1')
+       ->execute([$title, $desc, $url, $cat, $hours, $mand, $depts, $tgt_users, $id]);
     respond(['status' => 'ok']);
 }
 

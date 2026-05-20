@@ -38,6 +38,15 @@ function auth_user(): array {
     if (!$user) {
         respond(['detail' => 'Usuari no trobat'], 401);
     }
+    // Block all requests (except change-password) if password change is required.
+    if ((int)($user['must_change_password'] ?? 0) === 1) {
+        $uri    = $_SERVER['REQUEST_URI'] ?? '';
+        $method = $_SERVER['REQUEST_METHOD'] ?? '';
+        $is_change_pw = $method === 'PATCH' && strpos($uri, 'change-password') !== false;
+        if (!$is_change_pw) {
+            respond(['detail' => 'must_change_password'], 403);
+        }
+    }
     return $user;
 }
 

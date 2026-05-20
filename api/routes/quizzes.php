@@ -44,15 +44,18 @@ function _get_full_quiz(PDO $db, int $quiz_id, bool $include_correct): array {
         $result_questions[] = $q;
     }
 
-    $quiz['id']            = (int)$quiz['id'];
-    $quiz['time_limit']    = (int)$quiz['time_limit'];
-    $quiz['passing_score'] = (int)$quiz['passing_score'];
-    $quiz['active']        = (int)$quiz['active'];
-    $quiz['image']         = $quiz['image'] ?? '';
-    $quiz['start_at']      = $quiz['start_at'] ?? null;
-    $quiz['end_at']        = $quiz['end_at'] ?? null;
+    $quiz['id']             = (int)$quiz['id'];
+    $quiz['time_limit']     = (int)$quiz['time_limit'];
+    $quiz['passing_score']  = (int)$quiz['passing_score'];
+    $quiz['active']         = (int)$quiz['active'];
+    $quiz['is_presential']  = (int)($quiz['is_presential'] ?? 0);
+    $quiz['image']          = $quiz['image'] ?? '';
+    $quiz['location']       = $quiz['location'] ?? '';
+    $quiz['start_at']       = $quiz['start_at'] ?? null;
+    $quiz['end_at']         = $quiz['end_at'] ?? null;
     $quiz['target_departments'] = _decode_target_depts($quiz['target_departments'] ?? null);
-    $quiz['questions']     = $result_questions;
+    $quiz['target_users']       = _decode_target_users($quiz['target_users'] ?? null);
+    $quiz['questions']      = $result_questions;
     return $quiz;
 }
 
@@ -68,6 +71,42 @@ function _encode_target_depts(array $body): ?string {
     if (!is_array($v)) return null;
     $clean = array_values(array_filter(array_map(fn($x) => is_string($x) ? trim($x) : '', $v), fn($x) => $x !== ''));
     return $clean ? json_encode($clean, JSON_UNESCAPED_UNICODE) : null;
+}
+
+function _decode_target_users($raw): array {
+    if ($raw === null || $raw === '') return [];
+    $decoded = json_decode((string)$raw, true);
+    return is_array($decoded) ? array_values(array_filter(array_map('intval', $decoded))) : [];
+}
+
+function _encode_target_users(array $body): ?string {
+    if (!array_key_exists('target_users', $body)) return null;
+    $v = $body['target_users'];
+    if (!is_array($v)) return null;
+    $clean = array_values(array_filter(array_map('intval', $v)));
+    return $clean ? json_encode($clean) : null;
+}
+
+function _upsert_agenda_event(PDO $db, int $quiz_id, array $body): void {
+    $start = _quiz_str($body, 'start_at');
+    if (!$start) return;
+    $dt = date_create($start);
+    if (!$dt) return;
+    $day   = (int)date_format($dt, 'j');
+    $month = (int)date_format($dt, 'n');
+    $year  = (int)date_format($dt, 'Y');
+    $end   = _quiz_str($body, 'end_at');
+    $end_day = $end ? (int)date_format(date_create($end), 'j') : null;
+    $title    = str_val($body, 'title') ?: '';
+    $location = str_val($body, 'location') ?: '';
+    $desc     = str_val($body, 'description') ?: '';
+    $target_depts = _encode_target_depts($body);
+    $target_users = _encode_target_users($body);
+    $db->prepare(
+        'INSERT INTO agenda_events (title, day, month, year, end_day, location, description, type, quiz_id, target_departments, target_users)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)
+         ON DUPLICATE KEY UPDATE year=VALUES(year), end_day=VALUES(end_day), location=VALUES(location), description=VALUES(description), quiz_id=VALUES(quiz_id), target_departments=VALUES(target_departments), target_users=VALUES(target_users)'
+    )->execute([$title, $day, $month, $year, $end_day, $location, $desc, 'Formació presencial', $quiz_id, $target_depts, $target_users]);
 }
 
 function _quiz_str(array $body, string $key): ?string {
@@ -113,12 +152,16 @@ if ($method === 'GET' && $id === null) {
         $rows = $db->query('SELECT * FROM quizzes WHERE active=1 ORDER BY created_at DESC')->fetchAll();
     }
     $user_dept = (string)($u['dept'] ?? '');
+    $user_id   = (int)$u['id'];
     $result = [];
     foreach ($rows as $row) {
-        $target = _decode_target_depts($row['target_departments'] ?? null);
-        // Empty target list = visible to all. Otherwise must match user's dept.
-        if (!$is_admin && !empty($target) && !in_array($user_dept, $target, true)) {
-            continue;
+        $target_depts = _decode_target_depts($row['target_departments'] ?? null);
+        $target_users = _decode_target_users($row['target_users'] ?? null);
+        // Visibility: empty both = all. Non-empty = user must match either list.
+        if (!$is_admin && (!empty($target_depts) || !empty($target_users))) {
+            $dept_ok = !empty($target_depts) && in_array($user_dept, $target_depts, true);
+            $user_ok = !empty($target_users) && in_array($user_id, $target_users, true);
+            if (!$dept_ok && !$user_ok) continue;
         }
         $a = $db->prepare('SELECT score, max_score, passed, completed_at FROM quiz_attempts WHERE quiz_id=? AND user_id=?');
         $a->execute([(int)$row['id'], (int)$u['id']]);
@@ -135,14 +178,17 @@ if ($method === 'GET' && $id === null) {
             $in_progress = false;
         }
 
-        $row['id']            = (int)$row['id'];
-        $row['time_limit']    = (int)$row['time_limit'];
-        $row['passing_score'] = (int)$row['passing_score'];
-        $row['active']        = (int)$row['active'];
-        $row['image']         = $row['image'] ?? '';
-        $row['start_at']      = $row['start_at'] ?? null;
-        $row['end_at']        = $row['end_at'] ?? null;
-        $row['target_departments'] = $target;
+        $row['id']             = (int)$row['id'];
+        $row['time_limit']     = (int)$row['time_limit'];
+        $row['passing_score']  = (int)$row['passing_score'];
+        $row['active']         = (int)$row['active'];
+        $row['is_presential']  = (int)($row['is_presential'] ?? 0);
+        $row['image']          = $row['image'] ?? '';
+        $row['location']       = $row['location'] ?? '';
+        $row['start_at']       = $row['start_at'] ?? null;
+        $row['end_at']         = $row['end_at'] ?? null;
+        $row['target_departments'] = $target_depts;
+        $row['target_users']       = $target_users;
         if ($attempt) {
             $attempt['score']     = (int)$attempt['score'];
             $attempt['max_score'] = (int)$attempt['max_score'];
@@ -166,17 +212,23 @@ elseif ($method === 'GET' && $id !== null && $sub === '') {
 // POST /api/quizzes
 elseif ($method === 'POST' && $id === null) {
     require_formacions_or_admin();
-    $db->prepare('INSERT INTO quizzes (title, description, image, category, time_limit, passing_score, active, start_at, end_at, target_departments) VALUES (?,?,?,?,?,?,?,?,?,?)')
+    $is_presential = bool_val($body, 'is_presential') ? 1 : 0;
+    $db->prepare('INSERT INTO quizzes (title, description, image, category, time_limit, passing_score, active, start_at, end_at, target_departments, target_users, is_presential, location) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
        ->execute([
            str_val($body,'title'), str_val($body,'description'),
            str_val($body,'image'), str_val($body,'category'),
            int_val($body,'time_limit'), int_val($body,'passing_score', 70),
            bool_val($body,'active', true) ? 1 : 0,
            _quiz_str($body, 'start_at'), _quiz_str($body, 'end_at'),
-           _encode_target_depts($body),
+           _encode_target_depts($body), _encode_target_users($body),
+           $is_presential, str_val($body, 'location'),
        ]);
     $quiz_id = (int)$db->lastInsertId();
     _insert_questions($db, $quiz_id, $body['questions'] ?? []);
+    // Auto-create agenda event for presential trainings
+    if ($is_presential && _quiz_str($body, 'start_at')) {
+        _upsert_agenda_event($db, $quiz_id, $body);
+    }
     respond(_get_full_quiz($db, $quiz_id, true), 201);
 }
 
@@ -187,18 +239,25 @@ elseif ($method === 'PUT' && $id !== null && $sub === '') {
     $stmt->execute([$id]);
     if (!$stmt->fetch()) respond(['detail' => 'Quiz no trobat'], 404);
 
-    $db->prepare('UPDATE quizzes SET title=?, description=?, image=?, category=?, time_limit=?, passing_score=?, active=?, start_at=?, end_at=?, target_departments=? WHERE id=?')
+    $is_presential = bool_val($body, 'is_presential') ? 1 : 0;
+    $db->prepare('UPDATE quizzes SET title=?, description=?, image=?, category=?, time_limit=?, passing_score=?, active=?, start_at=?, end_at=?, target_departments=?, target_users=?, is_presential=?, location=? WHERE id=?')
        ->execute([
            str_val($body,'title'), str_val($body,'description'),
            str_val($body,'image'), str_val($body,'category'),
            int_val($body,'time_limit'), int_val($body,'passing_score', 70),
            bool_val($body,'active', true) ? 1 : 0,
            _quiz_str($body, 'start_at'), _quiz_str($body, 'end_at'),
-           _encode_target_depts($body),
+           _encode_target_depts($body), _encode_target_users($body),
+           $is_presential, str_val($body, 'location'),
            $id,
        ]);
     $db->prepare('DELETE FROM quiz_questions WHERE quiz_id=?')->execute([$id]);
     _insert_questions($db, $id, $body['questions'] ?? []);
+    // Sync agenda event for presential trainings
+    if ($is_presential) {
+        $db->prepare('DELETE FROM agenda_events WHERE quiz_id=?')->execute([$id]);
+        if (_quiz_str($body, 'start_at')) _upsert_agenda_event($db, $id, $body);
+    }
     respond(_get_full_quiz($db, $id, true));
 }
 
@@ -409,6 +468,47 @@ elseif ($method === 'DELETE' && $id !== null && $sub === 'progress') {
     $stmt = $db->prepare('DELETE FROM quiz_progress WHERE user_id=? AND quiz_id=?');
     $stmt->execute([(int)$u['id'], $id]);
     respond(['ok' => true]);
+}
+
+// GET /api/quizzes/{id}/non-completers  (admin/rrhh/formacions)
+elseif ($method === 'GET' && $id !== null && $sub === 'non-completers') {
+    require_formacions_or_admin();
+    $row = $db->prepare('SELECT target_departments, target_users FROM quizzes WHERE id=?');
+    $row->execute([$id]);
+    $quiz = $row->fetch();
+    if (!$quiz) respond(['detail' => 'Quiz no trobat'], 404);
+
+    $target_depts = _decode_target_depts($quiz['target_departments'] ?? null);
+    $target_users = _decode_target_users($quiz['target_users'] ?? null);
+
+    if (empty($target_depts) && empty($target_users)) {
+        $audience = $db->query('SELECT id, name, email, dept FROM users ORDER BY name')->fetchAll();
+    } elseif (!empty($target_users) && !empty($target_depts)) {
+        $pu = implode(',', array_fill(0, count($target_users), '?'));
+        $pd = implode(',', array_fill(0, count($target_depts), '?'));
+        $stmt = $db->prepare("SELECT id, name, email, dept FROM users WHERE id IN ($pu) OR dept IN ($pd) ORDER BY name");
+        $stmt->execute(array_merge($target_users, $target_depts));
+        $audience = $stmt->fetchAll();
+    } elseif (!empty($target_users)) {
+        $pu = implode(',', array_fill(0, count($target_users), '?'));
+        $stmt = $db->prepare("SELECT id, name, email, dept FROM users WHERE id IN ($pu) ORDER BY name");
+        $stmt->execute($target_users);
+        $audience = $stmt->fetchAll();
+    } else {
+        $pd = implode(',', array_fill(0, count($target_depts), '?'));
+        $stmt = $db->prepare("SELECT id, name, email, dept FROM users WHERE dept IN ($pd) ORDER BY name");
+        $stmt->execute($target_depts);
+        $audience = $stmt->fetchAll();
+    }
+
+    $comp = $db->prepare('SELECT DISTINCT user_id FROM quiz_attempts WHERE quiz_id=?');
+    $comp->execute([$id]);
+    $completer_ids = array_map('intval', array_column($comp->fetchAll(), 'user_id'));
+
+    $non_completers = array_values(array_filter($audience, fn($u) => !in_array((int)$u['id'], $completer_ids, true)));
+    foreach ($non_completers as &$u) $u['id'] = (int)$u['id'];
+
+    respond(['non_completers' => $non_completers, 'total_audience' => count($audience), 'completed' => count($completer_ids)]);
 }
 
 else {
