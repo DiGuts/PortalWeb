@@ -11452,6 +11452,12 @@ const newsClamp = (t: NewsTile): NewsTile => ({
   y: Math.max(0, t.y),
 });
 
+const newsRectsOverlap = (a: {x:number;y:number;w:number;h:number}, b: {x:number;y:number;w:number;h:number}) =>
+  a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+const newsWouldOverlap = (tiles: NewsTile[], candidate: {x:number;y:number;w:number;h:number}, excludeId?: string) =>
+  tiles.some(t => t.id !== excludeId && newsRectsOverlap(candidate, t));
+
 const newsUid = () => Math.random().toString(36).slice(2, 9);
 
 // ─── Striped media placeholder ───────────────────────────────────────────────
@@ -11476,6 +11482,50 @@ function NewsStriped({ label, mediaType }: { label: string; mediaType: string })
   );
 }
 
+// ─── Editable text helper — ref-based to prevent React overwriting user input ─
+const EditableText = React.memo(function EditableText({ initialContent, style, onChange }: {
+  initialContent: string;
+  style?: React.CSSProperties;
+  onChange: (v: string) => void;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (ref.current) ref.current.textContent = initialContent;
+  }, []); // intentionally run only on mount — do not re-run on content prop change
+  return (
+    <div
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      style={{ outline: 'none', cursor: 'text', background: 'rgba(191,33,30,0.06)', borderRadius: 4, ...style }}
+      onBlur={(e) => onChange(e.currentTarget.innerText)}
+      onPointerDown={(e) => e.stopPropagation()}
+    />
+  );
+});
+
+// ─── Stat tile (needs refs for two-part content, must be its own component) ───
+function StatTileContent({ tile, editable, onChange }: { tile: NewsTile; editable: boolean; onChange: (v: string) => void }) {
+  const parts = String(tile.content || '|').split('|');
+  const num = parts[0] ?? '';
+  const lab = parts[1] ?? '';
+  const numRef = React.useRef<string>(num);
+  const labRef = React.useRef<string>(lab);
+  if (!editable) { numRef.current = num; labRef.current = lab; }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
+      {editable
+        ? <EditableText key={tile.id + '-num'} initialContent={num} onChange={(v) => { numRef.current = v; onChange(`${v}|${labRef.current}`); }} style={{ fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 'clamp(36px, 4vw, 56px)', lineHeight: 1, color: NT.accent, letterSpacing: '-0.03em' }} />
+        : <div style={{ fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 'clamp(36px, 4vw, 56px)', lineHeight: 1, color: NT.accent, letterSpacing: '-0.03em' }}>{num}</div>
+      }
+      {editable
+        ? <EditableText key={tile.id + '-lab'} initialContent={lab} onChange={(v) => { labRef.current = v; onChange(`${numRef.current}|${v}`); }} style={{ fontFamily: NT.uiFont, fontSize: 11, lineHeight: 1.3, color: NT.mute, textTransform: 'uppercase', letterSpacing: '0.06em' }} />
+        : <div style={{ fontFamily: NT.uiFont, fontSize: 11, lineHeight: 1.3, color: NT.mute, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{lab}</div>
+      }
+    </div>
+  );
+}
+
 // ─── Tile content (per type) ─────────────────────────────────────────────────
 function NewsTileContent({ tile, editable, onChange, onRequestImage }: {
   tile: NewsTile;
@@ -11483,74 +11533,51 @@ function NewsTileContent({ tile, editable, onChange, onRequestImage }: {
   onChange: (content: string) => void;
   onRequestImage: () => void;
 }) {
-  const editProps: any = editable ? {
-    contentEditable: true,
-    suppressContentEditableWarning: true,
-    onBlur: (e: React.FocusEvent<HTMLDivElement>) => onChange(e.currentTarget.innerText),
-    onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
-  } : {};
-  const editStyle = editable ? { outline: 'none', cursor: 'text', background: 'rgba(191,33,30,0.06)', borderRadius: 4 } : {};
-
   switch (tile.type) {
     case 'headline':
-      return <div {...editProps} style={{
-        fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight,
-        fontSize: 'clamp(28px, 4vw, 52px)', lineHeight: 1.05,
-        letterSpacing: '-0.02em', color: NT.ink,
-        ...editStyle,
-      }}>{tile.content}</div>;
+      return editable
+        ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 'clamp(28px, 4vw, 52px)', lineHeight: 1.05, letterSpacing: '-0.02em', color: NT.ink }} />
+        : <div style={{ fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 'clamp(28px, 4vw, 52px)', lineHeight: 1.05, letterSpacing: '-0.02em', color: NT.ink }}>{tile.content}</div>;
     case 'subhead':
-      return <div {...editProps} style={{
-        fontFamily: NT.headlineFont, fontWeight: 400,
-        fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3,
-        color: NT.mute, ...editStyle,
-      }}>{tile.content}</div>;
+      return editable
+        ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.headlineFont, fontWeight: 400, fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3, color: NT.mute }} />
+        : <div style={{ fontFamily: NT.headlineFont, fontWeight: 400, fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3, color: NT.mute }}>{tile.content}</div>;
     case 'byline':
-      return <div {...editProps} style={{
-        fontFamily: NT.uiFont, fontSize: 11, fontWeight: 500,
-        letterSpacing: '0.04em', textTransform: 'uppercase',
-        color: NT.mute, ...editStyle,
-      }}>{tile.content}</div>;
+      return editable
+        ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.uiFont, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: NT.mute }} />
+        : <div style={{ fontFamily: NT.uiFont, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: NT.mute }}>{tile.content}</div>;
     case 'paragraph':
-      return <div {...editProps} style={{
-        fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55,
-        color: NT.ink, ...editStyle,
-      }}>{tile.content}</div>;
+      return editable
+        ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55, color: NT.ink }} />
+        : <div style={{ fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55, color: NT.ink }}>{tile.content}</div>;
     case 'pullquote':
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%' }}>
           <div style={{ width: 32, height: 2, background: NT.accent }} />
-          <div {...editProps} style={{
-            fontFamily: NT.headlineFont, fontWeight: 500,
-            fontSize: 'clamp(18px, 1.8vw, 24px)', lineHeight: 1.25,
-            color: NT.ink, fontStyle: 'italic', flex: 1,
-            ...editStyle,
-          }}>{tile.content}</div>
+          {editable
+            ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.headlineFont, fontWeight: 500, fontSize: 'clamp(18px, 1.8vw, 24px)', lineHeight: 1.25, color: NT.ink, fontStyle: 'italic', flex: 1 }} />
+            : <div style={{ fontFamily: NT.headlineFont, fontWeight: 500, fontSize: 'clamp(18px, 1.8vw, 24px)', lineHeight: 1.25, color: NT.ink, fontStyle: 'italic', flex: 1 }}>{tile.content}</div>}
         </div>
       );
     case 'list': {
       const items = String(tile.content || '').split('\n').filter(Boolean);
-      return (
-        <div {...editProps} style={{
-          fontFamily: NT.bodyFont, fontSize: 14, lineHeight: 1.6,
-          color: NT.ink, ...editStyle,
-        }}>
-          {editable
-            ? tile.content
-            : items.map((li, i) => (
+      return editable
+        ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.bodyFont, fontSize: 14, lineHeight: 1.6, color: NT.ink }} />
+        : (
+          <div style={{ fontFamily: NT.bodyFont, fontSize: 14, lineHeight: 1.6, color: NT.ink }}>
+            {items.map((li, i) => (
               <div key={i} style={{ display: 'flex', gap: 10, padding: '2px 0' }}>
                 <span style={{ color: NT.accent, fontFamily: NT.uiFont, fontSize: 12, minWidth: 18 }}>{String(i + 1).padStart(2, '0')}</span>
                 <span>{li}</span>
               </div>
             ))}
-        </div>
-      );
+          </div>
+        );
     }
     case 'caption':
-      return <div {...editProps} style={{
-        fontFamily: NT.bodyFont, fontSize: 12, lineHeight: 1.5,
-        color: NT.mute, fontStyle: 'italic', ...editStyle,
-      }}>{tile.content}</div>;
+      return editable
+        ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.bodyFont, fontSize: 12, lineHeight: 1.5, color: NT.mute, fontStyle: 'italic' }} />
+        : <div style={{ fontFamily: NT.bodyFont, fontSize: 12, lineHeight: 1.5, color: NT.mute, fontStyle: 'italic' }}>{tile.content}</div>;
     case 'image':
       if (tile.url) {
         return <img src={resolveImg(tile.url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />;
@@ -11595,32 +11622,8 @@ function NewsTileContent({ tile, editable, onChange, onRequestImage }: {
       );
     case 'embed':
       return <NewsStriped label="Embed" mediaType="embed" />;
-    case 'stat': {
-      const [num, lab] = String(tile.content || '|').split('|');
-      const numProps: any = editable ? {
-        contentEditable: true, suppressContentEditableWarning: true,
-        onBlur: (e: React.FocusEvent<HTMLDivElement>) => onChange(`${e.currentTarget.innerText}|${lab}`),
-        onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
-      } : {};
-      const labProps: any = editable ? {
-        contentEditable: true, suppressContentEditableWarning: true,
-        onBlur: (e: React.FocusEvent<HTMLDivElement>) => onChange(`${num}|${e.currentTarget.innerText}`),
-        onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
-      } : {};
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
-          <div {...numProps} style={{
-            fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight,
-            fontSize: 'clamp(36px, 4vw, 56px)', lineHeight: 1, color: NT.accent,
-            letterSpacing: '-0.03em', ...editStyle,
-          }}>{num}</div>
-          <div {...labProps} style={{
-            fontFamily: NT.uiFont, fontSize: 11, lineHeight: 1.3, color: NT.mute,
-            textTransform: 'uppercase', letterSpacing: '0.06em', ...editStyle,
-          }}>{lab}</div>
-        </div>
-      );
-    }
+    case 'stat':
+      return <StatTileContent tile={tile} editable={editable} onChange={onChange} />;
     case 'chart':
       return (
         <div style={{ height: '100%', position: 'relative', padding: '8px 4px 4px' }}>
@@ -12015,7 +12018,7 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
     };
     const up = () => {
       if (drag.kind === 'palette') {
-        if (hoverGrid) {
+        if (hoverGrid && !newsWouldOverlap(tiles, hoverGrid)) {
           const def = NEWS_TYPES[drag.type as NewsTileType];
           setTiles(prev => [...prev, newsClamp({
             id: newsUid(), type: drag.type, x: hoverGrid.x, y: hoverGrid.y,
@@ -12024,9 +12027,13 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
         }
       } else if (drag.kind === 'move') {
         if (hoverGrid) {
-          setTiles(prev => prev.map(tt => tt.id === drag.id
-            ? newsClamp({ ...tt, x: hoverGrid.x, y: hoverGrid.y })
-            : tt));
+          const tile = tiles.find(t => t.id === drag.id);
+          const candidate = { x: hoverGrid.x, y: hoverGrid.y, w: tile?.w ?? drag.w, h: tile?.h ?? drag.h };
+          if (!newsWouldOverlap(tiles, candidate, drag.id)) {
+            setTiles(prev => prev.map(tt => tt.id === drag.id
+              ? newsClamp({ ...tt, x: hoverGrid.x, y: hoverGrid.y })
+              : tt));
+          }
         }
       }
       setDrag(null); setHoverGrid(null);
@@ -12258,17 +12265,22 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
               }}
             >
               {/* Drop indicator */}
-              {hoverGrid && drag && (drag.kind === 'palette' || drag.kind === 'move') && (
-                <div style={{
-                  position: 'absolute',
-                  ...newsTileBox(hoverGrid, metrics.cw, metrics.rh),
-                  background: 'rgba(191,33,30,0.14)',
-                  border: `1.5px dashed ${NT.accent}`,
-                  borderRadius: NT.tileRadius,
-                  pointerEvents: 'none',
-                  transition: 'left .08s, top .08s, width .08s, height .08s',
-                }} />
-              )}
+              {hoverGrid && drag && (drag.kind === 'palette' || drag.kind === 'move') && (() => {
+                const moveTile = drag.kind === 'move' ? tiles.find(t => t.id === drag.id) : null;
+                const candidate = { x: hoverGrid.x, y: hoverGrid.y, w: moveTile?.w ?? drag.w, h: moveTile?.h ?? drag.h };
+                const blocked = newsWouldOverlap(tiles, candidate, drag.kind === 'move' ? drag.id : undefined);
+                return (
+                  <div style={{
+                    position: 'absolute',
+                    ...newsTileBox(hoverGrid, metrics.cw, metrics.rh),
+                    background: blocked ? 'rgba(220,38,38,0.18)' : 'rgba(191,33,30,0.14)',
+                    border: blocked ? '1.5px dashed #dc2626' : `1.5px dashed ${NT.accent}`,
+                    borderRadius: NT.tileRadius,
+                    pointerEvents: 'none',
+                    transition: 'left .08s, top .08s, width .08s, height .08s',
+                  }} />
+                );
+              })()}
 
               {/* Tiles */}
               {tiles.map(tt => (
