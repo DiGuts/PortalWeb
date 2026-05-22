@@ -330,7 +330,7 @@ function MobileDrawer({
     {
       label: 'Empresa',
       items: [
-        { id: 'Espai', icon: Building2, label: 'Tavilpedia' },
+        { id: 'Espai', icon: Building2, label: 'Tavipedia' },
         { id: 'Directori', icon: Users, label: 'Who is who?' },
         { id: 'Campus', icon: GraduationCap, label: 'Campus TAVIL' },
       ],
@@ -491,7 +491,7 @@ function MesTab({
       { id: 'Activitats', icon: ActivityIcon, label: 'Connect' },
     ]},
     { label: 'Empresa', items: [
-      { id: 'Espai', icon: Building2, label: 'Tavilpedia' },
+      { id: 'Espai', icon: Building2, label: 'Tavipedia' },
       { id: 'Campus', icon: GraduationCap, label: 'Campus TAVIL' },
     ]},
     { label: 'Personal', items: [
@@ -3732,11 +3732,11 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
           <button onClick={onBack} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0, zIndex: 1 }}>
             <ChevronLeft size={18} />
           </button>
-          <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Tavilpedia</span>
+          <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Tavipedia</span>
         </div>
         <div style={{ padding: '0 20px 12px' }}>
           <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Empresa</div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, lineHeight: 1.05, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Tavilpedia</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, lineHeight: 1.05, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Tavipedia</h1>
           <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>Manual del treballador, polítiques, beneficis i identitat.</p>
         </div>
         <div style={{ padding: '0 16px 16px', position: 'relative' }}>
@@ -3980,7 +3980,7 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
             <Star size={15} className="text-amber-500" />
             <h3 className="font-bold text-gray-900 dark:text-white text-sm">Documents destacats</h3>
             <a href={SP_BASE} target="_blank" rel="noopener noreferrer" className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors">
-              <ExternalLink size={13} /> Obrir Tavilpedia
+              <ExternalLink size={13} /> Obrir Tavipedia
             </a>
           </div>
           <div className="space-y-1">
@@ -9808,7 +9808,7 @@ function useSidebarSections(role?: string) {
 
 function EmpresaLandingTab({ onNavigate }: { onNavigate?: (tab: string) => void }) {
   const items: { id: string; label: string; icon: any; desc: string }[] = [
-    { id: 'Espai', label: 'Tavilpedia', icon: Building2, desc: 'Manual, polítiques, beneficis, identitat' },
+    { id: 'Espai', label: 'Tavipedia', icon: Building2, desc: 'Manual, polítiques, beneficis, identitat' },
     { id: 'Directori', label: 'Who is who?', icon: Users, desc: 'Troba companys per departament' },
     { id: 'Campus', label: 'Campus TAVIL', icon: GraduationCap, desc: 'Formació i cursos' },
     { id: 'Activitats', label: 'Connect', icon: ActivityIcon, desc: "Activitats i esdeveniments TAVIL" },
@@ -12589,8 +12589,10 @@ function App() {
   useEffect(() => { _setGlobalNavHidden = setNavHidden; return () => { _setGlobalNavHidden = null; }; }, []);
 
   // Glass + anchor header on scroll. Inici threshold 240px (past hero). Others 30px.
-  // Guard: only setState when boolean flips — no re-render on every scroll frame.
+  // On tab change: reset to false + scroll to top so short pages don't inherit anchored state.
   useEffect(() => {
+    setHeaderSticky(false);
+    window.scrollTo(0, 0);
     const threshold = activeTab === 'Inici' ? 240 : 30;
     let last = false;
     const onScroll = () => {
@@ -12598,7 +12600,6 @@ function App() {
       if (next !== last) { last = next; setHeaderSticky(next); }
     };
     window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
     return () => window.removeEventListener('scroll', onScroll);
   }, [activeTab]);
 
@@ -12936,8 +12937,9 @@ function App() {
       {/* Main */}
       <main className={cn("flex-1 min-w-0 min-h-screen transition-all duration-300 ml-0 pb-16 md:pb-0 relative", sidebarCollapsed ? "md:ml-16" : "md:ml-60")} style={impersonating ? { paddingTop: 37 } : undefined}>
         {/* Header:
-            · Inici: absolute (out of flow, hero fills from 0) → fixed+dark-glass slide-in when scrolled
-            · Altres: sticky solid → sticky light-glass when scrolled (no position change, no CLS) */}
+            · Inici:  absolute transparent → fixed dark-glass (slide-in) at 240px scroll
+            · Altres: absolute solid     → fixed dark-glass (slide-in) at  30px scroll
+            Both use same fixed+glass pattern when anchored. */}
         <header
           className={cn(
             "h-14 md:h-16 hidden md:flex items-center justify-between px-3 md:px-4 lg:px-8 z-20 border-b",
@@ -12946,10 +12948,10 @@ function App() {
                 ? "fixed top-0 right-0 header-glass header-anchored"
                 : "absolute top-0 left-0 right-0 header-glass"
               : headerSticky
-                ? "sticky top-0 header-glass-sticky"
-                : "sticky top-0 bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-zinc-800"
+                ? "fixed top-0 right-0 header-glass-dark header-anchored"
+                : "absolute top-0 left-0 right-0 bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-zinc-800"
           )}
-          style={activeTab === 'Inici' && headerSticky ? { left: sidebarCollapsed ? 64 : 240 } : undefined}
+          style={headerSticky ? { left: sidebarCollapsed ? 64 : 240 } : undefined}
         >
           <div className="flex items-center gap-3">
             <button
@@ -13090,7 +13092,7 @@ function App() {
                 title={t('common.language')}
               >
                 <Globe size={18} />
-                <span className="text-[10px] font-bold uppercase">{i18n.language}</span>
+                <span className="hg-text text-[10px] font-bold uppercase">{i18n.language}</span>
               </button>
             </div>
 
@@ -13110,7 +13112,7 @@ function App() {
                   <p className="text-xs font-semibold hg-text text-gray-900 dark:text-white leading-none">{currentUser?.name ?? 'Usuari'}</p>
                   <p className="text-[10px] hg-text text-gray-400 mt-0.5">{demoRole}</p>
                 </div>
-                <ChevronLeft size={14} className="text-gray-400 rotate-[-90deg] hidden lg:block" />
+                <ChevronLeft size={14} className="hg-text text-gray-400 rotate-[-90deg] hidden lg:block" />
               </button>
               {isProfileMenuOpen && (
                 <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-100 dark:border-zinc-800 p-3 z-50 anim-slide-down origin-top-right">
@@ -13161,6 +13163,10 @@ function App() {
             </div>
           </div>
         </header>
+
+        {/* Spacer: compensates absolute header height on non-Inici pages so content starts below header.
+            Inici needs no spacer — hero image fills from top behind transparent header. */}
+        {activeTab !== 'Inici' && <div className="h-14 md:h-16 hidden md:block shrink-0" />}
 
         {/* Content — mobile: swipeable Instagram-style strip; desktop: vertical push transition */}
         {isMobilePage ? (
