@@ -11489,17 +11489,31 @@ const EditableText = React.memo(function EditableText({ initialContent, style, o
   onChange: (v: string) => void;
 }) {
   const ref = React.useRef<HTMLDivElement>(null);
+  const onChangeRef = React.useRef(onChange);
+  onChangeRef.current = onChange;
   React.useEffect(() => {
-    if (ref.current) ref.current.textContent = initialContent;
-  }, []); // intentionally run only on mount — do not re-run on content prop change
+    const el = ref.current;
+    if (el) el.textContent = initialContent;
+    // Flush latest text on unmount — protects against parent clearing
+    // editingId via outside-click before onBlur can fire.
+    return () => {
+      if (el) onChangeRef.current(el.innerText);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <div
       ref={ref}
       contentEditable
       suppressContentEditableWarning
-      style={{ outline: 'none', cursor: 'text', background: 'rgba(191,33,30,0.06)', borderRadius: 4, ...style }}
+      style={{ outline: 'none', cursor: 'text', background: 'rgba(191,33,30,0.06)', borderRadius: 4, whiteSpace: 'pre-wrap', ...style }}
+      onInput={(e) => onChange(e.currentTarget.innerText)}
       onBlur={(e) => onChange(e.currentTarget.innerText)}
       onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        // Stop Enter/Escape from bubbling to the editor's global handler.
+        if (e.key === 'Enter' || e.key === 'Escape') e.stopPropagation();
+      }}
     />
   );
 });
@@ -11549,14 +11563,14 @@ function NewsTileContent({ tile, editable, onChange, onRequestImage }: {
     case 'paragraph':
       return editable
         ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55, color: NT.ink }} />
-        : <div style={{ fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55, color: NT.ink }}>{tile.content}</div>;
+        : <div style={{ fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55, color: NT.ink, whiteSpace: 'pre-wrap' }}>{tile.content}</div>;
     case 'pullquote':
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%' }}>
           <div style={{ width: 32, height: 2, background: NT.accent }} />
           {editable
             ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.headlineFont, fontWeight: 500, fontSize: 'clamp(18px, 1.8vw, 24px)', lineHeight: 1.25, color: NT.ink, fontStyle: 'italic', flex: 1 }} />
-            : <div style={{ fontFamily: NT.headlineFont, fontWeight: 500, fontSize: 'clamp(18px, 1.8vw, 24px)', lineHeight: 1.25, color: NT.ink, fontStyle: 'italic', flex: 1 }}>{tile.content}</div>}
+            : <div style={{ fontFamily: NT.headlineFont, fontWeight: 500, fontSize: 'clamp(18px, 1.8vw, 24px)', lineHeight: 1.25, color: NT.ink, fontStyle: 'italic', flex: 1, whiteSpace: 'pre-wrap' }}>{tile.content}</div>}
         </div>
       );
     case 'list': {
@@ -11795,8 +11809,12 @@ function NewsTileEl({ tile, selected, editing, gridLines, onSelect, onEdit, onCh
 // ─── Sidebar palette ─────────────────────────────────────────────────────────
 function NewsPalette({ onPointerDownItem }: { onPointerDownItem: (e: React.PointerEvent, type: NewsTileType) => void }) {
   const grouped = useMemo(() => {
+    const HIDDEN: NewsTileType[] = ['audio', 'stat', 'chart', 'table'];
     const by: Record<string, Array<[NewsTileType, typeof NEWS_TYPES[NewsTileType]]>> = { Text: [], Media: [], Data: [], Structure: [] };
-    (Object.entries(NEWS_TYPES) as Array<[NewsTileType, typeof NEWS_TYPES[NewsTileType]]>).forEach(([k, v]) => { by[v.cat].push([k, v]); });
+    (Object.entries(NEWS_TYPES) as Array<[NewsTileType, typeof NEWS_TYPES[NewsTileType]]>).forEach(([k, v]) => {
+      if (HIDDEN.includes(k)) return;
+      by[v.cat].push([k, v]);
+    });
     return by;
   }, []);
   return (
@@ -11817,7 +11835,7 @@ function NewsPalette({ onPointerDownItem }: { onPointerDownItem: (e: React.Point
         </div>
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 24px' }}>
-        {NEWS_TYPE_CATS.map((c) => (
+        {NEWS_TYPE_CATS.filter(c => grouped[c].length > 0).map((c) => (
           <div key={c} style={{ marginBottom: 16 }}>
             <div style={{
               fontFamily: NT.uiFont, fontSize: 9, fontWeight: 600, letterSpacing: '0.1em',

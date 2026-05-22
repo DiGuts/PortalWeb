@@ -4,6 +4,14 @@ import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { apiLogin, AuthOut } from '../../../api';
 import { LangSwitch } from './LangSwitch';
 
+// Shared theme transition curve — every var-bound color/bg uses it so the
+// dark↔light switch animates as one coordinated frame, not a checkerboard snap.
+const THEME_TR =
+  'background-color 320ms cubic-bezier(.23,1,.32,1),' +
+  'background 320ms cubic-bezier(.23,1,.32,1),' +
+  'border-color 320ms cubic-bezier(.23,1,.32,1),' +
+  'color 320ms cubic-bezier(.23,1,.32,1)';
+
 const inputStyle: React.CSSProperties = {
   width: '100%',
   height: 48,
@@ -16,7 +24,7 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
   boxSizing: 'border-box',
   fontFamily: 'inherit',
-  transition: 'background 320ms cubic-bezier(.23,1,.32,1), border-color 320ms cubic-bezier(.23,1,.32,1), color 320ms cubic-bezier(.23,1,.32,1)',
+  transition: THEME_TR,
 };
 
 const labelStyle: React.CSSProperties = {
@@ -25,6 +33,7 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
   fontWeight: 500,
   display: 'block',
+  transition: THEME_TR,
 };
 
 interface Props {
@@ -69,7 +78,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
         color: 'var(--tavil-text)',
         padding: '20px 24px 32px',
         boxSizing: 'border-box',
-        transition: 'background 320ms cubic-bezier(.23,1,.32,1), color 320ms cubic-bezier(.23,1,.32,1)',
+        transition: THEME_TR,
       }}
     >
       {/* Top row: logo + lang */}
@@ -83,6 +92,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
           fontFamily: '"Instrument Serif", serif',
           letterSpacing: '-0.02em',
           flexShrink: 0,
+          transition: THEME_TR,
         }}>
           T
         </div>
@@ -97,13 +107,23 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
         }}>
           PORTAL INTERN
         </div>
-        {/* Logo crossfade: light ↔ dark via opacity transition, not src swap */}
-        <div style={{ position: 'relative', height: 40, marginBottom: 8 }}>
+        {/* Logo crossfade: both imgs absolute in a fixed-size slot so the
+            wordmark anchors at the exact same pixel in both modes, regardless
+            of the underlying SVG's viewBox or intrinsic aspect ratio. */}
+        <div style={{
+          position: 'relative',
+          width: 160,
+          height: 40,
+          marginBottom: 8,
+        }}>
           <img
             src={`${process.env.PUBLIC_URL}/assets/images/tavilNet.svg`}
             alt={t('auth.loginTitle')}
             style={{
-              height: 40, width: 'auto', display: 'block',
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
+              objectFit: 'contain',
+              objectPosition: 'left center',
               opacity: isDarkMode ? 0 : 1,
               transition: 'opacity 320ms cubic-bezier(.23,1,.32,1)',
             }}
@@ -113,14 +133,19 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
             alt=""
             aria-hidden="true"
             style={{
-              height: 40, width: 'auto', display: 'block',
-              position: 'absolute', top: 0, left: 0,
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
+              objectFit: 'contain',
+              objectPosition: 'left center',
               opacity: isDarkMode ? 1 : 0,
               transition: 'opacity 320ms cubic-bezier(.23,1,.32,1)',
             }}
           />
         </div>
-        <p style={{ fontSize: 15, color: 'var(--tavil-muted)', margin: 0, lineHeight: 1.4 }}>
+        <p style={{
+          fontSize: 15, color: 'var(--tavil-muted)', margin: 0, lineHeight: 1.4,
+          transition: THEME_TR,
+        }}>
           {t('auth.loginSubtitle')}
         </p>
       </div>
@@ -131,7 +156,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
         <div style={{ marginBottom: 14 }}>
           <span style={labelStyle}>{t('auth.email')}</span>
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Mail size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+            <Mail size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none', transition: THEME_TR }} />
             <input
               type="email"
               value={email}
@@ -149,7 +174,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
         <div style={{ marginBottom: 8 }}>
           <span style={labelStyle}>{t('auth.password')}</span>
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Lock size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+            <Lock size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none', transition: THEME_TR }} />
             <input
               type={showPass ? 'text' : 'password'}
               value={password}
@@ -168,6 +193,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
                 color: 'var(--tavil-faint)',
                 background: 'none', border: 'none',
                 cursor: 'pointer', display: 'flex', padding: 0,
+                transition: THEME_TR,
               }}
             >
               {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -177,7 +203,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
 
         {/* Forgot + remember row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)', cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)', cursor: 'pointer', transition: THEME_TR }}>
             <input
               type="checkbox"
               checked={remember}
@@ -215,7 +241,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
             fontWeight: 600,
             cursor: loading ? 'not-allowed' : 'pointer',
             opacity: loading ? 0.7 : 1,
-            transition: 'opacity 160ms',
+            transition: `opacity 160ms, ${THEME_TR}`,
             fontFamily: 'inherit',
           }}
         >
@@ -228,7 +254,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
 
       {/* Register prompt — only if self-registration enabled */}
       {onRegister && (
-        <div style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--tavil-muted)', marginBottom: 12 }}>
+        <div style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--tavil-muted)', marginBottom: 12, transition: THEME_TR }}>
           {t('auth.noAccount')}{' '}
           <button
             onClick={onRegister}
@@ -244,7 +270,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
       )}
 
       {/* Footer */}
-      <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--tavil-faint)', letterSpacing: '0.02em' }}>
+      <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--tavil-faint)', letterSpacing: '0.02em', transition: THEME_TR }}>
         TAVIL · v2026.4 · support@tavil.com
       </div>
     </div>
