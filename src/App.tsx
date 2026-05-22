@@ -2168,7 +2168,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
                   )}
                 </div>
                 <div className="md:w-1/2 p-4 md:p-8 flex flex-col justify-center">
-                  <span className="bg-white/15 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider w-fit mb-2 md:mb-4">{item.category}</span>
+                  <span className={cn("text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider w-fit mb-2 md:mb-4", NEWS_CAT_COLORS[item.category] ?? "bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-300")}>{item.category}</span>
                   <h2
                     className="text-lg md:text-2xl font-bold text-gray-900 dark:text-white mb-2 md:mb-4 leading-tight cursor-pointer hover:text-red-600 transition-colors"
                     onClick={() => setSelectedNews(item, 'Notícies')}
