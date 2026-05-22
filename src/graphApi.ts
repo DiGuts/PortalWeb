@@ -16,7 +16,7 @@ export const msalInstance: PublicClientApplication | null = IS_SECURE
         clientId:    CLIENT_ID,
         authority:   `https://login.microsoftonline.com/${TENANT_ID}`,
         redirectUri: window.location.hostname === 'localhost'
-          ? `${window.location.origin}/`
+          ? 'http://localhost:3000/'
           : `${window.location.origin}/public_html/portal_web/`,
       },
       cache: { cacheLocation: 'localStorage' },
