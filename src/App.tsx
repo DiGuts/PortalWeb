@@ -1050,8 +1050,6 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, lineHeight: 1.15, letterSpacing: '0.01em', color: 'var(--tavil-text)', marginBottom: 8 }}>{featured.title}</div>
                   <div style={{ fontSize: 13.5, color: 'var(--tavil-muted)', lineHeight: 1.45 }}>{featured.summary}</div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 12, fontSize: 12, color: 'var(--tavil-faint)' }}>
-                    <span>{featured.author || ''}</span>
-                    {featured.author && featured.date && <span>·</span>}
                     <span>{featured.date}</span>
                   </div>
                 </div>
@@ -1104,7 +1102,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                 }}>
                   <div style={{ display: 'flex', gap: 12 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 11, color: 'var(--tavil-faint)', marginBottom: 4 }}>{n.category} · {n.date}</div>
+                      <div style={{ fontSize: 11, marginBottom: 4 }}><span style={{ color: 'var(--tavil-muted)', fontWeight: 600 }}>{n.category}</span><span style={{ color: 'var(--tavil-faint)' }}> · {n.date}</span></div>
                       <div style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1.3, color: 'var(--tavil-text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{n.title}</div>
                     </div>
                     {n.image ? (
@@ -1348,7 +1346,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                           {item.kind === 'news' ? t('news.badge.news') : t('news.badge.activity')}
                         </span>
                         {item.category && (
-                          <span className="text-[9px] text-gray-400 truncate">{item.category}</span>
+                          <span className="text-[9px] text-gray-500 dark:text-zinc-400 truncate">{item.category}</span>
                         )}
                       </div>
                       <p className="font-semibold text-gray-900 dark:text-white text-sm leading-snug line-clamp-2">{item.title}</p>
@@ -1925,7 +1923,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
   }, []);
 
   const filtered = (activeFilter === 'Totes' ? news : news.filter(n => n.category === activeFilter))
-    .filter(n => !newsSearch || [n.title, n.summary, n.content, n.author].some(f => f.toLowerCase().includes(newsSearch.toLowerCase())));
+    .filter(n => !newsSearch || [n.title, n.summary, n.content].some(f => f.toLowerCase().includes(newsSearch.toLowerCase())));
   const featuredList = filtered.filter(n => n.featured === 1);
   const featuredItems = featuredList.length > 0 ? featuredList : filtered.slice(0, 1);
   const featured = featuredItems[featuredIndex % Math.max(featuredItems.length, 1)] ?? null;
@@ -2113,7 +2111,6 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
             </div>
             <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-4 leading-tight">{selectedNews.title}</h1>
             <div className="flex items-center gap-4 text-xs text-gray-400 mb-6 pb-6 border-b border-gray-100 dark:border-zinc-800">
-              <div className="flex items-center gap-1.5"><UserCircle size={14} /><span>{selectedNews.author}</span></div>
               <div className="flex items-center gap-1.5"><Calendar size={14} /><span>{selectedNews.date}</span></div>
             </div>
             {selectedNews.summary && <p className="text-gray-600 dark:text-zinc-300 text-base leading-relaxed mb-6 font-medium">{selectedNews.summary}</p>}
@@ -2179,7 +2176,6 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
                   <p className="text-gray-500 dark:text-zinc-400 text-xs md:text-sm mb-4 md:mb-6 leading-relaxed line-clamp-3 md:line-clamp-none">{item.summary}</p>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 text-xs text-gray-400">
-                      <div className="flex items-center gap-1.5"><UserCircle size={14} /><span>{item.author}</span></div>
                       <div className="flex items-center gap-1.5"><Calendar size={14} /><span>{item.date}</span></div>
                     </div>
                   </div>
@@ -2235,11 +2231,10 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
               )}
             </div>
             <div className="p-4 md:p-5">
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-2">{item.category}</p>
+              <p className="text-[9px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2">{item.category}</p>
               <h3 className="text-sm md:text-base font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 transition-colors cursor-pointer" onClick={() => setSelectedNews(item, 'Notícies')}>{item.title}</h3>
               <p className="text-[13px] md:text-xs text-gray-500 dark:text-zinc-400 mb-4 line-clamp-2 leading-relaxed">{item.summary}</p>
               <div className="flex items-center justify-between text-[10px] text-gray-400">
-                <div className="flex items-center gap-1"><UserCircle size={12} /><span>{item.author}</span></div>
                 <span>{item.date}</span>
               </div>
             </div>
@@ -9131,7 +9126,6 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
   const [nnCategory, setNnCategory] = useState('Comunicats interns');
   const [nnSummary, setNnSummary] = useState('');
   const [nnContent, setNnContent] = useState('');
-  const [nnAuthor, setNnAuthor] = useState('');
   const [nnDate, setNnDate] = useState('');
   const [nnImage, setNnImage] = useState('');
   const [nnImageFile, setNnImageFile] = useState<File | null>(null);
@@ -9145,7 +9139,6 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
   const expandedQuizRef = useScrollIntoViewWhen<HTMLDivElement>(expandedQuizId, { threshold: 0.55, block: 'center', delay: 80 });
   const userFormRef = useScrollIntoViewWhen<HTMLDivElement>(showUserForm ? (editUser?.id ?? 'new') : null, { threshold: 0.5, block: 'center', delay: 60 });
   const noticeFormRef = useScrollIntoViewWhen<HTMLDivElement>(showNoticeForm ? (editNotice?.id ?? 'new') : null, { threshold: 0.5, block: 'center', delay: 60 });
-  const newsFormRef = useScrollIntoViewWhen<HTMLDivElement>(showNewsForm ? (editNewsItem?.id ?? 'new') : null, { threshold: 0.5, block: 'center', delay: 60 });
 
   const loadUsers = () => {
     setLoading(true);
@@ -9242,14 +9235,14 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
     });
   };
 
-  const openCreateNews = () => { setEditNewsItem(null); setNnTitle(''); setNnCategory('Comunicats interns'); setNnSummary(''); setNnContent(''); setNnAuthor(''); setNnDate(''); setNnImage(''); setNnImageFile(null); setNnFeatured(false); setNnShowGallery(false); setShowNewsForm(true); };
-  const openEditNews = (n: NewsArticle) => { setEditNewsItem(n); setNnTitle(n.title); setNnCategory(n.category); setNnSummary(n.summary); setNnContent(n.content ?? ''); setNnAuthor(n.author); setNnDate(n.date); setNnImage(n.image || ''); setNnImageFile(null); setNnFeatured(n.featured === 1); setNnShowGallery(false); setShowNewsForm(true); };
+  const openCreateNews = () => { setEditNewsItem(null); setNnTitle(''); setNnCategory('Comunicats interns'); setNnSummary(''); setNnContent(''); setNnDate(''); setNnImage(''); setNnImageFile(null); setNnFeatured(false); setNnShowGallery(false); setShowNewsForm(true); };
+  const openEditNews = (n: NewsArticle) => { setEditNewsItem(n); setNnTitle(n.title); setNnCategory(n.category); setNnSummary(n.summary); setNnContent(n.content ?? ''); setNnDate(n.date); setNnImage(n.image || ''); setNnImageFile(null); setNnFeatured(n.featured === 1); setNnShowGallery(false); setShowNewsForm(true); };
   const saveNews = async () => {
     setNnSaving(true); setError('');
     try {
       let imageUrl = nnImage;
       if (nnImageFile) imageUrl = await apiUploadImage(nnImageFile);
-      const fields = { category: nnCategory, title: nnTitle.trim(), summary: nnSummary.trim(), content: nnContent, author: nnAuthor.trim(), date: nnDate.trim(), image: imageUrl, featured: nnFeatured ? 1 : 0 };
+      const fields = { category: nnCategory, title: nnTitle.trim(), summary: nnSummary.trim(), content: nnContent, author: '', date: nnDate.trim(), image: imageUrl, featured: nnFeatured ? 1 : 0 };
       if (editNewsItem) await apiUpdateNews(editNewsItem.id, fields);
       else await apiCreateNews(fields);
       setShowNewsForm(false); loadNews(); showToast(editNewsItem ? 'Notícia actualitzada correctament' : 'Notícia creada correctament');
@@ -9533,15 +9526,9 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
                   <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Resum breu</label>
                   <textarea value={nnSummary} onChange={e => setNnSummary(e.target.value)} className={inputCls} rows={2} placeholder="Resum breu visible a la llista" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Autor</label>
-                    <input value={nnAuthor} onChange={e => setNnAuthor(e.target.value)} className={inputCls} placeholder="Nom de l'autor" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Data</label>
-                    <input type="date" value={nnDate} onChange={e => setNnDate(e.target.value)} className={inputCls} />
-                  </div>
+                <div>
+                  <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Data</label>
+                  <input type="date" value={nnDate} onChange={e => setNnDate(e.target.value)} className={inputCls} />
                 </div>
                 <div>
                   <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Imatge</label>
@@ -9605,7 +9592,7 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
                       <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{n.title}</p>
                       {n.featured === 1 && <span className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">Destacada</span>}
                     </div>
-                    <p className="text-xs text-gray-400 truncate">{n.category} · {n.date} · {n.author}</p>
+                    <p className="text-xs text-gray-400 truncate">{[n.category, n.date].filter(Boolean).join(' · ')}</p>
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
                     <button onClick={() => window.open(`${window.location.pathname}?article=${n.id}`, '_blank')} className={btnGhost} title="Editor extens (blocs)"><LayoutGrid size={14} /></button>
@@ -11890,7 +11877,6 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
   const [title, setTitle] = useState('Esborrany sense títol');
   const [category, setCategory] = useState(NEWS_CATS_FULL[0]);
   const [summary, setSummary] = useState('');
-  const [author, setAuthor] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [coverImage, setCoverImage] = useState('');
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -11916,7 +11902,6 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
         setTitle(a.title || 'Esborrany sense títol');
         setCategory(a.category || NEWS_CATS_FULL[0]);
         setSummary(a.summary || '');
-        setAuthor(a.author || '');
         setDate((a.date || '').slice(0, 10));
         setCoverImage(a.image || '');
         setFeatured(a.featured === 1);
@@ -12121,7 +12106,7 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
       const fields = {
         category, title: title.trim(), summary: summary.trim(),
         content: JSON.stringify(tiles),
-        author: author.trim(), date,
+        author: '', date,
         image: imageUrl, featured: featured ? 1 : 0,
       };
       if (articleId !== null) {
@@ -12409,14 +12394,6 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
               <div>
                 <label style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>Data</label>
                 <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{
-                  width: '100%', padding: '8px 10px', fontFamily: NT.uiFont, fontSize: 13,
-                  background: NT.surface, color: NT.ink,
-                  border: `1px solid ${NT.soft}`, borderRadius: NT.radius, outline: 'none',
-                }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>Autor</label>
-                <input value={author} onChange={e => setAuthor(e.target.value)} placeholder="Nom de l'autor" style={{
                   width: '100%', padding: '8px 10px', fontFamily: NT.uiFont, fontSize: 13,
                   background: NT.surface, color: NT.ink,
                   border: `1px solid ${NT.soft}`, borderRadius: NT.radius, outline: 'none',
