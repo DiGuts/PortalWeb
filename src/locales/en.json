@@ -49,7 +49,9 @@
     "goodEvening": "Good evening",
     "seeAll": "See all",
     "months": ["January","February","March","April","May","June","July","August","September","October","November","December"],
-    "monthsAbbr": ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
+    "monthsAbbr": ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"],
+    "monthsGenitive": ["","of January","of February","of March","of April","of May","of June","of July","of August","of September","of October","of November","of December"],
+    "days": ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
   },
   "auth": {
     "login": "Sign in",
@@ -128,18 +130,23 @@
   },
   "activities": {
     "subtitle": "Company activities and events",
+    "kicker": "Company life",
+    "mobileSubtitle": "Activities, events and what's happening at TAVIL.",
     "upcoming": "Upcoming",
     "past": "Past",
     "enrolled": "Enrolled",
     "enroll": "Enroll",
     "full": "Full",
     "capacity": "{{enrolled}}/{{capacity}} spots",
-    "newActivity": "+ New activity"
+    "newActivity": "+ New activity",
+    "noActivities": "No activities available at the moment.",
+    "confirmDelete": "Are you sure you want to delete this activity? This action cannot be undone."
   },
   "agenda": {
     "subtitle": "Internal calendar for meetings and events",
     "newEvent": "+ New event",
     "today": "Today",
+    "confirmDelete": "Are you sure you want to delete this event? This action cannot be undone.",
     "event": "{{count}} event",
     "events": "{{count}} events",
     "noEvents": "No events this day"
@@ -149,16 +156,57 @@
     "grid": "Grid",
     "departments": "Departments",
     "all": "All",
-    "ext": "Ext."
+    "ext": "Ext.",
+    "kicker": "Team",
+    "searchPlaceholder": "Search by name, role, department…",
+    "noResults": "No results for this search."
   },
   "corporate": {
-    "subtitle": "Documents, procedures and corporate resources"
+    "subtitle": "Documents, procedures and corporate resources",
+    "kicker": "Company",
+    "mobileSubtitle": "Employee handbook, policies, benefits and identity.",
+    "searchPlaceholder": "Search documents, procedures…"
   },
   "campus": {
-    "subtitle": "TAVIL internal training and courses"
+    "subtitle": "TAVIL internal training and courses",
+    "kicker": "Training",
+    "mobileSubtitle": "Training, courses and tracking your progress.",
+    "inProgress": "In progress",
+    "completedCount": "Completed",
+    "thisYear": "This year",
+    "continueWhere": "CONTINUE WHERE YOU LEFT OFF",
+    "completedPct": "% completed",
+    "continue": "Continue",
+    "mandatory": "Mandatory",
+    "topics": {
+      "all": "All topics",
+      "security": "Security",
+      "quality": "Quality",
+      "systems": "Systems",
+      "commercial": "Commercial",
+      "compliance": "Compliance",
+      "onboarding": "Onboarding",
+      "production": "Production",
+      "skills": "Skills",
+      "languages": "Languages"
+    },
+    "statuses": {
+      "all": "All statuses",
+      "pending": "Pending",
+      "lowProgress": "Low progress",
+      "completed": "Completed"
+    }
   },
   "veu": {
     "subtitle": "Suggestions, incidents and internal surveys",
+    "status": {
+      "accepted": "Accepted",
+      "inReview": "In review",
+      "pending": "Pending",
+      "resolved": "Resolved",
+      "inManagement": "In progress",
+      "open": "Open"
+    },
     "suggestions": "Suggestions",
     "incidents": "Incidents",
     "surveys": "Surveys",

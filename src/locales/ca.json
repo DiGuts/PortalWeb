@@ -49,7 +49,9 @@
     "goodEvening": "Bona nit",
     "seeAll": "Veure-ho tot",
     "months": ["Gener","Febrer","Març","Abril","Maig","Juny","Juliol","Agost","Setembre","Octubre","Novembre","Desembre"],
-    "monthsAbbr": ["GEN","FEB","MAR","ABR","MAI","JUN","JUL","AGO","SET","OCT","NOV","DES"]
+    "monthsAbbr": ["GEN","FEB","MAR","ABR","MAI","JUN","JUL","AGO","SET","OCT","NOV","DES"],
+    "monthsGenitive": ["","de gener","de febrer","de març","d'abril","de maig","de juny","de juliol","d'agost","de setembre","d'octubre","de novembre","de desembre"],
+    "days": ["Diumenge","Dilluns","Dimarts","Dimecres","Dijous","Divendres","Dissabte"]
   },
   "auth": {
     "login": "Inicia sessió",
@@ -128,15 +130,20 @@
   },
   "activities": {
     "subtitle": "Activitats i esdeveniments de l'empresa",
+    "kicker": "Vida a l'empresa",
+    "mobileSubtitle": "Activitats, esdeveniments i el que es mou a TAVIL.",
     "upcoming": "Properes",
     "past": "Passades",
     "enrolled": "Inscrit",
     "enroll": "Inscriure'm",
     "full": "Complet",
     "capacity": "{{enrolled}}/{{capacity}} places",
-    "newActivity": "+ Nova activitat"
+    "newActivity": "+ Nova activitat",
+    "noActivities": "Cap activitat disponible en aquest moment.",
+    "confirmDelete": "Segur que vols eliminar aquesta activitat? Aquesta acció no es pot desfer."
   },
   "agenda": {
+    "confirmDelete": "Segur que vols eliminar aquest event? Aquesta acció no es pot desfer.",
     "subtitle": "Calendari intern de reunions i esdeveniments",
     "newEvent": "+ Nou event",
     "today": "Avui",
@@ -149,16 +156,57 @@
     "grid": "Graella",
     "departments": "Departaments",
     "all": "Tots",
-    "ext": "Ext."
+    "ext": "Ext.",
+    "kicker": "Equip",
+    "searchPlaceholder": "Cerca per nom, rol, departament…",
+    "noResults": "Cap resultat per a aquesta cerca."
   },
   "corporate": {
-    "subtitle": "Documents, procediments i recursos corporatius"
+    "subtitle": "Documents, procediments i recursos corporatius",
+    "kicker": "Empresa",
+    "mobileSubtitle": "Manual del treballador, polítiques, beneficis i identitat.",
+    "searchPlaceholder": "Cercar documents, procediments…"
   },
   "campus": {
-    "subtitle": "Formació i cursos interns de TAVIL"
+    "subtitle": "Formació i cursos interns de TAVIL",
+    "kicker": "Formació",
+    "mobileSubtitle": "Formació, cursos i seguiment del teu progrés.",
+    "inProgress": "En curs",
+    "completedCount": "Completats",
+    "thisYear": "Aquest any",
+    "continueWhere": "CONTINUA ON HO DEIXAVES",
+    "completedPct": "% completat",
+    "continue": "Continuar",
+    "mandatory": "Obligatòria",
+    "topics": {
+      "all": "Tots els temes",
+      "security": "Seguretat",
+      "quality": "Qualitat",
+      "systems": "Sistemes",
+      "commercial": "Comercial",
+      "compliance": "Compliance",
+      "onboarding": "Acollida",
+      "production": "Producció",
+      "skills": "Habilitats",
+      "languages": "Idiomes"
+    },
+    "statuses": {
+      "all": "Tots els estats",
+      "pending": "Pendent",
+      "lowProgress": "Poc avançats",
+      "completed": "Completat"
+    }
   },
   "veu": {
     "subtitle": "Suggeriments, incidències i enquestes internes",
+    "status": {
+      "accepted": "Acceptada",
+      "inReview": "En revisió",
+      "pending": "Pendent",
+      "resolved": "Resolta",
+      "inManagement": "En gestió",
+      "open": "Oberta"
+    },
     "suggestions": "Suggeriments",
     "incidents": "Incidències",
     "surveys": "Enquestes",

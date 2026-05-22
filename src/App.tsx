@@ -2244,6 +2244,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
 // ── Activitats Tab ────────────────────────────────────────────────────────────
 
 function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBack?: () => void }) {
+  const { t } = useTranslation();
   const [activities, setActivities] = useState<Activity[]>(() => tabPrefetch.activities ?? []);
   const [activeTab, setActiveTab] = usePersistedSubTab<string>('activitats', 'Properes', ['Properes', 'Passades'] as const);
   const [activeFilter, setActiveFilter] = useState('Totes');
@@ -2316,7 +2317,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
 
   const handleDeleteActivity = (id: number) => {
     setConfirmModal({
-      message: 'Segur que vols eliminar aquesta activitat? Aquesta acció no es pot desfer.',
+      message: t('activities.confirmDelete'),
       onConfirm: async () => {
         setConfirmModal(null);
         try { await apiDeleteActivity(id); setActivities(await apiGetActivities()); }
@@ -2357,9 +2358,9 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         </div>
         {/* Header kicker + title + subtitle */}
         <div style={{ padding: '0 20px 12px' }}>
-          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Vida a l'empresa</div>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>{t('activities.kicker')}</div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, lineHeight: 1.05, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Connect</h1>
-          <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>Activitats, esdeveniments i el que es mou a TAVIL.</p>
+          <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>{t('activities.mobileSubtitle')}</p>
         </div>
         {/* Segmented: Pròximes / Passades */}
         <div style={{ padding: '6px 20px 18px' }}>
@@ -2372,7 +2373,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                 fontWeight: 500, fontSize: 13, border: 'none', cursor: 'pointer',
                 fontFamily: 'inherit',
                 boxShadow: activeTab === key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-              }}>{key}</button>
+              }}>{key === 'Properes' ? t('activities.upcoming') : t('activities.past')}</button>
             ))}
           </div>
         </div>
@@ -2384,7 +2385,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         ) : filtered.length === 0 ? (
           <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tavil-faint)' }}>
             <ActivityIcon size={36} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
-            <p style={{ fontSize: 13.5 }}>Cap activitat disponible en aquest moment.</p>
+            <p style={{ fontSize: 13.5 }}>{t('activities.noActivities')}</p>
           </div>
         ) : (
           <div key={`${activeTab}-${activeFilter}`} style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -2778,11 +2779,14 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
     }
   };
 
+  const DAYS = t('common.days', { returnObjects: true }) as string[];
+  const MONTHS_GENITIVE = t('common.monthsGenitive', { returnObjects: true }) as string[];
+
   const dayNameCa = (d: number, m: number, y: number): string =>
-    ['Diumenge','Dilluns','Dimarts','Dimecres','Dijous','Divendres','Dissabte'][new Date(y, m - 1, d).getDay()];
+    DAYS[new Date(y, m - 1, d).getDay()] ?? '';
 
   const monthGenitiu = (m: number): string =>
-    ['','de gener','de febrer','de març',"d'abril",'de maig','de juny','de juliol',"d'agost",'de setembre',"d'octubre",'de novembre','de desembre'][m] ?? '';
+    MONTHS_GENITIVE[m] ?? '';
 
   useEffect(() => {
     if (initDate) {
@@ -2870,7 +2874,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
 
   const handleDeleteEvent = (id: number) => {
     setConfirmModal({
-      message: 'Segur que vols eliminar aquest event? Aquesta acció no es pot desfer.',
+      message: t('agenda.confirmDelete'),
       onConfirm: async () => {
         setConfirmModal(null);
         try { await apiDeleteAgendaEvent(id); setApiAgendaEvents(await apiGetAgendaEvents()); }
@@ -3449,7 +3453,7 @@ function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
         <div style={{ padding: '0 20px 14px' }}>
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <Search size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
-            <input type="text" value={dirSearch} onChange={e => setDirSearch(e.target.value)} placeholder="Cerca per nom, rol, departament…"
+            <input type="text" value={dirSearch} onChange={e => setDirSearch(e.target.value)} placeholder={t('directory.searchPlaceholder')}
               style={{ width: '100%', height: 44, borderRadius: 12, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', paddingLeft: 42, paddingRight: 16, fontSize: 14, color: 'var(--tavil-text)', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
             />
           </div>
@@ -3472,7 +3476,7 @@ function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
           {filtered.length === 0 ? (
             <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--tavil-faint)' }}>
               <Users size={36} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
-              <p style={{ fontSize: 13.5 }}>Cap resultat per a aquesta cerca.</p>
+              <p style={{ fontSize: 13.5 }}>{t('directory.noResults')}</p>
             </div>
           ) : filtered.map((emp, i) => (
             <div key={i} className="anim-item" style={{
@@ -3654,6 +3658,7 @@ const ESPAI_CATS = [
 ];
 
 function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
+  const { t } = useTranslation();
   const [selectedCat, setSelectedCat] = useState<number | null>(null);
   const [espaiSearch, setEspaiSearch] = useState('');
   const isMobileEspai = useIsMobile();
@@ -3739,13 +3744,13 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
           <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Tavipedia</span>
         </div>
         <div style={{ padding: '0 20px 12px' }}>
-          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Empresa</div>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>{t('corporate.kicker')}</div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, lineHeight: 1.05, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Tavipedia</h1>
-          <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>Manual del treballador, polítiques, beneficis i identitat.</p>
+          <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>{t('corporate.mobileSubtitle')}</p>
         </div>
         <div style={{ padding: '0 16px 16px', position: 'relative' }}>
           <Search size={16} style={{ position: 'absolute', left: 30, top: '50%', transform: 'translateY(-50%)', color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
-          <input type="text" value={espaiSearch} onChange={e => setEspaiSearch(e.target.value)} placeholder="Cercar documents, procediments…"
+          <input type="text" value={espaiSearch} onChange={e => setEspaiSearch(e.target.value)} placeholder={t('corporate.searchPlaceholder')}
             style={{ width: '100%', height: 44, borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'var(--tavil-card)', color: 'var(--tavil-text)', fontSize: 14, padding: '0 14px 0 40px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
         </div>
         {espaiSearch && allDocs.length > 0 ? (
@@ -4023,6 +4028,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function CampusTavilTab({ onBack }: { onBack?: () => void }) {
+  const { t } = useTranslation();
   const [courses, setCourses] = useState<Course[]>(() => tabPrefetch.courses ?? []);
   const [activeTab, setActiveTab] = usePersistedSubTab<string>('campus', 'Resum', ['Resum', 'Catàleg', 'El meu progrés', 'Proves', 'Recursos'] as const);
   const [topicFilter, setTopicFilter] = useState('Tots els temes');
@@ -4098,16 +4104,16 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
         </div>
         {/* Kicker + title */}
         <div style={{ padding: '0 20px 12px' }}>
-          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Formació</div>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>{t('campus.kicker')}</div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, lineHeight: 1.05, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Campus TAVIL</h1>
-          <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>Formació, cursos i seguiment del teu progrés.</p>
+          <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>{t('campus.mobileSubtitle')}</p>
         </div>
         {/* 3-stat grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '0 16px 20px' }}>
           {[
-            { value: String(inProgress.length), label: 'En curs', color: 'var(--tavil-accent)' },
-            { value: String(completed.length), label: 'Completats', color: '#7a8a6b' },
-            { value: `${completedHours}h`, label: 'Aquest any', color: 'var(--tavil-text)' },
+            { value: String(inProgress.length), label: t('campus.inProgress'), color: 'var(--tavil-accent)' },
+            { value: String(completed.length), label: t('campus.completedCount'), color: '#7a8a6b' },
+            { value: `${completedHours}h`, label: t('campus.thisYear'), color: 'var(--tavil-text)' },
           ].map((s, i) => (
             <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: '12px 10px', textAlign: 'center' }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, color: s.color, letterSpacing: '0em', lineHeight: 1 }}>{s.value}</div>
@@ -4119,7 +4125,7 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
         {/* Continue card — first in-progress */}
         {inProgress[0] && (
           <div style={{ padding: '0 16px 20px' }}>
-            <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>CONTINUA ON HO DEIXAVES</div>
+            <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>{t('campus.continueWhere')}</div>
             <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden' }}>
               <div style={{ height: 80, background: 'var(--tavil-accent)', display: 'flex', alignItems: 'center', padding: '0 18px' }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.15)', padding: '3px 10px', borderRadius: 999 }}>{inProgress[0].category}</span>
@@ -4127,14 +4133,14 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
               <div style={{ padding: '14px 16px' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 10 }}>{inProgress[0].title}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8 }}>
-                  <span>{inProgress[0].hours}</span><span>{inProgress[0].user_progress}% completat</span>
+                  <span>{inProgress[0].hours}</span><span>{inProgress[0].user_progress}{t('campus.completedPct')}</span>
                 </div>
                 <div style={{ height: 5, background: 'var(--tavil-border)', borderRadius: 3 }}>
                   <div style={{ height: 5, width: '100%', background: 'var(--tavil-accent)', borderRadius: 3, transform: `scaleX(${inProgress[0].user_progress / 100})`, transformOrigin: 'left', transition: 'transform 400ms var(--ease-out-quint)' }} />
                 </div>
                 {inProgress[0].url && (
                   <button onClick={() => window.open(inProgress[0].url, '_blank', 'noopener,noreferrer')} style={{ marginTop: 14, width: '100%', height: 42, borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Continuar
+                    {t('campus.continue')}
                   </button>
                 )}
               </div>
@@ -4617,6 +4623,14 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
     if (label === 'Pendent') return 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400';
     return 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400';
   };
+  const statusLabel = (s: string) => {
+    const map: Record<string, string> = {
+      'Acceptada': t('veu.status.accepted'), 'En revisió': t('veu.status.inReview'),
+      'Pendent': t('veu.status.pending'), 'Resolta': t('veu.status.resolved'),
+      'En gestió': t('veu.status.inManagement'), 'Oberta': t('veu.status.open'),
+    };
+    return map[s] ?? s;
+  };
 
   const catTagColor = () => 'bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400';
 
@@ -4972,7 +4986,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                       {sug.description && <p className="text-xs text-gray-500 dark:text-zinc-400 mb-2">{sug.description}</p>}
                       <div className="flex items-center gap-2 flex-wrap mb-2">
                         <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", catTagColor())}>{sug.category}</span>
-                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusTagColor(sug.status))}>{sug.status}</span>
+                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusTagColor(sug.status))}>{statusLabel(sug.status)}</span>
                       </div>
                       {sug.response && (
                         <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-3">
@@ -5061,7 +5075,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                       </p>
                       <div className="flex gap-2 flex-wrap">
                         <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400')}>{inc.area}</span>
-                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", incStatusColor(inc.status))}>{inc.status}</span>
+                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", incStatusColor(inc.status))}>{statusLabel(inc.status)}</span>
                       </div>
                       {inc.resolution && <div className="mt-2 bg-gray-50 dark:bg-zinc-800 rounded-lg p-3 text-xs text-gray-600 dark:text-zinc-400"><span className="font-semibold">Resolució:</span> {inc.resolution}</div>}
                       {isRrhhOrAdmin && (

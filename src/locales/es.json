@@ -49,7 +49,9 @@
     "goodEvening": "Buenas noches",
     "seeAll": "Ver todo",
     "months": ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"],
-    "monthsAbbr": ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"]
+    "monthsAbbr": ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"],
+    "monthsGenitive": ["","de enero","de febrero","de marzo","de abril","de mayo","de junio","de julio","de agosto","de septiembre","de octubre","de noviembre","de diciembre"],
+    "days": ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"]
   },
   "auth": {
     "login": "Inicia sesión",
@@ -128,18 +130,23 @@
   },
   "activities": {
     "subtitle": "Actividades y eventos de la empresa",
+    "kicker": "Vida en la empresa",
+    "mobileSubtitle": "Actividades, eventos y lo que se mueve en TAVIL.",
     "upcoming": "Próximas",
     "past": "Pasadas",
     "enrolled": "Inscrito",
     "enroll": "Inscribirme",
     "full": "Completo",
     "capacity": "{{enrolled}}/{{capacity}} plazas",
-    "newActivity": "+ Nueva actividad"
+    "newActivity": "+ Nueva actividad",
+    "noActivities": "No hay actividades disponibles en este momento.",
+    "confirmDelete": "¿Seguro que quieres eliminar esta actividad? Esta acción no se puede deshacer."
   },
   "agenda": {
     "subtitle": "Calendario interno de reuniones y eventos",
     "newEvent": "+ Nuevo evento",
     "today": "Hoy",
+    "confirmDelete": "¿Seguro que quieres eliminar este evento? Esta acción no se puede deshacer.",
     "event": "{{count}} evento",
     "events": "{{count}} eventos",
     "noEvents": "Ningún evento este día"
@@ -149,16 +156,57 @@
     "grid": "Cuadrícula",
     "departments": "Departamentos",
     "all": "Todos",
-    "ext": "Ext."
+    "ext": "Ext.",
+    "kicker": "Equipo",
+    "searchPlaceholder": "Busca por nombre, rol, departamento…",
+    "noResults": "Sin resultados para esta búsqueda."
   },
   "corporate": {
-    "subtitle": "Documentos, procedimientos y recursos corporativos"
+    "subtitle": "Documentos, procedimientos y recursos corporativos",
+    "kicker": "Empresa",
+    "mobileSubtitle": "Manual del trabajador, políticas, beneficios e identidad.",
+    "searchPlaceholder": "Buscar documentos, procedimientos…"
   },
   "campus": {
-    "subtitle": "Formación y cursos internos de TAVIL"
+    "subtitle": "Formación y cursos internos de TAVIL",
+    "kicker": "Formación",
+    "mobileSubtitle": "Formación, cursos y seguimiento de tu progreso.",
+    "inProgress": "En curso",
+    "completedCount": "Completados",
+    "thisYear": "Este año",
+    "continueWhere": "CONTINÚA DONDE LO DEJASTE",
+    "completedPct": "% completado",
+    "continue": "Continuar",
+    "mandatory": "Obligatoria",
+    "topics": {
+      "all": "Todos los temas",
+      "security": "Seguridad",
+      "quality": "Calidad",
+      "systems": "Sistemas",
+      "commercial": "Comercial",
+      "compliance": "Compliance",
+      "onboarding": "Acogida",
+      "production": "Producción",
+      "skills": "Habilidades",
+      "languages": "Idiomas"
+    },
+    "statuses": {
+      "all": "Todos los estados",
+      "pending": "Pendiente",
+      "lowProgress": "Poco avanzados",
+      "completed": "Completado"
+    }
   },
   "veu": {
     "subtitle": "Sugerencias, incidencias y encuestas internas",
+    "status": {
+      "accepted": "Aceptada",
+      "inReview": "En revisión",
+      "pending": "Pendiente",
+      "resolved": "Resuelta",
+      "inManagement": "En gestión",
+      "open": "Abierta"
+    },
     "suggestions": "Sugerencias",
     "incidents": "Incidencias",
     "surveys": "Encuestas",
