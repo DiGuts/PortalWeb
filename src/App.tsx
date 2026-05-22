@@ -1121,7 +1121,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
     <div>
       {/* Hero banner — full width of main content area. Shimmer placeholder until image decodes. */}
       <div
-        className="relative overflow-hidden mb-4 md:mb-6 h-36 md:h-56 lg:h-72 shadow-sm bg-gray-200 dark:bg-zinc-800"
+        className="relative overflow-hidden mb-4 md:mb-6 h-40 md:h-[35vh] shadow-sm bg-gray-200 dark:bg-zinc-800"
       >
         {!heroLoaded && (
           <div className="skeleton absolute inset-0 rounded-none" aria-hidden="true" />
@@ -1142,7 +1142,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
         <div className="relative h-full flex flex-col justify-end px-5 md:px-10 pb-4 md:pb-8 max-w-7xl mx-auto">
-          <img src={process.env.PUBLIC_URL + '/assets/images/TAVILhub.svg?v=3'} alt="TAVILhub" className="drop-shadow-lg" style={{ height: 'clamp(22px, 3.5vw, 36px)', width: 'auto', display: 'block', alignSelf: 'flex-start' }} />
+          <img src={process.env.PUBLIC_URL + '/assets/images/TAVILhub.svg?v=3'} alt="TAVILhub" className="drop-shadow-lg" style={{ height: 'clamp(38px, 6vw, 63px)', width: 'auto', display: 'block', alignSelf: 'flex-start' }} />
           <p className="text-white/90 text-xs md:text-base mt-1 drop-shadow">Portal intern dels treballadors</p>
         </div>
       </div>
@@ -12581,11 +12581,26 @@ function App() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [demoRole, setDemoRole] = useState('Treballador/a');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [headerSticky, setHeaderSticky] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [mobileNotifsOpen, setMobileNotifsOpen] = useState(false);
   const [navHidden, setNavHidden] = useState(false);
   useEffect(() => { _setGlobalNavHidden = setNavHidden; return () => { _setGlobalNavHidden = null; }; }, []);
+
+  // Glass + anchor header on scroll. Inici threshold 240px (past hero). Others 30px.
+  // Guard: only setState when boolean flips — no re-render on every scroll frame.
+  useEffect(() => {
+    const threshold = activeTab === 'Inici' ? 240 : 30;
+    let last = false;
+    const onScroll = () => {
+      const next = window.scrollY > threshold;
+      if (next !== last) { last = next; setHeaderSticky(next); }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [activeTab]);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -12919,24 +12934,38 @@ function App() {
         </div>
       </aside>
       {/* Main */}
-      <main className={cn("flex-1 min-w-0 min-h-screen transition-all duration-300 ml-0 pb-16 md:pb-0", sidebarCollapsed ? "md:ml-16" : "md:ml-60")} style={impersonating ? { paddingTop: 37 } : undefined}>
-        {/* Header */}
-        <header className="h-14 md:h-16 bg-white dark:bg-[#1a1a1a] border-b border-gray-200 dark:border-zinc-800 hidden md:flex items-center justify-between px-3 md:px-4 lg:px-8 sticky top-0 z-20">
+      <main className={cn("flex-1 min-w-0 min-h-screen transition-all duration-300 ml-0 pb-16 md:pb-0 relative", sidebarCollapsed ? "md:ml-16" : "md:ml-60")} style={impersonating ? { paddingTop: 37 } : undefined}>
+        {/* Header:
+            · Inici: absolute (out of flow, hero fills from 0) → fixed+dark-glass slide-in when scrolled
+            · Altres: sticky solid → sticky light-glass when scrolled (no position change, no CLS) */}
+        <header
+          className={cn(
+            "h-14 md:h-16 hidden md:flex items-center justify-between px-3 md:px-4 lg:px-8 z-20 border-b",
+            activeTab === 'Inici'
+              ? headerSticky
+                ? "fixed top-0 right-0 header-glass header-anchored"
+                : "absolute top-0 left-0 right-0 header-glass"
+              : headerSticky
+                ? "sticky top-0 header-glass-sticky"
+                : "sticky top-0 bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-zinc-800"
+          )}
+          style={activeTab === 'Inici' && headerSticky ? { left: sidebarCollapsed ? 64 : 240 } : undefined}
+        >
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="hidden md:inline-flex p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-gray-500 dark:text-zinc-400"
+              className="hidden md:inline-flex p-1.5 hover:bg-gray-100/20 dark:hover:bg-zinc-800/30 rounded-lg transition-colors hg-text text-gray-500 dark:text-zinc-400"
               title={sidebarCollapsed ? t('common.expandMenu') : t('common.collapseMenu')}
             >
               {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
-            <span className="hidden md:inline text-gray-300 dark:text-zinc-600">|</span>
-            <span className="text-[11px] md:text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">{t('common.portalIntern')}</span>
+            <span className="hidden md:inline hg-text text-gray-300 dark:text-zinc-600">|</span>
+            <span className="text-[11px] md:text-xs font-semibold hg-text text-gray-500 dark:text-zinc-400 uppercase tracking-widest">{t('common.portalIntern')}</span>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="relative hidden lg:block" ref={searchRef}>
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 hg-text text-gray-400" size={15} />
               <input
                 id="search-input"
                 type="text"
@@ -12944,9 +12973,8 @@ function App() {
                 onChange={(e) => { setSearchQuery(e.target.value); if (e.target.value) setSearchOpen(true); }}
                 onFocus={() => { loadSearchData(); if (searchQuery) setSearchOpen(true); }}
                 placeholder={t('common.search')}
-                className="bg-gray-100 dark:bg-zinc-800 rounded-lg py-2 pl-9 pr-14 text-sm w-56 outline-none dark:text-white"
+                className="hg-search bg-gray-100 dark:bg-zinc-800 rounded-lg py-2 pl-9 pr-14 text-sm w-56 outline-none dark:text-white"
               />
-              {!searchQuery && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 bg-gray-200 dark:bg-zinc-700 px-1.5 py-0.5 rounded font-mono">⌘K</span>}
               {searchOpen && searchQuery && (
                 <div className="absolute top-full mt-2 left-0 w-80 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-100 dark:border-zinc-800 z-50 overflow-hidden anim-slide-down origin-top">
                   {searchResults.length === 0 ? (
@@ -12975,7 +13003,7 @@ function App() {
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => { setIsNotifOpen(!isNotifOpen); setIsProfileMenuOpen(false); if (!isNotifOpen) refreshNotifications(); }}
-                className="relative p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500 transition-colors"
+                className="relative p-2 hover:bg-gray-100/20 dark:hover:bg-zinc-800/30 rounded-lg hg-text text-gray-500 transition-colors"
               >
                 <Bell size={18} />
                 {notifications.some(n => !n.read) && (
@@ -13058,7 +13086,7 @@ function App() {
                   i18n.changeLanguage(next);
                   localStorage.setItem('tavil_lang', next);
                 }}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500 dark:text-zinc-400 transition-colors flex items-center gap-1"
+                className="p-2 hover:bg-gray-100/20 dark:hover:bg-zinc-800/30 rounded-lg hg-text text-gray-500 dark:text-zinc-400 transition-colors flex items-center gap-1"
                 title={t('common.language')}
               >
                 <Globe size={18} />
@@ -13066,21 +13094,21 @@ function App() {
               </button>
             </div>
 
-            <button onClick={toggleTheme} className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500 dark:text-zinc-400 transition-colors">
+            <button onClick={toggleTheme} className="p-2 hover:bg-gray-100/20 dark:hover:bg-zinc-800/30 rounded-lg hg-text text-gray-500 dark:text-zinc-400 transition-colors">
               {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
             <div className="relative" ref={profileRef}>
               <button
                 onClick={() => { setIsProfileMenuOpen(!isProfileMenuOpen); setIsNotifOpen(false); }}
-                className="flex items-center gap-2 p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                className="flex items-center gap-2 p-1.5 hover:bg-gray-100/20 dark:hover:bg-zinc-800/30 rounded-lg transition-colors"
               >
                 {userAvatar
                   ? <img src={userAvatar} alt="" className="w-7 h-7 rounded-full object-cover" />
                   : <div className="w-7 h-7 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold">{userInitials}</div>}
                 <div className="hidden lg:block text-left">
-                  <p className="text-xs font-semibold text-gray-900 dark:text-white leading-none">{currentUser?.name ?? 'Usuari'}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">{demoRole}</p>
+                  <p className="text-xs font-semibold hg-text text-gray-900 dark:text-white leading-none">{currentUser?.name ?? 'Usuari'}</p>
+                  <p className="text-[10px] hg-text text-gray-400 mt-0.5">{demoRole}</p>
                 </div>
                 <ChevronLeft size={14} className="text-gray-400 rotate-[-90deg] hidden lg:block" />
               </button>

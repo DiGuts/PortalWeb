@@ -16,6 +16,7 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
   boxSizing: 'border-box',
   fontFamily: 'inherit',
+  transition: 'background 320ms cubic-bezier(.23,1,.32,1), border-color 320ms cubic-bezier(.23,1,.32,1), color 320ms cubic-bezier(.23,1,.32,1)',
 };
 
 const labelStyle: React.CSSProperties = {
@@ -68,6 +69,7 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
         color: 'var(--tavil-text)',
         padding: '20px 24px 32px',
         boxSizing: 'border-box',
+        transition: 'background 320ms cubic-bezier(.23,1,.32,1), color 320ms cubic-bezier(.23,1,.32,1)',
       }}
     >
       {/* Top row: logo + lang */}
@@ -95,11 +97,29 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
         }}>
           PORTAL INTERN
         </div>
-        <img
-          src={`${process.env.PUBLIC_URL}/assets/images/${isDarkMode ? 'TAVILhub.svg?v=3' : 'tavilNet.svg'}`}
-          alt={t('auth.loginTitle')}
-          style={{ height: 40, width: 'auto', display: 'block', margin: '0 0 8px' }}
-        />
+        {/* Logo crossfade: light ↔ dark via opacity transition, not src swap */}
+        <div style={{ position: 'relative', height: 40, marginBottom: 8 }}>
+          <img
+            src={`${process.env.PUBLIC_URL}/assets/images/tavilNet.svg`}
+            alt={t('auth.loginTitle')}
+            style={{
+              height: 40, width: 'auto', display: 'block',
+              opacity: isDarkMode ? 0 : 1,
+              transition: 'opacity 320ms cubic-bezier(.23,1,.32,1)',
+            }}
+          />
+          <img
+            src={`${process.env.PUBLIC_URL}/assets/images/TAVILhub.svg?v=3`}
+            alt=""
+            aria-hidden="true"
+            style={{
+              height: 40, width: 'auto', display: 'block',
+              position: 'absolute', top: 0, left: 0,
+              opacity: isDarkMode ? 1 : 0,
+              transition: 'opacity 320ms cubic-bezier(.23,1,.32,1)',
+            }}
+          />
+        </div>
         <p style={{ fontSize: 15, color: 'var(--tavil-muted)', margin: 0, lineHeight: 1.4 }}>
           {t('auth.loginSubtitle')}
         </p>
