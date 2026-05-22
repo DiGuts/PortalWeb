@@ -5,17 +5,18 @@ import { ForgotScreen } from './components/mobile/auth/ForgotScreen';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n';
+import { initGraph, getGraphAccount, graphLogin, graphLogout, listGraphFolder, type SPFile } from './graphApi';
 import {
   Home, Newspaper, Activity as ActivityIcon, Calendar, Users, Building2,
   GraduationCap, MessageSquare, UserCircle, Search, Bell,
-  Moon, ChevronLeft, ChevronRight, ChevronDown, Mail, Database, FolderOpen, Folder,
+  Moon, ChevronLeft, ChevronRight, ChevronDown, Mail, Database, FolderOpen,
   AlertTriangle, Info, ArrowRight, Sun, MapPin, Clock, Phone, FileText,
   BookOpen, Shield, ThumbsUp, ThumbsDown, Send, ExternalLink, CreditCard,
-  CheckCircle, Star, LogOut, LayoutGrid, List, Check,
+  CheckCircle, Star, LogOut, LayoutGrid, Check,
   Heart, Gift, Globe, Download, Video, Award, Settings, Eye, EyeOff, Lock, Pencil, Trash2,
   AlignLeft, Image as ImageIcon, Plus, GripVertical, X, Menu,
   BarChart3, ShieldCheck, KeyRound, PlayCircle, Target,
-  Type as TypeIcon, Heading2, Quote, Minus, Filter,
+  Type as TypeIcon, Heading2, Quote, Minus, RefreshCw,
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -517,7 +518,7 @@ function MesTab({
             color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontWeight: 600, fontSize: 17, letterSpacing: '-0.01em',
-            fontFamily: '"Instrument Serif", "Times New Roman", serif',
+            fontFamily: 'var(--font-display)',
             boxShadow: '0 4px 14px -6px rgba(0,0,0,0.18)',
           }}>{ini}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -706,7 +707,7 @@ function MobileNotificationsOverlay({ notifications, onClose, onMarkRead, onMark
       {/* Eyebrow + title */}
       <div style={{ padding: '4px 20px 20px' }}>
         <div style={{ fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>ACTIVITAT</div>
-        <h1 style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 32, fontWeight: 400, letterSpacing: '-0.02em', lineHeight: 1.05, margin: '0 0 6px', color: 'var(--tavil-text)' }}>Notificacions</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '0em', lineHeight: 1.05, margin: '0 0 6px', color: 'var(--tavil-text)' }}>Notificacions</h1>
         <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: 0 }}>
           {unread > 0 ? <>Tens <strong>{unread} sense llegir</strong>.</> : 'Estàs al dia.'}
         </p>
@@ -955,7 +956,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
         <div style={{ padding: '18px 20px 8px' }}>
           <div style={{ fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 2 }}>{greeting},</div>
           <div style={{
-            fontFamily: '"Instrument Serif","Times New Roman",serif',
+            fontFamily: 'var(--font-display)',
             fontSize: 36, fontWeight: 400, lineHeight: 1, letterSpacing: '-0.02em', color: 'var(--tavil-text)',
           }}>{firstName}.</div>
         </div>
@@ -991,7 +992,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
         <div style={{ padding: '24px 20px 4px' }}>
           <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Accés ràpid</div>
           <div style={{
-            fontFamily: '"Instrument Serif","Times New Roman",serif',
+            fontFamily: 'var(--font-display)',
             fontSize: 24, fontWeight: 400, lineHeight: 1, letterSpacing: '-0.01em', color: 'var(--tavil-text)', marginBottom: 14,
           }}>{t('home.quickAccess')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
@@ -1019,7 +1020,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
             <div style={{ padding: '28px 20px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
               <div>
                 <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>{t('news.featured')}</div>
-                <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 24, fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.01em', color: 'var(--tavil-text)' }}>{t('home.latestNews')}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, lineHeight: 1.05, letterSpacing: '0.01em', color: 'var(--tavil-text)' }}>{t('home.latestNews')}</div>
               </div>
               <button onClick={() => onNavigate?.('Notícies')} style={{ background: 'none', border: 'none', color: 'var(--tavil-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>
                 {t('common.seeAll')} <ChevronRight size={14} />
@@ -1041,7 +1042,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                     <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: 'rgba(191,33,30,0.08)', color: 'var(--tavil-accent)' }}>{featured.category}</span>
                     <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 999, background: 'var(--tavil-bg-alt)', color: 'var(--tavil-muted)', border: '1px solid var(--tavil-border)' }}>{featured.date}</span>
                   </div>
-                  <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 22, fontWeight: 400, lineHeight: 1.15, letterSpacing: '-0.01em', color: 'var(--tavil-text)', marginBottom: 8 }}>{featured.title}</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, lineHeight: 1.15, letterSpacing: '0.01em', color: 'var(--tavil-text)', marginBottom: 8 }}>{featured.title}</div>
                   <div style={{ fontSize: 13.5, color: 'var(--tavil-muted)', lineHeight: 1.45 }}>{featured.summary}</div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 12, fontSize: 12, color: 'var(--tavil-faint)' }}>
                     <span>{featured.author || ''}</span>
@@ -1060,7 +1061,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
             <div style={{ padding: '28px 20px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
               <div>
                 <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Agenda</div>
-                <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 24, fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.01em', color: 'var(--tavil-text)' }}>{t('home.upcomingAgenda')}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, lineHeight: 1.05, letterSpacing: '0.01em', color: 'var(--tavil-text)' }}>{t('home.upcomingAgenda')}</div>
               </div>
               <button onClick={() => onNavigate?.('Agenda')} style={{ background: 'none', border: 'none', color: 'var(--tavil-muted)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>
                 {t('common.seeAll')} <ChevronRight size={14} />
@@ -1070,7 +1071,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
               {upcomingThisWeek.map(ev => (
                 <div key={ev.id} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: 14, minWidth: 220, flexShrink: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
-                    <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 28, lineHeight: 1, fontWeight: 400, color: 'var(--tavil-accent)' }}>{ev.day}</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, lineHeight: 1, fontWeight: 600, color: 'var(--tavil-accent)' }}>{ev.day}</div>
                     <div style={{ fontSize: 11, color: 'var(--tavil-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{MONTH_NAMES[ev.month - 1]}</div>
                   </div>
                   <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.25, color: 'var(--tavil-text)', marginBottom: 6 }}>{ev.title}</div>
@@ -1089,7 +1090,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
           <>
             <div style={{ padding: '28px 20px 14px' }}>
               <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Novetats</div>
-              <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 24, fontWeight: 400, lineHeight: 1.05, letterSpacing: '-0.01em', color: 'var(--tavil-text)' }}>Més notícies</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, lineHeight: 1.05, letterSpacing: '0.01em', color: 'var(--tavil-text)' }}>Més notícies</div>
             </div>
             <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {moreNews.map(n => (
@@ -1141,7 +1142,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
         <div className="relative h-full flex flex-col justify-end px-5 md:px-10 pb-4 md:pb-8 max-w-7xl mx-auto">
-          <h1 className="text-white text-2xl md:text-4xl font-black tracking-tight drop-shadow-lg">TAVIL net</h1>
+          <img src={process.env.PUBLIC_URL + '/assets/images/TAVILhub.svg?v=3'} alt="TAVILhub" className="drop-shadow-lg" style={{ height: 'clamp(22px, 3.5vw, 36px)', width: 'auto', display: 'block', alignSelf: 'flex-start' }} />
           <p className="text-white/90 text-xs md:text-base mt-1 drop-shadow">Portal intern dels treballadors</p>
         </div>
       </div>
@@ -1953,7 +1954,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
               <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--tavil-accent)', textTransform: 'uppercase', letterSpacing: '0.12em', background: 'rgba(191,33,30,0.08)', borderRadius: 6, padding: '3px 8px' }}>{selectedNews.category}</span>
               <span style={{ fontSize: 10, color: 'var(--tavil-muted)', background: 'var(--tavil-faint)', borderRadius: 6, padding: '3px 8px' }}>{selectedNews.date}</span>
             </div>
-            <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 26, fontWeight: 400, lineHeight: 1.15, margin: '0 0 12px', letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>{selectedNews.title}</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, lineHeight: 1.15, margin: '0 0 12px', letterSpacing: '0em', color: 'var(--tavil-text)' }}>{selectedNews.title}</h1>
             {selectedNews.summary && <p style={{ fontSize: 14, color: 'var(--tavil-muted)', lineHeight: 1.5, margin: '0 0 16px' }}>{selectedNews.summary}</p>}
             {selectedNews.content && (
               isTileArrayContent(selectedNews.content)
@@ -1984,7 +1985,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
         {/* Header text */}
         <div style={{ padding: '8px 20px 16px' }}>
           <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Comunicació interna</div>
-          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 36, fontWeight: 400, lineHeight: 1, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>{t('nav.noticies')}</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 600, lineHeight: 1, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>{t('nav.noticies')}</h1>
           <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>{t('news.subtitle')}</p>
         </div>
         {/* Search bar — toggled by icon */}
@@ -2040,7 +2041,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
                   <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--tavil-accent)', textTransform: 'uppercase', letterSpacing: '0.12em', background: 'rgba(191,33,30,0.08)', borderRadius: 6, padding: '3px 8px' }}>{mFeatured.category}</span>
                   <span style={{ fontSize: 10, color: 'var(--tavil-muted)', background: 'var(--tavil-faint)', borderRadius: 6, padding: '3px 8px' }}>{mFeatured.date}</span>
                 </div>
-                <h3 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 22, fontWeight: 400, lineHeight: 1.15, margin: 0, letterSpacing: '-0.01em', color: 'var(--tavil-text)', textWrap: 'balance' } as React.CSSProperties}>{mFeatured.title}</h3>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, lineHeight: 1.15, margin: 0, letterSpacing: '0.01em', color: 'var(--tavil-text)', textWrap: 'balance' } as React.CSSProperties}>{mFeatured.title}</h3>
                 <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '10px 0 0', lineHeight: 1.45 }}>{mFeatured.summary}</p>
               </div>
             </div>
@@ -2056,7 +2057,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
             } as React.CSSProperties}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 5 }}>{n.category}</div>
-                <h4 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 17, fontWeight: 400, lineHeight: 1.2, margin: 0, letterSpacing: '-0.01em', color: 'var(--tavil-text)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>{n.title}</h4>
+                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, lineHeight: 1.2, margin: 0, letterSpacing: '0.01em', color: 'var(--tavil-text)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>{n.title}</h4>
                 <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginTop: 8 }}><span>{n.date}</span></div>
               </div>
               <div style={{ width: 86, height: 86, flexShrink: 0, borderRadius: 10, overflow: 'hidden', background: 'var(--tavil-faint)' }}>
@@ -2352,7 +2353,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         {/* Header kicker + title + subtitle */}
         <div style={{ padding: '0 20px 12px' }}>
           <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Vida a l'empresa</div>
-          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 32, fontWeight: 400, lineHeight: 1.05, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>Connect</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, lineHeight: 1.05, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Connect</h1>
           <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>Activitats, esdeveniments i el que es mou a TAVIL.</p>
         </div>
         {/* Segmented: Pròximes / Passades */}
@@ -2495,7 +2496,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                 <span style={{ fontSize: 11, fontWeight: 700, background: 'var(--tavil-border)', color: 'var(--tavil-muted)', padding: '2px 8px', borderRadius: 6 }}>{selectedAct.category}</span>
                 <button onClick={closeAct} style={{ background: 'none', border: 'none', color: 'var(--tavil-faint)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
               </div>
-              <h2 style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 24, fontWeight: 400, color: 'var(--tavil-text)', marginBottom: 8, lineHeight: 1.1 }}>{selectedAct.title}</h2>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 8, lineHeight: 1.1 }}>{selectedAct.title}</h2>
               <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', lineHeight: 1.55, marginBottom: 16 }}>{selectedAct.description}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--tavil-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)' }}><Calendar size={14} /><span>{selectedAct.date}{selectedAct.time ? ` · ${selectedAct.time}` : ''}</span></div>
@@ -2743,7 +2744,7 @@ const FESTIUS_2026: AgendaEvent[] = [
 
 function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: { currentUser: User | null; initDate: { day: number; month: number; year: number } | null; onInitDateConsumed: () => void; onOpenDrawer?: () => void }) {
   const [apiAgendaEvents, setApiAgendaEvents] = useState<AgendaEvent[]>(() => tabPrefetch.agendaEvents ?? []);
-  const [view, setView] = useState<'calendar' | 'list'>('calendar');
+  const [, setView] = useState<'calendar' | 'list'>('calendar');
   const [activeFilter, setActiveFilter] = useState('Tots');
   const [deptFilter, setDeptFilter] = useState('Tots');
   const today0 = new Date();
@@ -2756,14 +2757,21 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
     [apiAgendaEvents, currentYear]
   );
   const [selectedDay, setSelectedDay] = useState<number | null>(today0.getDate());
-  const dayDetailRef = useScrollIntoViewWhen<HTMLDivElement>(selectedDay, { threshold: 0.5, block: 'center', delay: 80 });
+  useScrollIntoViewWhen<HTMLDivElement>(selectedDay, { threshold: 0.5, block: 'center', delay: 80 });
   const isAdmin = ['Administrador/a', 'Recursos humans', 'Comunicacions'].includes(currentUser?.role ?? '');
   const { t } = useTranslation();
 
   const eventRailColor = (ev: AgendaEvent): string => {
-    if (['Visita comercial', 'Activitat empresa'].includes(ev.type)) return 'var(--tavil-accent)';
-    if (['Festiu', 'Fira'].includes(ev.type)) return '#788475';
-    return 'var(--tavil-text)';
+    switch (ev.type) {
+      case 'Festiu':              return '#e05c5c';
+      case 'Activitat empresa':   return '#4ead7a';
+      case 'Visita comercial':    return '#e8944a';
+      case 'Fira':                return '#5b9bd6';
+      case 'Sessió interna':      return '#9b7fd4';
+      case 'Formació presencial': return '#3dbfbf';
+      case 'Formació externa':    return '#6da8e0';
+      default:                    return 'var(--tavil-muted)';
+    }
   };
 
   const dayNameCa = (d: number, m: number, y: number): string =>
@@ -2908,7 +2916,6 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
   const firstDayOfWeek = new Date(currentYear, currentMonth - 1, 1).getDay();
   const mondayOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
   const isMobileAgenda = useIsMobile();
-  const days = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'];
   const cells: (number | null)[] = [...Array(mondayOffset).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
   // ── Mobile layout ──────────────────────────────────────────────────────────
@@ -2954,7 +2961,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
             <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>
               {MONTH_NAMES[todayMonth]} {todayYear}
             </div>
-            <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 36, fontWeight: 400, lineHeight: 1, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>Agenda</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 600, lineHeight: 1, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Agenda</h1>
           </div>
           {/* Week strip */}
           <div style={{ padding: '4px 16px 18px', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
@@ -2971,7 +2978,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
                     transition: 'background-color 200ms var(--ease-out-cubic), color 200ms var(--ease-out-cubic), border-color 200ms var(--ease-out-cubic)',
                   }}>
                     <span style={{ fontSize: 10, fontWeight: 500, opacity: active ? 0.7 : 0.6, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{d.l}</span>
-                    <span style={{ fontSize: 18, fontWeight: 600, marginTop: 2, fontFamily: '"Instrument Serif", serif' }}>{d.n}</span>
+                    <span style={{ fontSize: 18, fontWeight: 600, marginTop: 2, fontFamily: 'var(--font-display)' }}>{d.n}</span>
                     {isTod && !active && <div style={{ width: 4, height: 4, borderRadius: 2, background: 'var(--tavil-accent)', marginTop: 3 }} />}
                   </button>
               );
@@ -3044,7 +3051,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
         {isAdmin && showEventForm && createPortal(
           <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 ${closingEventForm ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeEventForm}>
             <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }} className={closingEventForm ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
-              <h3 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 20, fontWeight: 400, color: 'var(--tavil-text)', marginBottom: 18 }}>Nou event</h3>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 18 }}>Nou event</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input type="text" value={eTitle} onChange={e => setETitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
                 <input type="date" value={eDate} onChange={e => setEDate(e.target.value)} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
@@ -3084,7 +3091,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
         {isAdmin && evEditId !== null && createPortal(
           <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 ${evEditClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeEvEdit}>
             <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }} className={evEditClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
-              <h3 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 20, fontWeight: 400, color: 'var(--tavil-text)', marginBottom: 18 }}>Editar event</h3>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 18 }}>Editar event</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input type="text" value={eeTitle} onChange={e => setEeTitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
                 <input type="date" value={eeDate} onChange={e => setEeDate(e.target.value)} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
@@ -3209,10 +3216,10 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 28, alignItems: 'start' }}>
 
         {/* Left: calendar card */}
-        <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: 20, boxShadow: '0 1px 3px rgba(34,39,37,0.06)' }}>
+        <div style={{ padding: 0 }}>
           {/* Month nav */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <div style={{ fontFamily: '"Instrument Serif", serif', fontSize: 24, letterSpacing: '-0.01em', color: 'var(--tavil-text)' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, letterSpacing: '0.01em', color: 'var(--tavil-text)' }}>
               {MONTH_NAMES[currentMonth]} {currentYear}
             </div>
             <div style={{ display: 'flex', gap: 4 }}>
@@ -3242,21 +3249,20 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
               return (
                 <button key={i} onClick={() => setSelectedDay(d === selectedDay ? null : d)} style={{
                   aspectRatio: '1/1.05', borderRadius: 10,
-                  background: active ? 'var(--tavil-text)' : 'var(--tavil-bgAlt)',
-                  color: active ? 'var(--tavil-bg)' : 'var(--tavil-text)',
-                  border: `1px solid ${active ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
-                  padding: 8, cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start',
+                  background: active && todayCell ? '#b91c1c' : active ? 'var(--tavil-text)' : todayCell ? 'oklch(0.94 0.025 22)' : 'var(--tavil-card)',
+                  color: active ? 'var(--tavil-bg)' : todayCell ? '#c0392b' : 'var(--tavil-text)',
+                  border: `1.5px solid ${todayCell ? (active ? '#7f1d1d' : 'oklch(0.80 0.07 22)') : active ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
+                  padding: '7px 7px 5px', cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
                   position: 'relative', transition: 'opacity 120ms',
                 }}>
-                  <div style={{ fontSize: 15, fontWeight: todayCell ? 700 : 500, fontFamily: '"Instrument Serif", serif', letterSpacing: '-0.01em' }}>{d}</div>
-                  <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginTop: 'auto' }}>
-                    {evs.slice(0, 3).map((ev, ei) => (
-                      <div key={ei} style={{ width: 5, height: 5, borderRadius: 3, background: active ? 'var(--tavil-bg)' : eventRailColor(ev), opacity: active ? 0.9 : 1 }} />
-                    ))}
-                  </div>
-                  {todayCell && !active && (
-                    <div style={{ position: 'absolute', top: 6, right: 6, width: 5, height: 5, borderRadius: 3, background: 'var(--tavil-accent)' }} />
+                  <div style={{ fontSize: 15, fontWeight: todayCell ? 700 : 500, fontFamily: 'var(--font-display)', letterSpacing: '0.01em', marginBottom: 'auto' }}>{d}</div>
+                  {evs.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%', marginTop: 4 }}>
+                      {evs.slice(0, 4).map((ev, ei) => (
+                        <div key={ei} style={{ width: '100%', height: 3, borderRadius: 1.5, background: active ? 'rgba(255,255,255,0.65)' : eventRailColor(ev) }} />
+                      ))}
+                    </div>
                   )}
                 </button>
               );
@@ -3269,7 +3275,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
           <div style={{ fontSize: 11, color: 'var(--tavil-faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>
             {isToday(selDay) ? t('agenda.today') : `${selDay} ${monthGenitiu(currentMonth)}`}
           </div>
-          <div style={{ fontFamily: '"Instrument Serif", serif', fontSize: 32, letterSpacing: '-0.015em', marginBottom: 6, color: 'var(--tavil-text)' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 32, letterSpacing: '-0.015em', marginBottom: 6, color: 'var(--tavil-text)' }}>
             {selEvents.length} {selEvents.length === 1 ? 'esdeveniment' : 'esdeveniments'}
           </div>
           <div style={{ fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 20 }}>
@@ -3374,6 +3380,29 @@ const DEPT_ORDER = [
   'SAT',
 ];
 
+// Avatar palette — 12 OKLCH tones, all L≈0.40 for ≥4.5:1 contrast on white text.
+// Warm earthy biased; no pure rainbow. Assigned by name hash so same person = same color.
+const AVATAR_PALETTE = [
+  'oklch(0.40 0.14 22)',   // terracotta
+  'oklch(0.40 0.13 55)',   // burnt umber
+  'oklch(0.40 0.12 118)',  // forest green
+  'oklch(0.40 0.12 158)',  // pine
+  'oklch(0.40 0.13 198)',  // teal
+  'oklch(0.40 0.15 238)',  // steel blue
+  'oklch(0.40 0.15 265)',  // indigo
+  'oklch(0.40 0.14 295)',  // violet
+  'oklch(0.40 0.12 325)',  // plum
+  'oklch(0.40 0.13 345)',  // crimson
+  'oklch(0.40 0.11 140)',  // sage green
+  'oklch(0.40 0.13 215)',  // slate blue
+];
+
+function avatarBg(name: string): string {
+  let h = 5381;
+  for (let i = 0; i < name.length; i++) h = ((h << 5) + h) ^ name.charCodeAt(i);
+  return AVATAR_PALETTE[Math.abs(h) % AVATAR_PALETTE.length];
+}
+
 function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
   const { t } = useTranslation();
   const [employees, setEmployees] = useState<Employee[]>(() => tabPrefetch.employees ?? []);
@@ -3410,7 +3439,7 @@ function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
         {/* Header kicker + title */}
         <div style={{ padding: '0 20px 14px' }}>
           <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Equip</div>
-          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 36, fontWeight: 400, lineHeight: 1, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>{t('nav.directori')}</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 600, lineHeight: 1, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>{t('nav.directori')}</h1>
         </div>
         {/* Search */}
         <div style={{ padding: '0 20px 14px' }}>
@@ -3447,7 +3476,7 @@ function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
               borderBottom: '1px solid var(--tavil-border)',
               cursor: 'pointer',
             } as React.CSSProperties}>
-              <div className={cn("w-[46px] h-[46px] rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0", emp.color)}>{emp.initials}</div>
+              <div className="w-[46px] h-[46px] rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: avatarBg(emp.name), color: '#f7f7f2' }}>{emp.initials}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)', letterSpacing: '-0.005em' }}>{emp.name}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginTop: 1 }}>{emp.role} · {emp.dept}</div>
@@ -3502,7 +3531,7 @@ function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
           {filtered.map((emp, i) => (
             <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 anim-item" style={{ '--i': i } as React.CSSProperties}>
               <div className="flex items-center gap-3 mb-3">
-                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0", emp.color)}>{emp.initials}</div>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: avatarBg(emp.name), color: '#f7f7f2' }}>{emp.initials}</div>
                 <div className="min-w-0">
                   <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{emp.name}</p>
                   <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">{emp.role}</p>
@@ -3529,7 +3558,7 @@ function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {members.map((emp, i) => (
                   <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-3 flex items-center gap-3 anim-item" style={{ '--i': i } as React.CSSProperties}>
-                    <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0", emp.color)}>{emp.initials}</div>
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: avatarBg(emp.name), color: '#f7f7f2' }}>{emp.initials}</div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{emp.name}</p>
                       <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">{emp.role}</p>
@@ -3556,6 +3585,7 @@ const ESPAI_CATS = [
     icon: FileText, iconColor: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/20",
     title: "Manual del treballador", desc: "Guia d'acollida i informació pràctica per al dia a dia", docs: 3,
     sharepointUrl: SP_BASE + '%2FManual%20del%20treballador',
+    spFolderPath: 'Tavilpedia/Manual del treballador',
     filters: ['Tots', 'Acollida', 'Espais'],
     documents: [
       { title: "Protocol d'acollida (onboarding)", desc: "Guia completa per als nous treballadors amb tota la informació necessària.", tag: "Acollida", meta: "PDF · 2.4 MB", views: 342 },
@@ -3567,6 +3597,7 @@ const ESPAI_CATS = [
     icon: Shield, iconColor: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-950/20",
     title: "Polítiques internes i protocols", desc: "Reglament, codi de conducta, prevenció de riscos i compliance", docs: 6,
     sharepointUrl: SP_BASE + '%2FPol%C3%ADtiques%20internes%20i%20protocols',
+    spFolderPath: 'Tavilpedia/Politiques internes i protocols',
     filters: ['Tots', 'Normativa', 'Conducta', 'RRHH', 'Viatges'],
     documents: [
       { title: "Reglament de règim intern", desc: "Normativa interna que regula la convivència, els horaris i els permisos.", tag: "Normativa", meta: "PDF · 1.8 MB", views: 518 },
@@ -3581,6 +3612,7 @@ const ESPAI_CATS = [
     icon: BookOpen, iconColor: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-950/20",
     title: "Manuals i procediments", desc: "Sistemes interns, producte i procediments tècnics", docs: 3,
     sharepointUrl: SP_BASE + '%2FManuals%20i%20procediments',
+    spFolderPath: 'Tavilpedia/Manuals i procediments',
     filters: ['Tots', 'Sistemes', 'Producte'],
     documents: [
       { title: "Manual de connexió a la xarxa interna", desc: "Guia pas a pas per connectar-se a la VPN, el correu corporatiu i les eines internes.", tag: "Sistemes", meta: "PDF · 1.3 MB", views: 467 },
@@ -3592,6 +3624,7 @@ const ESPAI_CATS = [
     icon: Gift, iconColor: "text-rose-500", bg: "bg-rose-50 dark:bg-rose-950/20",
     title: "Beneficis socials", desc: "Retribució flexible, ajudes i avantatges per al treballador", docs: 4,
     sharepointUrl: SP_BASE + '%2FBeneficis%20socials',
+    spFolderPath: 'Tavilpedia/Beneficis socials',
     filters: ['Tots', 'Retribució', 'Salut', 'Formació'],
     documents: [
       { title: "Guia de retribució flexible", desc: "Tickets restaurant, transport, guarderia i altres opcions disponibles.", tag: "Retribució", meta: "PDF · 0.9 MB", views: 312 },
@@ -3604,6 +3637,7 @@ const ESPAI_CATS = [
     icon: Building2, iconColor: "text-green-500", bg: "bg-green-50 dark:bg-green-950/20",
     title: "Identitat", desc: "Recursos de marca, plantilles i materials corporatius", docs: 5,
     sharepointUrl: SP_BASE + '%2FIdentitat',
+    spFolderPath: 'Tavilpedia/Identitat',
     filters: ['Tots', 'Plantilles', 'Marca'],
     documents: [
       { title: "Plantilla de presentació corporativa", desc: "Plantilla PowerPoint amb la identitat visual de TAVIL per a presentacions.", tag: "Plantilles", meta: "PPTX · 3.5 MB", views: 534 },
@@ -3618,8 +3652,32 @@ const ESPAI_CATS = [
 function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
   const [selectedCat, setSelectedCat] = useState<number | null>(null);
   const [espaiSearch, setEspaiSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const isMobileEspai = useIsMobile();
+
+  // Graph API state
+  const [graphAccount, setGraphAccount] = useState(() => getGraphAccount());
+  const [spFiles, setSpFiles] = useState<SPFile[] | null>(null);
+  const [spLoading, setSpLoading] = useState(false);
+  const [spError, setSpError] = useState<string | null>(null);
+
+  // Init MSAL and detect post-redirect
+  useEffect(() => {
+    initGraph().then(account => {
+      if (account) setGraphAccount(account);
+    }).catch(() => {});
+  }, []);
+
+  // Fetch real files when entering a folder while authenticated
+  useEffect(() => {
+    if (!graphAccount || selectedCat === null) { setSpFiles(null); return; }
+    const path = ESPAI_CATS[selectedCat].spFolderPath;
+    setSpLoading(true);
+    setSpError(null);
+    setSpFiles(null);
+    listGraphFolder(path)
+      .then(files => { setSpFiles(files); setSpLoading(false); })
+      .catch(err  => { setSpError(String(err)); setSpLoading(false); });
+  }, [graphAccount, selectedCat]);
 
   const ftStyle = (meta: string): { bg: string; fg: string } => {
     const t = meta.split('·')[0].trim();
@@ -3631,319 +3689,323 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
     return { bg: '#f4f4f5', fg: '#71717a' };
   };
 
+  const [catFilter, setCatFilter] = useState('Tots');
+
   const cat = selectedCat !== null ? ESPAI_CATS[selectedCat] : null;
 
-  const searchResults = espaiSearch
+  const handleSelectCat = (i: number) => {
+    if (selectedCat === i) { setSelectedCat(null); setCatFilter('Tots'); }
+    else { setSelectedCat(i); setCatFilter('Tots'); }
+  };
+
+  const espaiSearchResults = espaiSearch
     ? ESPAI_CATS.flatMap(c => c.documents
-        .filter(d => d.title.toLowerCase().includes(espaiSearch.toLowerCase()) || d.desc.toLowerCase().includes(espaiSearch.toLowerCase()))
+        .filter(d => d.title.toLowerCase().includes(espaiSearch.toLowerCase()))
         .map(d => ({ ...d, catTitle: c.title })))
     : [];
 
   const visibleDocs = cat
-    ? cat.documents.filter(d => !espaiSearch || d.title.toLowerCase().includes(espaiSearch.toLowerCase()))
+    ? (catFilter === 'Tots' ? cat.documents : cat.documents.filter(d => d.tag === catFilter))
+        .filter(d => !espaiSearch || d.title.toLowerCase().includes(espaiSearch.toLowerCase()))
     : [];
+
+  // SP helpers
+  const spFtStyle = (name: string): { bg: string; fg: string } => {
+    const ext = name.split('.').pop()?.toUpperCase() ?? '';
+    if (ext === 'PDF')  return { bg: '#fee2e2', fg: '#dc2626' };
+    if (ext === 'PPTX' || ext === 'PPT') return { bg: '#ffedd5', fg: '#ea580c' };
+    if (ext === 'DOCX' || ext === 'DOC') return { bg: '#dbeafe', fg: '#2563eb' };
+    if (ext === 'XLSX' || ext === 'XLS') return { bg: '#dcfce7', fg: '#16a34a' };
+    if (ext === 'ZIP'  || ext === 'RAR') return { bg: '#fef9c3', fg: '#ca8a04' };
+    return { bg: '#f4f4f5', fg: '#71717a' };
+  };
+  const fmtSize = (b: number): string => b < 1048576 ? `${(b/1024).toFixed(0)} KB` : `${(b/1048576).toFixed(1)} MB`;
 
   // ── Mobile ──────────────────────────────────────────────────────────────────
   if (isMobileEspai) {
+    const allDocs = espaiSearch
+      ? ESPAI_CATS.flatMap(c => c.documents.filter(d => d.title.toLowerCase().includes(espaiSearch.toLowerCase()) || c.title.toLowerCase().includes(espaiSearch.toLowerCase())).map(d => ({ ...d, section: c.title })))
+      : [];
     return (
       <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
-        {/* Top bar */}
-        <div style={{ height: 56, display: 'flex', alignItems: 'center', padding: '0 16px', gap: 10, borderBottom: '1px solid var(--tavil-border)', background: 'var(--tavil-card)' }}>
-          {selectedCat !== null ? (
-            <button onClick={() => setSelectedCat(null)} style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--tavil-bg)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0 }}>
-              <ChevronLeft size={16} />
-            </button>
-          ) : (
-            <button onClick={onBack} style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--tavil-bg)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0 }}>
-              <ChevronLeft size={16} />
-            </button>
-          )}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tavil-text)', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {cat ? cat.title : 'Tavilpedia'}
-            </div>
-            {cat && <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)' }}>Tavilpedia</div>}
-          </div>
-          <a href={cat ? cat.sharepointUrl : SP_BASE} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: '1px solid var(--tavil-border)', color: 'var(--tavil-accent)', textDecoration: 'none', flexShrink: 0 }}>
-            <ExternalLink size={14} />
-          </a>
+        <div style={{ height: 82, display: 'flex', alignItems: 'center', padding: '0 16px', position: 'relative' }}>
+          <button onClick={onBack} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0, zIndex: 1 }}>
+            <ChevronLeft size={18} />
+          </button>
+          <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Tavilpedia</span>
         </div>
-
-        {/* Search */}
-        <div style={{ padding: '12px 16px 0', position: 'relative' }}>
-          <Search size={14} style={{ position: 'absolute', left: 28, top: '50%', transform: 'translateY(-20%)', color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
-          <input type="text" value={espaiSearch} onChange={e => setEspaiSearch(e.target.value)} placeholder="Cercar…"
-            style={{ width: '100%', height: 40, borderRadius: 10, border: '1px solid var(--tavil-border)', background: 'var(--tavil-card)', color: 'var(--tavil-text)', fontSize: 14, padding: '0 14px 0 36px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+        <div style={{ padding: '0 20px 12px' }}>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Empresa</div>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, lineHeight: 1.05, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Tavilpedia</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>Manual del treballador, polítiques, beneficis i identitat.</p>
         </div>
-
-        {/* Content */}
-        <div style={{ padding: '12px 16px' }}>
-          {espaiSearch ? (
-            searchResults.length > 0 ? (
-              <>
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>{searchResults.length} resultat{searchResults.length !== 1 ? 's' : ''}</div>
-                <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 12, overflow: 'hidden' }}>
-                  {searchResults.map((doc, i) => {
-                    const { bg, fg } = ftStyle(doc.meta);
-                    const type = doc.meta.split('·')[0].trim();
-                    return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: i < searchResults.length - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
-                        <div style={{ width: 36, height: 42, background: bg, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <FileText size={16} style={{ color: fg }} />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title}</div>
-                          <div style={{ fontSize: 11, color: 'var(--tavil-muted)', marginTop: 2 }}>{doc.catTitle} · <span style={{ color: fg, fontWeight: 700 }}>{type}</span></div>
-                        </div>
-                        <ExternalLink size={14} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--tavil-faint)', fontSize: 13 }}>Sense resultats per "{espaiSearch}"</div>
-            )
-          ) : cat ? (
-            // File list inside folder
-            <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 12, overflow: 'hidden' }}>
-              {cat.documents.map((doc, di) => {
-                const { bg, fg } = ftStyle(doc.meta);
-                const parts = doc.meta.split('·').map((s: string) => s.trim());
-                const type = parts[0];
-                const size = parts[1] ?? '';
-                return (
-                  <div key={di} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: di < cat.documents.length - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
-                    <div style={{ width: 36, height: 44, background: bg, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, flexShrink: 0 }}>
-                      <FileText size={15} style={{ color: fg }} />
-                      <span style={{ fontSize: 7.5, fontWeight: 800, color: fg, fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.04em' }}>{type}</span>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title}</div>
-                      <div style={{ fontSize: 11, color: 'var(--tavil-muted)', marginTop: 2 }}>{size} · {doc.views} visualitzacions</div>
-                    </div>
-                    <ExternalLink size={14} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            // Folder list (root)
-            <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 12, overflow: 'hidden' }}>
-              {ESPAI_CATS.map((c, i) => (
-                <div key={i} onClick={() => setSelectedCat(i)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px', borderBottom: i < ESPAI_CATS.length - 1 ? '1px solid var(--tavil-border)' : 'none', cursor: 'pointer' }}>
-                  <div style={{ width: 40, height: 40, background: '#fef3c7', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Folder size={20} style={{ color: '#d97706' }} />
+        <div style={{ padding: '0 16px 16px', position: 'relative' }}>
+          <Search size={16} style={{ position: 'absolute', left: 30, top: '50%', transform: 'translateY(-50%)', color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+          <input type="text" value={espaiSearch} onChange={e => setEspaiSearch(e.target.value)} placeholder="Cercar documents, procediments…"
+            style={{ width: '100%', height: 44, borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'var(--tavil-card)', color: 'var(--tavil-text)', fontSize: 14, padding: '0 14px 0 40px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+        </div>
+        {espaiSearch && allDocs.length > 0 ? (
+          <div style={{ padding: '0 16px' }}>
+            <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>{allDocs.length} resultat{allDocs.length !== 1 ? 's' : ''}</div>
+            <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, overflow: 'hidden' }}>
+              {allDocs.map((doc, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: i < allDocs.length - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
+                  <div style={{ width: 38, height: 44, background: 'var(--tavil-bg)', border: '1px solid var(--tavil-border)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--tavil-accent)', fontFamily: '"JetBrains Mono",monospace', letterSpacing: '0.04em' }}>{doc.tag.slice(0, 4).toUpperCase()}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)', lineHeight: 1.3 }}>{c.title}</div>
-                    <div style={{ fontSize: 11, color: 'var(--tavil-muted)', marginTop: 2 }}>{c.docs} documents</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)', lineHeight: 1.3 }}>{doc.title}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 2 }}>{doc.meta} · {doc.section}</div>
                   </div>
                   <ChevronRight size={16} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
                 </div>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ padding: '0 16px 20px' }}>
+              <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 12 }}>CATEGORIES</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
+                {ESPAI_CATS.map((c, i) => (
+                  <div key={i} onClick={() => handleSelectCat(i)} style={{
+                    background: 'var(--tavil-card)', border: `1px solid ${selectedCat === i ? 'var(--tavil-accent)' : 'var(--tavil-border)'}`,
+                    borderRadius: 10, padding: '10px 6px 8px', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+                  }}>
+                    <div style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--tavil-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
+                      <c.icon size={15} style={{ color: 'var(--tavil-muted)' }} />
+                    </div>
+                    <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-text)', lineHeight: 1.2, marginBottom: 2 }}>{c.title.split(' ')[0]}</div>
+                    <div style={{ fontSize: 9.5, color: 'var(--tavil-faint)' }}>{c.docs} docs</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {(selectedCat !== null ? [ESPAI_CATS[selectedCat]] : ESPAI_CATS).map((c, ci) => {
+              const catIdx = selectedCat !== null ? selectedCat : ci;
+              const isLoading = spLoading && selectedCat === catIdx;
+              const files = (selectedCat === catIdx && spFiles !== null) ? spFiles.filter(f => !f.folder) : null;
+              return (
+                <div key={ci} style={{ padding: '0 16px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>{c.title.toUpperCase()}</div>
+                    <a href={c.sharepointUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--tavil-accent)', textDecoration: 'none', padding: '4px 8px', borderRadius: 8, background: 'rgba(220,38,38,0.07)' }}>
+                      <ExternalLink size={14} /> SharePoint
+                    </a>
+                  </div>
+                  <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, overflow: 'hidden' }}>
+                    {isLoading ? (
+                      <div style={{ padding: '24px', textAlign: 'center', color: 'var(--tavil-faint)', fontSize: 13 }}>Carregant…</div>
+                    ) : files !== null ? files.map((f, fi) => {
+                      const ext = f.name.split('.').pop()?.toUpperCase() ?? '';
+                      const { bg, fg } = spFtStyle(f.name);
+                      return (
+                        <a key={fi} href={f.webUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: fi < files.length - 1 ? '1px solid var(--tavil-border)' : 'none', textDecoration: 'none' }}>
+                          <div style={{ width: 38, height: 44, background: bg, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, flexShrink: 0 }}>
+                            <FileText size={14} style={{ color: fg }} />
+                            <span style={{ fontSize: 7.5, fontWeight: 800, color: fg, fontFamily: '"JetBrains Mono",monospace' }}>{ext}</span>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)', lineHeight: 1.3, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name.replace(/\.[^.]+$/, '')}</div>
+                            <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)' }}>{fmtSize(f.size)}</div>
+                          </div>
+                          <ExternalLink size={14} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
+                        </a>
+                      );
+                    }) : c.documents.map((doc, di) => {
+                      const parts = doc.meta.split('·').map((s: string) => s.trim());
+                      const type = parts[0];
+                      const size = parts[1] ?? '';
+                      const { bg, fg } = ftStyle(doc.meta);
+                      return (
+                        <div key={di} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: di < c.documents.length - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
+                          <div style={{ width: 38, height: 44, background: bg, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, flexShrink: 0 }}>
+                            <FileText size={14} style={{ color: fg }} />
+                            <span style={{ fontSize: 7.5, fontWeight: 800, color: fg, fontFamily: '"JetBrains Mono",monospace' }}>{type}</span>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)', lineHeight: 1.3, marginBottom: 2 }}>{doc.title}</div>
+                            <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)' }}>{size} · {doc.views} visualitzacions</div>
+                          </div>
+                          <ChevronRight size={16} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
       </div>
     );
   }
 
-  // ── Desktop: two-panel explorer ────────────────────────────────────────────
+  // ── Desktop ──────────────────────────────────────────────────────────────────
+  const fmtDate = (d: string): string => new Date(d).toLocaleDateString('ca-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+
   return (
-    <div className="flex flex-col gap-3">
-      {/* Toolbar */}
-      <div className="flex items-center gap-2">
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-1 text-sm min-w-0 overflow-hidden">
-          <FolderOpen size={15} className="text-amber-500 flex-shrink-0" />
-          <button onClick={() => { setSelectedCat(null); setEspaiSearch(''); }} className="font-medium text-gray-700 dark:text-zinc-300 hover:text-gray-900 dark:hover:text-white transition-colors whitespace-nowrap">Tavilpedia</button>
-          {cat && (
-            <>
-              <ChevronRight size={13} className="text-gray-300 flex-shrink-0" />
-              <span className="font-semibold text-gray-900 dark:text-white truncate">{cat.title}</span>
-            </>
-          )}
-        </nav>
-        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
-          <div className="relative">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <input value={espaiSearch} onChange={e => setEspaiSearch(e.target.value)} placeholder="Cercar…"
-              className="w-40 bg-gray-100 dark:bg-zinc-800 rounded-lg py-1.5 pl-7 pr-3 text-xs outline-none dark:text-white placeholder-gray-400" />
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <p className="text-gray-500 dark:text-zinc-400 text-sm">Base de coneixement intern, documentació i recursos corporatius</p>
+        {graphAccount ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-green-600 dark:text-green-400 font-semibold flex items-center gap-1.5">
+              <CheckCircle size={13} /> {graphAccount.username}
+            </span>
+            <button onClick={() => graphLogout().catch(console.error)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Desconnectar</button>
           </div>
-          <div className="flex bg-gray-100 dark:bg-zinc-800 rounded-lg p-0.5 gap-0.5">
-            <button onClick={() => setViewMode('list')} className={cn("p-1.5 rounded-md transition-colors", viewMode === 'list' ? "bg-white dark:bg-zinc-700 shadow-sm text-gray-900 dark:text-white" : "text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300")}>
-              <List size={13} />
-            </button>
-            <button onClick={() => setViewMode('grid')} className={cn("p-1.5 rounded-md transition-colors", viewMode === 'grid' ? "bg-white dark:bg-zinc-700 shadow-sm text-gray-900 dark:text-white" : "text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300")}>
-              <LayoutGrid size={13} />
-            </button>
-          </div>
-          <a href={cat ? cat.sharepointUrl : SP_BASE} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 border border-red-200 dark:border-red-900/60 hover:bg-red-50 dark:hover:bg-red-950/20 px-2.5 py-1.5 rounded-lg transition-colors">
-            <ExternalLink size={12} /> Obrir a SharePoint
-          </a>
-        </div>
+        ) : (
+          <button onClick={() => graphLogin().catch(console.error)} className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 border border-blue-200 dark:border-blue-900/60 hover:bg-blue-50 dark:hover:bg-blue-950/20 px-3 py-1.5 rounded-lg transition-colors">
+            <Globe size={13} /> Connectar amb SharePoint
+          </button>
+        )}
       </div>
 
-      {/* Explorer panel */}
-      <div className="flex bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 overflow-hidden" style={{ minHeight: 460 }}>
-        {/* Sidebar */}
-        <div className="w-48 border-r border-gray-100 dark:border-zinc-800 flex-shrink-0 flex flex-col py-2 gap-0.5 bg-gray-50/60 dark:bg-zinc-950/40">
-          <button
-            onClick={() => { setSelectedCat(null); setEspaiSearch(''); }}
-            className={cn("flex items-center gap-2 mx-2 px-2 py-1.5 rounded-md text-sm transition-colors", selectedCat === null ? "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-semibold" : "text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800")}
-          >
-            <FolderOpen size={14} className={selectedCat === null ? "text-red-500" : "text-amber-500"} />
-            Tavilpedia
-          </button>
-          <div className="mx-2 mt-0.5 flex flex-col gap-0.5">
-            {ESPAI_CATS.map((c, i) => (
-              <button key={i} onClick={() => { setSelectedCat(i); setEspaiSearch(''); }}
-                className={cn("flex items-center gap-1.5 pl-4 pr-2 py-1.5 rounded-md text-xs w-full text-left transition-colors", selectedCat === i ? "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-semibold" : "text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800")}>
-                <Folder size={12} className={selectedCat === i ? "text-red-400 flex-shrink-0" : "text-amber-400 flex-shrink-0"} />
-                <span className="truncate">{c.title}</span>
-              </button>
+      <div className="relative mb-6">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+        <input type="text" value={espaiSearch} onChange={e => setEspaiSearch(e.target.value)} placeholder="Cercar documents, polítiques, plantilles..." className="w-full max-w-lg bg-gray-100 dark:bg-zinc-800 rounded-xl py-3 pl-11 pr-4 text-sm outline-none dark:text-white" />
+      </div>
+
+      {espaiSearchResults.length > 0 && (
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 mb-6">
+          <p className="text-xs font-semibold text-gray-500 dark:text-zinc-400 mb-3">{espaiSearchResults.length} resultat{espaiSearchResults.length !== 1 ? 's' : ''}</p>
+          <div className="space-y-2">
+            {espaiSearchResults.map((d, i) => (
+              <div key={i} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-800 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{d.title}</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400">{d.catTitle} · {d.meta}</p>
+                </div>
+                <span className="text-[10px] font-bold bg-gray-100 dark:bg-zinc-700 text-gray-600 dark:text-zinc-300 px-2 py-0.5 rounded">{d.tag}</span>
+              </div>
             ))}
           </div>
         </div>
+      )}
 
-        {/* Main panel */}
-        <div className="flex-1 min-w-0 flex flex-col">
-          {/* Column headers — list mode, inside a folder */}
-          {!espaiSearch && cat && viewMode === 'list' && (
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 dark:border-zinc-800 bg-gray-50/40 dark:bg-zinc-950/20">
-              <span className="flex-1 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Nom</span>
-              <span className="w-14 text-right text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Tipus</span>
-              <span className="w-16 text-right text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Mida</span>
-              <span className="w-20 text-right text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Vistes</span>
-              <span className="w-4" />
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        {ESPAI_CATS.map((c, i) => (
+          <div key={i} onClick={() => handleSelectCat(i)}
+            className={cn("hover-lift bg-white dark:bg-zinc-900 rounded-xl border-2 p-5 cursor-pointer group", selectedCat === i ? "border-red-500 shadow-md" : "border-gray-100 dark:border-zinc-800")}>
+            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-4", c.bg)}>
+              <c.icon size={20} className={c.iconColor} />
+            </div>
+            <h3 className={cn("font-semibold text-sm mb-2 transition-colors", selectedCat === i ? "text-red-600" : "text-gray-900 dark:text-white")}>{c.title}</h3>
+            <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed">{c.desc}</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] text-gray-400 font-medium">{c.docs} documents</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {cat ? (
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+          <div className="flex items-center gap-3 mb-4">
+            {spFiles === null && cat.filters.map(f => (
+              <FilterChip key={f} label={f} active={catFilter === f} onClick={() => setCatFilter(f)} />
+            ))}
+            {spFiles !== null && (
+              <span className="text-xs font-semibold text-green-600 dark:text-green-400 flex items-center gap-1.5">
+                <CheckCircle size={12} /> SharePoint en directe
+              </span>
+            )}
+            <span className="text-sm text-gray-500 dark:text-zinc-400">
+              {spFiles !== null ? spFiles.filter(f => !f.folder).length : visibleDocs.length} documents
+            </span>
+            <a href={cat.sharepointUrl} target="_blank" rel="noopener noreferrer" className="ml-auto flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-950/60">
+              <ExternalLink size={14} /> Obrir a SharePoint
+            </a>
+          </div>
+
+          {spLoading ? (
+            <div className="flex items-center justify-center py-12 gap-2 text-gray-400">
+              <div className="w-4 h-4 border-2 border-gray-300 border-t-red-500 rounded-full animate-spin" />
+              <span className="text-sm">Carregant des de SharePoint…</span>
+            </div>
+          ) : spError ? (
+            <div className="flex flex-col items-center py-8 gap-2 text-gray-400">
+              <AlertTriangle size={20} className="text-amber-400" />
+              <p className="text-sm">{spError}</p>
+              <button onClick={() => { setSpError(null); setSpLoading(true); listGraphFolder(cat.spFolderPath).then(f => { setSpFiles(f); setSpLoading(false); }).catch(e => { setSpError(String(e)); setSpLoading(false); }); }} className="text-xs text-red-600 hover:underline">Reintentar</button>
+            </div>
+          ) : spFiles !== null ? (
+            <div className="space-y-1">
+              {spFiles.filter(f => !f.folder).map((f, i) => {
+                const ext = f.name.split('.').pop()?.toUpperCase() ?? 'FILE';
+                const { bg, fg } = spFtStyle(f.name);
+                return (
+                  <a key={i} href={f.webUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors no-underline anim-item" style={{ '--i': i } as React.CSSProperties}>
+                    <div className="w-9 h-10 rounded-lg flex flex-col items-center justify-center gap-0.5 flex-shrink-0" style={{ background: bg }}>
+                      <FileText size={15} style={{ color: fg }} />
+                      <span style={{ fontSize: 7.5, fontWeight: 800, color: fg, fontFamily: '"JetBrains Mono",monospace' }}>{ext}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{f.name.replace(/\.[^.]+$/, '')}</p>
+                      <p className="text-xs text-gray-400">{fmtSize(f.size)} · {fmtDate(f.lastModifiedDateTime)}</p>
+                    </div>
+                    <ExternalLink size={14} className="text-gray-300 group-hover:text-red-500 transition-colors flex-shrink-0" />
+                  </a>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {visibleDocs.map((doc, i) => {
+                const { bg, fg } = ftStyle(doc.meta);
+                return (
+                  <div key={i} className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors anim-item" style={{ '--i': i } as React.CSSProperties}>
+                    <div className="w-9 h-10 rounded-lg flex flex-col items-center justify-center gap-0.5 flex-shrink-0" style={{ background: bg }}>
+                      <FileText size={15} style={{ color: fg }} />
+                      <span style={{ fontSize: 7.5, fontWeight: 800, color: fg, fontFamily: '"JetBrains Mono",monospace' }}>{doc.meta.split('·')[0].trim()}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white transition-colors">{doc.title}</p>
+                      <p className="text-xs text-gray-400 truncate">{doc.desc}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{doc.meta} · {doc.views} visualitzacions</p>
+                    </div>
+                    <span className="text-[10px] font-bold bg-gray-100 dark:bg-zinc-700 text-gray-500 px-2 py-0.5 rounded">{doc.tag}</span>
+                    <Download size={14} className="text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0" />
+                  </div>
+                );
+              })}
             </div>
           )}
-
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto p-3">
-            {espaiSearch ? (
-              // Search results
-              searchResults.length > 0 ? (
-                <div className="space-y-0.5">
-                  <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest px-2 mb-2">{searchResults.length} resultat{searchResults.length !== 1 ? 's' : ''}</p>
-                  {searchResults.map((d, i) => {
-                    const { bg, fg } = ftStyle(d.meta);
-                    const type = d.meta.split('·')[0].trim();
-                    return (
-                      <div key={i} className="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors">
-                        <div className="w-8 h-9 rounded-md flex flex-col items-center justify-center gap-0.5 flex-shrink-0" style={{ background: bg }}>
-                          <FileText size={13} style={{ color: fg }} />
-                          <span style={{ fontSize: 7, fontWeight: 800, color: fg, fontFamily: '"JetBrains Mono",monospace' }}>{type}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{d.title}</p>
-                          <p className="text-[10px] text-gray-400">{d.catTitle} · {d.meta}</p>
-                        </div>
-                        <ExternalLink size={12} className="text-gray-300 group-hover:text-red-500 transition-colors flex-shrink-0" />
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-32 text-gray-400 gap-2">
-                  <Search size={22} className="opacity-30" />
-                  <p className="text-sm">Sense resultats per "{espaiSearch}"</p>
-                </div>
-              )
-            ) : cat ? (
-              // Folder contents
-              viewMode === 'list' ? (
-                <div className="space-y-0.5">
-                  {visibleDocs.map((doc, i) => {
-                    const parts = doc.meta.split('·').map((s: string) => s.trim());
-                    const type = parts[0];
-                    const size = parts[1] ?? '';
-                    const { bg, fg } = ftStyle(doc.meta);
-                    return (
-                      <div key={i} className="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors anim-item" style={{ '--i': i } as React.CSSProperties}>
-                        <div className="w-8 h-9 rounded-md flex flex-col items-center justify-center gap-0.5 flex-shrink-0" style={{ background: bg }}>
-                          <FileText size={13} style={{ color: fg }} />
-                          <span style={{ fontSize: 7, fontWeight: 800, color: fg, fontFamily: '"JetBrains Mono",monospace' }}>{type}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{doc.title}</p>
-                          <p className="text-[10px] text-gray-400 truncate">{doc.desc}</p>
-                        </div>
-                        <span style={{ background: bg, color: fg }} className="text-[9px] font-bold px-1.5 py-0.5 rounded font-mono w-14 text-center flex-shrink-0">{type}</span>
-                        <span className="text-[11px] text-gray-400 w-16 text-right flex-shrink-0 tabular-nums">{size}</span>
-                        <span className="text-[11px] text-gray-400 w-20 text-right flex-shrink-0 tabular-nums">{doc.views.toLocaleString()}</span>
-                        <ExternalLink size={11} className="text-gray-200 group-hover:text-red-500 transition-colors flex-shrink-0 w-4" />
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 xl:grid-cols-4 gap-2 p-1">
-                  {visibleDocs.map((doc, i) => {
-                    const parts = doc.meta.split('·').map((s: string) => s.trim());
-                    const type = parts[0];
-                    const size = parts[1] ?? '';
-                    const { bg, fg } = ftStyle(doc.meta);
-                    return (
-                      <div key={i} className="flex flex-col items-center gap-2 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors text-center">
-                        <div className="w-14 h-16 rounded-xl flex flex-col items-center justify-center gap-1 relative" style={{ background: bg }}>
-                          <FileText size={26} style={{ color: fg }} />
-                          <span style={{ background: fg, color: '#fff', fontSize: 7.5, fontFamily: '"JetBrains Mono",monospace', fontWeight: 800, padding: '1px 4px', borderRadius: 3 }}>{type}</span>
-                        </div>
-                        <p className="text-[11px] font-medium text-gray-800 dark:text-zinc-200 leading-tight line-clamp-2">{doc.title}</p>
-                        <p className="text-[10px] text-gray-400">{size}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              )
-            ) : (
-              // Root: folder grid or list
-              viewMode === 'list' ? (
-                <div className="space-y-0.5">
-                  {ESPAI_CATS.map((c, i) => (
-                    <div key={i} onClick={() => setSelectedCat(i)}
-                      className="flex items-center gap-3 px-2 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors">
-                      <div className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 bg-amber-50 dark:bg-amber-950/20">
-                        <Folder size={16} className="text-amber-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{c.title}</p>
-                        <p className="text-[10px] text-gray-400">{c.docs} documents · {c.desc}</p>
-                      </div>
-                      <ChevronRight size={13} className="text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 xl:grid-cols-5 gap-2 p-1">
-                  {ESPAI_CATS.map((c, i) => (
-                    <div key={i} onClick={() => setSelectedCat(i)}
-                      className="flex flex-col items-center gap-2 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors text-center">
-                      <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-amber-50 dark:bg-amber-950/20 group-hover:bg-amber-100 dark:group-hover:bg-amber-950/40 transition-colors">
-                        <Folder size={28} className="text-amber-500" />
-                      </div>
-                      <p className="text-[11px] font-semibold text-gray-800 dark:text-zinc-200 leading-tight">{c.title}</p>
-                      <p className="text-[10px] text-gray-400">{c.docs} docs</p>
-                    </div>
-                  ))}
-                </div>
-              )
-            )}
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Star size={15} className="text-amber-500" />
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm">Documents destacats</h3>
+            <a href={SP_BASE} target="_blank" rel="noopener noreferrer" className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors">
+              <ExternalLink size={13} /> Obrir Tavilpedia
+            </a>
           </div>
-
-          {/* Status bar */}
-          <div className="border-t border-gray-100 dark:border-zinc-800 px-4 py-1.5 flex items-center gap-3 text-[10px] text-gray-400 bg-gray-50/40 dark:bg-zinc-950/20">
-            {cat ? (
-              <><span>{cat.documents.length} elements</span><span>·</span><span className="truncate">{cat.desc}</span></>
-            ) : (
-              <span>{ESPAI_CATS.length} carpetes · {ESPAI_CATS.reduce((a, c) => a + c.documents.length, 0)} documents en total</span>
-            )}
+          <div className="space-y-1">
+            {[
+              { icon: FileText, color: "text-blue-500", title: "Protocol d'acollida (onboarding)", desc: "Guia completa per als nous treballadors...", meta: "PDF · 2.4 MB · 342 visualitzacions" },
+              { icon: Shield, color: "text-purple-500", title: "Reglament de règim intern", desc: "Normativa interna que regula la convivència, els horaris i els permisos...", meta: "PDF · 1.8 MB · 518 visualitzacions" },
+              { icon: AlertTriangle, color: "text-red-500", title: "Guia de seguretat i prevenció de riscos", desc: "Manual de prevenció de riscos laborals per a TAVIL.", meta: "PDF · 3.1 MB · 287 visualitzacions" },
+              { icon: Building2, color: "text-green-500", title: "Política de viatges corporatius", desc: "Normes per a la reserva de viatges, allotjaments i dietes.", meta: "PDF · 890 KB · 195 visualitzacions" },
+              { icon: Mail, color: "text-amber-500", title: "Manual de connexió a la xarxa interna", desc: "Pas a pas per connectar-se a la VPN i el correu corporatiu.", meta: "PDF · 1.2 MB · 421 visualitzacions" },
+            ].map((doc, i) => (
+              <div key={i} className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-700 flex items-center justify-center flex-shrink-0">
+                  <doc.icon size={15} className={doc.color} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white transition-colors">{doc.title}</p>
+                  <p className="text-xs text-gray-400 truncate">{doc.desc}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{doc.meta}</p>
+                </div>
+                <Download size={14} className="text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0" />
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -4033,7 +4095,7 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
         {/* Kicker + title */}
         <div style={{ padding: '0 20px 12px' }}>
           <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Formació</div>
-          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 32, fontWeight: 400, lineHeight: 1.05, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>Campus TAVIL</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, lineHeight: 1.05, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Campus TAVIL</h1>
           <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>Formació, cursos i seguiment del teu progrés.</p>
         </div>
         {/* 3-stat grid */}
@@ -4044,7 +4106,7 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
             { value: `${completedHours}h`, label: 'Aquest any', color: 'var(--tavil-text)' },
           ].map((s, i) => (
             <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: '12px 10px', textAlign: 'center' }}>
-              <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 26, fontWeight: 400, color: s.color, letterSpacing: '-0.02em', lineHeight: 1 }}>{s.value}</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, color: s.color, letterSpacing: '0em', lineHeight: 1 }}>{s.value}</div>
               <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginTop: 4 }}>{s.label}</div>
             </div>
           ))}
@@ -4059,7 +4121,7 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.15)', padding: '3px 10px', borderRadius: 999 }}>{inProgress[0].category}</span>
               </div>
               <div style={{ padding: '14px 16px' }}>
-                <div style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 18, fontWeight: 400, color: 'var(--tavil-text)', marginBottom: 10 }}>{inProgress[0].title}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 10 }}>{inProgress[0].title}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8 }}>
                   <span>{inProgress[0].hours}</span><span>{inProgress[0].user_progress}% completat</span>
                 </div>
@@ -4661,7 +4723,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
         {/* Header kicker + title + subtitle */}
         <div style={{ padding: '0 20px 14px' }}>
           <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Personal</div>
-          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 32, fontWeight: 400, lineHeight: 1.05, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>Veu Empleat</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, lineHeight: 1.05, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Veu Empleat</h1>
           <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>{t('veu.subtitle')}</p>
         </div>
         {/* Pill tabs */}
@@ -5509,6 +5571,22 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
   const [success, setSuccess] = useState(false);
   const [denyingId, setDenyingId] = useState<number | null>(null);
   const [denyMotive, setDenyMotive] = useState('');
+  const [closedCollapsed, setClosedCollapsed] = useState(false);
+  const [solConfirm, setSolConfirm] = useState<{ id: number; message: string } | null>(null);
+  const [solToast, setSolToast] = useState<string | null>(null);
+  const showSolToast = (msg: string) => { setSolToast(msg); setTimeout(() => setSolToast(null), 2500); };
+  const handleSolDelete = async (id: number) => {
+    try {
+      await apiDeleteSolicitud(id);
+      fetchSolicituds();
+      showSolToast('Sol·licitud eliminada');
+    } catch (e: any) {
+      showSolToast(e?.message || 'Error en eliminar');
+    }
+  };
+  const askDeleteSol = (id: number, dateLabel: string) => {
+    setSolConfirm({ id, message: `Eliminar sol·licitud del ${dateLabel}?` });
+  };
 
   // Vacances state
   const [vacSubTab, setVacSubTab] = useState<'sol' | 'info'>('sol');
@@ -5621,11 +5699,14 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
             <ChevronLeft size={18} />
           </button>
           <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Sol·licituds</span>
+          <button onClick={() => { fetchSolicituds(); fetchVacances(); }} style={{ width: 36, height: 36, borderRadius: 18, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-muted)', flexShrink: 0, zIndex: 1, marginLeft: 'auto' }}>
+            <RefreshCw size={15} />
+          </button>
         </div>
         {/* Header kicker + title + subtitle */}
         <div style={{ padding: '0 20px 14px' }}>
           <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>RRHH</div>
-          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontSize: 32, fontWeight: 400, lineHeight: 1.05, margin: 0, letterSpacing: '-0.02em', color: 'var(--tavil-text)' }}>Sol·licituds</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, lineHeight: 1.05, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Sol·licituds</h1>
           <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>{t('solicituds.subtitle')}</p>
         </div>
         {/* Counter grid (no vacances mentre estigui ocult) */}
@@ -5637,7 +5718,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
               { n: 0, l: 'Teletreball' },
             ].map((c, i) => (
               <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 12, textAlign: 'center' }}>
-                <div style={{ fontFamily: '"Instrument Serif", serif', fontSize: 28, lineHeight: 1, color: 'var(--tavil-accent)' }}>{c.n}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, lineHeight: 1, color: 'var(--tavil-accent)' }}>{c.n}</div>
                 <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginTop: 4, letterSpacing: '0.02em' }}>{c.l} · disponibles</div>
               </div>
             ))}
@@ -5717,32 +5798,72 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
 
             {/* My requests */}
             <div className="mobile-kicker" style={{ marginBottom: 8 }}>LES MEVES SOL·LICITUDS</div>
-            {diesNoOrdinaris.filter(d => !isRRHH && !isHead ? true : d.author === currentUser?.email).length === 0 ? (
-              <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--tavil-faint)' }}>
-                <FileText size={32} style={{ margin: '0 auto 10px', opacity: 0.35 }} />
-                <p style={{ fontSize: 13.5 }}>Sense sol·licituds</p>
-              </div>
-            ) : (
-              <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden' }}>
-                {diesNoOrdinaris.filter(d => !isRRHH && !isHead ? true : d.author === currentUser?.email).map((d, i) => (
-                  <div key={i} style={{ padding: '12px 14px', borderBottom: '1px solid var(--tavil-border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 2 }}>{formatDate(d.date)}</div>
-                        {d.comments && <div style={{ fontSize: 12, color: 'var(--tavil-muted)' }}>{d.comments}</div>}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(d.status) }}>{d.status}</span>
-                        {(isRRHH || d.author === currentUser?.email) && (
-                          <button onClick={async () => { await apiDeleteSolicitud(d.id); fetchSolicituds(); }} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
-                        )}
-                      </div>
+            {(() => {
+              const myReqs = diesNoOrdinaris.filter(d => !isRRHH && !isHead ? true : d.author === currentUser?.email);
+              const activeReqs = myReqs.filter(d => d.status === 'Pendent');
+              const closedReqs = myReqs.filter(d => d.status !== 'Pendent');
+              if (myReqs.length === 0) return (
+                <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--tavil-faint)' }}>
+                  <FileText size={32} style={{ margin: '0 auto 10px', opacity: 0.35 }} />
+                  <p style={{ fontSize: 13.5 }}>Sense sol·licituds</p>
+                </div>
+              );
+              return (
+                <>
+                  {activeReqs.length > 0 && (
+                    <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden', marginBottom: closedReqs.length > 0 ? 16 : 0 }}>
+                      {activeReqs.map((d, i) => (
+                        <div key={i} style={{ padding: '12px 14px', borderBottom: i < activeReqs.length - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 2 }}>{formatDate(d.date)}</div>
+                              {d.comments && <div style={{ fontSize: 12, color: 'var(--tavil-muted)' }}>{d.comments}</div>}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(d.status) }}>{d.status}</span>
+                              {d.author === currentUser?.email && (
+                                <button onClick={() => askDeleteSol(d.id, formatDate(d.date))} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    {d.motive && <div style={{ fontSize: 12, color: 'var(--tavil-faint)', marginTop: 4, fontStyle: 'italic' }}>Motiu: {d.motive}</div>}
-                  </div>
-                ))}
-              </div>
-            )}
+                  )}
+                  {closedReqs.length > 0 && (
+                    <>
+                      <button onClick={() => setClosedCollapsed(c => !c)} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        <span className="mobile-kicker" style={{ opacity: 0.7 }}>SOL·LICITUDS PROCESSADES · {closedReqs.length}</span>
+                        <ChevronDown size={12} className={cn("transition-transform duration-300", !closedCollapsed ? 'rotate-180' : '')} style={{ color: 'var(--tavil-faint)' }} />
+                      </button>
+                      <div className="sol-drawer" data-open={String(!closedCollapsed)}>
+                      <div className="sol-drawer-inner">
+                      <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden', opacity: 0.85 }}>
+                        {closedReqs.map((d, i) => (
+                          <div key={i} style={{ padding: '12px 14px', borderBottom: i < closedReqs.length - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <div>
+                                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--tavil-muted)', marginBottom: 2 }}>{formatDate(d.date)}</div>
+                                {d.comments && <div style={{ fontSize: 12, color: 'var(--tavil-faint)' }}>{d.comments}</div>}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(d.status) }}>{d.status}</span>
+                                {(isRRHH || isHead) && (
+                                  <button onClick={() => askDeleteSol(d.id, formatDate(d.date))} style={{ background: 'none', border: 'none', color: 'var(--tavil-faint)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
+                                )}
+                              </div>
+                            </div>
+                            {d.motive && <div style={{ fontSize: 12, color: 'var(--tavil-faint)', marginTop: 4, fontStyle: 'italic' }}>Motiu: {d.motive}</div>}
+                          </div>
+                        ))}
+                      </div>
+                      </div>
+                      </div>
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 
@@ -5895,7 +6016,12 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
 
   return (
     <div>
-      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">{t('solicituds.subtitle')}</p>
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-gray-500 dark:text-zinc-400 text-sm">{t('solicituds.subtitle')}</p>
+        <button onClick={() => { fetchSolicituds(); fetchVacances(); }} className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800">
+          <RefreshCw size={12} /> Refresca
+        </button>
+      </div>
       {visibleTabs.length > 1 && (
         <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
           {visibleTabs.map(tab => (
@@ -5922,47 +6048,85 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                 <p className="text-xs text-gray-300 dark:text-zinc-600 mt-1">{t('solicituds.noRequestsHint')}</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {diesNoOrdinaris.map(d => (
-                  <div key={d.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
-                    <div className="flex items-start gap-3">
-                      <Calendar size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{formatDate(d.date)}</p>
-                        <p className="text-xs text-gray-400 mb-2">Sol·licitat el {formatDate(d.created_at)} · Per: {d.author}</p>
-                        {d.comments && <p className="text-xs text-gray-600 dark:text-zinc-400 bg-gray-50 dark:bg-zinc-800 rounded-lg px-3 py-2 mb-2">{d.comments}</p>}
-                        {d.status === 'Denegada' && d.motive && (
-                          <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2"><span className="font-semibold">Motiu:</span> {d.motive}</p>
-                        )}
-                        {isRRHH && d.status === 'Pendent' && d.author !== currentUser?.email && denyingId === d.id && (
-                          <div className="mt-3 space-y-2">
-                            <textarea
-                              value={denyMotive}
-                              onChange={e => setDenyMotive(e.target.value)}
-                              placeholder="Motiu de la denegació..."
-                              rows={2}
-                              className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none"
-                            />
-                            <div className="flex gap-2">
-                              <button onClick={() => handleDenyConfirm(d.id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">{t('solicituds.confirmDeny')}</button>
-                              <button onClick={() => { setDenyingId(null); setDenyMotive(''); }} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">{t('common.cancel')}</button>
+              <>
+                {/* Pending */}
+                {diesNoOrdinaris.filter(d => d.status === 'Pendent').length > 0 && (
+                  <div className="space-y-3">
+                    {diesNoOrdinaris.filter(d => d.status === 'Pendent').map(d => (
+                      <div key={d.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
+                        <div className="flex items-start gap-3">
+                          <Calendar size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{formatDate(d.date)}</p>
+                            <p className="text-xs text-gray-400 mb-2">Sol·licitat el {formatDate(d.created_at)} · Per: {d.author}</p>
+                            {d.comments && <p className="text-xs text-gray-600 dark:text-zinc-400 bg-gray-50 dark:bg-zinc-800 rounded-lg px-3 py-2 mb-2">{d.comments}</p>}
+                            {(isRRHH || isHead) && d.author !== currentUser?.email && denyingId === d.id && (
+                              <div className="mt-3 space-y-2">
+                                <textarea
+                                  value={denyMotive}
+                                  onChange={e => setDenyMotive(e.target.value)}
+                                  placeholder="Motiu de la denegació..."
+                                  rows={2}
+                                  className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none"
+                                />
+                                <div className="flex gap-2">
+                                  <button onClick={() => handleDenyConfirm(d.id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">{t('solicituds.confirmDeny')}</button>
+                                  <button onClick={() => { setDenyingId(null); setDenyMotive(''); }} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">{t('common.cancel')}</button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(d.status))}>{d.status}</span>
+                            {(isRRHH || isHead) && d.author !== currentUser?.email && denyingId !== d.id && (
+                              <>
+                                <button onClick={() => handleApprove(d.id)} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-950/50 transition-colors">{t('solicituds.approve')}</button>
+                                <button onClick={() => { setDenyingId(d.id); setDenyMotive(''); }} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 transition-colors">{t('solicituds.deny')}</button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Closed (Aprovada / Denegada) */}
+                {diesNoOrdinaris.filter(d => d.status !== 'Pendent').length > 0 && (
+                  <div className={diesNoOrdinaris.filter(d => d.status === 'Pendent').length > 0 ? 'mt-6' : ''}>
+                    <button onClick={() => setClosedCollapsed(c => !c)} className="flex items-center gap-2 mb-3 group">
+                      <span className="text-[10px] font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Sol·licituds processades · {diesNoOrdinaris.filter(d => d.status !== 'Pendent').length}</span>
+                      <ChevronDown size={12} className={cn("text-gray-400 dark:text-zinc-500 transition-transform duration-300", closedCollapsed ? '' : 'rotate-180')} />
+                    </button>
+                    <div className="sol-drawer" data-open={String(!closedCollapsed)}>
+                      <div className="sol-drawer-inner">
+                      <div className="space-y-2 pb-0.5">
+                        {diesNoOrdinaris.filter(d => d.status !== 'Pendent').map(d => (
+                          <div key={d.id} className="bg-gray-50 dark:bg-zinc-900/50 rounded-xl border border-gray-100 dark:border-zinc-800/60 p-3.5 opacity-90">
+                            <div className="flex items-start gap-3">
+                              <Calendar size={14} className="text-gray-400 dark:text-zinc-500 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-600 dark:text-zinc-300 text-sm mb-0.5">{formatDate(d.date)}</p>
+                                <p className="text-xs text-gray-400 dark:text-zinc-500">Per: {d.author}</p>
+                                {d.comments && <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">{d.comments}</p>}
+                                {d.status === 'Denegada' && d.motive && (
+                                  <p className="text-xs text-red-400 dark:text-red-500 mt-1"><span className="font-semibold">Motiu:</span> {d.motive}</p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(d.status))}>{d.status}</span>
+                                {(isRRHH || isHead) && (
+                                  <button onClick={() => askDeleteSol(d.id, formatDate(d.date))} className="p-1 text-gray-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"><Trash2 size={13} /></button>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        )}
+                        ))}
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(d.status))}>{d.status}</span>
-                        {isRRHH && d.status === 'Pendent' && d.author !== currentUser?.email && denyingId !== d.id && (
-                          <>
-                            <button onClick={() => handleApprove(d.id)} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-950/50 transition-colors">{t('solicituds.approve')}</button>
-                            <button onClick={() => { setDenyingId(d.id); setDenyMotive(''); }} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 transition-colors">{t('solicituds.deny')}</button>
-                          </>
-                        )}
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
 
@@ -6394,6 +6558,21 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
         );
       })()}
       </div>
+      {solConfirm && (
+        <ConfirmModal
+          message={solConfirm.message}
+          onConfirm={() => { const id = solConfirm.id; setSolConfirm(null); handleSolDelete(id); }}
+          onCancel={() => setSolConfirm(null)}
+        />
+      )}
+      {solToast && createPortal(
+        <div style={{ position: 'fixed', top: 12, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 10001, pointerEvents: 'none' }}>
+          <div className="anim-pop" style={{ whiteSpace: 'nowrap', padding: '10px 22px', borderRadius: 999, fontSize: 13.5, fontWeight: 500, color: '#fff', background: 'rgba(34,110,54,0.96)', backdropFilter: 'blur(8px)', boxShadow: '0 4px 24px rgba(0,0,0,0.18)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 15, lineHeight: 1 }}>✓</span>{solToast}
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
@@ -6424,6 +6603,8 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
   const [activeTab, setActiveTab] = usePersistedSubTab<string>('perfil', 'Informació', ['Informació', 'Formació', 'Beneficis socials', 'Configuració'] as const);
   const [notifCorreu, setNotifCorreu] = useState(currentUser?.email_notifs !== 0);
   const [notifPortal, setNotifPortal] = useState(true);
+
+  const canEditDept = currentUser?.role === 'Administrador/a';
 
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(currentUser?.name ?? '');
@@ -6459,9 +6640,11 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
     const trimmed = nameInput.trim();
     if (!trimmed || !currentUser) return;
     try {
-      const deptChanged = deptInput !== currentUser.dept || isHeadInput !== (currentUser.is_head === 1);
-      if (deptChanged) {
-        await apiUpdateDept(deptInput, isHeadInput);
+      if (canEditDept) {
+        const deptChanged = deptInput !== currentUser.dept || isHeadInput !== (currentUser.is_head === 1);
+        if (deptChanged) {
+          await apiUpdateDept(deptInput, isHeadInput);
+        }
       }
       const updated = await apiUpdateMe({
         name: trimmed,
@@ -6573,7 +6756,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
             </button>
           </div>
           <div style={{
-            fontSize: 28, fontFamily: '"Instrument Serif","Times New Roman",serif',
+            fontSize: 28, fontFamily: 'var(--font-display)',
             fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--tavil-text)',
             padding: '4px 24px 18px',
           }}>Configuració</div>
@@ -6660,7 +6843,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
             </button>
           </div>
           <div style={{
-            fontSize: 28, fontFamily: '"Instrument Serif","Times New Roman",serif',
+            fontSize: 28, fontFamily: 'var(--font-display)',
             fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--tavil-text)',
             padding: '4px 24px 18px',
           }}>Notificacions</div>
@@ -6746,7 +6929,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontWeight: 600, fontSize: 32, letterSpacing: '-0.01em',
               boxShadow: '0 6px 20px -8px rgba(0,0,0,0.18)',
-              fontFamily: '"Instrument Serif", "Times New Roman", serif',
+              fontFamily: 'var(--font-display)',
               border: 'none', padding: 0, cursor: 'pointer', overflow: 'hidden', position: 'relative',
             }}>
             {avatarUrl
@@ -6758,7 +6941,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
           </button>
           <input ref={avatarFileRef} type="file" accept="image/*" style={{ display: 'none' }}
             onChange={e => { const f = e.target.files?.[0]; if (f) handleAvatarPick(f); e.currentTarget.value = ''; }} />
-          <div style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 28, letterSpacing: '-0.01em', lineHeight: 1.1, color: 'var(--tavil-text)' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '0.01em', lineHeight: 1.1, color: 'var(--tavil-text)' }}>
             {name || 'Usuari'}
           </div>
           <div style={{ fontSize: 13.5, color: 'var(--tavil-muted)', marginTop: 4 }}>
@@ -6984,14 +7167,14 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                 <div className="flex items-center gap-3 py-1">
                   <FolderOpen size={14} className="text-gray-400 dark:text-zinc-500 flex-shrink-0" />
                   <span className="text-[11px] uppercase tracking-wide font-medium text-gray-400 dark:text-zinc-500 w-20">Dept.</span>
-                  {editing ? (
+                  {editing && canEditDept ? (
                     <select value={deptInput} onChange={e => { setDeptInput(e.target.value); setIsHeadInput(false); }} className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white">
                       {DEPT_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   ) : <span className="text-sm text-gray-700 dark:text-zinc-300 truncate">{currentUser?.dept ?? '—'}</span>}
                 </div>
 
-                {editing && (
+                {editing && canEditDept && (
                   <label className={cn("flex items-center gap-2 cursor-pointer text-sm pl-7 pt-1", deptHasHead ? "opacity-40 cursor-not-allowed" : "")}>
                     <input
                       type="checkbox"
@@ -7353,7 +7536,7 @@ function VerifyEmailPage({ email, onBack, onVerified, isDarkMode, toggleDarkMode
             Pas 2 de 2
           </div>
           <h1 style={{
-            fontFamily: '"Instrument Serif", "Times New Roman", serif',
+            fontFamily: 'var(--font-display)',
             fontSize: 34, fontWeight: 400, lineHeight: 1.04, margin: '0 0 10px',
             letterSpacing: '-0.02em', color: 'var(--tavil-text)',
           }}>Verifica el teu correu</h1>
@@ -7637,9 +7820,9 @@ function LoginPage({ onLoginResult, isDarkMode, toggleDarkMode }: {
             textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 12,
           }}>PORTAL INTERN</div>
           <img
-            src={`${process.env.PUBLIC_URL}/assets/images/tavilNet.svg`}
+            src={`${process.env.PUBLIC_URL}/assets/images/${isDarkMode ? 'TAVILhub.svg?v=3' : 'tavilNet.svg'}`}
             alt="TAVIL net"
-            style={{ height: 38, width: 'auto', display: 'block', margin: '0 0 12px' }}
+            style={{ height: 34, width: 'auto', display: 'block', margin: '0 0 12px' }}
           />
           <p style={{ fontSize: 14.5, color: 'var(--tavil-muted)', margin: 0, lineHeight: 1.45 }}>
             Les teves credencials TAVIL.
@@ -7744,9 +7927,9 @@ function LoginPage({ onLoginResult, isDarkMode, toggleDarkMode }: {
             Portal intern
           </div>
           <img
-            src={`${process.env.PUBLIC_URL}/assets/images/tavilNet.svg`}
+            src={`${process.env.PUBLIC_URL}/assets/images/${isDarkMode ? 'TAVILhub.svg?v=3' : 'tavilNet.svg'}`}
             alt="TAVIL net"
-            style={{ height: 58, width: 'auto', display: 'block', margin: '0 0 14px' }}
+            style={{ height: 52, width: 'auto', display: 'block', margin: '0 0 14px' }}
           />
           <p style={{ fontSize: 15, color: 'var(--tavil-muted)', margin: '0 0 32px', lineHeight: 1.5 }}>
             Les teves credencials TAVIL.
@@ -7809,37 +7992,29 @@ function LoginPage({ onLoginResult, isDarkMode, toggleDarkMode }: {
       </div>
 
       {/* ── Right: editorial cover ── */}
-      <div style={{ background: 'var(--tavil-accent)', color: '#fff', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '48px 60px', justifyContent: 'space-between', minHeight: '100vh', boxSizing: 'border-box' }}>
+      <div style={{ background: 'var(--tavil-accent)', color: '#fff', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '48px 60px', justifyContent: 'center', minHeight: '100vh', boxSizing: 'border-box' }}>
         {/* Texture + circles */}
         <div style={{ position: 'absolute', inset: 0, opacity: 0.08, background: 'repeating-linear-gradient(45deg, transparent 0 18px, #fff 18px 19px)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: '-18%', right: '-14%', width: 480, height: 480, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: '-22%', left: '-12%', width: 420, height: 420, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
 
-        <div style={{ position: 'relative', fontSize: 11, fontWeight: 600, letterSpacing: '0.18em', opacity: 0.9, textTransform: 'uppercase' }}>
-          Abril 2026 · Número 142
-        </div>
-
         <div style={{ position: 'relative' }}>
-          <div style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 88, lineHeight: 0.95, letterSpacing: '-0.04em', marginBottom: 20, fontStyle: 'italic' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 88, lineHeight: 0.95, letterSpacing: '-0.04em', marginBottom: 20, fontStyle: 'italic' }}>
             Som <br />un equip.
           </div>
           <div style={{ fontSize: 16, lineHeight: 1.5, opacity: 0.92, maxWidth: 460 }}>
             El portal intern de TAVIL. Notícies, agenda, formació, sol·licituds i la veu de cadascú — en un sol lloc.
           </div>
           <div style={{ display: 'flex', gap: 40, marginTop: 44 }}>
-            {[{ n: '128', l: 'persones' }, { n: '3', l: 'seus' }, { n: '40+', l: 'anys' }].map(s => (
+            {[{ n: '+100', l: 'anys de coneixement' }, { n: '+45', l: 'països' }, { n: '+1.200', l: 'projectes' }].map(s => (
               <div key={s.l}>
-                <div style={{ fontFamily: '"Instrument Serif", "Times New Roman", serif', fontSize: 44, lineHeight: 1, letterSpacing: '-0.025em' }}>{s.n}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 44, lineHeight: 1, letterSpacing: '-0.025em' }}>{s.n}</div>
                 <div style={{ fontSize: 11, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: 6 }}>{s.l}</div>
               </div>
             ))}
           </div>
         </div>
 
-        <div style={{ position: 'relative', fontSize: 11, opacity: 0.75, letterSpacing: '0.06em', display: 'flex', justifyContent: 'space-between' }}>
-          <span>Barcelona · Terrassa · Milà · Lió</span>
-          <span>tavil.com</span>
-        </div>
       </div>
     </div>
   );
@@ -8531,6 +8706,8 @@ function ExternalCourseModal({ course, onClose, onSaved }: {
     try { return JSON.parse(course?.departments || '[]'); } catch { return []; }
   });
   const [targetUsers, setTargetUsers] = useState<number[]>(course?.target_users ?? []);
+  const [startAt, setStartAt] = useState(course?.start_at ?? '');
+  const [endAt, setEndAt] = useState(course?.end_at ?? '');
   const [allUsers, setAllUsers] = useState<{ id: number; name: string; email: string; dept: string }[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [saving, setSaving] = useState(false);
@@ -8552,7 +8729,7 @@ function ExternalCourseModal({ course, onClose, onSaved }: {
     if (!title.trim()) { setErr('El títol és obligatori'); return; }
     if (!url.trim()) { setErr('L\'URL és obligatòria'); return; }
     setSaving(true); setErr('');
-    const payload: ExternalCoursePayload = { title: title.trim(), description: description.trim(), url: url.trim(), category: category.trim(), hours: hours.trim(), mandatory: mandatory ? 1 : 0, departments: depts, target_users: targetUsers };
+    const payload: ExternalCoursePayload = { title: title.trim(), description: description.trim(), url: url.trim(), category: category.trim(), hours: hours.trim(), mandatory: mandatory ? 1 : 0, departments: depts, target_users: targetUsers, start_at: startAt || null, end_at: endAt || null };
     try {
       if (isEdit) await apiUpdateExternalCourse(course!.id, payload);
       else await apiCreateExternalCourse(payload);
@@ -8628,6 +8805,18 @@ function ExternalCourseModal({ course, onClose, onSaved }: {
               className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${mandatory ? 'bg-red-600' : 'bg-gray-200 dark:bg-zinc-600'}`}>
               <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${mandatory ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className={labelCls}>Data inici</label>
+              <input className={inputCls} type="date" value={startAt} onChange={e => setStartAt(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <label className={labelCls}>Data fi <span className="text-gray-400 font-normal">(opcional)</span></label>
+              <input className={inputCls} type="date" value={endAt} min={startAt || undefined} onChange={e => setEndAt(e.target.value)} />
+            </div>
           </div>
 
           {/* Departaments */}
@@ -9962,7 +10151,7 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-sm" style={{ background: 'var(--q-overlay)' }}>
             <div className="max-w-md w-full rounded-2xl p-7 shadow-2xl border" style={{ background: 'var(--q-modal-bg)', borderColor: 'var(--q-border)', color: 'var(--q-text)' }}>
               <div className="text-xs font-semibold tracking-[0.2em] uppercase mb-3" style={{ color: 'var(--q-kicker)' }}>Reprendre formació</div>
-              <h3 style={{ fontFamily: '"Instrument Serif", serif' }} className="text-3xl leading-tight mb-3">
+              <h3 style={{ fontFamily: 'var(--font-display)' }} className="text-3xl leading-tight mb-3">
                 Tens progrés guardat
               </h3>
               <p className="text-sm mb-1" style={{ color: 'var(--q-text-70)' }}>Vas arribar fins a la pregunta <span className="font-semibold" style={{ color: 'var(--q-text)' }}>{Math.min(resumeOffer.idx + 1, total)}</span> de {total}.</p>
@@ -9994,7 +10183,7 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
             <div className="text-xs font-semibold tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--q-kicker)' }}>
               {quiz.category || 'Formació TAVIL'}
             </div>
-            <h1 style={{ fontFamily: '"Instrument Serif", serif' }} className="text-5xl md:text-6xl font-normal leading-tight mb-6 tracking-tight">
+            <h1 style={{ fontFamily: 'var(--font-display)' }} className="text-5xl md:text-6xl font-normal leading-tight mb-6 tracking-tight">
               {quiz.title}
             </h1>
             {quiz.description && (
@@ -10039,7 +10228,7 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
           <div className="max-w-3xl w-full" style={{ color: 'var(--q-text)' }}>
             <div className="text-center mb-10">
               <div className="text-xs font-semibold tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--q-text-60)' }}>Resultat final</div>
-              <div style={{ fontFamily: '"Instrument Serif", serif' }} className="text-8xl md:text-9xl font-normal mb-2 tabular-nums">
+              <div style={{ fontFamily: 'var(--font-display)' }} className="text-8xl md:text-9xl font-normal mb-2 tabular-nums">
                 {result.percentage}%
               </div>
               <p className="text-2xl font-semibold mb-2">{passed ? 'Aprovat' : 'No aprovat'}</p>
@@ -10119,7 +10308,7 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
           <div className="text-xs font-semibold tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--q-kicker)' }}>
             {q.type === 'slide' ? `Slide ${idx + 1}` : `Pregunta ${idx + 1}`}
           </div>
-          <h2 style={{ fontFamily: '"Instrument Serif", serif' }} className="text-3xl md:text-5xl font-normal leading-tight mb-10 tracking-tight">
+          <h2 style={{ fontFamily: 'var(--font-display)' }} className="text-3xl md:text-5xl font-normal leading-tight mb-10 tracking-tight">
             {q.question}
           </h2>
 
@@ -10198,7 +10387,7 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
                     key={o.id}
                     onClick={() => setAnswers(a => ({ ...a, [String(q.id)]: String(o.id) }))}
                     className="p-10 rounded-2xl border-2 transition-all text-3xl font-medium"
-                    style={sel ? { background: '#bf211e', borderColor: '#bf211e', color: '#fff', fontFamily: '"Instrument Serif", serif' } : { background: 'var(--q-surface)', borderColor: 'var(--q-border)', color: 'var(--q-text)', fontFamily: '"Instrument Serif", serif' }}
+                    style={sel ? { background: '#bf211e', borderColor: '#bf211e', color: '#fff', fontFamily: 'var(--font-display)' } : { background: 'var(--q-surface)', borderColor: 'var(--q-border)', color: 'var(--q-text)', fontFamily: 'var(--font-display)' }}
                   >
                     {o.text}
                   </button>
@@ -10609,7 +10798,7 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
               <textarea
                 value={q.question}
                 onChange={e => updateQ(q._key, { question: e.target.value })}
-                style={{ fontFamily: '"Instrument Serif", serif', color: 'var(--q-text)' }}
+                style={{ fontFamily: 'var(--font-display)', color: 'var(--q-text)' }}
                 rows={2}
                 className="w-full bg-transparent text-4xl md:text-5xl font-normal leading-tight mb-10 tracking-tight focus:outline-none resize-none"
                 placeholder={q.type === 'slide' ? 'Títol del slide…' : 'Escriu la pregunta…'}
@@ -10686,7 +10875,7 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                         : { background: 'var(--q-surface)', borderColor: 'var(--q-border)', color: 'var(--q-text-70)' }}
                     >
                       <div className="flex flex-col items-center gap-2">
-                        <span style={{ fontFamily: '"Instrument Serif", serif' }}>{o.text || (o === q.options[0] ? 'Vertader' : 'Fals')}</span>
+                        <span style={{ fontFamily: 'var(--font-display)' }}>{o.text || (o === q.options[0] ? 'Vertader' : 'Fals')}</span>
                         {o.is_correct
                           ? <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: 'var(--q-kicker)' }}>Correcta</span>
                           : <span className="text-[10px]" style={{ color: 'var(--q-text-55)' }}>Clica per marcar</span>}
@@ -11091,8 +11280,8 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   type: 'true_false' as const, title: 'Vertader / Fals', desc: 'Pregunta binària, dues úniques opcions.',
                   preview: (
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="py-3 rounded-md border-2 border-[#bf211e]/40 bg-[#bf211e]/[0.07] text-center text-xs font-medium text-[#f0e8d8]" style={{ fontFamily: '"Instrument Serif", serif' }}>Vertader</div>
-                      <div className="py-3 rounded-md border border-white/10 text-center text-xs text-white/50" style={{ fontFamily: '"Instrument Serif", serif' }}>Fals</div>
+                      <div className="py-3 rounded-md border-2 border-[#bf211e]/40 bg-[#bf211e]/[0.07] text-center text-xs font-medium text-[#f0e8d8]" style={{ fontFamily: 'var(--font-display)' }}>Vertader</div>
+                      <div className="py-3 rounded-md border border-white/10 text-center text-xs text-white/50" style={{ fontFamily: 'var(--font-display)' }}>Fals</div>
                     </div>
                   ),
                 },
@@ -11217,8 +11406,8 @@ const NT = {
   accent: '#bf211e',
   accentInk: '#ffffff',
   grid: 'rgba(26,23,20,0.06)',
-  headlineFont: '"Instrument Serif", "Newsreader", Georgia, serif',
-  bodyFont: '"Instrument Serif", "Newsreader", Georgia, serif',
+  headlineFont: 'var(--font-display)',
+  bodyFont: 'var(--font-display)',
   uiFont: '"Inter", ui-sans-serif, system-ui, sans-serif',
   radius: 4,
   tileRadius: 4,
@@ -12293,6 +12482,16 @@ function App() {
     if (saved) document.documentElement.classList.add('dark');
     return saved;
   });
+  const toggleTheme = () => {
+    const apply = () => setIsDarkMode(v => !v);
+    // Use View Transitions API for smooth crossfade (Chrome/Edge); fallback to instant flip
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+    if (typeof doc.startViewTransition === 'function') {
+      doc.startViewTransition(apply);
+    } else {
+      apply();
+    }
+  };
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [impersonating, setImpersonating] = useState<{ name: string } | null>(null);
@@ -12443,6 +12642,7 @@ function App() {
       setToken(data.access_token, true);
       setCurrentUser(data.user);
       setImpersonating({ name: userName });
+      resetTabPrefetch();
       setActiveTab('Inici');
     } catch (e: any) {
       alert(e.message);
@@ -12456,10 +12656,12 @@ function App() {
       localStorage.removeItem('tavil_token_original');
     }
     setImpersonating(null);
+    resetTabPrefetch();
     apiGetMe().then(u => { setCurrentUser(u); }).catch(() => handleLogout());
   };
 
   useEffect(() => {
+    initGraph().catch(() => {}); // process MSAL redirect if returning from MS login
     registerUnauthorizedHandler(handleLogout);
     registerMustChangePasswordHandler(() => setShowChangePassword(true));
 
@@ -12553,9 +12755,9 @@ function App() {
       case 'Campus': return <CampusTavilTab onBack={goBack} />;
       case 'Veu': return <VeuEmpleatTab currentUser={currentUser} initialSubTab={notifSubTab} onSubTabConsumed={() => setNotifSubTab(null)} onBack={goBack} />;
       case 'Solicituds': return <SolicitudsTab currentUser={currentUser} onNotifChange={refreshNotifications} initialSubTab={notifSubTab} onSubTabConsumed={() => setNotifSubTab(null)} onBack={goBack} />;
-      case 'Perfil': return <PerfilTab currentUser={currentUser} onUserUpdate={u => { setCurrentUser(u); }} onNavigate={setActiveTab} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} onLogout={handleLogout} />;
+      case 'Perfil': return <PerfilTab currentUser={currentUser} onUserUpdate={u => { setCurrentUser(u); }} onNavigate={setActiveTab} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} onLogout={handleLogout} />;
       case 'Empresa': return <EmpresaLandingTab onNavigate={setActiveTab} />;
-      case 'Més': return <MesTab onNavigate={setActiveTab} currentUser={currentUser} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} onLogout={handleLogout} />;
+      case 'Més': return <MesTab onNavigate={setActiveTab} currentUser={currentUser} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} onLogout={handleLogout} />;
       case 'Backoffice': return <BackofficeTab currentUser={currentUser} onImpersonate={handleImpersonate} />;
       default: return null;
     }
@@ -12607,7 +12809,7 @@ function App() {
               <div className="mobile-kicker">{mobileKickers[tab]}</div>
             )}
             <h1 style={{
-              fontFamily: '"Instrument Serif", "Times New Roman", serif',
+              fontFamily: 'var(--font-display)',
               fontSize: tab === 'Més' ? 36 : 32, fontWeight: 400, lineHeight: 1,
               letterSpacing: '-0.02em',
               color: 'var(--tavil-text)',
@@ -12628,7 +12830,7 @@ function App() {
               <ChevronRight size={11} />
               <span style={{ color: 'var(--tavil-text)' }}>{section?.label}</span>
             </div>
-            <h1 style={{ fontFamily: '"Instrument Serif","Times New Roman",serif', fontSize: 48, fontWeight: 400, lineHeight: 1, letterSpacing: '-0.02em', color: 'var(--tavil-text)', margin: 0 }}>{section?.label}</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 48, fontWeight: 600, lineHeight: 1, letterSpacing: '0em', color: 'var(--tavil-text)', margin: 0 }}>{section?.label}</h1>
           </div>
         )}
 
@@ -12663,9 +12865,9 @@ function App() {
       if (authView === 'verify-email') return <VerifyScreen email={pendingEmail} onBack={() => setAuthView('login')} onVerified={handleAuthResult} isDarkMode={isDarkMode} />;
       if (authView === 'forgot') return <ForgotScreen onBack={() => setAuthView('login')} isDarkMode={isDarkMode} />;
     }
-    if (authView === 'login') return <LoginPage onLoginResult={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} />;
-    if (authView === 'verify-email') return <VerifyEmailPage email={pendingEmail} onBack={() => setAuthView('login')} onVerified={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} />;
-    return <OTPPage email={pendingEmail} onBack={() => setAuthView('login')} onVerified={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} />;
+    if (authView === 'login') return <LoginPage onLoginResult={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} />;
+    if (authView === 'verify-email') return <VerifyEmailPage email={pendingEmail} onBack={() => setAuthView('login')} onVerified={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} />;
+    return <OTPPage email={pendingEmail} onBack={() => setAuthView('login')} onVerified={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} />;
   }
 
   return (
@@ -12864,7 +13066,7 @@ function App() {
               </button>
             </div>
 
-            <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500 dark:text-zinc-400 transition-colors">
+            <button onClick={toggleTheme} className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500 dark:text-zinc-400 transition-colors">
               {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 

@@ -53,6 +53,22 @@ elseif ($method === 'POST' && $id === null) {
     respond($row, 201);
 }
 
+// DELETE /api/solicituds/{id}
+elseif ($method === 'DELETE' && $id !== null) {
+    $u = auth_user();
+    $stmt = $db->prepare('SELECT author, status FROM solicituds WHERE id=?');
+    $stmt->execute([$id]);
+    $row = $stmt->fetch();
+    if (!$row) { respond(['detail' => 'Not found'], 404); }
+    $is_approver = in_array($u['role'], ['Administrador/a', 'Recursos humans', 'Aprovacions'], true) || !empty($u['is_head']);
+    $is_author   = $row['author'] === $u['email'];
+    if (!$is_approver && !$is_author) {
+        respond(['detail' => 'No autoritzat'], 403);
+    }
+    $db->prepare('DELETE FROM solicituds WHERE id=?')->execute([$id]);
+    respond(['ok' => true]);
+}
+
 // PATCH /api/solicituds/{id}
 elseif ($method === 'PATCH' && $id !== null) {
     require_rrhh_or_admin();

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Font Preview — Tavil Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #eeeee9; color: #1a1a18; min-height: 100vh; padding: 32px 24px; }
+
+    h1.page-title { font-family: 'Instrument Serif', serif; font-size: 20px; font-weight: 400; letter-spacing: -0.01em; color: #666; text-align: center; margin-bottom: 32px; }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 1100px; margin: 0 auto; }
+
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 28px 24px;
+      border: 1.5px solid #e0e0da;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #c0392b;
+      border-bottom: 1px solid #e8e8e2;
+      padding-bottom: 10px;
+    }
+
+    .section { display: flex; flex-direction: column; gap: 6px; }
+
+    /* — Inter — */
+    .inter { font-family: 'Inter', sans-serif; }
+    /* — Plus Jakarta Sans — */
+    .jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
+    /* — DM Sans — */
+    .dmsans { font-family: 'DM Sans', sans-serif; }
+
+    .heading-xl  { font-size: 28px; font-weight: 400; letter-spacing: -0.02em; line-height: 1.05; font-family: 'Instrument Serif', serif; }
+    .heading-lg  { font-size: 22px; font-weight: 400; letter-spacing: -0.01em; line-height: 1.1; font-family: 'Instrument Serif', serif; }
+    .nav-label   { font-size: 13px; font-weight: 600; letter-spacing: 0; }
+    .body-text   { font-size: 14px; font-weight: 400; line-height: 1.55; color: #555; }
+    .label-small { font-size: 12px; font-weight: 500; color: #888; }
+    .badge       { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 99px; background: rgba(192,57,43,0.1); color: #c0392b; }
+    .btn         { display: inline-block; font-size: 13px; font-weight: 600; padding: 7px 16px; border-radius: 8px; background: #c0392b; color: #fff; letter-spacing: 0; }
+    .meta        { font-size: 12px; font-weight: 400; color: #999; }
+    .nav-item    { font-size: 12px; font-weight: 500; }
+    .form-label  { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+    .form-input  { font-size: 14px; font-weight: 400; padding: 8px 12px; border: 1.5px solid #ddd; border-radius: 8px; background: #f7f7f2; color: #333; width: 100%; }
+
+    .sep { border: none; border-top: 1px solid #ebebE6; }
+
+    @media (max-width: 700px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<h1 class="page-title">Selecció de tipografia — Portal Tavil</h1>
+
+<div class="grid">
+
+  <!-- INTER -->
+  <div class="card inter">
+    <div class="card-label">Inter</div>
+
+    <div class="section">
+      <div class="heading-xl">Agenda</div>
+      <div class="heading-lg">Notícies recents</div>
+    </div>
+
+    <hr class="sep"/>
+
+    <div class="section">
+      <div class="nav-label">Inici · Notícies · Agenda · Directori</div>
+    </div>
+
+    <div class="section">
+      <div class="body-text">El proper dimarts es realitzarà una reunió de seguiment del projecte de digitalització. Tothom convida a participar-hi activament.</div>
+      <div class="meta">Fa 2 hores · Recursos Humans</div>
+    </div>
+
+    <hr class="sep"/>
+
+    <div class="section">
+      <span class="badge">Formació</span>
+    </div>
+
+    <div class="section">
+      <div class="form-label">Nom complet</div>
+      <input class="form-input" placeholder="Anna García Puig" readonly/>
+    </div>
+
+    <div>
+      <span class="btn">Desar canvis</span>
+    </div>
+  </div>
+
+  <!-- PLUS JAKARTA SANS -->
+  <div class="card jakarta">
+    <div class="card-label">Plus Jakarta Sans</div>
+
+    <div class="section">
+      <div class="heading-xl">Agenda</div>
+      <div class="heading-lg">Notícies recents</div>
+    </div>
+
+    <hr class="sep"/>
+
+    <div class="section">
+      <div class="nav-label">Inici · Notícies · Agenda · Directori</div>
+    </div>
+
+    <div class="section">
+      <div class="body-text">El proper dimarts es realitzarà una reunió de seguiment del projecte de digitalització. Tothom convida a participar-hi activament.</div>
+      <div class="meta">Fa 2 hores · Recursos Humans</div>
+    </div>
+
+    <hr class="sep"/>
+
+    <div class="section">
+      <span class="badge">Formació</span>
+    </div>
+
+    <div class="section">
+      <div class="form-label">Nom complet</div>
+      <input class="form-input" placeholder="Anna García Puig" readonly/>
+    </div>
+
+    <div>
+      <span class="btn">Desar canvis</span>
+    </div>
+  </div>
+
+  <!-- DM SANS -->
+  <div class="card dmsans">
+    <div class="card-label">DM Sans</div>
+
+    <div class="section">
+      <div class="heading-xl">Agenda</div>
+      <div class="heading-lg">Notícies recents</div>
+    </div>
+
+    <hr class="sep"/>
+
+    <div class="section">
+      <div class="nav-label">Inici · Notícies · Agenda · Directori</div>
+    </div>
+
+    <div class="section">
+      <div class="body-text">El proper dimarts es realitzarà una reunió de seguiment del projecte de digitalització. Tothom convida a participar-hi activament.</div>
+      <div class="meta">Fa 2 hores · Recursos Humans</div>
+    </div>
+
+    <hr class="sep"/>
+
+    <div class="section">
+      <span class="badge">Formació</span>
+    </div>
+
+    <div class="section">
+      <div class="form-label">Nom complet</div>
+      <input class="form-input" placeholder="Anna García Puig" readonly/>
+    </div>
+
+    <div>
+      <span class="btn">Desar canvis</span>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

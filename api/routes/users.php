@@ -71,6 +71,9 @@ elseif ($method === 'PATCH' && $seg1 === 'me' && $seg2 === 'role') {
 // PATCH /api/users/me/dept
 elseif ($method === 'PATCH' && $seg1 === 'me' && $seg2 === 'dept') {
     $u    = auth_user();
+    if ($u['role'] !== 'Administrador/a') {
+        respond(['detail' => 'No autoritzat'], 403);
+    }
     $uid  = (int)$u['id'];
     $dept = str_val($body, 'dept');
     $head = bool_val($body, 'is_head');

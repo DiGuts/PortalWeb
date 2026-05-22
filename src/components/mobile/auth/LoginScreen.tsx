@@ -96,9 +96,9 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
           PORTAL INTERN
         </div>
         <img
-          src={`${process.env.PUBLIC_URL}/assets/images/tavilNet.svg`}
+          src={`${process.env.PUBLIC_URL}/assets/images/${isDarkMode ? 'TAVILhub.svg?v=3' : 'tavilNet.svg'}`}
           alt={t('auth.loginTitle')}
-          style={{ height: 44, width: 'auto', display: 'block', margin: '0 0 8px' }}
+          style={{ height: 40, width: 'auto', display: 'block', margin: '0 0 8px' }}
         />
         <p style={{ fontSize: 15, color: 'var(--tavil-muted)', margin: 0, lineHeight: 1.4 }}>
           {t('auth.loginSubtitle')}

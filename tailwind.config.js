@@ -33,7 +33,7 @@ module.exports = {
         'clay':          '#b55139',
       },
       fontFamily: {
-        serif: ['"Instrument Serif"', '"Times New Roman"', 'serif'],
+        serif: ['"Anthropic Serif"', '"Times New Roman"', 'serif'],
         sans:  ['"Instrument Sans"', 'system-ui', 'sans-serif'],
         mono:  ['"JetBrains Mono"', '"Courier New"', 'monospace'],
       },

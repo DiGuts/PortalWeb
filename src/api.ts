@@ -604,6 +604,8 @@ export interface Course {
   is_external: number;
   departments: string; // JSON array string e.g. '["Comercial","RRHH"]'
   target_users: number[];
+  start_at: string | null;
+  end_at: string | null;
   user_status: string;
   user_progress: number;
 }
@@ -628,6 +630,8 @@ export interface ExternalCoursePayload {
   mandatory: number;
   departments: string[];
   target_users: number[];
+  start_at?: string | null;
+  end_at?: string | null;
 }
 
 export async function apiCreateExternalCourse(data: ExternalCoursePayload): Promise<{ id: number }> {
