@@ -11511,8 +11511,16 @@ const EditableText = React.memo(function EditableText({ initialContent, style, o
       onBlur={(e) => onChange(e.currentTarget.innerText)}
       onPointerDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
-        // Stop Enter/Escape from bubbling to the editor's global handler.
-        if (e.key === 'Enter' || e.key === 'Escape') e.stopPropagation();
+        if (e.key === 'Escape') { e.stopPropagation(); return; }
+        if (e.key === 'Enter') {
+          // Browsers vary on Enter inside contentEditable (Chrome → <div>,
+          // Firefox → <br>). Force a single <br> so the line break is
+          // predictable and innerText reads it back as a clean "\n".
+          e.preventDefault();
+          e.stopPropagation();
+          document.execCommand('insertLineBreak');
+          onChange(e.currentTarget.innerText);
+        }
       }}
     />
   );
