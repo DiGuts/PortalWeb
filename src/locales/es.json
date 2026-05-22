@@ -106,7 +106,13 @@
     "readMore": "Leer más",
     "featuredPrev": "Anterior destacada",
     "featuredNext": "Siguiente destacada",
-    "heroSubtitle": "Portal interno de los trabajadores"
+    "heroSubtitle": "Portal interno de los trabajadores",
+    "internalComms": "Comunicados internos",
+    "featuredNews": "Noticias destacadas",
+    "novetats": "Novedades",
+    "moreNews": "Más noticias",
+    "noNovetats": "Todavía no hay novedades",
+    "seeAll2": "Ver todos"
   },
   "news": {
     "subtitle": "Información, comunicados y novedades de la empresa",
@@ -120,8 +126,22 @@
     "create": "Crear noticia",
     "confirmDelete": "¿Seguro que quieres eliminar esta noticia? Esta acción no se puede deshacer.",
     "confirmTitle": "Confirmar eliminación",
-    "featured": "Destacado",
     "searchPlaceholder": "Buscar noticias...",
+    "badge": {
+      "comunicat": "Comunicado",
+      "featured": "Destacada",
+      "news": "Noticia",
+      "activity": "Actividad"
+    },
+    "cat": {
+      "all": "Todas",
+      "internalComms": "Comunicados internos",
+      "corporate": "Noticias corporativas",
+      "hr": "Recursos humanos",
+      "events": "Eventos",
+      "innovation": "Innovación",
+      "safety": "Seguridad"
+    },
     "detail": {
       "backToNews": "← Volver a noticias",
       "readingTime": "min de lectura",
@@ -140,7 +160,16 @@
     "capacity": "{{enrolled}}/{{capacity}} plazas",
     "newActivity": "+ Nueva actividad",
     "noActivities": "No hay actividades disponibles en este momento.",
-    "confirmDelete": "¿Seguro que quieres eliminar esta actividad? Esta acción no se puede deshacer."
+    "confirmDelete": "¿Seguro que quieres eliminar esta actividad? Esta acción no se puede deshacer.",
+    "searchPlaceholder": "Buscar actividades...",
+    "cat": {
+      "all": "Todas",
+      "sport": "Deporte",
+      "culture": "Cultura",
+      "social": "Social",
+      "rsc": "RSC",
+      "wellness": "Bienestar"
+    }
   },
   "agenda": {
     "subtitle": "Calendario interno de reuniones y eventos",

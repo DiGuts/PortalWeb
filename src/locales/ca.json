@@ -106,7 +106,13 @@
     "readMore": "Llegir més",
     "featuredPrev": "Anterior destacada",
     "featuredNext": "Següent destacada",
-    "heroSubtitle": "Portal intern dels treballadors"
+    "heroSubtitle": "Portal intern dels treballadors",
+    "internalComms": "Comunicats interns",
+    "featuredNews": "Notícies destacades",
+    "novetats": "Novetats",
+    "moreNews": "Més notícies",
+    "noNovetats": "Encara no hi ha novetats",
+    "seeAll2": "Veure tots"
   },
   "news": {
     "subtitle": "Informació, comunicats i novetats de l'empresa",
@@ -120,8 +126,22 @@
     "create": "Crear notícia",
     "confirmDelete": "Segur que vols eliminar aquesta notícia? Aquesta acció no es pot desfer.",
     "confirmTitle": "Confirmar eliminació",
-    "featured": "Destacat",
     "searchPlaceholder": "Cercar notícies...",
+    "badge": {
+      "comunicat": "Comunicat",
+      "featured": "Destacada",
+      "news": "Notícia",
+      "activity": "Activitat"
+    },
+    "cat": {
+      "all": "Totes",
+      "internalComms": "Comunicats interns",
+      "corporate": "Notícies corporatives",
+      "hr": "Recursos humans",
+      "events": "Esdeveniments",
+      "innovation": "Innovació",
+      "safety": "Seguretat"
+    },
     "detail": {
       "backToNews": "← Tornar a notícies",
       "readingTime": "min de lectura",
@@ -140,7 +160,16 @@
     "capacity": "{{enrolled}}/{{capacity}} places",
     "newActivity": "+ Nova activitat",
     "noActivities": "Cap activitat disponible en aquest moment.",
-    "confirmDelete": "Segur que vols eliminar aquesta activitat? Aquesta acció no es pot desfer."
+    "confirmDelete": "Segur que vols eliminar aquesta activitat? Aquesta acció no es pot desfer.",
+    "searchPlaceholder": "Cercar activitats...",
+    "cat": {
+      "all": "Totes",
+      "sport": "Esport",
+      "culture": "Cultura",
+      "social": "Social",
+      "rsc": "RSC",
+      "wellness": "Benestar"
+    }
   },
   "agenda": {
     "confirmDelete": "Segur que vols eliminar aquest event? Aquesta acció no es pot desfer.",

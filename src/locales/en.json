@@ -106,7 +106,13 @@
     "readMore": "Read more",
     "featuredPrev": "Previous featured",
     "featuredNext": "Next featured",
-    "heroSubtitle": "Internal employee portal"
+    "heroSubtitle": "Internal employee portal",
+    "internalComms": "Internal communications",
+    "featuredNews": "Featured news",
+    "novetats": "Latest",
+    "moreNews": "More news",
+    "noNovetats": "No news yet",
+    "seeAll2": "See all"
   },
   "news": {
     "subtitle": "Company information, announcements and news",
@@ -120,8 +126,22 @@
     "create": "Create article",
     "confirmDelete": "Are you sure you want to delete this article? This action cannot be undone.",
     "confirmTitle": "Confirm deletion",
-    "featured": "Featured",
     "searchPlaceholder": "Search news...",
+    "badge": {
+      "comunicat": "Notice",
+      "featured": "Featured",
+      "news": "Article",
+      "activity": "Activity"
+    },
+    "cat": {
+      "all": "All",
+      "internalComms": "Internal comms",
+      "corporate": "Corporate news",
+      "hr": "Human resources",
+      "events": "Events",
+      "innovation": "Innovation",
+      "safety": "Safety"
+    },
     "detail": {
       "backToNews": "← Back to news",
       "readingTime": "min read",
@@ -140,7 +160,16 @@
     "capacity": "{{enrolled}}/{{capacity}} spots",
     "newActivity": "+ New activity",
     "noActivities": "No activities available at the moment.",
-    "confirmDelete": "Are you sure you want to delete this activity? This action cannot be undone."
+    "confirmDelete": "Are you sure you want to delete this activity? This action cannot be undone.",
+    "searchPlaceholder": "Search activities...",
+    "cat": {
+      "all": "All",
+      "sport": "Sport",
+      "culture": "Culture",
+      "social": "Social",
+      "rsc": "CSR",
+      "wellness": "Wellness"
+    }
   },
   "agenda": {
     "subtitle": "Internal calendar for meetings and events",

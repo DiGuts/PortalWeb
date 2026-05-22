@@ -1094,8 +1094,8 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
         {moreNews.length > 0 && (
           <>
             <div style={{ padding: '28px 20px 14px' }}>
-              <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Novetats</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, lineHeight: 1.05, letterSpacing: '0.01em', color: 'var(--tavil-text)' }}>Més notícies</div>
+              <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>{t('home.novetats')}</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, lineHeight: 1.05, letterSpacing: '0.01em', color: 'var(--tavil-text)' }}>{t('home.moreNews')}</div>
             </div>
             <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {moreNews.map(n => (
@@ -1214,10 +1214,10 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-gray-900 dark:text-white text-[15px] flex items-center gap-2">
-              <FileText size={14} className="text-blue-600" /> Comunicats interns
+              <FileText size={14} className="text-blue-600" /> {t('home.internalComms')}
             </h3>
             <button onClick={() => onNavigate?.('Notícies')} className="text-gray-400 dark:text-zinc-500 text-xs font-medium flex items-center gap-1 hover:underline">
-              Veure tots <ArrowRight size={11} />
+              {t('home.seeAll2')} <ArrowRight size={11} />
             </button>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
@@ -1227,7 +1227,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                 onClick={() => openArticleFromHome(c.id)}
                 className="min-w-[280px] max-w-[320px] bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 cursor-pointer hover:border-red-200 dark:hover:border-red-900/40 transition-colors flex-shrink-0"
               >
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 uppercase">Comunicat</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 uppercase">{t('news.badge.comunicat')}</span>
                 <p className="font-semibold text-gray-900 dark:text-white text-sm mt-2 leading-snug line-clamp-2">{c.title}</p>
                 {c.summary && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1 line-clamp-2">{c.summary}</p>}
                 <p className="text-[10px] text-gray-400 mt-2">{c.date}</p>
@@ -1246,7 +1246,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-gray-900 dark:text-white text-[15px] flex items-center gap-2">
-                  <Star size={14} className="text-amber-500" /> Notícies destacades
+                  <Star size={14} className="text-amber-500" /> {t('home.featuredNews')}
                 </h3>
                 {featuredNews.length > 1 && (
                   <div className="flex items-center gap-1">
@@ -1281,7 +1281,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                       <div className="absolute bottom-0 left-0 right-0 p-5">
                         <div className="flex items-center gap-2 mb-2">
                           <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded uppercase", NEWS_CAT_COLORS[item.category] ?? "bg-gray-100 text-gray-600")}>{item.category}</span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400/90 text-amber-900 uppercase flex items-center gap-0.5"><Star size={9} /> Destacada</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400/90 text-amber-900 uppercase flex items-center gap-0.5"><Star size={9} /> {t('news.badge.featured')}</span>
                         </div>
                         <h4 className="text-white text-lg font-bold leading-tight drop-shadow line-clamp-2">{item.title}</h4>
                         {item.summary && <p className="text-white/85 text-xs mt-1 line-clamp-2 drop-shadow">{item.summary}</p>}
@@ -1312,12 +1312,12 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
           {/* Novetats grid */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-gray-900 dark:text-white text-[15px]">Novetats</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white text-[15px]">{t('home.novetats')}</h3>
             </div>
             {novetats.length === 0 ? (
               <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-8 text-center">
                 <Newspaper size={28} className="text-gray-300 dark:text-zinc-600 mx-auto mb-2" />
-                <p className="text-sm text-gray-400 dark:text-zinc-500">Encara no hi ha novetats</p>
+                <p className="text-sm text-gray-400 dark:text-zinc-500">{t('home.noNovetats')}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1345,7 +1345,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                           "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase",
                           item.kind === 'news' ? "bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400" : "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400"
                         )}>
-                          {item.kind === 'news' ? 'Notícia' : 'Activitat'}
+                          {item.kind === 'news' ? t('news.badge.news') : t('news.badge.activity')}
                         </span>
                         {item.category && (
                           <span className="text-[9px] text-gray-400 truncate">{item.category}</span>
@@ -1931,6 +1931,15 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
   const featured = featuredItems[featuredIndex % Math.max(featuredItems.length, 1)] ?? null;
   const grid = filtered.filter(n => !featuredItems.includes(n));
   const isMobileNoticies = useIsMobile();
+  const NEWS_CAT_LABELS: Record<string, string> = {
+    'Totes': t('news.cat.all'),
+    'Comunicats interns': t('news.cat.internalComms'),
+    'Notícies corporatives': t('news.cat.corporate'),
+    'Recursos humans': t('news.cat.hr'),
+    'Esdeveniments': t('news.cat.events'),
+    'Innovació': t('news.cat.innovation'),
+    'Seguretat': t('news.cat.safety'),
+  };
 
   // ── Mobile branch ────────────────────────────────────────────────────────
   if (isMobileNoticies) {
@@ -2133,7 +2142,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
         </div>
         <div className="flex flex-wrap gap-2">
           {['Totes', 'Comunicats interns', 'Notícies corporatives', 'Recursos humans', 'Esdeveniments', 'Innovació', 'Seguretat'].map(f => (
-            <FilterChip key={f} label={f} active={activeFilter === f} onClick={() => setActiveFilter(f)} />
+            <FilterChip key={f} label={NEWS_CAT_LABELS[f] ?? f} active={activeFilter === f} onClick={() => setActiveFilter(f)} />
           ))}
         </div>
       </div>
@@ -2338,6 +2347,14 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
   }, []);
 
   const isMobileAct = useIsMobile();
+  const ACT_CAT_LABELS: Record<string, string> = {
+    'Totes': t('activities.cat.all'),
+    'Esport': t('activities.cat.sport'),
+    'Cultura': t('activities.cat.culture'),
+    'Social': t('activities.cat.social'),
+    'RSC': t('activities.cat.rsc'),
+    'Benestar': t('activities.cat.wellness'),
+  };
   const upcoming = activities.filter(a => a.past === 0);
   const past = activities.filter(a => a.past === 1);
   const source = activeTab === 'Properes' ? upcoming : past;
@@ -2593,11 +2610,11 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-          <input type="text" value={actSearch} onChange={e => setActSearch(e.target.value)} placeholder="Cercar activitats..." className="bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white w-56" />
+          <input type="text" value={actSearch} onChange={e => setActSearch(e.target.value)} placeholder={t('activities.searchPlaceholder')} className="bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white w-56" />
         </div>
         <div className="flex gap-2 flex-wrap">
           {['Totes', 'Esport', 'Cultura', 'Social', 'RSC', 'Benestar'].map(f => (
-            <FilterChip key={f} label={f} active={activeFilter === f} onClick={() => setActiveFilter(f)} />
+            <FilterChip key={f} label={ACT_CAT_LABELS[f] ?? f} active={activeFilter === f} onClick={() => setActiveFilter(f)} />
           ))}
         </div>
       </div>
