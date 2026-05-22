@@ -14,6 +14,13 @@
     "solicituds": "Les meves sol·licituds",
     "perfil": "El meu perfil"
   },
+  "timeago": {
+    "justNow": "Fa un moment",
+    "minutesAgo": "Fa {{count}} min",
+    "hoursAgo": "Fa {{count}} h",
+    "yesterday": "Ahir",
+    "daysAgo": "Fa {{count}} dies"
+  },
   "common": {
     "search": "Cercar...",
     "cancel": "Cancel·lar",
@@ -40,7 +47,9 @@
     "goodMorning": "Bon dia",
     "goodAfternoon": "Bona tarda",
     "goodEvening": "Bona nit",
-    "seeAll": "Veure-ho tot"
+    "seeAll": "Veure-ho tot",
+    "months": ["Gener","Febrer","Març","Abril","Maig","Juny","Juliol","Agost","Setembre","Octubre","Novembre","Desembre"],
+    "monthsAbbr": ["GEN","FEB","MAR","ABR","MAI","JUN","JUL","AGO","SET","OCT","NOV","DES"]
   },
   "auth": {
     "login": "Inicia sessió",
@@ -94,7 +103,8 @@
     "seeAll": "Veure",
     "readMore": "Llegir més",
     "featuredPrev": "Anterior destacada",
-    "featuredNext": "Següent destacada"
+    "featuredNext": "Següent destacada",
+    "heroSubtitle": "Portal intern dels treballadors"
   },
   "news": {
     "subtitle": "Informació, comunicats i novetats de l'empresa",
@@ -129,7 +139,10 @@
   "agenda": {
     "subtitle": "Calendari intern de reunions i esdeveniments",
     "newEvent": "+ Nou event",
-    "today": "Avui"
+    "today": "Avui",
+    "event": "{{count}} esdeveniment",
+    "events": "{{count}} esdeveniments",
+    "noEvents": "Cap esdeveniment aquest dia"
   },
   "directory": {
     "subtitle": "Cerca treballadors per nom, departament, càrrec o extensió",

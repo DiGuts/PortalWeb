@@ -112,13 +112,13 @@ export function resetTabPrefetch() {
   tabPrefetchPromise = null;
 }
 
-function timeAgo(isoStr: string): string {
+function timeAgo(isoStr: string, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
-  if (diff < 60) return 'Fa un moment';
-  if (diff < 3600) return `Fa ${Math.floor(diff / 60)} min`;
-  if (diff < 86400) return `Fa ${Math.floor(diff / 3600)} h`;
-  if (diff < 172800) return 'Ahir';
-  return `Fa ${Math.floor(diff / 86400)} dies`;
+  if (diff < 60) return t('timeago.justNow');
+  if (diff < 3600) return t('timeago.minutesAgo', { count: Math.floor(diff / 60) });
+  if (diff < 86400) return t('timeago.hoursAgo', { count: Math.floor(diff / 3600) });
+  if (diff < 172800) return t('timeago.yesterday');
+  return t('timeago.daysAgo', { count: Math.floor(diff / 86400) });
 }
 
 // Smoothly scrolls element into view if its top is below 60% of viewport.
@@ -640,8 +640,10 @@ function MobileNotificationsOverlay({ notifications, onClose, onMarkRead, onMark
   onMarkAllRead: () => void;
   isDarkMode: boolean;
 }) {
+  const { t } = useTranslation();
   const unread = notifications.filter(n => !n.read).length;
-  const today = notifications.filter(n => timeAgo(n.created_at).includes('h') || timeAgo(n.created_at) === 'Fa un moment');
+  const isRecent = (iso: string) => (Date.now() - new Date(iso).getTime()) < 86400_000;
+  const today = notifications.filter(n => isRecent(n.created_at));
   const before = notifications.filter(n => !today.includes(n));
 
   const iconForType = (tab: string) => {
@@ -678,7 +680,7 @@ function MobileNotificationsOverlay({ notifications, onClose, onMarkRead, onMark
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
                 <div style={{ fontSize: 14, fontWeight: !n.read ? 600 : 500, color: 'var(--tavil-text)', lineHeight: 1.3 }}>{n.title}</div>
-                <div style={{ fontSize: 11, color: 'var(--tavil-faint)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{timeAgo(n.created_at)}</div>
+                <div style={{ fontSize: 11, color: 'var(--tavil-faint)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{timeAgo(n.created_at, t)}</div>
               </div>
               {n.body && <div style={{ fontSize: 12.5, color: 'var(--tavil-muted)', lineHeight: 1.35 }}>{n.body}</div>}
               {n.tab && <div style={{ fontSize: 11, color: 'var(--tavil-faint)', marginTop: 3 }}>{n.tab}</div>}
@@ -918,6 +920,9 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
 
   const isMobileInici = useIsMobile();
   const { t } = useTranslation();
+  const MONTH_NAMES = t('common.months', { returnObjects: true }) as string[];
+  const MONTH_ABBR_ARR = t('common.monthsAbbr', { returnObjects: true }) as string[];
+  const MONTH_ABBR: Record<number, string> = Object.fromEntries(MONTH_ABBR_ARR.map((m, i) => [i + 1, m]));
 
   // Open article directly from home: store target id + origin so NoticiesTab
   // mounts straight into detail view, and back returns to Inici.
@@ -933,7 +938,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
     const hour = new Date().getHours();
     const greeting = hour < 12 ? t('common.goodMorning') : hour < 19 ? t('common.goodAfternoon') : t('common.goodEvening');
     const firstName = (currentUserProp?.name ?? '').split(' ')[0] || 'Hola';
-    const MONTH_NAMES = ['Gener','Febrer','Març','Abril','Maig','Juny','Juliol','Agost','Setembre','Octubre','Novembre','Desembre'];
+    const MONTH_NAMES = t('common.months', { returnObjects: true }) as string[];
     const quickItems = [
       { id: 'Solicituds', Icon: FileText, label: t('nav.solicituds') },
       { id: 'Agenda', Icon: Calendar, label: t('nav.agenda') },
@@ -1143,7 +1148,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
         <div className="relative h-full flex flex-col justify-end px-5 md:px-10 pb-4 md:pb-8 max-w-7xl mx-auto">
           <img src={process.env.PUBLIC_URL + '/assets/images/TAVILhub.svg?v=3'} alt="TAVILhub" className="drop-shadow-lg" style={{ height: 'clamp(38px, 6vw, 63px)', width: 'auto', display: 'block', alignSelf: 'flex-start' }} />
-          <p className="text-white/90 text-xs md:text-base mt-1 drop-shadow">Portal intern dels treballadors</p>
+          <p className="text-white/90 text-xs md:text-base mt-1 drop-shadow">{t('home.heroSubtitle')}</p>
         </div>
       </div>
 
@@ -1362,7 +1367,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
           {/* Mini calendar — data widget, card justified */}
           <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm">{MONTH_NAMES[calMonth]} {calYear}</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">{MONTH_NAMES[calMonth - 1]} {calYear}</h3>
               <div className="flex items-center gap-1">
                 <button onClick={() => navigateCalMonth(-1)} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded"><ChevronLeft size={14} className="text-gray-500" /></button>
                 <button onClick={() => navigateCalMonth(1)} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded"><ChevronRight size={14} className="text-gray-500" /></button>
@@ -2720,8 +2725,6 @@ const EVENT_COLORS: Record<string, string> = {
   "Fira":              "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300",
 };
 
-const MONTH_NAMES = ['', 'Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre'];
-const MONTH_ABBR: Record<number, string> = { 1: 'GEN', 2: 'FEB', 3: 'MAR', 4: 'ABR', 5: 'MAI', 6: 'JUN', 7: 'JUL', 8: 'AGO', 9: 'SET', 10: 'OCT', 11: 'NOV', 12: 'DES' };
 
 // Catalonia public holidays 2026. Virtual events merged into the agenda client-side.
 // Negative ids signal "not stored in DB" so admin edit/delete is suppressed.
@@ -2760,6 +2763,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
   useScrollIntoViewWhen<HTMLDivElement>(selectedDay, { threshold: 0.5, block: 'center', delay: 80 });
   const isAdmin = ['Administrador/a', 'Recursos humans', 'Comunicacions'].includes(currentUser?.role ?? '');
   const { t } = useTranslation();
+  const MONTH_NAMES = t('common.months', { returnObjects: true }) as string[];
 
   const eventRailColor = (ev: AgendaEvent): string => {
     switch (ev.type) {
@@ -2959,7 +2963,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
           {/* Header text */}
           <div style={{ padding: '8px 20px 16px' }}>
             <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>
-              {MONTH_NAMES[todayMonth]} {todayYear}
+              {MONTH_NAMES[todayMonth - 1]} {todayYear}
             </div>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 600, lineHeight: 1, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Agenda</h1>
           </div>
@@ -3008,11 +3012,11 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
         {/* Event count + timeline */}
         <div style={{ padding: '0 20px' }}>
           <div style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginBottom: 14 }}>
-            {selEvents.length} {selEvents.length === 1 ? 'esdeveniment' : 'esdeveniments'} · {selDay === todayDay && selMonth === todayMonth ? 'Avui' : `${selDay} ${MONTH_NAMES[selMonth]}`}
+            {selEvents.length === 1 ? t('agenda.event', { count: 1 }) : t('agenda.events', { count: selEvents.length })} · {selDay === todayDay && selMonth === todayMonth ? t('agenda.today') : `${selDay} ${MONTH_NAMES[selMonth - 1]}`}
           </div>
           {selEvents.length === 0 && (
             <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 28, textAlign: 'center', color: 'var(--tavil-faint)', fontSize: 13 }}>
-              Cap esdeveniment aquest dia
+              {t('agenda.noEvents')}
             </div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -3220,7 +3224,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
           {/* Month nav */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, letterSpacing: '0.01em', color: 'var(--tavil-text)' }}>
-              {MONTH_NAMES[currentMonth]} {currentYear}
+              {MONTH_NAMES[currentMonth - 1]} {currentYear}
             </div>
             <div style={{ display: 'flex', gap: 4 }}>
               <button onClick={() => navigateMonth(-1)} style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)' }}>
@@ -3284,7 +3288,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
 
           {selEvents.length === 0 ? (
             <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: 28, textAlign: 'center', color: 'var(--tavil-faint)', fontSize: 13 }}>
-              Cap esdeveniment aquest dia
+              {t('agenda.noEvents')}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -6600,6 +6604,7 @@ function ProfileRow({ icon: Icon, label, value, editing, onChange }: {
 }
 
 function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDarkMode, onLogout, notifications }: { currentUser: User | null; onUserUpdate: (u: User) => void; onNavigate?: (tab: string) => void; isDarkMode?: boolean; toggleDarkMode?: () => void; onLogout?: () => void; notifications?: Notification[] }) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = usePersistedSubTab<string>('perfil', 'Informació', ['Informació', 'Formació', 'Beneficis socials', 'Configuració'] as const);
   const [notifCorreu, setNotifCorreu] = useState(currentUser?.email_notifs !== 0);
   const [notifPortal, setNotifPortal] = useState(true);
@@ -6884,7 +6889,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                     {n.body && (
                       <div style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginTop: 2, lineHeight: 1.35 }}>{n.body}</div>
                     )}
-                    <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginTop: 4 }}>{timeAgo(n.created_at)}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginTop: 4 }}>{timeAgo(n.created_at, t)}</div>
                   </div>
                   {!n.read && (
                     <div style={{ width: 8, height: 8, borderRadius: 4, background: 'var(--tavil-accent)', marginTop: 6, flexShrink: 0 }} />
@@ -13059,7 +13064,7 @@ function App() {
                         <div className="flex-1 min-w-0">
                           <p className={cn("text-sm font-semibold", !n.read ? "text-gray-900 dark:text-white" : "text-gray-600 dark:text-zinc-400")}>{n.title}</p>
                           <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5 line-clamp-2">{n.body}</p>
-                          <p className="text-[10px] text-gray-400 mt-1">{timeAgo(n.created_at)}</p>
+                          <p className="text-[10px] text-gray-400 mt-1">{timeAgo(n.created_at, t)}</p>
                         </div>
                         {!n.read && <span className="w-2 h-2 bg-red-600 rounded-full flex-shrink-0 mt-2"></span>}
                       </div>
