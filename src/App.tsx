@@ -1481,7 +1481,11 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
   const [enrolledId, setEnrolledId] = useState<number | null>(null);
   const [enrollError, setEnrollError] = useState('');
   useEffect(() => { setGlobalNavHidden(!!selectedAct); }, [selectedAct]);
-  const isAdmin = ['Administrador/a', 'Recursos humans', 'Comunicacions'].includes(currentUser?.role ?? '');
+  const isAdmin = (() => {
+    const r = currentUser?.role ?? '';
+    const rs = currentUser?.roles ?? [];
+    return ['Administrador', 'Administrador/a', 'Recursos humans', 'Comunicacions', 'Comunicació'].some(x => x === r || rs.includes(x));
+  })();
 
   // New activity form state
   const [showActForm, setShowActForm] = useState(false);
@@ -1995,7 +1999,11 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
   );
   const [selectedDay, setSelectedDay] = useState<number | null>(today0.getDate());
   useScrollIntoViewWhen<HTMLDivElement>(selectedDay, { threshold: 0.5, block: 'center', delay: 80 });
-  const isAdmin = ['Administrador/a', 'Recursos humans', 'Comunicacions'].includes(currentUser?.role ?? '');
+  const isAdmin = (() => {
+    const r = currentUser?.role ?? '';
+    const rs = currentUser?.roles ?? [];
+    return ['Administrador', 'Administrador/a', 'Recursos humans', 'Comunicacions', 'Comunicació', 'Formacions'].some(x => x === r || rs.includes(x));
+  })();
   const { t } = useTranslation();
   const MONTH_NAMES = t('common.months', { returnObjects: true }) as string[];
 
@@ -3799,7 +3807,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
   const [incAdminResolution, setIncAdminResolution] = useState('');
   const [incAdminSaving, setIncAdminSaving] = useState(false);
 
-  const isRrhhOrAdmin = currentUser?.role === 'Administrador/a' || currentUser?.role === 'Recursos humans';
+  const isRrhhOrAdmin = ['Administrador', 'Administrador/a', 'Recursos humans', 'SolicitudsVacances', 'SolicitudsDissabtes'].some(x => x === (currentUser?.role ?? '') || (currentUser?.roles ?? []).includes(x));
 
   const openSuggAdmin = (sug: Suggestion) => {
     setSuggAdminOpen(sug.id);
@@ -4850,7 +4858,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
   const [vacDenyStage, setVacDenyStage] = useState<'head' | 'rrhh'>('head');
   const [vacDenyComment, setVacDenyComment] = useState('');
 
-  const isRRHH = currentUser?.role === 'Recursos humans' || currentUser?.role === 'Administrador/a' || currentUser?.role === 'Aprovacions';
+  const isRRHH = ['Administrador', 'Administrador/a', 'Recursos humans', 'Aprovacions', 'SolicitudsVacances'].some(x => x === (currentUser?.role ?? '') || (currentUser?.roles ?? []).includes(x));
   const isHead = !!(currentUser?.is_head);
   const [mobileFormOpen, setMobileFormOpen] = useState(false);
 
@@ -5854,7 +5862,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
   const [notifCorreu, setNotifCorreu] = useState(currentUser?.email_notifs !== 0);
   const [notifPortal, setNotifPortal] = useState(true);
 
-  const canEditDept = currentUser?.role === 'Administrador/a';
+  const canEditDept = ['Administrador', 'Administrador/a'].some(x => x === (currentUser?.role ?? '') || (currentUser?.roles ?? []).includes(x));
 
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(currentUser?.name ?? '');
@@ -7852,17 +7860,21 @@ function BoAgendaPanel({ events, onRefresh, cardCls, inputCls, btnGhost }: {
 
 function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./api').User | null; onImpersonate?: (userId: number, userName: string) => void }) {
   const role = currentUser?.role ?? '';
-  const isAdmin = role === 'Administrador/a';
-  const isRrhhOrAdmin = isAdmin || role === 'Recursos humans';
-  const canManageNews    = isRrhhOrAdmin || role === 'Comunicacions';
-  const canManageAvisos  = isRrhhOrAdmin || role === 'Comunicacions';
-  const canManageAgenda  = isRrhhOrAdmin || role === 'Comunicacions';
-  const canManageFormacions = isRrhhOrAdmin || role === 'Formacions';
+  // Check both legacy `role` string (demo switcher) and new `roles` array
+  const allRoles = new Set([role, ...(currentUser?.roles ?? [])]);
+  const hr = (...r: string[]) => r.some(x => allRoles.has(x));
+
+  const isAdmin             = hr('Administrador', 'Administrador/a');
+  const isRrhhOrAdmin       = isAdmin || hr('Recursos humans', 'SolicitudsVacances', 'SolicitudsDissabtes');
+  const canManageNews       = isAdmin || hr('Comunicacions', 'Comunicació', 'Recursos humans');
+  const canManageAvisos     = isAdmin || hr('Comunicacions', 'Comunicació', 'Recursos humans');
+  const canManageAgenda     = isAdmin || hr('Comunicacions', 'Comunicació', 'Formacions', 'Recursos humans');
+  const canManageFormacions = isAdmin || hr('Formacions', 'Recursos humans');
 
   const defaultSubTab: 'usuaris' | 'avisos' | 'notícies' | 'formacions' | 'agenda' =
     isAdmin ? 'usuaris'
-    : role === 'Formacions' ? 'formacions'
-    : role === 'Comunicacions' ? 'notícies'
+    : hr('Formacions') ? 'formacions'
+    : hr('Comunicacions', 'Comunicació') ? 'notícies'
     : 'notícies';
   const [subTab, setSubTab] = usePersistedSubTab<'usuaris' | 'avisos' | 'notícies' | 'formacions' | 'agenda'>(
     'backoffice', defaultSubTab, ['usuaris', 'avisos', 'notícies', 'formacions', 'agenda'] as const,
@@ -8632,7 +8644,7 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
 
 // ── Sidebar data ──────────────────────────────────────────────────────────────
 
-function useSidebarSections(role?: string) {
+function useSidebarSections(role?: string, roles?: string[]) {
   const { t } = useTranslation();
   return [
     {
@@ -8659,7 +8671,7 @@ function useSidebarSections(role?: string) {
         { id: 'Perfil', label: t('nav.perfil'), icon: UserCircle },
       ]
     },
-    ...(['Administrador/a', 'Recursos humans', 'Comunicacions', 'Formacions'].includes(role ?? '') ? [{
+    ...(['Administrador', 'Administrador/a', 'Recursos humans', 'Comunicacions', 'Comunicació', 'Formacions', 'SolicitudsVacances', 'SolicitudsDissabtes'].some(r => (roles ?? []).includes(r) || role === r) ? [{
       title: 'Administració',
       isAdmin: true as const,
       items: [
@@ -11516,7 +11528,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [impersonating, setImpersonating] = useState<{ name: string } | null>(null);
-  const SIDEBAR_SECTIONS = useSidebarSections(currentUser?.role);
+  const SIDEBAR_SECTIONS = useSidebarSections(currentUser?.role, currentUser?.roles);
   const [authView, setAuthView] = useState<'login' | 'register' | 'verify-email' | 'otp' | 'forgot'>('login');
   const [pendingEmail, setPendingEmail] = useState('');
 
