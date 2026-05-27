@@ -12163,7 +12163,7 @@ function App() {
                   {!!currentUser?.is_demo_admin && (
                   <div className="border-t border-gray-100 dark:border-zinc-800 mt-2 pt-2">
                     <p className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">{t('profile.demoRole')}</p>
-                    {['Treballador/a', 'Responsable de departament', 'Recursos humans', 'Administrador/a', 'Manteniment'].map(role => (
+                    {['Treballador/a', 'Cap de departament', 'Administrador', 'Formacions', 'Comunicacions', 'SolicitudsDissabtes', 'SolicitudsVacances'].map(role => (
                       <button
                         key={role}
                         onClick={() => {
