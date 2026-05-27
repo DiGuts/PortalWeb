@@ -38,11 +38,17 @@ import { useConfirm } from '../ConfirmDialog';
 // ── Module: AdminDashboard ──────────────────────────────────────────────────
 
 // Per-role visibility for admin modules. Keep aligned with sidebar gating in App.tsx.
-function modulesForRole(role?: string): Set<string> {
-  if (role === 'Administrador/a') return new Set(['admin-users', 'admin-news', 'admin-avisos', 'admin-activities', 'admin-campus', 'admin-agenda']);
-  if (role === 'Recursos humans') return new Set(['admin-news', 'admin-avisos', 'admin-activities', 'admin-campus', 'admin-agenda']);
-  if (role === 'Comunicacions')   return new Set(['admin-news', 'admin-avisos', 'admin-activities', 'admin-agenda']);
-  if (role === 'Formacions')      return new Set(['admin-campus', 'admin-activities', 'admin-agenda']);
+function modulesForRole(role?: string, roles?: string[]): Set<string> {
+  const all = new Set([role ?? '', ...(roles ?? [])]);
+  const hr = (...r: string[]) => r.some(x => all.has(x));
+  if (hr('Administrador', 'Administrador/a'))
+    return new Set(['admin-users', 'admin-news', 'admin-avisos', 'admin-activities', 'admin-campus', 'admin-agenda']);
+  if (hr('Recursos humans', 'SolicitudsVacances', 'SolicitudsDissabtes'))
+    return new Set(['admin-news', 'admin-avisos', 'admin-activities', 'admin-campus', 'admin-agenda']);
+  if (hr('Comunicacions', 'Comunicació'))
+    return new Set(['admin-news', 'admin-avisos', 'admin-activities', 'admin-agenda']);
+  if (hr('Formacions'))
+    return new Set(['admin-campus', 'admin-agenda']); // no admin-activities per Formacions
   return new Set();
 }
 
@@ -52,7 +58,7 @@ function AdminDashboard({ currentUser, onNavigate, counts }: {
   counts: { users: number; news: number; activities: number; formations: number; agenda: number; avisos: number };
 }) {
   const firstName = currentUser?.name?.split(' ')[0] ?? 'admin';
-  const allowed = modulesForRole(currentUser?.role);
+  const allowed = modulesForRole(currentUser?.role, currentUser?.roles);
 
   // Hero defaults to "Nova notícia"; falls back to first allowed module if Notícies not permitted.
   const heroCandidates = [
