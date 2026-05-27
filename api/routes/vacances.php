@@ -103,7 +103,7 @@ elseif ($method === 'PATCH' && $id !== null && $sub === 'head') {
 
     if ($status === 'Aprovada') {
         // Notify RRHH for final approval
-        $rrhh = $db->query("SELECT id,email,email_notifs FROM users WHERE role='Recursos humans'")->fetchAll();
+        $rrhh = $db->query("SELECT id,email,email_notifs FROM users WHERE JSON_CONTAINS(roles, '\"SolicitudsVacances\"') OR JSON_CONTAINS(roles, '\"Administrador\"') OR role='Recursos humans'")->fetchAll();
         foreach ($rrhh as $r) {
             push_notification($db, (int)$r['id'],
                 "Vacances pendents d'aprovació RRHH — {$row['author_name']}",

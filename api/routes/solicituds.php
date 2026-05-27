@@ -31,7 +31,7 @@ elseif ($method === 'POST' && $id === null) {
     $new_id = (int)$db->lastInsertId();
 
     // Notify RRHH
-    $rrhh = $db->query("SELECT id,email,email_notifs FROM users WHERE role='Recursos humans'")->fetchAll();
+    $rrhh = $db->query("SELECT id,email,email_notifs FROM users WHERE JSON_CONTAINS(roles, '\"SolicitudsDissabtes\"') OR JSON_CONTAINS(roles, '\"Administrador\"') OR role='Recursos humans'")->fetchAll();
     foreach ($rrhh as $r) {
         push_notification($db, (int)$r['id'],
             'Nova petició rebuda',

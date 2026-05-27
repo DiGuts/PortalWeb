@@ -3,15 +3,21 @@ export const API_BASE: string =
     ? 'http://192.168.10.168/public_html/portal_web/api/index.php'
     : (process.env.PUBLIC_URL || '') + '/api/index.php';
 
+export type AdminRole = 'Treballador/a' | 'Cap de departament' | 'Administrador' | 'Formacions' | 'Comunicacions' | 'SolicitudsDissabtes' | 'SolicitudsVacances';
+export const ADMIN_ROLES: AdminRole[] = ['Treballador/a', 'Cap de departament', 'Administrador', 'Formacions', 'Comunicacions', 'SolicitudsDissabtes', 'SolicitudsVacances'];
+
 export interface User {
   id: number;
   name: string;
   email: string;
   role: string;
+  roles: string[];
   dept: string;
   phone: string;
   ext: string;
   location: string;
+  avatar_url: string | null;
+  visible_in_directory: number;
   onboarded: number;
   email_notifs: number;
   is_head: number;
@@ -174,6 +180,48 @@ export async function apiUploadImage(file: File): Promise<string> {
   return API_BASE + data.url;
 }
 
+/**
+ * Upload an image OR a video. Returns absolute URL + detected kind.
+ * Images are auto-resized (>1.5MB). Videos are sent as-is (50MB cap server-side).
+ * onProgress fires with 0..1 during upload (XHR for progress events).
+ */
+export async function apiUploadMedia(
+  file: File,
+  onProgress?: (frac: number) => void,
+): Promise<{ url: string; kind: 'image' | 'video' }> {
+  const isVideo = file.type.startsWith('video/');
+  const toUpload = !isVideo && file.size > 1.5 * 1024 * 1024 ? await resizeImageFile(file) : file;
+  const formData = new FormData();
+  formData.append('file', toUpload);
+  const token = getToken();
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE}/api/upload`);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    if (onProgress) {
+      xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          resolve({ url: API_BASE + data.url, kind: data.kind ?? (isVideo ? 'video' : 'image') });
+        } catch (e) { reject(new Error('Resposta invàlida del servidor')); }
+      } else {
+        let detail = `HTTP ${xhr.status}`;
+        try { const j = JSON.parse(xhr.responseText); if (j.detail) detail = j.detail; } catch {}
+        reject(new Error('Error pujant: ' + detail));
+      }
+    };
+    xhr.onerror = () => reject(new Error('Error de xarxa pujant fitxer'));
+    xhr.send(formData);
+  });
+}
+
+export async function apiGetVideos(): Promise<{ url: string; name: string }[]> {
+  return apiFetch('/api/upload/videos');
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export async function apiLogin(email: string, password: string): Promise<AuthOut> {
@@ -226,7 +274,13 @@ export async function apiUpdateMyRole(role: string): Promise<User> {
   });
 }
 
-export async function apiUpdateMe(fields: Partial<Pick<User, 'name' | 'phone' | 'ext' | 'location' | 'email_notifs'>>): Promise<User> {
+// User self-edit: only avatar, directory visibility, and notif prefs.
+// Personal data (name/phone/ext/location/role/dept) must be edited by an admin.
+export async function apiUpdateMe(fields: {
+  email_notifs?: number;
+  avatar_url?: string;
+  visible_in_directory?: number;
+}): Promise<User> {
   return apiFetch<User>('/api/users/me', {
     method: 'PATCH',
     body: JSON.stringify(fields),
@@ -422,6 +476,7 @@ export interface Employee {
   ext: string;
   initials: string;
   color: string;
+  avatar_url?: string | null;
 }
 
 export async function apiGetEmployees(dept?: string): Promise<Employee[]> {
@@ -479,19 +534,20 @@ export interface AgendaEvent {
   day: number;
   month: number;
   time: string;
+  time_end?: string | null;
   location: string;
   type: string;
   target_departments?: string[]; // null/undefined = visible to all
 }
 
 export async function apiCreateAgendaEvent(fields: {
-  title: string; day: number; month: number; time: string; location: string; type: string; target_departments?: string[];
+  title: string; day: number; month: number; time: string; time_end?: string; location: string; type: string; target_departments?: string[];
 }): Promise<AgendaEvent> {
   return apiFetch<AgendaEvent>('/api/agenda', { method: 'POST', body: JSON.stringify(fields) });
 }
 
 export async function apiUpdateAgendaEvent(id: number, fields: {
-  title: string; day: number; month: number; time: string; location: string; type: string; target_departments?: string[];
+  title: string; day: number; month: number; time: string; time_end?: string; location: string; type: string; target_departments?: string[];
 }): Promise<void> {
   await apiFetch(`/api/agenda/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
 }
@@ -523,27 +579,40 @@ export async function apiGetNotices(): Promise<Notice[]> {
 
 // ── News ──────────────────────────────────────────────────────────────────────
 
+export type NewsLang = 'ca' | 'es' | 'en';
+export type NewsTranslations = Partial<Record<NewsLang, { title?: string; summary?: string }>>;
+
 export interface NewsArticle {
   id: number;
+  category: string;
+  title: string;            // canonical (CA)
+  summary: string;          // canonical (CA)
+  content: string;
+  /** @deprecated kept for back-compat; not editable in admin. */
+  author?: string;
+  date: string;
+  image: string;
+  featured: number;
+  translations?: NewsTranslations | null;
+  created_at: string;
+}
+
+export interface NewsWritePayload {
   category: string;
   title: string;
   summary: string;
   content: string;
-  author: string;
   date: string;
   image: string;
   featured: number;
-  created_at: string;
+  translations?: NewsTranslations;
 }
 
 export async function apiGetNews(): Promise<NewsArticle[]> {
   return apiFetch<NewsArticle[]>('/api/news');
 }
 
-export async function apiCreateNews(fields: {
-  category: string; title: string; summary: string; content: string;
-  author: string; date: string; image: string; featured: number;
-}): Promise<NewsArticle> {
+export async function apiCreateNews(fields: NewsWritePayload): Promise<NewsArticle> {
   return apiFetch<NewsArticle>('/api/news', { method: 'POST', body: JSON.stringify(fields) });
 }
 
@@ -551,11 +620,25 @@ export async function apiGetNewsArticle(id: number): Promise<NewsArticle> {
   return apiFetch<NewsArticle>(`/api/news/${id}`);
 }
 
-export async function apiUpdateNews(id: number, fields: {
-  category: string; title: string; summary: string; content: string;
-  author: string; date: string; image: string; featured: number;
-}): Promise<void> {
+export async function apiUpdateNews(id: number, fields: NewsWritePayload): Promise<void> {
   await apiFetch(`/api/news/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
+}
+
+/** Pick title/summary for given lang, falling back to canonical (CA). */
+export function pickTranslation(article: NewsArticle, lang: NewsLang): { title: string; summary: string } {
+  const t = article.translations?.[lang];
+  return {
+    title: (t?.title && t.title.trim()) || article.title,
+    summary: (t?.summary && t.summary.trim()) || article.summary,
+  };
+}
+
+/** Project an article so .title and .summary reflect the requested language. */
+export function localizeNews(article: NewsArticle, lang: string): NewsArticle {
+  const L = (['ca', 'es', 'en'].includes(lang) ? lang : 'ca') as NewsLang;
+  const t = pickTranslation(article, L);
+  if (t.title === article.title && t.summary === article.summary) return article;
+  return { ...article, title: t.title, summary: t.summary };
 }
 
 export async function apiDeleteNews(id: number): Promise<void> {
@@ -715,13 +798,14 @@ export async function apiAdminListUsers(): Promise<User[]> {
 }
 
 export async function apiAdminCreateUser(fields: {
-  name: string; email: string; temp_password: string; role: string; dept: string; is_head: number;
+  name: string; email: string; temp_password: string; roles: string[]; dept: string;
 }): Promise<User> {
   return apiFetch<User>('/api/users', { method: 'POST', body: JSON.stringify(fields) });
 }
 
 export async function apiAdminUpdateUser(id: number, fields: {
-  name?: string; email?: string; role?: string; dept?: string; is_head?: number; new_password?: string;
+  name?: string; email?: string; roles?: string[]; dept?: string; new_password?: string;
+  phone?: string; ext?: string; location?: string; avatar_url?: string; email_notifs?: number;
 }): Promise<User> {
   return apiFetch<User>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(fields) });
 }

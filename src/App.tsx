@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
 import { LoginScreen } from './components/mobile/auth/LoginScreen';
+import { MediaUploader } from './components/MediaUploader';
+import { AdminBackoffice } from './components/admin/AdminBackoffice';
+import { ConfirmModal as SharedConfirmModal } from './components/ConfirmDialog';
 import { VerifyScreen } from './components/mobile/auth/VerifyScreen';
 import { ForgotScreen } from './components/mobile/auth/ForgotScreen';
 import { createPortal } from 'react-dom';
@@ -18,8 +21,30 @@ import {
   BarChart3, ShieldCheck, KeyRound, PlayCircle, Target,
   Type as TypeIcon, Heading2, Quote, Minus, RefreshCw,
 } from 'lucide-react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { cn } from './lib/cn';
+import { timeAgo } from './lib/timeAgo';
+import { scrollPageToTop, scrollIntoViewIfBelowFold, useScrollIntoViewWhen } from './lib/scroll';
+import { useIsMobile } from './lib/useIsMobile';
+import { usePersistedSubTab } from './lib/usePersistedSubTab';
+import { setGlobalNavHidden, registerGlobalNavSetter } from './lib/globalNav';
+import { tabPrefetch, tabPrefetchAt, isTabCacheFresh, prefetchTabData, resetTabPrefetch } from './lib/tabPrefetch';
+import { Skeleton, SkeletonText, SkeletonCard } from './components/shared/Skeleton';
+import { SidebarItem, SidebarSection } from './components/shared/Sidebar';
+import { FilterChip } from './components/shared/FilterChip';
+import { UnderlineTab } from './components/shared/UnderlineTab';
+import { EditModal } from './components/shared/EditModal';
+import { Toggle } from './components/shared/Toggle';
+import { resolveImg } from './lib/resolveImg';
+import { DEPT_ORDER, avatarBg } from './lib/depts';
+import { MobileAppHeader } from './components/mobile/MobileAppHeader';
+import { MobileDrawer } from './components/mobile/MobileDrawer';
+import { MesTab, MesSettingsGroup } from './components/mobile/MesTab';
+import { BottomNavBar } from './components/mobile/BottomNavBar';
+import { MobileNotificationsOverlay } from './components/mobile/MobileNotificationsOverlay';
+import { LoginPage } from './components/auth/LoginPage';
+import { VerifyEmailPage } from './components/auth/VerifyEmailPage';
+import { OTPPage } from './components/auth/OTPPage';
+import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
 import { validateVacanca, ANNUAL_QUOTA_DAYS, laboralDaysBetween } from './conveni';
 import {
   User, AuthOut,
@@ -31,10 +56,10 @@ import {
   apiGetEnquestes, apiRespondreEnquesta, Enquesta,
   apiGetSolicituds, apiCreateSolicitud, apiUpdateSolicitud, apiDeleteSolicitud, Solicitud,
   Notice, apiGetNotices,
-  NewsArticle, apiGetNews, apiGetNewsArticle, apiCreateNews, apiUpdateNews, apiDeleteNews,
+  NewsArticle, apiGetNews, apiGetNewsArticle, apiCreateNews, apiUpdateNews, apiDeleteNews, localizeNews,
   Activity, apiGetActivities, apiCreateActivity, apiUpdateActivity, apiDeleteActivity, apiEnrollActivity,
   AgendaEvent, apiGetAgendaEvents, apiCreateAgendaEvent, apiUpdateAgendaEvent, apiDeleteAgendaEvent,
-  apiUploadImage, apiGetImages, API_BASE,
+  apiUploadImage, apiUploadMedia, apiGetImages, API_BASE,
   Employee, apiGetEmployees,
   Course, apiGetCourses, ExternalCoursePayload, apiCreateExternalCourse, apiUpdateExternalCourse, apiDeleteExternalCourse,
   Notification, apiGetNotifications, apiMarkNotifRead, apiMarkAllNotifsRead, apiClearAllNotifications,
@@ -50,770 +75,6 @@ import {
   apiImpersonate,
 } from './api';
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-// Module-level nav-hide signal so any tab can hide the bottom nav without prop drilling
-let _setGlobalNavHidden: ((h: boolean) => void) | null = null;
-function setGlobalNavHidden(h: boolean) { _setGlobalNavHidden?.(h); }
-
-// ── Prefetch cache ────────────────────────────────────────────────────────────
-// Module-level cache so tabs can read previously-fetched data synchronously in
-// useState initializers, avoiding skeleton flashes on (re)mount and while the
-// mobile swipe strip pre-renders adjacent tabs.
-type TabPrefetchCache = {
-  notices?: Notice[];
-  news?: NewsArticle[];
-  activities?: Activity[];
-  agendaEvents?: AgendaEvent[];
-  employees?: Employee[];
-  courses?: Course[];
-  solicituds?: Solicitud[];
-  vacances?: Vacanca[];
-};
-export const tabPrefetch: TabPrefetchCache = {};
-const tabPrefetchAt: Record<keyof TabPrefetchCache, number> = {
-  notices: 0, news: 0, activities: 0, agendaEvents: 0,
-  employees: 0, courses: 0, solicituds: 0, vacances: 0,
-};
-// Skip refetch on mount whenever cached data exists. Mutations update the
-// cache in place, so navigations don't need to refetch — eliminates the
-// re-render flash when re-entering a previously-loaded tab.
-export function isTabCacheFresh(key: keyof TabPrefetchCache): boolean {
-  return tabPrefetch[key] !== undefined;
-}
-let tabPrefetchPromise: Promise<void> | null = null;
-export function prefetchTabData(force = false): Promise<void> {
-  if (tabPrefetchPromise && !force) return tabPrefetchPromise;
-  const now = () => Date.now();
-  tabPrefetchPromise = Promise.allSettled([
-    apiGetNotices().then(d => { tabPrefetch.notices = d; tabPrefetchAt.notices = now(); }),
-    apiGetNews().then(d => { tabPrefetch.news = d; tabPrefetchAt.news = now(); }),
-    apiGetActivities().then(d => { tabPrefetch.activities = d; tabPrefetchAt.activities = now(); }),
-    apiGetAgendaEvents().then(d => { tabPrefetch.agendaEvents = d; tabPrefetchAt.agendaEvents = now(); }),
-    apiGetEmployees().then(d => { tabPrefetch.employees = d; tabPrefetchAt.employees = now(); }),
-    apiGetCourses().then(d => { tabPrefetch.courses = d; tabPrefetchAt.courses = now(); }),
-    apiGetSolicituds().then(d => { tabPrefetch.solicituds = d; tabPrefetchAt.solicituds = now(); }),
-    apiGetVacances().then(d => { tabPrefetch.vacances = d; tabPrefetchAt.vacances = now(); }),
-  ]).then(() => undefined);
-  return tabPrefetchPromise;
-}
-export function resetTabPrefetch() {
-  tabPrefetch.notices = undefined;
-  tabPrefetch.news = undefined;
-  tabPrefetch.activities = undefined;
-  tabPrefetch.agendaEvents = undefined;
-  tabPrefetch.employees = undefined;
-  tabPrefetch.courses = undefined;
-  tabPrefetch.solicituds = undefined;
-  tabPrefetch.vacances = undefined;
-  (Object.keys(tabPrefetchAt) as (keyof TabPrefetchCache)[]).forEach(k => { tabPrefetchAt[k] = 0; });
-  tabPrefetchPromise = null;
-}
-
-function timeAgo(isoStr: string, t: (key: string, opts?: Record<string, unknown>) => string): string {
-  const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
-  if (diff < 60) return t('timeago.justNow');
-  if (diff < 3600) return t('timeago.minutesAgo', { count: Math.floor(diff / 60) });
-  if (diff < 86400) return t('timeago.hoursAgo', { count: Math.floor(diff / 3600) });
-  if (diff < 172800) return t('timeago.yesterday');
-  return t('timeago.daysAgo', { count: Math.floor(diff / 86400) });
-}
-
-// Smoothly scrolls element into view if its top is below 60% of viewport.
-// Use after opening drawers/modals/inline forms positioned low on the page.
-function scrollIntoViewIfBelowFold(el: HTMLElement | null, opts?: { threshold?: number; block?: ScrollLogicalPosition }) {
-  if (!el || typeof window === 'undefined') return;
-  const rect = el.getBoundingClientRect();
-  const vh = window.innerHeight;
-  const threshold = opts?.threshold ?? 0.6;
-  // Scroll if element is below the fold OR fully above the viewport (clipped).
-  const belowFold = rect.top > vh * threshold;
-  const aboveView = rect.bottom < 0 || rect.top < 0;
-  if (belowFold || aboveView) {
-    el.scrollIntoView({ behavior: 'smooth', block: opts?.block ?? 'center' });
-  }
-}
-
-// Hook: when `active` flips truthy, scrolls the ref'd element into view if below fold.
-function useScrollIntoViewWhen<T extends HTMLElement = HTMLElement>(active: unknown, opts?: { threshold?: number; block?: ScrollLogicalPosition; delay?: number }) {
-  const ref = useRef<T | null>(null);
-  useEffect(() => {
-    if (!active) return;
-    const t = window.setTimeout(() => scrollIntoViewIfBelowFold(ref.current, opts), opts?.delay ?? 60);
-    return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
-  return ref;
-}
-
-function useIsMobile(breakpoint = 768): boolean {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
-  );
-  useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    setIsMobile(mq.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, [breakpoint]);
-  return isMobile;
-}
-
-// Persist subtab to localStorage so reloads restore the inner page.
-function usePersistedSubTab<T extends string>(key: string, fallback: T, allowed?: readonly T[]): [T, (v: T) => void] {
-  const storageKey = `tavil_subtab_${key}`;
-  const [value, setValue] = useState<T>(() => {
-    if (typeof window === 'undefined') return fallback;
-    const saved = window.sessionStorage.getItem(storageKey) as T | null;
-    if (!saved) return fallback;
-    if (allowed && !allowed.includes(saved)) return fallback;
-    return saved;
-  });
-  const update = (v: T) => {
-    try { window.sessionStorage.setItem(storageKey, v); } catch {}
-    setValue(v);
-    scrollPageToTop();
-  };
-  return [value, update];
-}
-
-function useUserAvatar(userId?: number | null): string | null {
-  const key = userId ? `tavil_avatar_${userId}` : null;
-  const [url, setUrl] = useState<string | null>(() => {
-    if (!key) return null;
-    try { return localStorage.getItem(key); } catch { return null; }
-  });
-  useEffect(() => {
-    if (!key) { setUrl(null); return; }
-    const read = () => { try { setUrl(localStorage.getItem(key)); } catch { setUrl(null); } };
-    read();
-    const onStorage = (e: StorageEvent) => { if (e.key === key) read(); };
-    const onCustom = () => read();
-    window.addEventListener('storage', onStorage);
-    window.addEventListener('tavil-avatar-changed', onCustom);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener('tavil-avatar-changed', onCustom);
-    };
-  }, [key]);
-  return url;
-}
-
-function scrollPageToTop() {
-  try {
-    const y = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-    if (y <= 0) return;
-    // Subtle smooth animation only when actually scrolled down.
-    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
-  } catch {}
-}
-
-// ── Skeleton primitives ──────────────────────────────────────────────────────
-// Shimmer placeholders. Render while data loads for faster perceived speed.
-
-const Skeleton = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
-  <div className={cn("skeleton", className)} style={style} aria-hidden="true" />
-);
-
-const SkeletonText = ({ className, width }: { className?: string; width?: string }) => (
-  <Skeleton className={cn("skeleton-text", className)} style={{ width: width ?? '100%' }} />
-);
-
-const SkeletonCard = ({ className, lines = 2, media = true }: { className?: string; lines?: number; media?: boolean }) => (
-  <div className={cn("rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-3", className)} role="status" aria-busy="true" aria-label="Carregant">
-    {media && <Skeleton className="w-full h-40 rounded-lg" />}
-    <Skeleton className="skeleton-title" style={{ width: '70%' }} />
-    {Array.from({ length: lines }).map((_, i) => (
-      <SkeletonText key={i} width={i === lines - 1 ? '55%' : '100%'} />
-    ))}
-  </div>
-);
-
-// ── Mobile App Header ─────────────────────────────────────────────────────────
-
-function MobileAppHeader({
-  onOpenDrawer,
-  onNotif,
-  onTabChange,
-  hasUnread,
-  isDarkMode,
-}: {
-  onOpenDrawer: () => void;
-  onNotif: () => void;
-  onTabChange: (tab: string) => void;
-  hasUnread?: boolean;
-  isDarkMode: boolean;
-}) {
-  return (
-    <div
-      className={cn("flex items-center justify-between px-4 pt-[10px] pb-1", isDarkMode && "dark")}
-      style={{ background: 'var(--tavil-bg)' }}
-    >
-      {/* Hamburger */}
-      <button
-        onClick={onOpenDrawer}
-        aria-label="Obrir menú"
-        style={{
-          width: 40, height: 40, borderRadius: 20,
-          background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0,
-        }}
-      >
-        <Menu size={18} />
-      </button>
-
-      {/* Brand */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => onTabChange('Inici')}>
-        {isDarkMode ? (
-          <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoDark.png`} alt="TAVIL" style={{ height: 24, display: 'block' }} />
-        ) : (
-          <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`} alt="TAVIL" style={{ height: 24, display: 'block' }} />
-        )}
-      </div>
-
-      {/* Bell */}
-      <button
-        onClick={onNotif}
-        aria-label="Notificacions"
-        style={{
-          width: 40, height: 40, borderRadius: 20,
-          background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', color: 'var(--tavil-text)', position: 'relative', flexShrink: 0,
-        }}
-      >
-        <Bell size={18} />
-        {hasUnread && (
-          <div style={{
-            position: 'absolute', top: 8, right: 9,
-            width: 8, height: 8, borderRadius: 4,
-            background: 'var(--tavil-accent)', border: '2px solid var(--tavil-card)',
-          }} />
-        )}
-      </button>
-    </div>
-  );
-}
-
-// ── Mobile Drawer ─────────────────────────────────────────────────────────────
-
-function MobileDrawer({
-  open,
-  onClose,
-  onNavigate,
-  currentUser,
-  isDarkMode,
-  activeTab,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onNavigate: (tab: string) => void;
-  currentUser: { id?: number; name: string; role?: string; email?: string } | null;
-  isDarkMode: boolean;
-  activeTab: string;
-}) {
-  const avatarUrl = useUserAvatar(currentUser?.id);
-  const groups = [
-    {
-      label: 'General',
-      items: [
-        { id: 'Inici', icon: Home, label: 'Inici' },
-        { id: 'Notícies', icon: Newspaper, label: 'Notícies' },
-        { id: 'Agenda', icon: Calendar, label: 'Agenda' },
-        { id: 'Activitats', icon: ActivityIcon, label: 'Connect' },
-      ],
-    },
-    {
-      label: 'Empresa',
-      items: [
-        { id: 'Espai', icon: Building2, label: 'Tavipedia' },
-        { id: 'Directori', icon: Users, label: 'Who is who?' },
-        { id: 'Campus', icon: GraduationCap, label: 'Campus TAVIL' },
-      ],
-    },
-    {
-      label: 'Personal',
-      items: [
-        { id: 'Solicituds', icon: FileText, label: 'Sol·licituds' },
-        { id: 'Perfil', icon: UserCircle, label: 'Perfil' },
-      ],
-    },
-  ];
-
-  const initials = currentUser?.name
-    ? currentUser.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
-    : '?';
-
-  return (
-    <div className={isDarkMode ? 'dark' : ''} style={{ position: 'fixed', inset: 0, zIndex: 200, pointerEvents: open ? 'auto' : 'none' }}>
-      {/* Overlay */}
-      <div
-        onClick={onClose}
-        style={{
-          position: 'absolute', inset: 0,
-          background: 'rgba(20,22,20,0.5)',
-          opacity: open ? 1 : 0,
-          transition: 'opacity 260ms',
-        }}
-      />
-      {/* Panel */}
-      <div style={{
-        position: 'absolute', top: 0, bottom: 0, left: 0, width: '78%', maxWidth: 320,
-        background: 'var(--tavil-bg)',
-        transform: open ? 'translateX(0)' : 'translateX(-100%)',
-        transition: 'transform 340ms cubic-bezier(.23,1,.32,1)',
-        display: 'flex', flexDirection: 'column',
-        borderRight: '1px solid var(--tavil-border)',
-        overflowY: 'auto',
-      }}>
-        {/* Header */}
-        <div style={{ padding: '52px 20px 20px', borderBottom: '1px solid var(--tavil-border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--tavil-text)' }}>
-              {isDarkMode ? (
-                <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoDark.png`} alt="TAVIL" style={{ height: 22, display: 'block' }} />
-              ) : (
-                <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`} alt="TAVIL" style={{ height: 22, display: 'block' }} />
-              )}
-            </div>
-            <button onClick={onClose} style={{
-              width: 36, height: 36, borderRadius: 18,
-              background: 'transparent', border: '1px solid var(--tavil-border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: 'var(--tavil-text)',
-            }}>
-              <X size={16} />
-            </button>
-          </div>
-          {currentUser && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" style={{ width: 42, height: 42, borderRadius: 21, objectFit: 'cover', flexShrink: 0 }} />
-              ) : (
-                <div style={{
-                  width: 42, height: 42, borderRadius: 21,
-                  background: 'var(--tavil-accent)', color: '#fff',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 16, fontWeight: 600, flexShrink: 0,
-                }}>{initials}</div>
-              )}
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)' }}>{currentUser.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--tavil-muted)' }}>{currentUser.role ?? currentUser.email}</div>
-              </div>
-            </div>
-          )}
-        </div>
-        {/* Nav groups */}
-        <div style={{ flex: 1, padding: '16px 12px', overflowY: 'auto' }}>
-          {groups.map((g, gi) => (
-            <div key={gi} style={{ marginBottom: 18 }}>
-              <div style={{
-                fontSize: 10, fontWeight: 600, color: 'var(--tavil-faint)',
-                textTransform: 'uppercase', letterSpacing: '0.14em',
-                padding: '4px 12px 8px',
-              }}>{g.label}</div>
-              {g.items.map(it => {
-                const Icon = it.icon;
-                const isActive = activeTab === it.id;
-                return (
-                  <button
-                    key={it.id}
-                    onClick={() => { onNavigate(it.id); onClose(); }}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '11px 12px',
-                      background: isActive ? 'var(--tavil-accent-light, #f9eceb)' : 'transparent',
-                      border: 'none', borderRadius: 10,
-                      color: isActive ? 'var(--tavil-accent)' : 'var(--tavil-text)',
-                      cursor: 'pointer', fontSize: 14.5, textAlign: 'left',
-                    }}
-                  >
-                    <Icon size={19} strokeWidth={isActive ? 2 : 1.6} />
-                    {it.label}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Bottom Nav Bar (mobile) ──────────────────────────────────────────────────
-
-// ── Més Tab (mobile overflow menu) ──────────────────────────────────────────
-
-function MesSettingsGroup({ label, children, noCard }: { label: string; children: React.ReactNode; noCard?: boolean }) {
-  return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={{
-        fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)',
-        textTransform: 'uppercase', letterSpacing: '0.14em',
-        padding: '0 24px 8px',
-      }}>{label}</div>
-      {noCard ? (
-        <div style={{ margin: '0 16px' }}>{children}</div>
-      ) : (
-        <div style={{
-          margin: '0 16px', background: 'var(--tavil-card)',
-          border: '1px solid var(--tavil-border)', borderRadius: 14, overflow: 'hidden',
-        }}>{children}</div>
-      )}
-    </div>
-  );
-}
-
-function MesTab({
-  onNavigate,
-  currentUser,
-  isDarkMode,
-  toggleDarkMode,
-  onLogout,
-}: {
-  onNavigate: (tab: string) => void;
-  currentUser: { name: string; role?: string; dept?: string; email?: string } | null;
-  isDarkMode: boolean;
-  toggleDarkMode: () => void;
-  onLogout: () => void;
-}) {
-  const name = currentUser?.name ?? '';
-  const ini = name.split(' ').map((w: string) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
-
-  const groups: { label: string; items: { id: string; icon: any; label: string }[] }[] = [
-    { label: 'General', items: [
-      { id: 'Activitats', icon: ActivityIcon, label: 'Connect' },
-    ]},
-    { label: 'Empresa', items: [
-      { id: 'Espai', icon: Building2, label: 'Tavipedia' },
-      { id: 'Campus', icon: GraduationCap, label: 'Campus TAVIL' },
-    ]},
-    { label: 'Personal', items: [
-      { id: 'Solicituds', icon: FileText, label: 'Sol·licituds' },
-    ]},
-  ];
-
-  return (
-    <div style={{ margin: '0 -12px', paddingBottom: 96, overflow: 'hidden' }}>
-      {/* User card */}
-      <div style={{ padding: '0 16px 16px' }}>
-        <button
-          onClick={() => onNavigate('Perfil')}
-          style={{
-            width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-            background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
-            borderRadius: 14, padding: 14, cursor: 'pointer', fontFamily: 'inherit',
-            textAlign: 'left',
-          }}
-        >
-          <div style={{
-            width: 46, height: 46, borderRadius: 23, flexShrink: 0,
-            background: 'var(--tavil-accent)',
-            color: '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 600, fontSize: 17, letterSpacing: '-0.01em',
-            fontFamily: 'var(--font-display)',
-            boxShadow: '0 4px 14px -6px rgba(0,0,0,0.18)',
-          }}>{ini}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)' }}>
-              {name || 'Usuari'}
-            </div>
-            <div style={{ fontSize: 12.5, color: 'var(--tavil-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {currentUser?.role ?? ''}{currentUser?.dept ? ` · ${currentUser.dept}` : ''}
-            </div>
-          </div>
-          <ChevronRight size={18} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
-        </button>
-      </div>
-
-      {/* Settings groups */}
-      {groups.map((g, gi) => (
-        <MesSettingsGroup key={gi} label={g.label}>
-          {g.items.map((it, i, arr) => {
-            const ItIcon = it.icon;
-            return (
-              <button
-                key={it.id}
-                onClick={() => onNavigate(it.id)}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '14px 16px', background: 'transparent', border: 'none',
-                  borderBottom: '1px solid var(--tavil-border)',
-                  cursor: 'pointer', fontFamily: 'inherit', fontSize: 14.5,
-                  color: 'var(--tavil-text)',
-                }}
-              >
-                <ItIcon size={18} style={{ color: 'var(--tavil-muted)', flexShrink: 0 }} />
-                <span style={{ flex: 1, textAlign: 'left' }}>{it.label}</span>
-                <ChevronRight size={16} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
-              </button>
-            );
-          })}
-        </MesSettingsGroup>
-      ))}
-    </div>
-  );
-}
-
-function BottomNavBar({ activeTab, onTabChange, onOpenDrawer, isDarkMode, hidden }: {
-  activeTab: string;
-  onTabChange: (id: string) => void;
-  onOpenDrawer: () => void;
-  isDarkMode: boolean;
-  hidden?: boolean;
-}) {
-  const items = [
-    { id: 'Inici', icon: Home, label: 'Inici' },
-    { id: 'Notícies', icon: Newspaper, label: 'Notícies' },
-    { id: 'Agenda', icon: Calendar, label: 'Agenda' },
-    { id: 'Directori', icon: Users, label: 'Who is who?' },
-    { id: '__more', icon: Menu, label: 'Més' },
-  ];
-
-  return createPortal(
-    <div className={cn("md:hidden", isDarkMode && "dark")}>
-      <nav
-        aria-label="Navegació principal"
-        style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999,
-          background: 'var(--tavil-card)',
-          borderTop: '1px solid var(--tavil-border)',
-          padding: '8px 8px calc(22px + env(safe-area-inset-bottom))',
-          display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)',
-          boxShadow: '0 -4px 24px -12px rgba(34,39,37,0.08)',
-          transform: hidden ? 'translateY(105%)' : 'translateY(0)',
-          transition: 'transform 280ms cubic-bezier(0.23,1,0.32,1)',
-        }}
-      >
-        {items.map(({ id, icon: Icon, label }) => {
-          const active = id === '__more' ? activeTab === 'Més' : activeTab === id;
-          return (
-            <button
-              key={id}
-              onClick={() => onTabChange(id === '__more' ? 'Més' : id)}
-              aria-label={label}
-              aria-current={active ? 'page' : undefined}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                padding: '6px 0', display: 'flex', flexDirection: 'column',
-                alignItems: 'center', gap: 3, fontFamily: 'inherit',
-                color: active ? 'var(--tavil-accent)' : 'var(--tavil-muted)',
-                position: 'relative',
-                touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
-              } as React.CSSProperties}
-            >
-              {/* Top indicator */}
-              <div style={{
-                height: 3, width: 22, background: 'var(--tavil-accent)',
-                borderRadius: 2, position: 'absolute', top: -8,
-                opacity: active ? 1 : 0,
-                transition: 'opacity 220ms var(--ease-out-cubic)',
-              }} />
-              <Icon size={22} strokeWidth={active ? 1.9 : 1.6} />
-              <span style={{
-                fontSize: 10.5,
-                fontWeight: active ? 600 : 500,
-                letterSpacing: '0.01em',
-              }}>{label}</span>
-            </button>
-          );
-        })}
-      </nav>
-    </div>,
-    document.body
-  );
-}
-
-// ── Mobile Notifications Overlay ─────────────────────────────────────────────
-
-function MobileNotificationsOverlay({ notifications, onClose, onMarkRead, onMarkAllRead, isDarkMode }: {
-  notifications: Notification[];
-  onClose: () => void;
-  onMarkRead: (id: number) => void;
-  onMarkAllRead: () => void;
-  isDarkMode: boolean;
-}) {
-  const { t } = useTranslation();
-  const unread = notifications.filter(n => !n.read).length;
-  const isRecent = (iso: string) => (Date.now() - new Date(iso).getTime()) < 86400_000;
-  const today = notifications.filter(n => isRecent(n.created_at));
-  const before = notifications.filter(n => !today.includes(n));
-
-  const iconForType = (tab: string) => {
-    if (tab === 'Notícies') return <Newspaper size={16} />;
-    if (tab === 'Solicituds') return <CheckCircle size={16} />;
-    if (tab === 'Agenda') return <Calendar size={16} />;
-    if (tab === 'Veu') return <MessageSquare size={16} />;
-    return <Bell size={16} />;
-  };
-
-  const Section = ({ label, items }: { label: string; items: Notification[] }) => items.length === 0 ? null : (
-    <>
-      <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em', padding: '14px 20px 6px' }}>{label}</div>
-      <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, margin: '0 16px', overflow: 'hidden' }}>
-        {items.map((n, i) => (
-          <button
-            key={n.id}
-            onClick={() => onMarkRead(n.id)}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'flex-start', gap: 12,
-              padding: '14px 16px', background: !n.read ? '#fbe4e330' : 'transparent',
-              border: 'none', borderBottom: i < items.length - 1 ? '1px solid var(--tavil-border)' : 'none',
-              cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-            }}
-          >
-            <div style={{
-              width: 36, height: 36, borderRadius: 18, flexShrink: 0,
-              background: !n.read ? 'var(--tavil-accent)' : 'var(--tavil-bg)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: !n.read ? '#fff' : 'var(--tavil-muted)',
-            }}>
-              {iconForType(n.tab)}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
-                <div style={{ fontSize: 14, fontWeight: !n.read ? 600 : 500, color: 'var(--tavil-text)', lineHeight: 1.3 }}>{n.title}</div>
-                <div style={{ fontSize: 11, color: 'var(--tavil-faint)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{timeAgo(n.created_at, t)}</div>
-              </div>
-              {n.body && <div style={{ fontSize: 12.5, color: 'var(--tavil-muted)', lineHeight: 1.35 }}>{n.body}</div>}
-              {n.tab && <div style={{ fontSize: 11, color: 'var(--tavil-faint)', marginTop: 3 }}>{n.tab}</div>}
-            </div>
-            {!n.read && <div style={{ width: 7, height: 7, borderRadius: 4, background: 'var(--tavil-accent)', marginTop: 5, flexShrink: 0 }} />}
-          </button>
-        ))}
-      </div>
-    </>
-  );
-
-  return createPortal(
-    <div className={isDarkMode ? 'dark' : ''} style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'var(--tavil-bg)', overflowY: 'auto' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 6px', height: 56, flexShrink: 0 }}>
-        <button onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--tavil-accent)', fontFamily: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '4px 0' }}>
-          <ChevronLeft size={20} strokeWidth={2} /> Enrere
-        </button>
-        {unread > 0 && (
-          <button onClick={onMarkAllRead} style={{ background: 'none', border: 'none', color: 'var(--tavil-muted)', fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-            Marca-ho tot
-          </button>
-        )}
-      </div>
-
-      {/* Eyebrow + title */}
-      <div style={{ padding: '4px 20px 20px' }}>
-        <div style={{ fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>ACTIVITAT</div>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, letterSpacing: '0em', lineHeight: 1.05, margin: '0 0 6px', color: 'var(--tavil-text)' }}>Notificacions</h1>
-        <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: 0 }}>
-          {unread > 0 ? <>Tens <strong>{unread} sense llegir</strong>.</> : 'Estàs al dia.'}
-        </p>
-      </div>
-
-      {/* Lists */}
-      {notifications.length === 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48, gap: 12 }}>
-          <Bell size={30} style={{ color: 'var(--tavil-faint)', opacity: 0.3 }} />
-          <p style={{ fontSize: 14, color: 'var(--tavil-faint)' }}>No hi ha notificacions</p>
-        </div>
-      ) : (
-        <div style={{ paddingBottom: 32 }}>
-          <Section label="AVUI" items={today} />
-          <Section label="ABANS" items={before} />
-        </div>
-      )}
-    </div>,
-    document.body
-  );
-}
-
-// ── Sidebar ──────────────────────────────────────────────────────────────────
-
-const SidebarItem = ({ icon: Icon, label, active = false, onClick, collapsed = false }: {
-  icon: any; label: string; active?: boolean; onClick?: (e: React.MouseEvent<HTMLDivElement>) => void; collapsed?: boolean;
-}) => (
-  <div
-    onClick={onClick}
-    title={collapsed ? label : undefined}
-    className={cn("flex items-center gap-2.5 rounded-lg cursor-pointer relative select-none group", collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2")}
-    style={{
-      background: active ? 'var(--tavil-bg)' : 'transparent',
-      border: active ? '1px solid var(--tavil-border)' : '1px solid transparent',
-      color: active ? 'var(--tavil-text)' : 'var(--tavil-muted)',
-      fontWeight: active ? 600 : 500,
-      transition: 'background-color 300ms ease-in-out, color 150ms ease-out, border-color 300ms ease-in-out',
-    }}
-    onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--tavil-bg)'; (e.currentTarget as HTMLElement).style.color = 'var(--tavil-text)'; }}
-    onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--tavil-muted)'; }}}
-  >
-    <Icon size={18} aria-hidden="true" style={{ color: active ? 'var(--tavil-accent)' : 'inherit', strokeWidth: 1.8, flexShrink: 0, transition: 'color 150ms ease-out' }} />
-    {!collapsed && <span style={{ fontSize: 14 }}>{label}</span>}
-  </div>
-);
-
-const SidebarSection = ({ title, children, collapsed = false }: { title: string; children: React.ReactNode; collapsed?: boolean }) => (
-  <div className="mb-4">
-    {!collapsed && (
-      <p className="px-3 text-[10px] font-semibold uppercase mb-1"
-         style={{ color: 'var(--tavil-faint)', letterSpacing: '0.14em' }}>
-        {title}
-      </p>
-    )}
-    {collapsed && <div className="mx-auto w-4 h-px mb-2 mt-1" style={{ background: 'var(--tavil-border)' }} />}
-    <div className="space-y-0.5">{children}</div>
-  </div>
-);
-
-// ── Shared helpers ────────────────────────────────────────────────────────────
-
-const FilterChip = ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
-  <button
-    onClick={onClick}
-    aria-pressed={active}
-    style={{ touchAction: 'manipulation' }}
-    className={cn(
-      "press px-3.5 py-2 md:py-1.5 min-h-[40px] md:min-h-0 rounded-lg text-sm font-medium transition-all duration-200 border flex-shrink-0 whitespace-nowrap focus-ring",
-      active
-        ? "bg-red-600 text-white border-red-600 shadow-sm"
-        : "border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:border-gray-300 dark:hover:border-zinc-600 bg-white dark:bg-zinc-900 active:bg-gray-50 dark:active:bg-zinc-800"
-    )}
-  >
-    {label}
-  </button>
-);
-
-const UnderlineTab = ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
-  <button
-    onClick={onClick}
-    aria-current={active ? 'page' : undefined}
-    style={{ touchAction: 'manipulation' }}
-    className={cn(
-      "relative px-4 md:px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 transition-colors duration-200 -mb-px focus-ring",
-      active
-        ? "border-red-600 text-red-600"
-        : "border-transparent text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300"
-    )}
-  >
-    {label}
-  </button>
-);
-
-const resolveImg = (path: string): string => {
-  if (!path) return '';
-  // Any path containing /uploads/<file> → normalize to API_BASE + /uploads/<file>.
-  // Handles: legacy localhost http URLs, full prod URLs, double-prefixed paths,
-  // and plain /uploads/ relative paths.
-  const m = path.match(/\/uploads\/([^?#]+)/);
-  if (m) return `${API_BASE}/uploads/${m[1]}`;
-  if (path.startsWith('http')) return path;
-  if (path.startsWith('/')) return `${process.env.PUBLIC_URL}${path}`;
-  return path;
-};
 
 // ── Inici Tab ─────────────────────────────────────────────────────────────────
 
@@ -827,7 +88,9 @@ const NEWS_CAT_COLORS: Record<string, string> = {
 };
 function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onOpenNotifs, currentUser: currentUserProp }: { onNavigate?: (tab: string) => void; onNavigateToDate?: (day: number, month: number, year: number) => void; onOpenDrawer?: () => void; hasUnread?: boolean; onOpenNotifs?: () => void; currentUser?: User | null }) {
   const [notices, setNotices] = useState<Notice[]>(() => tabPrefetch.notices ?? []);
-  const [news, setNews] = useState<NewsArticle[]>(() => tabPrefetch.news ?? []);
+  const [rawNews, setNews] = useState<NewsArticle[]>(() => tabPrefetch.news ?? []);
+  const newsLang = i18n.language;
+  const news = useMemo(() => rawNews.map(n => localizeNews(n, newsLang)), [rawNews, newsLang]);
   const [activities, setActivities] = useState<Activity[]>(() => tabPrefetch.activities ?? []);
   const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>(() => tabPrefetch.agendaEvents ?? []);
   const [loading, setLoading] = useState(
@@ -1079,7 +342,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                   </div>
                   <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.25, color: 'var(--tavil-text)', marginBottom: 6 }}>{ev.title}</div>
                   <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <Clock size={12} />{ev.time || ev.type}
+                    <Clock size={12} />{ev.time ? (ev.time_end ? `${ev.time} – ${ev.time_end}` : ev.time) : ev.type}
                   </div>
                 </div>
               ))}
@@ -1418,7 +681,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-gray-800 dark:text-zinc-200 leading-tight truncate">{ev.title}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{ev.time || '—'}{ev.location ? ` · ${ev.location}` : ''}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{ev.time ? (ev.time_end ? `${ev.time} – ${ev.time_end}` : ev.time) : '—'}{ev.location ? ` · ${ev.location}` : ''}</p>
                     </div>
                   </div>
                 ))}
@@ -1464,51 +727,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
 
 // ── Notícies Tab ──────────────────────────────────────────────────────────────
 
-function EditModal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  const [isClosing, setIsClosing] = useState(false);
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => onClose(), 220);
-  };
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
-  }, []);
-  return createPortal(
-    <div className={`fixed inset-0 z-[9999] flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm ${isClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}>
-      <div className={`bg-white dark:bg-zinc-900 rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-lg md:mx-4 border border-gray-100 dark:border-zinc-800 overflow-y-auto max-h-[92vh] md:max-h-[90vh] ${isClosing ? 'anim-scale-out' : 'anim-scale-in'}`}>
-        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100 dark:border-zinc-800 sticky top-0 bg-white dark:bg-zinc-900 z-10">
-          <h3 className="font-bold text-gray-900 dark:text-white">{title}</h3>
-          <button onClick={handleClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-400 transition-colors">✕</button>
-        </div>
-        <div className="p-4 md:p-5">{children}</div>
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
-  const { t } = useTranslation();
-  const [isClosing, setIsClosing] = useState(false);
-  const handleCancel = () => {
-    setIsClosing(true);
-    setTimeout(() => onCancel(), 220);
-  };
-  return createPortal(
-    <div className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm ${isClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={e => { if (e.target === e.currentTarget) handleCancel(); }}>
-      <div className={`bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 border border-gray-100 dark:border-zinc-800 ${isClosing ? 'anim-scale-out' : 'anim-scale-in'}`}>
-        <h3 className="font-bold text-gray-900 dark:text-white mb-2">{t('confirm.deleteTitle')}</h3>
-        <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">{message}</p>
-        <div className="flex gap-3 justify-end">
-          <button onClick={handleCancel} className="press px-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">{t('confirm.cancel')}</button>
-          <button onClick={onConfirm} className="press px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors">{t('confirm.delete')}</button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-}
+const ConfirmModal = SharedConfirmModal;
 
 
 // ── Rich Article ──────────────────────────────────────────────────────────────
@@ -1861,7 +1080,9 @@ function ArticleBlocksEditor({ value, onChange }: ArticleBlocksEditorProps) {
 
 function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: User | null; onOpenDrawer?: () => void; onNavigate?: (tab: string) => void }) {
   const { t } = useTranslation();
-  const [news, setNews] = useState<NewsArticle[]>(() => tabPrefetch.news ?? []);
+  const [rawNews, setNews] = useState<NewsArticle[]>(() => tabPrefetch.news ?? []);
+  const lang = i18n.language;
+  const news = useMemo(() => rawNews.map(n => localizeNews(n, lang)), [rawNews, lang]);
   const [activeFilter, setActiveFilter] = useState('Totes');
   const [newsSearch, setNewsSearch] = useState('');
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
@@ -2508,7 +1729,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
 
         {/* Detail modal (shared with desktop) */}
         {selectedAct && createPortal(
-          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 ${actClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeAct}>
+          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${actClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeAct}>
             <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }} className={actClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, background: 'var(--tavil-border)', color: 'var(--tavil-muted)', padding: '2px 8px', borderRadius: 6 }}>{selectedAct.category}</span>
@@ -2556,7 +1777,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
           document.body
         )}
         {confirmModal && createPortal(
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 anim-fade-in" onClick={() => setConfirmModal(null)}>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm anim-fade-in" onClick={() => setConfirmModal(null)}>
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6 w-full max-w-xs mx-4 shadow-xl anim-scale-in" onClick={e => e.stopPropagation()}>
               <p className="text-sm text-gray-700 dark:text-zinc-300 mb-4">{confirmModal.message}</p>
               <div className="flex gap-2 justify-end">
@@ -2661,7 +1882,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         })}
       </div>
       {selectedAct && createPortal(
-        <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/40 ${actClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeAct}>
+        <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm ${actClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeAct}>
           <div className={`bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6 w-full max-w-md mx-4 shadow-xl ${actClosing ? 'anim-scale-out' : 'anim-scale-in'}`} onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-4">
               <span className="text-[11px] font-bold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{selectedAct.category}</span>
@@ -2818,6 +2039,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
   const [eTitle, setETitle] = useState('');
   const [eDate, setEDate] = useState('');
   const [eTime, setETime] = useState('');
+  const [eTimeEnd, setETimeEnd] = useState('');
   const [eLocation, setELocation] = useState('');
   const [eType, setEType] = useState('Sessió interna');
   const [eDepts, setEDepts] = useState<string[]>([]);
@@ -2836,10 +2058,11 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
     setESaving(true);
     try {
       await apiCreateAgendaEvent({ title: eTitle.trim(), day, month,
-        time: eTime.trim(), location: eLocation.trim(), type: eType, target_departments: eDepts });
+        time: eTime.trim(), time_end: eTimeEnd.trim() || undefined,
+        location: eLocation.trim(), type: eType, target_departments: eDepts });
       setApiAgendaEvents(await apiGetAgendaEvents());
       closeEventForm();
-      setTimeout(() => { setETitle(''); setEDate(''); setETime(''); setELocation(''); setEDepts([]); }, 260);
+      setTimeout(() => { setETitle(''); setEDate(''); setETime(''); setETimeEnd(''); setELocation(''); setEDepts([]); }, 260);
     } catch (e) { console.error(e); }
     finally { setESaving(false); }
   };
@@ -2851,6 +2074,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
   const [eeTitle, setEeTitle] = useState('');
   const [eeDate, setEeDate] = useState('');
   const [eeTime, setEeTime] = useState('');
+  const [eeTimeEnd, setEeTimeEnd] = useState('');
   const [eeLocation, setEeLocation] = useState('');
   const [eeType, setEeType] = useState('Sessió interna');
   const [eeDepts, setEeDepts] = useState<string[]>([]);
@@ -2863,6 +2087,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
     const dd = String(ev.day).padStart(2, '0');
     setEeDate(`${yyyy}-${mm}-${dd}`);
     setEeTime(ev.time || '');
+    setEeTimeEnd(ev.time_end || '');
     setEeLocation(ev.location || ''); setEeType(ev.type);
     setEeDepts(ev.target_departments ?? []);
   };
@@ -2875,7 +2100,8 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
     setEeSaving(true);
     try {
       await apiUpdateAgendaEvent(evEditId, { title: eeTitle.trim(), day,
-        month, time: eeTime.trim(), location: eeLocation.trim(), type: eeType, target_departments: eeDepts });
+        month, time: eeTime.trim(), time_end: eeTimeEnd.trim() || undefined,
+        location: eeLocation.trim(), type: eeType, target_departments: eeDepts });
       setApiAgendaEvents(await apiGetAgendaEvents());
       setEvEditId(null);
     } catch (e) { console.error(e); }
@@ -2911,12 +2137,14 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
 
   const filters = ['Tots', 'Festiu', 'Fira', 'Visita comercial', 'Sessió interna', 'Activitat empresa'];
 
-  // Festius always pass dept filter (affect everyone). Other events match if their location
-  // contains the department name (case-insensitive). 'Tots' = no department filtering.
+  // Festius always pass (affect everyone). Events with no target_departments are visible to all.
+  // Otherwise the selected deptFilter must be in target_departments. 'Tots' = no filtering.
   const passesDept = (e: AgendaEvent): boolean => {
     if (deptFilter === 'Tots') return true;
     if (e.type === 'Festiu') return true;
-    return (e.location || '').toLowerCase().includes(deptFilter.toLowerCase());
+    const td = e.target_departments;
+    if (!td || td.length === 0) return true;
+    return td.includes(deptFilter);
   };
 
   const filteredEvents = (activeFilter === 'Tots' ? agendaEvents : agendaEvents.filter(e => e.type === activeFilter))
@@ -3037,12 +2265,13 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {selEvents.sort((a, b) => (a.time || '').localeCompare(b.time || '')).map((ev, j) => {
-              const parts = ev.time ? ev.time.split(/[-–]/) : [];
+              const tStart = (ev.time || '').trim();
+              const tEnd = (ev.time_end || '').trim();
               return (
                 <div key={j} style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
                   <div style={{ width: 52, flexShrink: 0, paddingTop: 2 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--tavil-text)', fontFeatureSettings: '"tnum"' }}>{parts[0]?.trim() || ev.time}</div>
-                    {parts[1] && <div style={{ fontSize: 10.5, color: 'var(--tavil-faint)', marginTop: 1 }}>{parts[1].trim()}</div>}
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--tavil-text)', fontFeatureSettings: '"tnum"' }}>{tStart || '—'}</div>
+                    {tEnd && <div style={{ fontSize: 10.5, color: 'var(--tavil-faint)', marginTop: 1 }}>{tEnd}</div>}
                   </div>
                   <div style={{ width: 3, background: EVENT_BAR_COLORS[ev.type] ?? 'var(--tavil-accent)', borderRadius: 2, flexShrink: 0, alignSelf: 'stretch' }} />
                   <div style={{ flex: 1, minWidth: 0, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 14 }}>
@@ -3069,16 +2298,23 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
         </div>
         {/* Admin: new event bottom sheet */}
         {isAdmin && showEventForm && createPortal(
-          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 ${closingEventForm ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeEventForm}>
+          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${closingEventForm ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeEventForm}>
             <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }} className={closingEventForm ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
               <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 18 }}>Nou event</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input type="text" value={eTitle} onChange={e => setETitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
                 <input type="date" value={eDate} onChange={e => setEDate(e.target.value)} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <input type="text" value={eTime} onChange={e => setETime(e.target.value)} placeholder="Hora (ex: 10:00)" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
-                  <input type="text" value={eLocation} onChange={e => setELocation(e.target.value)} placeholder="Lloc" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                  <div>
+                    <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Inici</div>
+                    <input type="time" value={eTime} onChange={e => setETime(e.target.value)} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Final <span style={{ textTransform: 'none', fontWeight: 400 }}>(opcional)</span></div>
+                    <input type="time" value={eTimeEnd} onChange={e => setETimeEnd(e.target.value)} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
                 </div>
+                <input type="text" value={eLocation} onChange={e => setELocation(e.target.value)} placeholder="Lloc" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
                 <div>
                   <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8, fontWeight: 600 }}>Tipus</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -3109,16 +2345,23 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
         )}
         {/* Admin: edit event bottom sheet */}
         {isAdmin && evEditId !== null && createPortal(
-          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 ${evEditClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeEvEdit}>
+          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${evEditClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeEvEdit}>
             <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }} className={evEditClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
               <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 18 }}>Editar event</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input type="text" value={eeTitle} onChange={e => setEeTitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
                 <input type="date" value={eeDate} onChange={e => setEeDate(e.target.value)} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <input type="text" value={eeTime} onChange={e => setEeTime(e.target.value)} placeholder="Hora (ex: 10:00)" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
-                  <input type="text" value={eeLocation} onChange={e => setEeLocation(e.target.value)} placeholder="Lloc" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                  <div>
+                    <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Inici</div>
+                    <input type="time" value={eeTime} onChange={e => setEeTime(e.target.value)} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Final <span style={{ textTransform: 'none', fontWeight: 400 }}>(opcional)</span></div>
+                    <input type="time" value={eeTimeEnd} onChange={e => setEeTimeEnd(e.target.value)} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
                 </div>
+                <input type="text" value={eeLocation} onChange={e => setEeLocation(e.target.value)} placeholder="Lloc" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
                 <div>
                   <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8, fontWeight: 600 }}>Tipus</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -3148,7 +2391,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
           document.body
         )}
         {confirmModal && createPortal(
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 anim-fade-in" onClick={() => setConfirmModal(null)}>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm anim-fade-in" onClick={() => setConfirmModal(null)}>
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6 w-full max-w-xs mx-4 shadow-xl anim-scale-in" onClick={e => e.stopPropagation()}>
               <p className="text-sm text-gray-700 dark:text-zinc-300 mb-4">{confirmModal.message}</p>
               <div className="flex gap-2 justify-end">
@@ -3210,8 +2453,15 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
           <div className="grid grid-cols-2 gap-3">
             <input type="text" value={eTitle} onChange={e => setETitle(e.target.value)} placeholder="Títol *" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
             <input type="date" value={eDate} onChange={e => setEDate(e.target.value)} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            <input type="text" value={eTime} onChange={e => setETime(e.target.value)} placeholder="Hora (ex: 10:00)" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            <input type="text" value={eLocation} onChange={e => setELocation(e.target.value)} placeholder="Lloc" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Inici</label>
+              <input type="time" value={eTime} onChange={e => setETime(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Final <span className="normal-case font-normal">(opcional)</span></label>
+              <input type="time" value={eTimeEnd} onChange={e => setETimeEnd(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
+            </div>
+            <input type="text" value={eLocation} onChange={e => setELocation(e.target.value)} placeholder="Lloc" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
             <select value={eType} onChange={e => setEType(e.target.value)} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white">
               {Object.keys(EVENT_COLORS).map(tp => <option key={tp}>{tp}</option>)}
             </select>
@@ -3309,13 +2559,14 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {selEvents.sort((a, b) => (a.time || '').localeCompare(b.time || '')).map(ev => {
-                const parts = ev.time ? ev.time.split(/[-–]/) : [];
+                const tStart = (ev.time || '').trim();
+                const tEnd = (ev.time_end || '').trim();
                 const color = eventRailColor(ev);
                 return (
                   <div key={ev.id} style={{ display: 'flex', gap: 14 }}>
                     <div style={{ width: 64, flexShrink: 0, paddingTop: 2 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tavil-text)', fontFeatureSettings: '"tnum"' }}>{parts[0]?.trim() || ev.time}</div>
-                      {parts[1] && <div style={{ fontSize: 11, color: 'var(--tavil-faint)', marginTop: 1 }}>{parts[1].trim()}</div>}
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tavil-text)', fontFeatureSettings: '"tnum"' }}>{tStart || '—'}</div>
+                      {tEnd && <div style={{ fontSize: 11, color: 'var(--tavil-faint)', marginTop: 1 }}>{tEnd}</div>}
                     </div>
                     <div style={{ width: 3, background: color, borderRadius: 2, flexShrink: 0, alignSelf: 'stretch' }} />
                     <div style={{ flex: 1, minWidth: 0, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 14 }}>
@@ -3348,8 +2599,15 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
           <div className="grid grid-cols-2 gap-2">
             <input type="text" value={eeTitle} onChange={e => setEeTitle(e.target.value)} placeholder="Títol *" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
             <input type="date" value={eeDate} onChange={e => setEeDate(e.target.value)} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-            <input type="text" value={eeTime} onChange={e => setEeTime(e.target.value)} placeholder="Hora" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-            <input type="text" value={eeLocation} onChange={e => setEeLocation(e.target.value)} placeholder="Lloc" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Inici</label>
+              <input type="time" value={eeTime} onChange={e => setEeTime(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Final <span className="normal-case font-normal">(opcional)</span></label>
+              <input type="time" value={eeTimeEnd} onChange={e => setEeTimeEnd(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+            </div>
+            <input type="text" value={eeLocation} onChange={e => setEeLocation(e.target.value)} placeholder="Lloc" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
             <select value={eeType} onChange={e => setEeType(e.target.value)} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white">
               {Object.keys(EVENT_COLORS).map(tp => <option key={tp}>{tp}</option>)}
             </select>
@@ -3376,52 +2634,7 @@ function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: 
 
 // ── Directori Tab ─────────────────────────────────────────────────────────────
 
-// Departments — sourced from PETICIONS/V2_Orgzanigrama_General_2025 (4).pdf (org chart).
-const DEPT_ORDER = [
-  'Administració',
-  'CME',
-  'Comercial',
-  'Compres',
-  'Costos',
-  'Direcció General',
-  'I+D',
-  'Informàtica',
-  'IT Industrial',
-  'Logística',
-  'Magatzem',
-  'Mecanització',
-  'Oficina Tècnica Elèctrica',
-  'Oficina Tècnica Mecànica',
-  'Posta en Marxa',
-  'Projectes',
-  'Qualitat i Seguretat',
-  'Recursos Humans',
-  'SAP',
-  'SAT',
-];
-
-// Avatar palette — 12 OKLCH tones, all L≈0.40 for ≥4.5:1 contrast on white text.
-// Warm earthy biased; no pure rainbow. Assigned by name hash so same person = same color.
-const AVATAR_PALETTE = [
-  'oklch(0.40 0.14 22)',   // terracotta
-  'oklch(0.40 0.13 55)',   // burnt umber
-  'oklch(0.40 0.12 118)',  // forest green
-  'oklch(0.40 0.12 158)',  // pine
-  'oklch(0.40 0.13 198)',  // teal
-  'oklch(0.40 0.15 238)',  // steel blue
-  'oklch(0.40 0.15 265)',  // indigo
-  'oklch(0.40 0.14 295)',  // violet
-  'oklch(0.40 0.12 325)',  // plum
-  'oklch(0.40 0.13 345)',  // crimson
-  'oklch(0.40 0.11 140)',  // sage green
-  'oklch(0.40 0.13 215)',  // slate blue
-];
-
-function avatarBg(name: string): string {
-  let h = 5381;
-  for (let i = 0; i < name.length; i++) h = ((h << 5) + h) ^ name.charCodeAt(i);
-  return AVATAR_PALETTE[Math.abs(h) % AVATAR_PALETTE.length];
-}
+// DEPT_ORDER, avatarBg moved to ./lib/depts.ts
 
 function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
   const { t } = useTranslation();
@@ -3496,7 +2709,11 @@ function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
               borderBottom: '1px solid var(--tavil-border)',
               cursor: 'pointer',
             } as React.CSSProperties}>
-              <div className="w-[46px] h-[46px] rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: avatarBg(emp.name), color: '#f7f7f2' }}>{emp.initials}</div>
+              {emp.avatar_url ? (
+                <img src={resolveImg(emp.avatar_url)} alt="" className="w-[46px] h-[46px] rounded-full object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-[46px] h-[46px] rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: avatarBg(emp.name), color: '#f7f7f2' }}>{emp.initials}</div>
+              )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)', letterSpacing: '-0.005em' }}>{emp.name}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginTop: 1 }}>{emp.role} · {emp.dept}</div>
@@ -3551,7 +2768,11 @@ function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
           {filtered.map((emp, i) => (
             <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 anim-item" style={{ '--i': i } as React.CSSProperties}>
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: avatarBg(emp.name), color: '#f7f7f2' }}>{emp.initials}</div>
+                {emp.avatar_url ? (
+                  <img src={resolveImg(emp.avatar_url)} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: avatarBg(emp.name), color: '#f7f7f2' }}>{emp.initials}</div>
+                )}
                 <div className="min-w-0">
                   <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{emp.name}</p>
                   <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">{emp.role}</p>
@@ -3578,7 +2799,11 @@ function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {members.map((emp, i) => (
                   <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-3 flex items-center gap-3 anim-item" style={{ '--i': i } as React.CSSProperties}>
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: avatarBg(emp.name), color: '#f7f7f2' }}>{emp.initials}</div>
+                    {emp.avatar_url ? (
+                      <img src={resolveImg(emp.avatar_url)} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: avatarBg(emp.name), color: '#f7f7f2' }}>{emp.initials}</div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{emp.name}</p>
                       <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">{emp.role}</p>
@@ -4040,10 +3265,26 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function CampusTavilTab({ onBack }: { onBack?: () => void }) {
+  type CatalogItem = {
+    id: string;
+    type: 'Externes' | 'Internes';
+    title: string;
+    description: string;
+    category?: string;
+    hours?: string;
+    mandatory?: boolean;
+    status: 'Pendent' | 'En curs' | 'Completat';
+    progress?: number;
+    url?: string;
+    quizId?: number;
+    quizInProgress?: boolean;
+    quizAttempted?: boolean;
+    quizQuestions?: number;
+  };
   const { t } = useTranslation();
   const [courses, setCourses] = useState<Course[]>(() => tabPrefetch.courses ?? []);
-  const [activeTab, setActiveTab] = usePersistedSubTab<string>('campus', 'Resum', ['Resum', 'Catàleg', 'El meu progrés', 'Proves', 'Recursos'] as const);
-  const [topicFilter, setTopicFilter] = useState('Tots els temes');
+  const [activeTab, setActiveTab] = usePersistedSubTab<string>('campus', 'Catàleg', ['Catàleg', 'El meu progrés', 'Proves', ] as const);
+  const [kindFilter, setKindFilter] = useState('Totes');
   const [statusFilter, setStatusFilter] = useState('Tots els estats');
   const [campusSearch, setCampusSearch] = useState('');
   const isMobileCampus = useIsMobile();
@@ -4061,7 +3302,7 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'Proves') {
+    if (activeTab === 'Proves' || activeTab === 'Catàleg') {
       apiGetQuizzes().then(setQuizList).catch(console.error);
     }
   }, [activeTab]);
@@ -4089,17 +3330,48 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
   const completedHours = completed.reduce((s, c) => s + (parseInt(c.hours) || 0), 0);
   const mandatoryPending = courses.find(c => !!c.mandatory && c.user_status === 'Pendent');
 
-  const topics = ['Tots els temes', 'Seguretat', 'Qualitat', 'Sistemes', 'Comercial', 'Compliance', 'Acollida', 'Producció', 'Habilitats', 'Idiomes'];
-  const statuses = ['Tots els estats', 'Pendent', 'Poc avançats', 'Completat'];
+  const kinds = ['Totes', 'Externes', 'Internes'];
+  const statuses = ['Tots els estats', 'Pendent', 'En curs', 'Completat'];
 
-  const filteredCourses = courses.filter(c => {
-    const matchTopic = topicFilter === 'Tots els temes' || c.category === topicFilter;
-    let matchStatus = true;
-    if (statusFilter === 'Poc avançats') matchStatus = c.user_progress > 0 && c.user_progress < 50;
-    else if (statusFilter !== 'Tots els estats') matchStatus = c.user_status === statusFilter;
-    const matchSearch = !campusSearch || [c.title, c.description, c.category].some(f => f.toLowerCase().includes(campusSearch.toLowerCase()));
-    return matchTopic && matchStatus && matchSearch;
+  const externes: CatalogItem[] = courses
+    .filter(c => c.is_external === 1)
+    .map(c => ({
+      id: `course-${c.id}`,
+      type: 'Externes',
+      title: c.title,
+      description: c.description ?? '',
+      category: c.category,
+      hours: c.hours,
+      mandatory: !!c.mandatory,
+      status: c.user_status === 'Completat' ? 'Completat' : (c.user_progress > 0 ? 'En curs' : 'Pendent'),
+      progress: c.user_progress,
+      url: c.url,
+    }));
+
+  const internes: CatalogItem[] = quizList
+    .filter(q => !q.is_presential)
+    .map(q => ({
+      id: `quiz-${q.id}`,
+      type: 'Internes',
+      title: q.title,
+      description: q.description ?? '',
+      category: q.category,
+      status: q.user_attempt?.passed ? 'Completat' : (q.in_progress ? 'En curs' : 'Pendent'),
+      quizId: q.id,
+      quizInProgress: !!q.in_progress,
+      quizAttempted: !!q.user_attempt,
+      quizQuestions: q.question_count ?? 0,
+    }));
+
+  const catalog: CatalogItem[] = [...externes, ...internes];
+  const filteredCatalog = catalog.filter(item => {
+    const matchKind = kindFilter === 'Totes' || item.type === kindFilter;
+    const matchStatus = statusFilter === 'Tots els estats' || item.status === statusFilter;
+    const q = campusSearch.trim().toLowerCase();
+    const matchSearch = !q || [item.title, item.description, item.category ?? '', item.type].some(f => f.toLowerCase().includes(q));
+    return matchKind && matchStatus && matchSearch;
   });
+
 
   if (isMobileCampus) {
     const inProgress = courses.filter(c => c.user_progress > 0 && c.user_progress < 100);
@@ -4213,41 +3485,12 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
     <div>
       <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Plataforma de formació interna i desenvolupament professional</p>
       <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
-        {['Resum', 'Catàleg', 'El meu progrés', 'Recursos', 'Proves'].map(tab => (
+        {['Catàleg', 'El meu progrés', 'Proves'].map(tab => (
           <UnderlineTab key={tab} label={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)} />
         ))}
       </div>
 
       <div key={activeTab} className="anim-tab">
-      {activeTab === 'Resum' && (
-        <>
-          <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6">
-            {[
-              { label: "Cursos completats", value: String(completed.length), icon: CheckCircle, color: "text-green-500" },
-              { label: "Pendents", value: String(pending.length), icon: Clock, color: "text-orange-500" },
-              { label: "Hores completades", value: `${completedHours}h`, icon: ActivityIcon, color: "text-purple-500" },
-            ].map((stat, i) => (
-              <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
-                <div className="flex items-center justify-between mb-2"><p className="text-xs text-gray-500 dark:text-zinc-400">{stat.label}</p><stat.icon size={15} className={stat.color} /></div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
-              </div>
-            ))}
-          </div>
-          {mandatoryPending && (
-            <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 mb-5">
-              <div className="flex items-center gap-2 mb-3"><AlertTriangle size={15} className="text-orange-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">Formació obligatòria pendent</h3></div>
-              <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 rounded-xl">
-                <div>
-                  <p className="font-semibold text-gray-900 dark:text-white text-sm">{mandatoryPending.title}</p>
-                  <div className="flex items-center gap-3 mt-1"><span className="text-xs text-gray-500">{mandatoryPending.hours} · {mandatoryPending.category}</span><span className="text-[10px] font-bold bg-orange-200 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded">Obligatòria</span></div>
-                </div>
-                <button onClick={() => { if (mandatoryPending.url) { window.open(mandatoryPending.url, '_blank', 'noopener,noreferrer'); } else { setActiveTab('Catàleg'); setCampusSearch(mandatoryPending.title); } }} className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">Fer curs</button>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
       {activeTab === 'Catàleg' && (
         <>
           <div className="relative mb-4">
@@ -4255,28 +3498,39 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
             <input type="text" value={campusSearch} onChange={e => setCampusSearch(e.target.value)} placeholder="Cercar cursos..." className="w-full max-w-md bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white" />
           </div>
           <div className="flex flex-wrap gap-2 mb-3">
-            {topics.map(t => <FilterChip key={t} label={t} active={topicFilter === t} onClick={() => setTopicFilter(t)} />)}
+            {kinds.map(t => <FilterChip key={t} label={t} active={kindFilter === t} onClick={() => setKindFilter(t)} />)}
           </div>
           <div className="flex flex-wrap gap-2 mb-6">
             {statuses.map(s => <FilterChip key={s} label={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />)}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {filteredCourses.map((course, i) => (
-              <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 anim-item" style={{ '--i': i } as React.CSSProperties}>
+            {filteredCatalog.map((item, i) => (
+              <div key={item.id} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 anim-item" style={{ '--i': i } as React.CSSProperties}>
                 <div className="flex items-start justify-between mb-3">
-                  <span className="text-[11px] font-bold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{course.category}</span>
-                  <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded", STATUS_COLORS[course.user_status])}>{course.user_status}</span>
+                  <span className="text-[11px] font-bold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{item.type}{item.category ? ` · ${item.category}` : ''}</span>
+                  <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded", STATUS_COLORS[item.status])}>{item.status}</span>
                 </div>
-                <h4 className="font-bold text-gray-900 dark:text-white mb-2 text-sm">{course.title}</h4>
-                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed line-clamp-2">{course.description}</p>
-                <div className="flex items-center gap-2 text-xs text-gray-500 mb-2"><Clock size={12} /><span>{course.hours}</span>{!!course.mandatory && <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-bold">Obligatòria</span>}</div>
-                {!!course.cert && <div className="flex items-center gap-1 text-[11px] text-green-600"><Award size={12} /><span>Certificat disponible</span></div>}
-                {course.user_progress > 0 && course.user_progress < 100 && (
-                  <><div className="flex justify-between text-xs text-gray-500 mt-3 mb-1"><span>Progrés</span><span>{course.user_progress}%</span></div><div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${course.user_progress}%` }} /></div></>
+                <h4 className="font-bold text-gray-900 dark:text-white mb-2 text-sm">{item.title}</h4>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed line-clamp-2">{item.description}</p>
+                <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                  {item.hours && <><Clock size={12} /><span>{item.hours}</span></>}
+                  {!!item.mandatory && <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-bold">Obligatòria</span>}
+                  {item.type === 'Internes' && <span className="text-[10px] bg-red-50 dark:bg-red-950/20 text-red-600 px-1.5 py-0.5 rounded font-bold">{item.quizQuestions ?? 0} preguntes</span>}
+                </div>
+                {typeof item.progress === 'number' && item.progress > 0 && item.progress < 100 && (
+                  <><div className="flex justify-between text-xs text-gray-500 mt-3 mb-1"><span>Progrés</span><span>{item.progress}%</span></div><div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${item.progress}%` }} /></div></>
                 )}
-                {course.url && (
-                  <button onClick={() => window.open(course.url, '_blank', 'noopener,noreferrer')} className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-red-600 border border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/20 py-1.5 rounded-lg transition-colors">
+                {item.type === 'Externes' && item.url && (
+                  <button onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')} className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-red-600 border border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/20 py-1.5 rounded-lg transition-colors">
                     <ExternalLink size={12} /> Obrir curs
+                  </button>
+                )}
+                {item.type === 'Internes' && item.quizId && (
+                  <button
+                    onClick={() => window.open(`${window.location.pathname}?quiz=${item.quizId}${item.quizInProgress ? '&resume=1' : ''}`, '_blank')}
+                    className={`mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-white py-1.5 rounded-lg transition-colors ${item.quizInProgress ? 'bg-amber-600 hover:bg-amber-700' : 'bg-red-600 hover:bg-red-700'}`}
+                  >
+                    <PlayCircle size={12} /> {item.quizInProgress ? 'Continuar' : (item.quizAttempted ? 'Repetir' : 'Començar')}
                   </button>
                 )}
               </div>
@@ -4329,7 +3583,7 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
         </>
       )}
 
-      {activeTab === 'Proves' && (
+      {activeTab === 'Proves' && (  
         <>
           {activeQuiz ? (
             <div className="max-w-2xl mx-auto">
@@ -4497,48 +3751,13 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
         </>
       )}
 
-      {activeTab === 'Recursos' && (
-        <>
-          <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Biblioteca de recursos complementaris per a l'aprenentatge.</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { type: "pdf", title: "Guia ràpida d'EPI", desc: "Referència visual dels equips de protecció individual.", tags: ["Seguretat", "Infografia"] },
-              { type: "video", title: "Vídeo: procediment d'evacuació", desc: "Simulacre d'evacuació de la planta de Mollet enregistrat.", tags: ["Seguretat", "Vídeo"] },
-              { type: "pdf", title: "Checklist d'auditoria interna", desc: "Llista de verificació per a auditories internes ISO 9001.", tags: ["Qualitat", "PDF"] },
-              { type: "pdf", title: "Guia ràpida SAP: comandes de venda", desc: "Pas a pas per crear una comanda de venda a l'ERP.", tags: ["Sistemes", "PDF"] },
-              { type: "pdf", title: "Glossari de termes comercials", desc: "Termes habituals en la relació amb clients i distribuïdors.", tags: ["Comercial", "PDF"] },
-              { type: "pdf", title: "Infografia RGPD: drets dels treballadors", desc: "Resum visual dels drets en matèria de protecció de dades.", tags: ["Compliance", "Infografia"] },
-              { type: "video", title: "Vídeo: benvinguda a TAVIL", desc: "Vídeo corporatiu de presentació per a noves incorporacions.", tags: ["Acollida", "Vídeo"] },
-              { type: "pdf", title: "Metodologia 5S – resum", desc: "Resum dels principis 5S aplicats a la planta de TAVIL.", tags: ["Producció", "PDF"] },
-            ].map((r, i) => (
-              <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 cursor-pointer group">
-                <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/20 flex items-center justify-center mb-4">
-                  {r.type === 'video' ? <Video size={18} className="text-red-500" /> : <FileText size={18} className="text-red-500" />}
-                </div>
-                <h4 className="font-bold text-gray-900 dark:text-white text-sm mb-2 group-hover:text-red-600 transition-colors">{r.title}</h4>
-                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed">{r.desc}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {r.tags.map((t, j) => <span key={j} className="text-[10px] font-bold bg-gray-100 dark:bg-zinc-800 text-gray-500 px-2 py-0.5 rounded">{t}</span>)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      
       </div>
     </div>
   );
 }
 
 // ── Veu de l'Empleat Tab ──────────────────────────────────────────────────────
-
-function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
-  return (
-    <button onClick={onToggle} className={cn("relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0", on ? "bg-red-600" : "bg-gray-200 dark:bg-zinc-700")}>
-      <span className="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform" style={{ transform: on ? 'translateX(18px)' : 'translateX(2px)' }} />
-    </button>
-  );
-}
 
 function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }: { currentUser: User | null; initialSubTab?: string | null; onSubTabConsumed?: () => void; onBack?: () => void }) {
   const { t } = useTranslation();
@@ -4898,7 +4117,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
 
         {/* New suggestion form */}
         {mobileVeuForm === 'sugg' && createPortal(
-          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 ${veuClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeMobileVeuForm}>
+          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${veuClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeMobileVeuForm}>
             <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }} className={veuClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
               <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Nou suggeriment</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -4927,7 +4146,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
 
         {/* New incidència form */}
         {mobileVeuForm === 'inc' && createPortal(
-          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 ${veuClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeMobileVeuForm}>
+          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${veuClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeMobileVeuForm}>
             <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }} className={veuClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
               <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Nova incidència</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -5970,7 +5189,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
 
         {/* New day-off form */}
         {mobileSolForm && createPortal(
-          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 ${solClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeSolForm}>
+          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${solClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeSolForm}>
             <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%' }} className={solClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
               <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Nova sol·licitud</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -5996,7 +5215,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
 
         {/* New vacances form */}
         {mobileVacForm && createPortal(
-          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 ${vacClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeVacForm}>
+          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${vacClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeVacForm}>
             <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%' }} className={vacClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
               <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Sol·licitar vacances</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -6631,7 +5850,7 @@ function ProfileRow({ icon: Icon, label, value, editing, onChange }: {
 
 function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDarkMode, onLogout, notifications }: { currentUser: User | null; onUserUpdate: (u: User) => void; onNavigate?: (tab: string) => void; isDarkMode?: boolean; toggleDarkMode?: () => void; onLogout?: () => void; notifications?: Notification[] }) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = usePersistedSubTab<string>('perfil', 'Informació', ['Informació', 'Formació', 'Beneficis socials', 'Configuració'] as const);
+  const [activeTab, setActiveTab] = usePersistedSubTab<string>('perfil', 'Informació', ['Informació', 'Configuració'] as const);
   const [notifCorreu, setNotifCorreu] = useState(currentUser?.email_notifs !== 0);
   const [notifPortal, setNotifPortal] = useState(true);
 
@@ -6667,40 +5886,9 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
 
   const initials = (currentUser?.name ?? '?').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
 
-  const handleSave = async () => {
-    const trimmed = nameInput.trim();
-    if (!trimmed || !currentUser) return;
-    try {
-      if (canEditDept) {
-        const deptChanged = deptInput !== currentUser.dept || isHeadInput !== (currentUser.is_head === 1);
-        if (deptChanged) {
-          await apiUpdateDept(deptInput, isHeadInput);
-        }
-      }
-      const updated = await apiUpdateMe({
-        name: trimmed,
-        phone: phoneInput.trim(),
-        ext: extInput.trim(),
-        location: locationInput.trim(),
-      });
-      onUserUpdate(updated);
-      setEditing(false);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (e: any) {
-      alert(e.message ?? 'Error en desar');
-    }
-  };
-
-  const handleCancel = () => {
-    setEditing(false);
-    setNameInput(currentUser?.name ?? '');
-    setPhoneInput(currentUser?.phone ?? '');
-    setExtInput(currentUser?.ext ?? '');
-    setLocationInput(currentUser?.location ?? '');
-    setDeptInput(currentUser?.dept ?? DEPT_ORDER[0]);
-    setIsHeadInput((currentUser?.is_head ?? 0) === 1);
-  };
+  // Self-edit is disabled — personal data is admin-managed.
+  const handleSave = () => { setEditing(false); };
+  const handleCancel = () => { setEditing(false); };
 
   const [showNotifs, setShowNotifs] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
@@ -6712,11 +5900,8 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
     }
   }, [showNotifs]);
 
-  // Avatar: emmagatzemat a localStorage fins que el backend tingui columna avatar_url.
-  const avatarKey = `tavil_avatar_${currentUser?.id ?? 0}`;
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
-    try { return localStorage.getItem(avatarKey); } catch { return null; }
-  });
+  // Avatar (user-editable; rest of personal data is admin-managed).
+  const avatarUrl: string | null = currentUser?.avatar_url ?? null;
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarFileRef = useRef<HTMLInputElement | null>(null);
   const handleAvatarPick = async (file: File) => {
@@ -6724,16 +5909,42 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
     setAvatarUploading(true);
     try {
       const url = await apiUploadImage(file);
-      setAvatarUrl(url);
-      try { localStorage.setItem(avatarKey, url); } catch {}
-      window.dispatchEvent(new Event('tavil-avatar-changed'));
-    } catch (e: any) { alert(e.message ?? 'Error pujant la imatge'); }
-    finally { setAvatarUploading(false); }
+      const m = url.match(/(\/uploads\/[^?#]+)/);
+      const rel = m ? m[1] : url;
+      const updated = await apiUpdateMe({ avatar_url: rel });
+      onUserUpdate(updated);
+    } catch (e: any) {
+      alert(e?.message ?? 'Error pujant la imatge');
+    } finally {
+      setAvatarUploading(false);
+    }
   };
-  const handleAvatarRemove = () => {
-    setAvatarUrl(null);
-    try { localStorage.removeItem(avatarKey); } catch {}
-    window.dispatchEvent(new Event('tavil-avatar-changed'));
+  const handleAvatarRemove = async () => {
+    try {
+      const updated = await apiUpdateMe({ avatar_url: '' });
+      onUserUpdate(updated);
+    } catch (e: any) {
+      alert(e?.message ?? 'Error eliminant la imatge');
+    }
+  };
+
+  // Edit-profile modal + directory visibility toggle + accordion + password modal.
+  const [showEdit, setShowEdit] = useState(false);
+  const [expandedRow, setExpandedRow] = useState<'notifs' | 'privacy' | 'support' | null>(null);
+  const [showChangePw, setShowChangePw] = useState(false);
+  const [visInDir, setVisInDir] = useState<boolean>((currentUser?.visible_in_directory ?? 1) === 1);
+  useEffect(() => {
+    setVisInDir((currentUser?.visible_in_directory ?? 1) === 1);
+  }, [currentUser?.visible_in_directory]);
+  const toggleVisInDir = async () => {
+    const next = !visInDir;
+    setVisInDir(next);
+    try {
+      const u = await apiUpdateMe({ visible_in_directory: next ? 1 : 0 });
+      onUserUpdate(u);
+    } catch {
+      setVisInDir(!next);
+    }
   };
 
   // Preferències de comunicació per categoria — localStorage fins que tinguem backend.
@@ -6964,7 +6175,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
               border: 'none', padding: 0, cursor: 'pointer', overflow: 'hidden', position: 'relative',
             }}>
             {avatarUrl
-              ? <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ? <img src={resolveImg(avatarUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               : <span>{ini}</span>}
             <div style={{ position: 'absolute', right: -2, bottom: -2, width: 28, height: 28, borderRadius: 14, background: 'var(--tavil-card)', border: '2px solid var(--tavil-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tavil-text)' }}>
               <ImageIcon size={13} />
@@ -7095,233 +6306,461 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
 
   return (
     <div>
-      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Informació personal, formació, beneficis i configuració</p>
-      <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
-        {['Informació', 'Formació', 'Beneficis socials', 'Configuració'].map(tab => (
-          <UnderlineTab key={tab} label={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)} />
-        ))}
-      </div>
-
-      <div key={activeTab} className="anim-tab">
-      {activeTab === 'Informació' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden relative">
-            {/* Gradient banner */}
-            <div className="h-24 relative z-0" style={{ background: 'var(--tavil-accent)' }}>
-              {editing ? (
-                <div className="absolute top-3 right-3 flex gap-1.5 z-20">
-                  <button onClick={handleSave} disabled={!nameInput.trim()} className="text-xs bg-white text-gray-900 hover:bg-gray-50 disabled:opacity-40 px-3 py-1.5 rounded-lg font-semibold transition-colors shadow-sm">Desar</button>
-                  <button onClick={handleCancel} className="text-xs bg-white/95 hover:bg-white text-gray-900 px-3 py-1.5 rounded-lg font-semibold transition-colors shadow-sm">Cancel·lar</button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => { setEditing(true); setNameInput(currentUser?.name ?? ''); }}
-                  className="absolute top-3 right-3 z-20 flex items-center gap-1.5 text-xs bg-white/95 hover:bg-white text-gray-900 px-2.5 py-1.5 rounded-lg transition-colors shadow-sm font-semibold"
-                  title="Editar perfil"
-                >
-                  <Pencil size={12} /> Editar
-                </button>
-              )}
+      <div className="anim-tab">
+      {true && (
+        <>
+          {/* Hero — cover band + overlapping avatar */}
+          <div className="perfil-stag" style={{ ['--i' as any]: 0 }}>
+            <div style={{ position: 'relative' }}>
+              <div
+                style={{
+                  height: 180,
+                  borderRadius: 14,
+                  border: '1px solid var(--tavil-border)',
+                  backgroundImage: `url(${process.env.PUBLIC_URL}/perfil-banner.png)`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center 35%',
+                  overflow: 'hidden',
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute', left: 24, bottom: -56,
+                  width: 112, height: 112, borderRadius: 999,
+                  border: '5px solid var(--tavil-bg)',
+                  boxShadow: '0 10px 24px -10px rgba(34, 39, 37, 0.18)',
+                  overflow: 'hidden',
+                  background: 'var(--tavil-accent)', color: 'var(--tavil-bg)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 500, letterSpacing: '-0.02em',
+                }}
+              >
+                {avatarUrl
+                  ? <img src={resolveImg(avatarUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span>{initials}</span>}
+              </div>
             </div>
-
-            <div className="px-6 pb-6 -mt-12 relative z-10">
-              {/* Avatar (overlap) — clickable when editing */}
-              <div className="flex justify-center">
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => editing && avatarFileRef.current?.click()}
-                    disabled={!editing || avatarUploading}
-                    aria-label="Canviar foto de perfil"
-                    className="w-24 h-24 rounded-full overflow-hidden shadow-lg ring-4 ring-white dark:ring-zinc-900 select-none relative z-10 flex items-center justify-center text-white text-3xl font-semibold"
-                    style={{ background: 'var(--tavil-accent)', letterSpacing: '-0.01em', cursor: editing ? 'pointer' : 'default', padding: 0, border: 'none' }}
-                  >
-                    {avatarUrl ? (
-                      <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <span>{initials}</span>
-                    )}
-                    {editing && (
-                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', opacity: avatarUploading ? 1 : 0, transition: 'opacity 160ms var(--ease-out-cubic)' }} className="hover:opacity-100">
-                        <ImageIcon size={20} />
-                      </div>
-                    )}
-                  </button>
-                  <input ref={avatarFileRef} type="file" accept="image/*" style={{ display: 'none' }}
-                    onChange={e => { const f = e.target.files?.[0]; if (f) handleAvatarPick(f); e.currentTarget.value = ''; }} />
-                  {editing && avatarUrl && (
-                    <button onClick={handleAvatarRemove} className="absolute -bottom-1 -right-1 z-20 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-full p-1 shadow text-gray-500 hover:text-red-600" title="Treure foto">
-                      <Trash2 size={12} />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Name + chips */}
-              <div className="text-center mt-3">
-                {editing ? (
-                  <input
-                    autoFocus
-                    value={nameInput}
-                    onChange={e => setNameInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') handleCancel(); }}
-                    className="w-full text-center font-semibold text-gray-900 dark:text-white text-lg border-b border-red-400 bg-transparent outline-none pb-1"
-                  />
-                ) : (
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.01em' }}>{currentUser?.name ?? '—'}</h3>
-                )}
-                <p className="text-sm text-gray-500 dark:text-zinc-400 mt-0.5">{currentUser?.role ?? '—'}</p>
-                <div className="flex justify-center gap-1.5 mt-2.5">
-                  <span className="text-[11px] bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 px-2 py-0.5 rounded-md font-medium">{currentUser?.dept ?? '—'}</span>
-                  {(currentUser?.is_head === 1) && (
-                    <span className="text-[11px] bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-md font-medium inline-flex items-center gap-1"><Users size={10} /> Cap</span>
-                  )}
-                </div>
-                {saved && <p className="text-[11px] text-green-600 mt-2">Canvis desats.</p>}
-              </div>
-
-              {/* Field grid */}
-              <div className="mt-5 pt-5 border-t border-gray-100 dark:border-zinc-800 space-y-2.5">
-                <ProfileRow icon={Mail} label="Correu" value={currentUser?.email ?? '—'} />
-                <ProfileRow
-                  icon={Phone} label="Telèfon"
-                  editing={editing} value={phoneInput} onChange={setPhoneInput}
-                />
-                <ProfileRow
-                  icon={Building2} label="Extensió"
-                  editing={editing} value={extInput} onChange={setExtInput}
-                />
-                <ProfileRow
-                  icon={MapPin} label="Ubicació"
-                  editing={editing} value={locationInput} onChange={setLocationInput}
-                />
-                <div className="flex items-center gap-3 py-1">
-                  <FolderOpen size={14} className="text-gray-400 dark:text-zinc-500 flex-shrink-0" />
-                  <span className="text-[11px] uppercase tracking-wide font-medium text-gray-400 dark:text-zinc-500 w-20">Dept.</span>
-                  {editing && canEditDept ? (
-                    <select value={deptInput} onChange={e => { setDeptInput(e.target.value); setIsHeadInput(false); }} className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white">
-                      {DEPT_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  ) : <span className="text-sm text-gray-700 dark:text-zinc-300 truncate">{currentUser?.dept ?? '—'}</span>}
-                </div>
-
-                {editing && canEditDept && (
-                  <label className={cn("flex items-center gap-2 cursor-pointer text-sm pl-7 pt-1", deptHasHead ? "opacity-40 cursor-not-allowed" : "")}>
-                    <input
-                      type="checkbox"
-                      checked={isHeadInput}
-                      disabled={deptHasHead}
-                      onChange={e => setIsHeadInput(e.target.checked)}
-                      className="rounded text-red-600 focus:ring-red-400"
-                    />
-                    <span className="text-xs text-gray-600 dark:text-zinc-400">
-                      Sóc el/la responsable d'aquest departament
-                      {deptHasHead && <span className="text-[10.5px] text-gray-400 ml-1">(ja té responsable)</span>}
-                    </span>
-                  </label>
-                )}
-
-                <ProfileRow icon={CreditCard} label="ID" value={`TAV-0${String(currentUser?.id ?? 0).padStart(3, '0')}`} />
-                <ProfileRow icon={Calendar} label="Des de" value="15 setembre 2019" />
-              </div>
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: 24, paddingLeft: 154, paddingRight: 8, paddingTop: 10,
+                marginBottom: 64,
+              }}
+            >
+              <p style={{ fontSize: 14.5, color: 'var(--tavil-muted)', margin: 0 }}>
+                {currentUser?.role ?? '—'} · {currentUser?.dept ?? '—'}
+              </p>
+              <button
+                onClick={() => setShowEdit(true)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  height: 40, padding: '0 16px', borderRadius: 8,
+                  background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
+                  color: 'var(--tavil-text)', fontSize: 13.5, fontWeight: 600, fontFamily: 'inherit',
+                  cursor: 'pointer', transition: 'background 160ms var(--ease-out-cubic)',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--tavil-bgAlt)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--tavil-card)'; }}
+              >
+                <Pencil size={14} /> Editar perfil
+              </button>
             </div>
           </div>
-          <div className="col-span-2 space-y-5">
-            <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Resum de vacances</h3>
-              <div className="grid grid-cols-4 gap-3">
-                {[{ label: "Total", value: "23", red: false }, { label: "Gaudits", value: "8", red: false }, { label: "Pendents d'aprovar", value: "2", red: false }, { label: "Restants", value: "13", red: true }].map((stat, i) => (
-                  <div key={i} className="border border-gray-100 dark:border-zinc-800 rounded-xl p-3 text-center">
-                    <p className={cn("text-2xl font-bold", stat.red ? "text-red-600" : "text-gray-900 dark:text-white")}>{stat.value}</p>
-                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">{stat.label}</p>
+
+          {/* 2-column grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 28, marginTop: 32 }}>
+            {/* Left: Dades personals */}
+            <div className="perfil-stag" style={{ ['--i' as any]: 1 }}>
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--tavil-faint)' }}>Compte</div>
+                <h2 style={{ fontSize: 24, fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--tavil-text)', marginTop: 4 }}>Dades personals</h2>
+              </div>
+              <div style={{ background: 'var(--tavil-card)', borderRadius: 14, border: '1px solid var(--tavil-border)' }}>
+                {([
+                  { I: Mail,     label: 'Correu corporatiu', value: currentUser?.email ?? '—' },
+                  { I: Phone,    label: 'Telèfon',           value: currentUser?.phone || '—' },
+                  { I: Phone,    label: 'Extensió',          value: currentUser?.ext || '—' },
+                  { I: MapPin,   label: 'Oficina',           value: currentUser?.location || '—' },
+                  { I: Calendar, label: 'Incorporació',      value: '12 setembre 2022' },
+                ] as { I: React.ElementType; label: string; value: string }[]).map((r, i, arr) => (
+                  <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: i < arr.length - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--tavil-bgAlt)', color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <r.I size={15} />
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--tavil-faint)', marginBottom: 2 }}>{r.label}</div>
+                      <div style={{ fontSize: 13.5, color: 'var(--tavil-text)' }}>{r.value}</div>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Accessos ràpids</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
-                {([
-                  { icon: Building2, label: "Empresa", tab: "Empresa" },
-                  { icon: ActivityIcon, label: "Connect", tab: "Activitats" },
-                  { icon: Mail, label: "Correu corporatiu", external: true },
-                  { icon: ExternalLink, label: "Portal de nòmines", external: true },
-                  { icon: Calendar, label: "Sol·licitud de vacances", tab: "Solicituds" },
-                  { icon: Database, label: "ERP (SAP)", external: true },
-                  { icon: Users, label: "Directori intern", tab: "Directori" },
-                  { icon: GraduationCap, label: "Campus TAVIL", tab: "Campus" },
-                ] as { icon: React.ElementType; label: string; external?: boolean; tab?: string }[]).map((item, i) => (
-                  item.external ? (
-                    <div key={i} title="Properament disponible" className="flex items-center gap-2 p-3 border border-gray-100 dark:border-zinc-800 rounded-xl cursor-not-allowed opacity-50 select-none">
-                      <item.icon size={14} className="text-red-400 flex-shrink-0" />
-                      <span className="text-xs text-gray-500 dark:text-zinc-400">{item.label}</span>
-                    </div>
-                  ) : (
-                    <div key={i} onClick={() => onNavigate?.(item.tab!)} className="flex items-center gap-2 p-3 border border-gray-100 dark:border-zinc-800 rounded-xl hover:border-red-200 dark:hover:border-red-900 cursor-pointer hover:bg-red-50/50 dark:hover:bg-red-950/10 transition-colors group">
-                      <item.icon size={14} className="text-red-500 flex-shrink-0" />
-                      <span className="text-xs text-gray-700 dark:text-zinc-300 group-hover:text-red-600 transition-colors">{item.label}</span>
-                    </div>
-                  )
-                ))}
+
+            {/* Right: Preferències */}
+            <div className="perfil-stag" style={{ ['--i' as any]: 2 }}>
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--tavil-faint)' }}>Preferències</div>
+                <h2 style={{ fontSize: 24, fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--tavil-text)', marginTop: 4 }}>Configuració ràpida</h2>
               </div>
+
+              {/* Idioma */}
+              <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 20, marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--tavil-faint)', marginBottom: 14 }}>Idioma</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {([{ code: 'ca', label: 'Català' }, { code: 'es', label: 'Español' }, { code: 'en', label: 'English' }] as const).map(l => {
+                    const a = i18n.language === l.code;
+                    return (
+                      <button key={l.code} onClick={() => i18n.changeLanguage(l.code)}
+                        style={{
+                          flex: 1, padding: 12, borderRadius: 10,
+                          border: `1px solid ${a ? 'var(--tavil-accent)' : 'var(--tavil-border)'}`,
+                          background: a ? 'var(--tavil-accent-light)' : 'var(--tavil-bgAlt)',
+                          color: a ? 'var(--tavil-accent-dark)' : 'var(--tavil-text)',
+                          fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+                          cursor: 'pointer', transition: 'all 160ms var(--ease-out-cubic)',
+                        }}
+                      >{l.label}</button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Tema */}
+              <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 20, marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--tavil-faint)', marginBottom: 14 }}>Tema</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {([{ dark: false, label: 'Clar', I: Sun }, { dark: true, label: 'Fosc', I: Moon }] as const).map(o => {
+                    const a = (isDarkMode ?? false) === o.dark;
+                    return (
+                      <button key={String(o.dark)} onClick={() => { if ((isDarkMode ?? false) !== o.dark) toggleDarkMode?.(); }}
+                        style={{
+                          flex: 1, padding: 14, borderRadius: 10,
+                          border: `1px solid ${a ? 'var(--tavil-accent)' : 'var(--tavil-border)'}`,
+                          background: a ? 'var(--tavil-accent-light)' : 'var(--tavil-bgAlt)',
+                          color: a ? 'var(--tavil-accent-dark)' : 'var(--tavil-text)',
+                          fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                          transition: 'all 160ms var(--ease-out-cubic)',
+                        }}
+                      ><o.I size={16} />{o.label}</button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Notificacions · Privacitat · Suport — accordion */}
+              <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, marginBottom: 14, overflow: 'hidden' }}>
+                {([
+                  { id: 'notifs',  I: Bell,     label: 'Notificacions' },
+                  { id: 'privacy', I: Eye,      label: 'Privacitat i accessos' },
+                  { id: 'support', I: Settings, label: 'Ajuda i suport' },
+                ] as { id: 'notifs' | 'privacy' | 'support'; I: React.ElementType; label: string }[]).map((r, i, arr) => {
+                  const open = expandedRow === r.id;
+                  return (
+                    <div key={r.id} style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
+                      <button
+                        onClick={() => setExpandedRow(open ? null : r.id)}
+                        aria-expanded={open}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                          padding: '14px 18px',
+                          background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                          transition: 'background 160ms var(--ease-out-cubic)',
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--tavil-bgAlt)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+                      >
+                        <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--tavil-bgAlt)', color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <r.I size={15} />
+                        </div>
+                        <span style={{ flex: 1, fontSize: 14, color: 'var(--tavil-text)' }}>{r.label}</span>
+                        <ChevronRight
+                          size={15}
+                          style={{
+                            color: 'var(--tavil-faint)',
+                            transform: open ? 'rotate(90deg)' : 'none',
+                            transition: 'transform 200ms var(--ease-out-cubic)',
+                          }}
+                        />
+                      </button>
+                      {open && (
+                        <div style={{ padding: '4px 18px 18px', borderTop: '1px solid var(--tavil-border)', background: 'var(--tavil-bgAlt)' }} className="anim-fade-in">
+                          {r.id === 'notifs' && (
+                            <div style={{ paddingTop: 14 }}>
+                              <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--tavil-faint)', marginBottom: 10 }}>Canals</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {([
+                                  { k: 'mail',   label: 'Per correu',    desc: 'Email per cada notificació nova.',        on: notifCorreu, toggle: async () => {
+                                    const nv = !notifCorreu;
+                                    setNotifCorreu(nv);
+                                    try { const u = await apiUpdateMe({ email_notifs: nv ? 1 : 0 }); onUserUpdate(u); }
+                                    catch { setNotifCorreu(!nv); }
+                                  } },
+                                  { k: 'portal', label: 'Al portal',     desc: 'Mostra la campaneta amb les novetats.',    on: notifPortal, toggle: () => setNotifPortal(!notifPortal) },
+                                  { k: 'push',   label: 'Push al mòbil', desc: 'Notificacions empenyedes al dispositiu.', on: notifPush,   toggle: toggleNotifPush },
+                                ] as { k: string; label: string; desc: string; on: boolean; toggle: () => void }[]).map(c => (
+                                  <div key={c.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                                    <div style={{ minWidth: 0 }}>
+                                      <div style={{ fontSize: 13.5, color: 'var(--tavil-text)' }}>{c.label}</div>
+                                      <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 2 }}>{c.desc}</div>
+                                    </div>
+                                    <Toggle on={c.on} onToggle={c.toggle} />
+                                  </div>
+                                ))}
+                              </div>
+                              <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--tavil-border)' }}>
+                                <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--tavil-faint)', marginBottom: 10 }}>Categories</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                  {([
+                                    { k: 'noticies',   l: 'Notícies',    d: 'Comunicats i articles nous.' },
+                                    { k: 'agenda',     l: 'Agenda',      d: 'Esdeveniments i recordatoris.' },
+                                    { k: 'solicituds', l: 'Sol·licituds', d: 'Aprovacions i estat de peticions.' },
+                                    { k: 'campus',     l: 'Campus',      d: 'Cursos nous i formacions assignades.' },
+                                  ] as { k: keyof NotifCats; l: string; d: string }[]).map(c => (
+                                    <div key={c.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                                      <div style={{ minWidth: 0 }}>
+                                        <div style={{ fontSize: 13.5, color: 'var(--tavil-text)' }}>{c.l}</div>
+                                        <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 2 }}>{c.d}</div>
+                                      </div>
+                                      <Toggle on={notifCats[c.k]} onToggle={() => toggleNotifCat(c.k)} />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {r.id === 'privacy' && (
+                            <div style={{ paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: 13.5, color: 'var(--tavil-text)' }}>Visible al directori</div>
+                                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 2 }}>La resta de l'equip et podrà trobar a Qui és qui.</div>
+                                </div>
+                                <Toggle on={visInDir} onToggle={toggleVisInDir} />
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 12, borderTop: '1px solid var(--tavil-border)' }}>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: 13.5, color: 'var(--tavil-text)' }}>Contrasenya</div>
+                                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 2 }}>Canvia la teva contrasenya d'accés al portal.</div>
+                                </div>
+                                <button
+                                  onClick={() => setShowChangePw(true)}
+                                  style={{
+                                    padding: '6px 12px', borderRadius: 8,
+                                    background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
+                                    color: 'var(--tavil-text)', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                                  }}
+                                >Canviar</button>
+                              </div>
+                            </div>
+                          )}
+                          {r.id === 'support' && (
+                            <div style={{ paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                              <div>
+                                <div style={{ fontSize: 13.5, color: 'var(--tavil-text)' }}>Contacte</div>
+                                <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 2 }}>
+                                  Per a qualsevol incidència o suggeriment del portal, escriu a{' '}
+                                  <a href="mailto:portalweb@tavil.net" style={{ color: 'var(--tavil-accent)', textDecoration: 'underline' }}>portalweb@tavil.net</a>.
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 12, borderTop: '1px solid var(--tavil-border)' }}>
+                                <div style={{ fontSize: 13.5, color: 'var(--tavil-text)' }}>Versió del portal</div>
+                                <span style={{ fontSize: 12, color: 'var(--tavil-muted)', fontVariantNumeric: 'tabular-nums' }}>2026.05.25</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Logout */}
+              <button
+                onClick={onLogout}
+                style={{
+                  width: '100%', marginTop: 18, padding: 14, borderRadius: 10,
+                  border: '1px solid var(--tavil-accent)', background: 'transparent',
+                  color: 'var(--tavil-accent)', fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  transition: 'background 160ms var(--ease-out-cubic)',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--tavil-accent-light)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+              >
+                <LogOut size={16} /> Tanca sessió
+              </button>
             </div>
           </div>
-        </div>
-      )}
 
-      {activeTab === 'Formació' && (
-        <>
-          <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6">
-            {[{ label: "Completats", value: String(completedCount), icon: Award, color: "text-green-500" }, { label: "Pendents", value: String(pendingCount), icon: Clock, color: "text-orange-500" }, { label: "Hores totals", value: totalHoursStr, icon: GraduationCap, color: "text-purple-500" }].map((s, i) => (
-              <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
-                <div className="flex items-center justify-between mb-2"><p className="text-xs text-gray-500 dark:text-zinc-400">{s.label}</p><s.icon size={15} className={s.color} /></div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{s.value}</p>
-              </div>
-            ))}
-          </div>
-          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 divide-y divide-gray-50 dark:divide-zinc-800">
-            {profileCourses.map((c, i) => (
-              <div key={i} className="flex items-center gap-4 p-4">
-                <GraduationCap size={16} className="text-gray-400 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 dark:text-white text-sm">{c.title}</p>
-                  {c.user_progress > 0 && c.user_progress < 100 && (
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <div className="flex-1 max-w-xs bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${c.user_progress}%` }} /></div>
-                      <span className="text-[10px] text-gray-500">{c.user_progress}%</span>
-                    </div>
-                  )}
+          {showChangePw && (
+            <ChangePasswordModal onDone={() => setShowChangePw(false)} />
+          )}
+
+          {/* Edit-profile modal */}
+          {showEdit && createPortal(
+            <div
+              className="fixed inset-0 z-[60] flex items-center justify-center anim-fade-in"
+              style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+              onClick={() => setShowEdit(false)}
+              onKeyDown={e => { if (e.key === 'Escape') setShowEdit(false); }}
+              tabIndex={-1}
+            >
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                  width: 620, maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 48px)',
+                  overflowY: 'auto',
+                  background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
+                  borderRadius: 14, padding: 20,
+                  boxShadow: '0 16px 48px -16px rgba(34,39,37,0.30)',
+                }}
+                className="anim-pop"
+              >
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)', margin: 0 }}>Editar perfil</h3>
+                  <button onClick={() => setShowEdit(false)} style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--tavil-muted)' }}>
+                    <X size={16} />
+                  </button>
                 </div>
-                <span className={cn("text-[11px] font-bold px-2.5 py-1 rounded flex-shrink-0", STATUS_COLORS[c.user_status])}>{c.user_status}</span>
+
+                {/* Avatar block */}
+                <div style={{ display: 'flex', gap: 18, padding: '6px 0 18px', marginBottom: 18, borderBottom: '1px solid var(--tavil-border)' }}>
+                  <div
+                    style={{
+                      width: 72, height: 72, borderRadius: 999, flexShrink: 0,
+                      overflow: 'hidden', background: 'var(--tavil-accent)', color: 'var(--tavil-bg)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 500, letterSpacing: '-0.02em',
+                    }}
+                  >
+                    {avatarUrl ? <img src={resolveImg(avatarUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>{initials}</span>}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)' }}>Foto de perfil</div>
+                    <div style={{ fontSize: 12, color: 'var(--tavil-muted)', marginTop: 4, marginBottom: 10 }}>
+                      JPG o PNG, mínim 256×256 px. Es mostra a tot el portal.
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => avatarFileRef.current?.click()}
+                        disabled={avatarUploading}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          padding: '6px 12px', borderRadius: 8,
+                          background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
+                          color: 'var(--tavil-text)', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
+                          cursor: avatarUploading ? 'wait' : 'pointer', opacity: avatarUploading ? 0.6 : 1,
+                        }}
+                      >
+                        <Plus size={13} /> {avatarUploading ? 'Pujant…' : 'Puja una foto'}
+                      </button>
+                      <input ref={avatarFileRef} type="file" accept="image/jpeg,image/png" style={{ display: 'none' }}
+                        onChange={e => { const f = e.target.files?.[0]; if (f) handleAvatarPick(f); e.currentTarget.value = ''; }} />
+                      {avatarUrl && (
+                        <button
+                          onClick={handleAvatarRemove}
+                          style={{
+                            padding: '6px 12px', borderRadius: 8,
+                            background: 'transparent', border: 'none',
+                            color: 'var(--tavil-muted)', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                          }}
+                        >Elimina</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Read-only data grid */}
+                <div style={{ background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', borderRadius: 10, padding: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
+                    {([
+                      ['Nom complet',        currentUser?.name ?? '—'],
+                      ['Correu corporatiu',  currentUser?.email ?? '—'],
+                      ['Rol',                currentUser?.role ?? '—'],
+                      ['Departament',        currentUser?.dept ?? '—'],
+                      ['Telèfon',            currentUser?.phone || '—'],
+                      ['Extensió',           currentUser?.ext || '—'],
+                      ['Oficina',            currentUser?.location || '—'],
+                      ['Incorporació',       '12 setembre 2022'],
+                    ] as [string, string][]).map(([k, v]) => (
+                      <div key={k}>
+                        <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--tavil-faint)', marginBottom: 4 }}>{k}</div>
+                        <div style={{ fontSize: 13.5, color: 'var(--tavil-text)' }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ gridColumn: '1 / -1', paddingTop: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Eye size={12} style={{ color: 'var(--tavil-faint)' }} />
+                    <span style={{ fontSize: 11.5, color: 'var(--tavil-faint)' }}>
+                      Totes les dades les gestiona l'administrador del portal.
+                    </span>
+                  </div>
+                </div>
+
+                {/* Directory toggle */}
+                <div style={{ marginTop: 4, padding: '12px 14px', background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <button
+                    role="switch"
+                    aria-checked={visInDir}
+                    onClick={toggleVisInDir}
+                    style={{
+                      position: 'relative', width: 38, height: 22, borderRadius: 11,
+                      background: visInDir ? 'var(--tavil-accent)' : 'var(--tavil-border)',
+                      border: 'none', cursor: 'pointer', flexShrink: 0,
+                      transition: 'background 200ms var(--ease-out-cubic)', padding: 0,
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute', top: 2, left: visInDir ? 18 : 2,
+                      width: 18, height: 18, borderRadius: 9, background: '#fff',
+                      transition: 'left 200ms var(--ease-out-cubic)',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.18)',
+                    }} />
+                  </button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--tavil-text)' }}>Visible al directori</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 2 }}>
+                      La resta de l'equip et podrà trobar a Qui és qui.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--tavil-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 11.5, color: 'var(--tavil-faint)' }}>
+                    Els canvis es desen al teu compte TAVIL.
+                  </span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => setShowEdit(false)}
+                      style={{
+                        padding: '8px 14px', borderRadius: 8,
+                        background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
+                        color: 'var(--tavil-text)', fontSize: 13.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                      }}
+                    >Cancel·la</button>
+                    <button
+                      onClick={() => setShowEdit(false)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        padding: '8px 14px', borderRadius: 8,
+                        background: 'var(--tavil-accent)', border: 'none',
+                        color: 'var(--tavil-bg)', fontSize: 13.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                      }}
+                    ><Check size={14} /> Desa els canvis</button>
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
+            </div>,
+            document.body
+          )}
         </>
       )}
 
-      {activeTab === 'Beneficis socials' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-          {[
-            { icon: Heart, color: "text-red-500", bg: "bg-red-50 dark:bg-red-950/20", title: "Assegurança mèdica", desc: "Cobertura mèdica privada Adeslas per al treballador i familiars directes. Copagament reduït." },
-            { icon: ActivityIcon, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/20", title: "Descompte gimnàs", desc: "30% de descompte a la xarxa de gimnasos DIR amb accés iHimitat." },
-            { icon: Gift, color: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-950/20", title: "Club d'avantatges TAVIL", desc: "Descomptes en comerços locals, tecnologia, viatges i oci a través de la plataforma Cobee." },
-            { icon: Shield, color: "text-green-500", bg: "bg-green-50 dark:bg-green-950/20", title: "Assegurança de vida", desc: "Pòlissa d'assegurança de vida i accidents amb cobertura de 2x el salari anual." },
-            { icon: GraduationCap, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-950/20", title: "Formació subvencionada", desc: "L'empresa subvenciona fins al 100% de la formació relacionada amb el lloc de treball." },
-            { icon: Calendar, color: "text-pink-500", bg: "bg-pink-50 dark:bg-pink-950/20", title: "Dia lliure d'aniversari", desc: "Dia lliure retribuït el dia del teu aniversari o el dia laborable més proper." },
-          ].map((b, i) => (
-            <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
-              <div className="flex items-start justify-between mb-3">
-                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", b.bg)}><b.icon size={20} className={b.color} /></div>
-                <span className="text-[11px] font-bold bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400 px-2 py-0.5 rounded">Actiu</span>
-              </div>
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-2">{b.title}</h3>
-              <p className="text-xs text-gray-500 dark:text-zinc-400 leading-relaxed">{b.desc}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {activeTab === 'Configuració' && (
+      {false && (
         <div className="max-w-2xl space-y-4">
           {/* Aparença */}
           <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
@@ -7462,662 +6901,6 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
 // ── Onboarding Modal ─────────────────────────────────────────────────────────
 
 
-// ── Auth pages ────────────────────────────────────────────────────────────────
-
-function VerifyEmailPage({ email, onBack, onVerified, isDarkMode, toggleDarkMode }: {
-  email: string;
-  onBack: () => void;
-  onVerified: (data: AuthOut) => void;
-  isDarkMode: boolean;
-  toggleDarkMode: () => void;
-}) {
-  const [code, setCode] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [resent, setResent] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const data = await apiVerifyEmail(email, code.trim());
-      onVerified(data);
-    } catch (err: any) {
-      setError(err.message ?? 'Codi invàlid o caducat.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    setResent(false);
-    try {
-      await apiResendVerification(email);
-      setResent(true);
-    } catch {}
-  };
-
-  const isMobileVerify = typeof window !== 'undefined' && window.innerWidth < 768;
-  const [verifyLang, setVerifyLang] = useState<'ca'|'es'|'en'>('ca');
-  const CODE_LEN = 8;
-  const [slots, setSlots] = useState<string[]>(Array(CODE_LEN).fill(''));
-  const slotRefs = React.useRef<(HTMLInputElement | null)[]>([]);
-
-  const setSlot = (i: number, v: string) => {
-    v = v.toUpperCase().replace(/[^0-9A-F]/g, '').slice(0, 1);
-    const next = [...slots]; next[i] = v; setSlots(next);
-    setCode(next.join(''));
-    if (v && i < CODE_LEN - 1) slotRefs.current[i + 1]?.focus();
-  };
-  const onSlotKey = (i: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !slots[i] && i > 0) { slotRefs.current[i - 1]?.focus(); }
-    if (e.key === 'ArrowLeft' && i > 0) slotRefs.current[i - 1]?.focus();
-    if (e.key === 'ArrowRight' && i < CODE_LEN - 1) slotRefs.current[i + 1]?.focus();
-  };
-  const onSlotPaste = (e: React.ClipboardEvent) => {
-    const txt = (e.clipboardData?.getData('text') || '').toUpperCase().replace(/[^0-9A-F]/g, '').slice(0, CODE_LEN);
-    if (!txt) return;
-    e.preventDefault();
-    const next = Array(CODE_LEN).fill('');
-    for (let i = 0; i < txt.length; i++) next[i] = txt[i];
-    setSlots(next); setCode(next.join(''));
-    slotRefs.current[Math.min(txt.length, CODE_LEN - 1)]?.focus();
-  };
-
-  if (isMobileVerify) {
-    const complete = slots.join('').length === CODE_LEN;
-    return (
-      <div className={cn("min-h-screen flex flex-col transition-colors", isDarkMode && "dark")}
-        style={{ background: 'var(--tavil-bg)', color: 'var(--tavil-text)', padding: '10px 24px 28px' }}>
-
-        {/* Top: back + lang */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
-          <button onClick={onBack} style={{
-            width: 40, height: 40, borderRadius: 20,
-            background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0,
-          }}>
-            <ChevronLeft size={18} />
-          </button>
-          <div style={{ display: 'inline-flex', background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 999, padding: 3, gap: 0 }}>
-            {(['ca','es','en'] as const).map(l => (
-              <button key={l} onClick={() => setVerifyLang(l)} style={{
-                padding: '5px 10px', fontSize: 11, fontWeight: 600,
-                background: verifyLang === l ? 'var(--tavil-text)' : 'transparent',
-                color: verifyLang === l ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
-                border: 'none', borderRadius: 999, cursor: 'pointer',
-                textTransform: 'uppercase', letterSpacing: '0.06em',
-                fontFamily: 'inherit', transition: 'background-color 200ms var(--ease-out-cubic), color 200ms var(--ease-out-cubic)',
-              }}>{l}</button>
-            ))}
-          </div>
-        </div>
-
-        {/* Step indicator — both steps complete */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
-          <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-accent)' }} />
-          <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'var(--tavil-accent)' }} />
-        </div>
-
-        {/* Heading */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
-            Pas 2 de 2
-          </div>
-          <h1 style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 34, fontWeight: 400, lineHeight: 1.04, margin: '0 0 10px',
-            letterSpacing: '-0.02em', color: 'var(--tavil-text)',
-          }}>Verifica el teu correu</h1>
-          <p style={{ fontSize: 14, color: 'var(--tavil-muted)', margin: 0, lineHeight: 1.45 }}>
-            Hem enviat un codi a{' '}
-            <span style={{ color: 'var(--tavil-text)', fontWeight: 500 }}>{email || 'nom.cognom@tavil.net'}</span>
-          </p>
-        </div>
-
-        {/* 8-slot code input */}
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 10, fontWeight: 500 }}>Codi de verificació</div>
-            <div style={{ display: 'flex', gap: 4, justifyContent: 'space-between' }} onPaste={onSlotPaste}>
-              {slots.map((c, i) => (
-                <input
-                  key={i}
-                  ref={el => { slotRefs.current[i] = el; }}
-                  value={c}
-                  onChange={e => setSlot(i, e.target.value)}
-                  onKeyDown={e => onSlotKey(i, e)}
-                  maxLength={1}
-                  inputMode="text"
-                  autoCapitalize="characters"
-                  style={{
-                    flex: '1 1 0', minWidth: 0, height: 50, textAlign: 'center',
-                    fontFamily: '"JetBrains Mono", "Courier New", monospace',
-                    fontSize: 18, fontWeight: 500,
-                    color: 'var(--tavil-text)',
-                    background: 'var(--tavil-card)',
-                    border: `1px solid ${c ? 'var(--tavil-accent)' : 'var(--tavil-border)'}`,
-                    borderRadius: 10, outline: 'none', padding: 0,
-                    transition: 'border-color 160ms var(--ease-out-cubic), box-shadow 160ms var(--ease-out-cubic)', textTransform: 'uppercase',
-                    boxShadow: c ? '0 0 0 3px rgba(191,33,30,0.12)' : 'none',
-                  }}
-                />
-              ))}
-            </div>
-            <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginTop: 8, fontFamily: '"JetBrains Mono", monospace', letterSpacing: '0.04em' }}>
-              Format: 8 car. hex · ex. E2A76B29
-            </div>
-          </div>
-
-          <div style={{ fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 24 }}>
-            No l'has rebut?{' '}
-            <button type="button" onClick={handleResend} style={{
-              background: 'none', border: 'none', color: 'var(--tavil-accent)',
-              fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: 0,
-            }}>Reenviar</button>
-            {resent && <span style={{ display: 'block', fontSize: 11.5, color: '#3f7a52', marginTop: 4 }}>✓ Codi reenviat</span>}
-          </div>
-
-          {error && <p style={{ fontSize: 13, color: 'var(--tavil-accent)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
-
-          <div style={{ flex: 1 }} />
-          <button type="submit" disabled={loading || !complete} style={{
-            width: '100%', height: 52, borderRadius: 14, border: 'none',
-            background: 'var(--tavil-accent)', color: '#fff',
-            fontSize: 15, fontWeight: 600, cursor: (loading || !complete) ? 'not-allowed' : 'pointer',
-            transition: 'background-color 160ms var(--ease-out-cubic), opacity 160ms', opacity: (loading || !complete) ? 0.6 : 1, fontFamily: 'inherit',
-          }}>
-            {loading ? 'Verificant…' : 'Verificar compte'}
-          </button>
-        </form>
-      </div>
-    );
-  }
-
-  // ── Desktop layout ───────────────────────────────────────────────────────────
-  return (
-    <div className={cn("min-h-screen bg-gray-100 dark:bg-zinc-950 flex flex-col transition-colors", isDarkMode && "dark")}>
-      <div className="flex justify-end p-4">
-        <button onClick={toggleDarkMode} className="p-2 hover:bg-gray-200 dark:hover:bg-zinc-800 rounded-lg text-gray-500 dark:text-zinc-400 transition-colors">
-          {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-      </div>
-      <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-10">
-        <TavilLogo />
-        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-8">Portal intern del treballador</p>
-        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-8 shadow-sm anim-scale-in">
-          <button onClick={onBack} className="flex items-center gap-1 text-sm text-red-500 hover:underline mb-4">
-            <ChevronLeft size={15} /> Tornar
-          </button>
-          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/20 mb-4 mx-auto">
-            <Mail size={22} className="text-red-500" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-1">Verifica el teu correu</h1>
-          <p className="text-sm text-gray-500 dark:text-zinc-400 text-center mb-1">Hem enviat un codi a</p>
-          <p className="text-sm font-semibold text-gray-800 dark:text-zinc-200 text-center mb-6">{email}</p>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Codi de verificació</label>
-              <input
-                type="text"
-                value={code}
-                onChange={e => setCode(e.target.value.toUpperCase())}
-                placeholder="A3F92BDE"
-                maxLength={8}
-                required
-                className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg py-3 px-4 text-sm text-center tracking-widest font-mono outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white uppercase"
-              />
-            </div>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            {resent && <p className="text-green-600 text-sm text-center">Nou codi enviat!</p>}
-            <button type="submit" disabled={loading || code.length < 8}
-              className="press w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-60">
-              Verificar compte
-            </button>
-          </form>
-          <p className="text-sm text-gray-500 dark:text-zinc-400 text-center mt-4">
-            No has rebut el correu?{' '}
-            <button onClick={handleResend} className="text-red-500 font-medium hover:underline">Reenviar</button>
-          </p>
-        </div>
-      </div>
-      <div className="py-4 text-center text-xs text-gray-400 border-t border-gray-200 dark:border-zinc-800">
-        © 2026 TAVIL · Portal intern
-      </div>
-    </div>
-  );
-}
-
-function OTPPage({ email, onBack, onVerified, isDarkMode, toggleDarkMode }: {
-  email: string;
-  onBack: () => void;
-  onVerified: (data: AuthOut) => void;
-  isDarkMode: boolean;
-  toggleDarkMode: () => void;
-}) {
-  const [code, setCode] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const data = await apiVerifyOTP(email, code.trim());
-      onVerified(data);
-    } catch (err: any) {
-      setError(err.message ?? 'Codi invàlid o caducat.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className={cn("min-h-screen bg-gray-100 dark:bg-zinc-950 flex flex-col transition-colors", isDarkMode && "dark")}>
-      <div className="flex justify-end p-4">
-        <button onClick={toggleDarkMode} className="p-2 hover:bg-gray-200 dark:hover:bg-zinc-800 rounded-lg text-gray-500 dark:text-zinc-400 transition-colors">
-          {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-      </div>
-      <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-10">
-        <TavilLogo />
-        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-8">Portal intern del treballador</p>
-        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-8 shadow-sm anim-scale-in">
-          <button onClick={onBack} className="flex items-center gap-1 text-sm text-red-500 hover:underline mb-4">
-            <ChevronLeft size={15} /> Tornar
-          </button>
-          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/20 mb-4 mx-auto">
-            <Shield size={22} className="text-red-500" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-1">Verificació en dos passos</h1>
-          <p className="text-sm text-gray-500 dark:text-zinc-400 text-center mb-1">Hem enviat un codi de 6 dígits a</p>
-          <p className="text-sm font-semibold text-gray-800 dark:text-zinc-200 text-center mb-6">{email}</p>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1.5">Codi d'accés</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={code}
-                onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
-                maxLength={6}
-                required
-                autoFocus
-                className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg py-3 px-4 text-center text-2xl tracking-[0.5em] font-mono outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white"
-              />
-            </div>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            <button type="submit" disabled={loading || code.length < 6}
-              className="press w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-60">
-              Verificar
-            </button>
-          </form>
-          <p className="text-xs text-gray-400 dark:text-zinc-500 text-center mt-4">El codi caduca en 10 minuts.</p>
-        </div>
-      </div>
-      <div className="py-4 text-center text-xs text-gray-400 border-t border-gray-200 dark:border-zinc-800">
-        © 2026 TAVIL · Portal intern
-      </div>
-    </div>
-  );
-}
-
-function TavilLogo() {
-  return (
-    <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`} alt="TAVIL" className="h-12 mb-2" />
-  );
-}
-
-function LoginPage({ onLoginResult, isDarkMode, toggleDarkMode }: {
-  onLoginResult: (data: AuthOut) => void;
-  isDarkMode: boolean;
-  toggleDarkMode: () => void;
-}) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [remember, setRemember] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (!EMAIL_RE.test(email.trim())) { setError('Format de correu no vàlid.'); return; }
-    setLoading(true);
-    try {
-      const data = await apiLogin(email.trim().toLowerCase(), password);
-      data.remember = remember;
-      onLoginResult(data);
-    } catch (err: any) {
-      setError(err.message ?? 'Correu o contrasenya incorrectes.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isMobileLogin = typeof window !== 'undefined' && window.innerWidth < 768;
-  const [mobileLang, setMobileLang] = useState<'ca'|'es'|'en'>('ca');
-
-  const mobileInputStyle: React.CSSProperties = {
-    width: '100%', height: 50, padding: '0 14px 0 42px',
-    background: 'var(--tavil-card)', color: 'var(--tavil-text)',
-    border: '1px solid var(--tavil-border)',
-    borderRadius: 14, fontSize: 15, outline: 'none', boxSizing: 'border-box',
-    fontFamily: 'inherit',
-  };
-  const mobileLabelStyle: React.CSSProperties = {
-    fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 6, fontWeight: 500, display: 'block',
-  };
-
-  // ── Mobile layout — matches design's LoginScreen ──────────────────────────
-  if (isMobileLogin) {
-    return (
-      <div className={cn("min-h-screen flex flex-col transition-colors", isDarkMode && "dark")}
-        style={{ background: 'var(--tavil-bg)', color: 'var(--tavil-text)', padding: '20px 24px 32px' }}>
-
-        {/* Top: logo + language switcher */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 60 }}>
-          <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-            {isDarkMode ? (
-              <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoDark.png`} alt="TAVIL" style={{ height: 16, display: 'block' }} />
-            ) : (
-              <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`} alt="TAVIL" style={{ height: 16, display: 'block' }} />
-            )}
-          </div>
-          <div style={{ display: 'inline-flex', background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 999, padding: 3, gap: 0 }}>
-            {(['ca','es','en'] as const).map(l => (
-              <button key={l} onClick={() => setMobileLang(l)} style={{
-                padding: '5px 10px', fontSize: 11, fontWeight: 600,
-                background: mobileLang === l ? 'var(--tavil-text)' : 'transparent',
-                color: mobileLang === l ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
-                border: 'none', borderRadius: 999, cursor: 'pointer',
-                textTransform: 'uppercase', letterSpacing: '0.06em',
-                fontFamily: 'inherit', transition: 'background-color 200ms var(--ease-out-cubic), color 200ms var(--ease-out-cubic)',
-              }}>{l}</button>
-            ))}
-          </div>
-        </div>
-
-        {/* Heading */}
-        <div style={{ marginBottom: 36 }}>
-          <div style={{
-            fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600,
-            textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 12,
-          }}>PORTAL INTERN</div>
-          <img
-            src={`${process.env.PUBLIC_URL}/assets/images/${isDarkMode ? 'TAVILhub.svg?v=3' : 'tavilNet.svg'}`}
-            alt="TAVIL net"
-            style={{ height: 34, width: 'auto', display: 'block', margin: '0 0 12px' }}
-          />
-          <p style={{ fontSize: 14.5, color: 'var(--tavil-muted)', margin: 0, lineHeight: 1.45 }}>
-            Les teves credencials TAVIL.
-          </p>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 0, marginBottom: 20 }}>
-          <div style={{ marginBottom: 14 }}>
-            <span style={mobileLabelStyle}>Correu electrònic</span>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Mail size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
-              <input
-                type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="nom.cognom@tavil.net" required autoComplete="email"
-                inputMode="email"
-                style={mobileInputStyle}
-              />
-            </div>
-          </div>
-          <div style={{ marginBottom: 8 }}>
-            <span style={mobileLabelStyle}>Contrasenya</span>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Lock size={16} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
-              <input
-                type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••" required autoComplete="current-password"
-                style={{ ...mobileInputStyle, padding: '0 42px 0 42px' }}
-              />
-              <button type="button" onClick={() => setShowPass(!showPass)} style={{
-                position: 'absolute', right: 14, color: 'var(--tavil-faint)',
-                background: 'none', border: 'none', cursor: 'pointer', display: 'flex',
-              }}>
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)', cursor: 'pointer' }}>
-              <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ accentColor: 'var(--tavil-accent)', width: 15, height: 15 }} />
-              Recorda'm
-            </label>
-            <button type="button" style={{
-              background: 'none', border: 'none', color: 'var(--tavil-accent)',
-              fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'inherit',
-            }}>Has oblidat la contrasenya?</button>
-          </div>
-          {error && (
-            <p style={{ fontSize: 13, color: 'var(--tavil-accent)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>
-          )}
-          <button type="submit" disabled={loading} style={{
-            height: 52, borderRadius: 14, border: 'none',
-            background: loading ? '#a21b18' : 'var(--tavil-accent)', color: '#fff',
-            fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
-            transition: 'background-color 160ms var(--ease-out-cubic), opacity 160ms', opacity: loading ? 0.7 : 1, fontFamily: 'inherit',
-          }}>
-            {loading ? 'Carregant…' : 'Inicia sessió'}
-          </button>
-        </form>
-
-        <div style={{ flex: 1 }} />
-
-        <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--tavil-faint)', letterSpacing: '0.02em' }}>
-          TAVIL · Portal intern · 2026
-        </div>
-      </div>
-    );
-  }
-
-  // ── Desktop layout — split panel ─────────────────────────────────────────
-  const deskInputStyle: React.CSSProperties = {
-    width: '100%', height: 46, padding: '0 14px 0 42px',
-    background: 'var(--tavil-card)', color: 'var(--tavil-text)',
-    border: '1px solid var(--tavil-border)',
-    borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box',
-    fontFamily: 'inherit', transition: 'border-color 160ms',
-  };
-  const deskLabelStyle: React.CSSProperties = {
-    fontSize: 12.5, color: 'var(--tavil-muted)', marginBottom: 6, fontWeight: 500, display: 'block',
-  };
-  return (
-    <div className={cn("min-h-screen", isDarkMode && "dark")} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.1fr)', background: 'var(--tavil-bg)', color: 'var(--tavil-text)' }}>
-
-      {/* ── Left: form panel ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', padding: '48px 60px', minHeight: '100vh', boxSizing: 'border-box' }}>
-        {/* Logo + dark toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {isDarkMode
-              ? <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoDark.png`} alt="TAVIL" style={{ height: 18 }} />
-              : <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`} alt="TAVIL" style={{ height: 18 }} />
-            }
-          </div>
-          <button onClick={toggleDarkMode} style={{ width: 36, height: 36, borderRadius: 18, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-muted)' }}>
-            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
-        </div>
-
-        {/* Center form */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 440 }}>
-          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: 14 }}>
-            Portal intern
-          </div>
-          <img
-            src={`${process.env.PUBLIC_URL}/assets/images/${isDarkMode ? 'TAVILhub.svg?v=3' : 'tavilNet.svg'}`}
-            alt="TAVIL net"
-            style={{ height: 52, width: 'auto', display: 'block', margin: '0 0 14px' }}
-          />
-          <p style={{ fontSize: 15, color: 'var(--tavil-muted)', margin: '0 0 32px', lineHeight: 1.5 }}>
-            Les teves credencials TAVIL.
-          </p>
-
-          <form onSubmit={handleSubmit}>
-            {/* Email */}
-            <div style={{ marginBottom: 16 }}>
-              <span style={deskLabelStyle}>Correu electrònic</span>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <Mail size={15} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
-                <input
-                  type="email" value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="nom.cognom@tavil.net" required autoComplete="email"
-                  style={deskInputStyle}
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div style={{ marginBottom: 16 }}>
-              <span style={deskLabelStyle}>Contrasenya</span>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <Lock size={15} style={{ position: 'absolute', left: 14, color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
-                <input
-                  type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••••" required autoComplete="current-password"
-                  style={{ ...deskInputStyle, padding: '0 44px' }}
-                />
-                <button type="button" onClick={() => setShowPass(!showPass)} style={{ position: 'absolute', right: 14, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tavil-faint)', display: 'flex', padding: 0 }}>
-                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
-              </div>
-            </div>
-
-            {/* Remember + forgot */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)', cursor: 'pointer' }}>
-                <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ accentColor: 'var(--tavil-accent)', width: 15, height: 15 }} />
-                Recorda'm en aquest equip
-              </label>
-              <button type="button" style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 500 }}>
-                Has oblidat la contrasenya?
-              </button>
-            </div>
-
-            {error && <p style={{ fontSize: 13, color: 'var(--tavil-accent)', margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
-
-            <button type="submit" disabled={loading} style={{ width: '100%', height: 48, borderRadius: 10, border: 'none', background: loading ? '#a21b18' : 'var(--tavil-accent)', color: '#fff', fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'background-color 160ms var(--ease-out-cubic), opacity 160ms', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit' }}>
-              {loading ? 'Carregant…' : 'Inicia sessió'}
-              {!loading && <ArrowRight size={16} />}
-            </button>
-          </form>
-
-
-          <div style={{ marginTop: 36, fontSize: 12.5, color: 'var(--tavil-faint)', textAlign: 'center' }}>
-            © 2026 TAVIL S.A. · Portal intern · v4.2
-          </div>
-        </div>
-      </div>
-
-      {/* ── Right: editorial cover ── */}
-      <div style={{ background: 'var(--tavil-accent)', color: '#fff', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '48px 60px', justifyContent: 'center', minHeight: '100vh', boxSizing: 'border-box' }}>
-        {/* Texture + circles */}
-        <div style={{ position: 'absolute', inset: 0, opacity: 0.08, background: 'repeating-linear-gradient(45deg, transparent 0 18px, #fff 18px 19px)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', top: '-18%', right: '-14%', width: 480, height: 480, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '-22%', left: '-12%', width: 420, height: 420, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
-
-        <div style={{ position: 'relative' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 88, lineHeight: 0.95, letterSpacing: '-0.04em', marginBottom: 20, fontStyle: 'italic' }}>
-            Som <br />un equip.
-          </div>
-          <div style={{ fontSize: 16, lineHeight: 1.5, opacity: 0.92, maxWidth: 460 }}>
-            El portal intern de TAVIL. Notícies, agenda, formació, sol·licituds i la veu de cadascú — en un sol lloc.
-          </div>
-          <div style={{ display: 'flex', gap: 40, marginTop: 44 }}>
-            {[{ n: '+100', l: 'anys de coneixement' }, { n: '+45', l: 'països' }, { n: '+1.200', l: 'projectes' }].map(s => (
-              <div key={s.l}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 44, lineHeight: 1, letterSpacing: '-0.025em' }}>{s.n}</div>
-                <div style={{ fontSize: 11, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: 6 }}>{s.l}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-
-// ── Change Password Modal ─────────────────────────────────────────────────────
-
-function ChangePasswordModal({ onDone, forced = false }: { onDone: () => void; forced?: boolean }) {
-  const [newPwd, setNewPwd] = useState('');
-  const [confirmPwd, setConfirmPwd] = useState('');
-  const [currentPwd, setCurrentPwd] = useState('');
-  const [showNew, setShowNew] = useState(false);
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  const handleSubmit = async () => {
-    if (newPwd.length < 8) { setError('Mínim 8 caràcters'); return; }
-    if (newPwd !== confirmPwd) { setError('Les contrasenyes no coincideixen'); return; }
-    setSaving(true); setError('');
-    try {
-      await apiChangePassword(newPwd, forced ? undefined : currentPwd);
-      onDone();
-    } catch (e: any) { setError(e.message); }
-    finally { setSaving(false); }
-  };
-
-  const inputCls = 'w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-4 py-3 text-sm text-gray-900 dark:text-white outline-none focus:border-red-400 transition-colors';
-
-  return (
-    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 anim-fade-in">
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl anim-scale-in">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950/30 flex items-center justify-center text-red-600"><Lock size={20} /></div>
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-              {forced ? 'Canvia la contrasenya' : 'Nova contrasenya'}
-            </h2>
-            {forced && <p className="text-xs text-gray-500 dark:text-zinc-400">L'administrador t'ha assignat una contrasenya temporal. Has de canviar-la per continuar.</p>}
-          </div>
-        </div>
-        {error && <p className="text-sm text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2">{error}</p>}
-        {!forced && (
-          <div>
-            <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide block mb-1.5">Contrasenya actual</label>
-            <input type="password" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)} className={inputCls} placeholder="Contrasenya actual" />
-          </div>
-        )}
-        <div>
-          <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide block mb-1.5">Nova contrasenya</label>
-          <div className="relative">
-            <input type={showNew ? 'text' : 'password'} value={newPwd} onChange={e => setNewPwd(e.target.value)} className={inputCls + ' pr-10'} placeholder="Mínim 8 caràcters" />
-            <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showNew ? <EyeOff size={16} /> : <Eye size={16} />}</button>
-          </div>
-        </div>
-        <div>
-          <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide block mb-1.5">Confirma la nova contrasenya</label>
-          <input type="password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} className={inputCls} placeholder="Repeteix la contrasenya" />
-        </div>
-        <button
-          onClick={handleSubmit}
-          disabled={saving || !newPwd || !confirmPwd || (!forced && !currentPwd)}
-          className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50"
-        >
-          {saving ? 'Guardant...' : 'Canviar contrasenya'}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ── Quiz Builder Modal ────────────────────────────────────────────────────────
 
@@ -8325,7 +7108,7 @@ function QuizBuilderModal({ quiz, onClose, onSaved }: {
     : NaN;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center anim-fade-in" style={{ background: 'rgba(0,0,0,0.5)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center anim-fade-in" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}>
       <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 flex flex-col anim-scale-in" style={{ maxHeight: '90vh' }}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800">
@@ -8739,7 +7522,7 @@ function ExternalCourseModal({ course, onClose, onSaved }: {
   const [targetUsers, setTargetUsers] = useState<number[]>(course?.target_users ?? []);
   const [startAt, setStartAt] = useState(course?.start_at ?? '');
   const [endAt, setEndAt] = useState(course?.end_at ?? '');
-  const [allUsers, setAllUsers] = useState<{ id: number; name: string; email: string; dept: string }[]>([]);
+  const [allUsers, setAllUsers] = useState<{ id: number; name: string; email: string; dept: string; avatar_url?: string | null }[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
@@ -8891,9 +7674,13 @@ function ExternalCourseModal({ course, onClose, onSaved }: {
                   {filteredUsers.slice(0, 8).map(u => (
                     <button key={u.id} type="button" onClick={() => addTargetUser(u.id)}
                       className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-zinc-700 text-left transition-colors">
-                      <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0">
-                        {u.name.split(' ').slice(0,2).map((n: string) => n[0]).join('').toUpperCase()}
-                      </div>
+                      {u.avatar_url ? (
+                        <img src={resolveImg(u.avatar_url)} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0">
+                          {u.name.split(' ').slice(0,2).map((n: string) => n[0]).join('').toUpperCase()}
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{u.name}</p>
                         <p className="text-[10px] text-gray-400 truncate">{u.dept}</p>
@@ -8949,19 +7736,20 @@ function BoAgendaPanel({ events, onRefresh, cardCls, inputCls, btnGhost }: {
   const [aTitle, setATitle] = useState('');
   const [aDate, setADate] = useState('');
   const [aTime, setATime] = useState('');
+  const [aTimeEnd, setATimeEnd] = useState('');
   const [aLocation, setALocation] = useState('');
   const [aType, setAType] = useState('Sessió interna');
   const [aDepts, setADepts] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [confirmDel, setConfirmDel] = useState<number | null>(null);
 
-  const reset = () => { setATitle(''); setADate(''); setATime(''); setALocation(''); setAType('Sessió interna'); setADepts([]); setEditId(null); setShowForm(false); };
+  const reset = () => { setATitle(''); setADate(''); setATime(''); setATimeEnd(''); setALocation(''); setAType('Sessió interna'); setADepts([]); setEditId(null); setShowForm(false); };
 
   const openEdit = (ev: AgendaEvent) => {
     setEditId(ev.id); setATitle(ev.title);
     const y = new Date().getFullYear(); const mm = String(ev.month).padStart(2,'0'); const dd = String(ev.day).padStart(2,'0');
     setADate(`${y}-${mm}-${dd}`);
-    setATime(ev.time || ''); setALocation(ev.location || ''); setAType(ev.type);
+    setATime(ev.time || ''); setATimeEnd(ev.time_end || ''); setALocation(ev.location || ''); setAType(ev.type);
     setADepts(ev.target_departments ?? []);
     setShowForm(true);
   };
@@ -8973,7 +7761,7 @@ function BoAgendaPanel({ events, onRefresh, cardCls, inputCls, btnGhost }: {
     if (!day || !month) return;
     setSaving(true);
     try {
-      const fields = { title: aTitle.trim(), day, month, time: aTime.trim(), location: aLocation.trim(), type: aType, target_departments: aDepts };
+      const fields = { title: aTitle.trim(), day, month, time: aTime.trim(), time_end: aTimeEnd.trim() || undefined, location: aLocation.trim(), type: aType, target_departments: aDepts };
       if (editId) await apiUpdateAgendaEvent(editId, fields);
       else await apiCreateAgendaEvent(fields);
       onRefresh(); reset();
@@ -9007,9 +7795,10 @@ function BoAgendaPanel({ events, onRefresh, cardCls, inputCls, btnGhost }: {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="md:col-span-2"><label className={labelCls}>Títol *</label><input value={aTitle} onChange={e => setATitle(e.target.value)} className={inputCls} placeholder="Títol de l'event" /></div>
-            <div><label className={labelCls}>Data *</label><input type="date" value={aDate} onChange={e => setADate(e.target.value)} className={inputCls} /></div>
-            <div><label className={labelCls}>Hora</label><input value={aTime} onChange={e => setATime(e.target.value)} className={inputCls} placeholder="10:00" /></div>
-            <div><label className={labelCls}>Lloc</label><input value={aLocation} onChange={e => setALocation(e.target.value)} className={inputCls} placeholder="Sala, adreça..." /></div>
+            <div className="md:col-span-2"><label className={labelCls}>Data *</label><input type="date" value={aDate} onChange={e => setADate(e.target.value)} className={inputCls} /></div>
+            <div><label className={labelCls}>Hora inici</label><input type="time" value={aTime} onChange={e => setATime(e.target.value)} className={inputCls} /></div>
+            <div><label className={labelCls}>Hora final <span className="normal-case text-gray-400">(opcional)</span></label><input type="time" value={aTimeEnd} onChange={e => setATimeEnd(e.target.value)} className={inputCls} /></div>
+            <div className="md:col-span-2"><label className={labelCls}>Lloc</label><input value={aLocation} onChange={e => setALocation(e.target.value)} className={inputCls} placeholder="Sala, adreça..." /></div>
             <div><label className={labelCls}>Tipus</label>
               <select value={aType} onChange={e => setAType(e.target.value)} className={inputCls}>
                 {Object.keys(EVENT_COLORS).map(t => <option key={t}>{t}</option>)}
@@ -9042,7 +7831,7 @@ function BoAgendaPanel({ events, onRefresh, cardCls, inputCls, btnGhost }: {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{ev.title}</p>
-              <p className="text-xs text-gray-400 truncate">{ev.type}{ev.location ? ` · ${ev.location}` : ''}{ev.time ? ` · ${ev.time}` : ''}</p>
+              <p className="text-xs text-gray-400 truncate">{ev.type}{ev.location ? ` · ${ev.location}` : ''}{ev.time ? ` · ${ev.time}${ev.time_end ? `–${ev.time_end}` : ''}` : ''}</p>
               {ev.target_departments && ev.target_departments.length > 0 && (
                 <p className="text-[10px] text-gray-400">{ev.target_departments.join(', ')}</p>
               )}
@@ -9102,10 +7891,13 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
   const [uName, setUName] = useState('');
   const [uEmail, setUEmail] = useState('');
   const [uPass, setUPass] = useState('');
-  const [uRole, setURole] = useState('Treballador/a');
+  const [uRoles, setURoles] = useState<string[]>(['Treballador/a']);
   const [uDept, setUDept] = useState(DEPT_ORDER[0]);
-  const [uIsHead, setUIsHead] = useState(false);
   const [uNewPass, setUNewPass] = useState('');
+  const [uPhone, setUPhone] = useState('');
+  const [uExt, setUExt] = useState('');
+  const [uLocation, setULocation] = useState('');
+  const [uAvatarUrl, setUAvatarUrl] = useState('');
   const [uSaving, setUSaving] = useState(false);
 
   // Notice form
@@ -9185,16 +7977,20 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
     return () => window.removeEventListener('message', onMsg);
   }, [subTab]);
 
-  const openCreateUser = () => { setEditUser(null); setUName(''); setUEmail(''); setUPass(''); setUNewPass(''); setURole('Treballador/a'); setUDept(DEPT_ORDER[0]); setUIsHead(false); setShowUserForm(true); };
-  const openEditUser = (u: import('./api').User) => { setEditUser(u); setUName(u.name); setUEmail(u.email); setUPass(''); setUNewPass(''); setURole(u.role); setUDept(u.dept); setUIsHead(!!u.is_head); setShowUserForm(true); };
+  const openCreateUser = () => { setEditUser(null); setUName(''); setUEmail(''); setUPass(''); setUNewPass(''); setURoles(['Treballador/a']); setUDept(DEPT_ORDER[0]); setUPhone(''); setUExt(''); setULocation(''); setUAvatarUrl(''); setShowUserForm(true); };
+  const openEditUser = (u: import('./api').User) => { setEditUser(u); setUName(u.name); setUEmail(u.email); setUPass(''); setUNewPass(''); setURoles(u.roles && u.roles.length > 0 ? u.roles : ['Treballador/a']); setUDept(u.dept); setUPhone(u.phone ?? ''); setUExt(u.ext ?? ''); setULocation(u.location ?? ''); setUAvatarUrl(u.avatar_url ?? ''); setShowUserForm(true); };
 
   const saveUser = async () => {
     setUSaving(true); setError('');
     try {
       if (editUser) {
-        await apiAdminUpdateUser(editUser.id, { name: uName, email: uEmail, role: uRole, dept: uDept, is_head: uIsHead ? 1 : 0, ...(uNewPass ? { new_password: uNewPass } : {}) });
+        await apiAdminUpdateUser(editUser.id, {
+          name: uName, email: uEmail, roles: uRoles, dept: uDept,
+          phone: uPhone, ext: uExt, location: uLocation, avatar_url: uAvatarUrl,
+          ...(uNewPass ? { new_password: uNewPass } : {}),
+        });
       } else {
-        await apiAdminCreateUser({ name: uName, email: uEmail, temp_password: uPass, role: uRole, dept: uDept, is_head: uIsHead ? 1 : 0 });
+        await apiAdminCreateUser({ name: uName, email: uEmail, temp_password: uPass, roles: uRoles, dept: uDept });
       }
       setShowUserForm(false); loadUsers(); showToast(editUser ? 'Usuari actualitzat correctament' : 'Usuari creat correctament');
     } catch (e: any) { setError(e.message); }
@@ -9242,7 +8038,7 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
     try {
       let imageUrl = nnImage;
       if (nnImageFile) imageUrl = await apiUploadImage(nnImageFile);
-      const fields = { category: nnCategory, title: nnTitle.trim(), summary: nnSummary.trim(), content: nnContent, author: '', date: nnDate.trim(), image: imageUrl, featured: nnFeatured ? 1 : 0 };
+      const fields = { category: nnCategory, title: nnTitle.trim(), summary: nnSummary.trim(), content: nnContent, date: nnDate.trim(), image: imageUrl, featured: nnFeatured ? 1 : 0 };
       if (editNewsItem) await apiUpdateNews(editNewsItem.id, fields);
       else await apiCreateNews(fields);
       setShowNewsForm(false); loadNews(); showToast(editNewsItem ? 'Notícia actualitzada correctament' : 'Notícia creada correctament');
@@ -9260,7 +8056,15 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
   };
 
   const NEWS_CATS = ['Comunicats interns','Notícies corporatives','Recursos humans','Esdeveniments','Innovació','Seguretat'];
-  const ROLES = ['Treballador/a', 'Responsable de departament', 'Recursos humans', 'Administrador/a', 'Manteniment', 'Comunicacions', 'Formacions', 'Aprovacions'];
+  const ROLES = [
+    { value: 'Treballador/a', label: 'Treballador/a' },
+    { value: 'Cap de departament', label: 'Cap de departament' },
+    { value: 'Administrador', label: 'Administrador' },
+    { value: 'Formacions', label: 'Formacions' },
+    { value: 'Comunicacions', label: 'Comunicacions' },
+    { value: 'SolicitudsDissabtes', label: 'Sol·licituds dissabtes' },
+    { value: 'SolicitudsVacances', label: 'Sol·licituds vacances (RRHH)' },
+  ];
   const DEPTS = DEPT_ORDER;
 
   const cardCls = 'bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4';
@@ -9318,20 +8122,47 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
               <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Correu</label><input value={uEmail} onChange={e => setUEmail(e.target.value)} className={inputCls} type="email" placeholder="nom@tavil.net" /></div>
               {!editUser && <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Contrasenya temporal</label><input value={uPass} onChange={e => setUPass(e.target.value)} className={inputCls} type="text" placeholder="L'usuari la canviarà al primer accés" /></div>}
               {editUser && <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Nova contrasenya <span className="normal-case font-normal">(deixar en blanc per no canviar)</span></label><input value={uNewPass} onChange={e => setUNewPass(e.target.value)} className={inputCls} type="password" placeholder="Mínim 8 caràcters" autoComplete="new-password" /></div>}
-              <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Rol</label>
-                <select value={uRole} onChange={e => setURole(e.target.value)} className={inputCls}>
-                  {ROLES.map(r => <option key={r}>{r}</option>)}
-                </select>
-              </div>
               <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Departament</label>
                 <select value={uDept} onChange={e => setUDept(e.target.value)} className={inputCls}>
                   {DEPTS.map(d => <option key={d}>{d}</option>)}
                 </select>
               </div>
-              <div className="md:col-span-2 flex items-center gap-3 pt-1">
-                <input type="checkbox" id="uIsHead" checked={uIsHead} onChange={e => setUIsHead(e.target.checked)} style={{ accentColor: 'var(--tavil-accent)', width: 16, height: 16 }} />
-                <label htmlFor="uIsHead" className="text-sm text-gray-700 dark:text-zinc-300 cursor-pointer select-none">Cap de Departament</label>
+              <div className="md:col-span-2">
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-2">Rols del portal</label>
+                <div className="flex flex-wrap gap-2">
+                  {ROLES.map(r => {
+                    const active = uRoles.includes(r.value);
+                    return (
+                      <button key={r.value} type="button"
+                        onClick={() => setURoles(active ? uRoles.filter(x => x !== r.value) : [...uRoles, r.value])}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${active ? 'bg-red-600 border-red-600 text-white' : 'bg-transparent border-gray-300 dark:border-zinc-600 text-gray-500 dark:text-zinc-400'}`}
+                      >{r.label}</button>
+                    );
+                  })}
+                </div>
               </div>
+              {editUser && (
+                <>
+                  <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Telèfon</label><input value={uPhone} onChange={e => setUPhone(e.target.value)} className={inputCls} placeholder="—" /></div>
+                  <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Extensió</label><input value={uExt} onChange={e => setUExt(e.target.value)} className={inputCls} placeholder="—" /></div>
+                  <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Ubicació</label><input value={uLocation} onChange={e => setULocation(e.target.value)} className={inputCls} placeholder="—" /></div>
+                  <div className="md:col-span-2">
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-2">Foto de perfil</label>
+                    <MediaUploader
+                      value={uAvatarUrl}
+                      kind="image"
+                      accept="image"
+                      resolveSrc={resolveImg}
+                      onChange={(url) => {
+                        const m = url.match(/(\/uploads\/[^?#]+)/);
+                        setUAvatarUrl(m ? m[1] : url);
+                      }}
+                      onError={(msg) => setError(msg)}
+                      placeholder="Arrossega la foto de perfil o clica"
+                    />
+                  </div>
+                </>
+              )}
             </div>
             <div className="flex gap-2 justify-end pt-1">
               <button onClick={() => setShowUserForm(false)} className={btnGhost}>Cancel·lar</button>
@@ -9366,9 +8197,13 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
                 return (
                   <div key={u.id} className={isEditing ? 'rounded-xl border border-red-300 dark:border-red-700 bg-white dark:bg-zinc-900 overflow-hidden' : ''}>
                     <div className={`${isEditing ? 'flex items-center gap-3 px-4 py-3' : `${cardCls} flex items-center gap-3`}`}>
-                      <div className="w-9 h-9 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                        {u.name.split(' ').slice(0,2).map((n:string) => n[0]).join('').toUpperCase()}
-                      </div>
+                      {u.avatar_url ? (
+                        <img src={resolveImg(u.avatar_url)} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                          {u.name.split(' ').slice(0,2).map((n:string) => n[0]).join('').toUpperCase()}
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{u.name}</p>
                         <p className="text-xs text-gray-400 truncate">{u.email} · {u.role} · {u.dept}</p>
@@ -9764,19 +8599,24 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
             <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Nom</label><input value={uName} onChange={e => setUName(e.target.value)} className={inputCls} placeholder="Nom complet" /></div>
             <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Correu</label><input value={uEmail} onChange={e => setUEmail(e.target.value)} className={inputCls} type="email" placeholder="nom@tavil.net" /></div>
             <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Contrasenya temporal</label><input value={uPass} onChange={e => setUPass(e.target.value)} className={inputCls} type="text" placeholder="L'usuari la canviarà al primer accés" /></div>
-            <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Rol</label>
-              <select value={uRole} onChange={e => setURole(e.target.value)} className={inputCls}>
-                {ROLES.map(r => <option key={r}>{r}</option>)}
-              </select>
-            </div>
             <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Departament</label>
               <select value={uDept} onChange={e => setUDept(e.target.value)} className={inputCls}>
                 {DEPTS.map(d => <option key={d}>{d}</option>)}
               </select>
             </div>
-            <div className="md:col-span-2 flex items-center gap-3 pt-1">
-              <input type="checkbox" id="uIsHeadModal" checked={uIsHead} onChange={e => setUIsHead(e.target.checked)} style={{ accentColor: 'var(--tavil-accent)', width: 16, height: 16 }} />
-              <label htmlFor="uIsHeadModal" className="text-sm text-gray-700 dark:text-zinc-300 cursor-pointer select-none">Cap de Departament</label>
+            <div className="md:col-span-2">
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-2">Rols del portal</label>
+              <div className="flex flex-wrap gap-2">
+                {ROLES.map(r => {
+                  const active = uRoles.includes(r.value);
+                  return (
+                    <button key={r.value} type="button"
+                      onClick={() => setURoles(active ? uRoles.filter(x => x !== r.value) : [...uRoles, r.value])}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${active ? 'bg-red-600 border-red-600 text-white' : 'bg-transparent border-gray-300 dark:border-zinc-600 text-gray-500 dark:text-zinc-400'}`}
+                    >{r.label}</button>
+                  );
+                })}
+              </div>
             </div>
           </div>
           <div className="flex gap-2 justify-end pt-4">
@@ -9820,10 +8660,12 @@ function useSidebarSections(role?: string) {
       ]
     },
     ...(['Administrador/a', 'Recursos humans', 'Comunicacions', 'Formacions'].includes(role ?? '') ? [{
-      title: 'Admin',
-      items: [{ id: 'Backoffice', label: 'Backoffice', icon: Shield }]
+      title: 'Administració',
+      isAdmin: true as const,
+      items: [
+        { id: 'admin-dashboard', label: 'Tauler', icon: LayoutGrid },
+      ]
     }] : [])
-    // Aprovacions: access via Solicituds tab (no backoffice needed)
   ];
 }
 
@@ -10544,7 +9386,7 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
   const [targetDepts, setTargetDepts] = useState<string[]>([]);
   const [targetUsers, setTargetUsers] = useState<number[]>([]);
   const [userSearch, setUserSearch] = useState('');
-  const [allUsers, setAllUsers] = useState<{ id: number; name: string; email: string; dept: string }[]>([]);
+  const [allUsers, setAllUsers] = useState<{ id: number; name: string; email: string; dept: string; avatar_url?: string | null }[]>([]);
   const [isPresential, setIsPresential] = useState(0);
   const [location, setLocation] = useState('');
   const [questions, setQuestions] = useState<QBQuestion[]>([]);
@@ -11278,9 +10120,9 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   preview: (
                     <div className="space-y-1.5">
                       {['A','B','C','D'].map((l, i) => (
-                        <div key={l} className={`flex items-center gap-2 px-2 py-1.5 rounded-md border ${i === 1 ? 'bg-[#bf211e]/[0.07] border-[#bf211e]/30' : 'border-white/[0.08]'}`}>
-                          <span className={`w-4 h-4 rounded-full text-[8px] flex items-center justify-center font-bold ${i === 1 ? 'bg-[#bf211e]/85 text-white' : 'bg-white/[0.08] text-white/50'}`}>{l}</span>
-                          <span className="h-1.5 rounded bg-white/[0.08] flex-1" />
+                        <div key={l} className={`flex items-center gap-2 px-2 py-1.5 rounded-md border ${i === 1 ? 'bg-[#bf211e]/[0.07] border-[#bf211e]/30' : 'border-[var(--q-border)]'}`}>
+                          <span className={`w-4 h-4 rounded-full text-[8px] flex items-center justify-center font-bold ${i === 1 ? 'bg-[#bf211e]/85 text-white' : 'bg-[var(--q-surface-10)] text-[var(--q-text-50)]'}`}>{l}</span>
+                          <span className="h-1.5 rounded bg-[var(--q-surface-10)] flex-1" />
                         </div>
                       ))}
                     </div>
@@ -11291,9 +10133,9 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   preview: (
                     <div className="space-y-1.5">
                       {[true,false,true,false].map((on, i) => (
-                        <div key={i} className={`flex items-center gap-2 px-2 py-1.5 rounded-md border ${on ? 'bg-[#bf211e]/[0.07] border-[#bf211e]/30' : 'border-white/[0.08]'}`}>
-                          <span className={`w-4 h-4 rounded text-[8px] flex items-center justify-center font-bold ${on ? 'bg-[#bf211e]/85 text-white' : 'bg-white/[0.08] text-white/50'}`}>{on ? '✓' : ''}</span>
-                          <span className="h-1.5 rounded bg-white/[0.08] flex-1" />
+                        <div key={i} className={`flex items-center gap-2 px-2 py-1.5 rounded-md border ${on ? 'bg-[#bf211e]/[0.07] border-[#bf211e]/30' : 'border-[var(--q-border)]'}`}>
+                          <span className={`w-4 h-4 rounded text-[8px] flex items-center justify-center font-bold ${on ? 'bg-[#bf211e]/85 text-white' : 'bg-[var(--q-surface-10)] text-[var(--q-text-50)]'}`}>{on ? '✓' : ''}</span>
+                          <span className="h-1.5 rounded bg-[var(--q-surface-10)] flex-1" />
                         </div>
                       ))}
                     </div>
@@ -11303,8 +10145,8 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   type: 'true_false' as const, title: 'Vertader / Fals', desc: 'Pregunta binària, dues úniques opcions.',
                   preview: (
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="py-3 rounded-md border-2 border-[#bf211e]/40 bg-[#bf211e]/[0.07] text-center text-xs font-medium text-[#f0e8d8]" style={{ fontFamily: 'var(--font-display)' }}>Vertader</div>
-                      <div className="py-3 rounded-md border border-white/10 text-center text-xs text-white/50" style={{ fontFamily: 'var(--font-display)' }}>Fals</div>
+                      <div className="py-3 rounded-md border-2 border-[#bf211e]/40 bg-[#bf211e]/[0.07] text-center text-xs font-medium text-[#bf211e]" style={{ fontFamily: 'var(--font-display)' }}>Vertader</div>
+                      <div className="py-3 rounded-md border text-center text-xs" style={{ fontFamily: 'var(--font-display)', borderColor: 'var(--q-border)', color: 'var(--q-text-50)' }}>Fals</div>
                     </div>
                   ),
                 },
@@ -11313,10 +10155,10 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   preview: (
                     <div className="space-y-1.5">
                       {[0,1,2].map(i => (
-                        <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-white/[0.08]">
-                          <span className="h-1.5 rounded bg-white/[0.12] flex-1" />
-                          <span className="text-white/50 text-[10px]">→</span>
-                          <span className="h-4 rounded bg-white/[0.08] border border-white/10 flex-1" />
+                        <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md border" style={{ borderColor: 'var(--q-border)' }}>
+                          <span className="h-1.5 rounded flex-1" style={{ background: 'var(--q-surface-20)' }} />
+                          <span className="text-[10px]" style={{ color: 'var(--q-text-50)' }}>→</span>
+                          <span className="h-4 rounded border flex-1" style={{ background: 'var(--q-surface-10)', borderColor: 'var(--q-border)' }} />
                         </div>
                       ))}
                     </div>
@@ -11326,10 +10168,10 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   type: 'open_text' as const, title: 'Resposta oberta', desc: 'Text lliure. Revisió manual per admin (no auto-puntua).',
                   preview: (
                     <div className="space-y-1.5">
-                      <div className="bg-white/[0.06] border border-white/[0.08] rounded-md p-2 space-y-1">
-                        <span className="block h-1.5 rounded bg-white/[0.08] w-5/6" />
-                        <span className="block h-1.5 rounded bg-white/[0.08] w-4/6" />
-                        <span className="block h-1.5 rounded bg-white/[0.08] w-3/6" />
+                      <div className="rounded-md p-2 space-y-1 border" style={{ background: 'var(--q-surface-08)', borderColor: 'var(--q-border)' }}>
+                        <span className="block h-1.5 rounded w-5/6" style={{ background: 'var(--q-surface-10)' }} />
+                        <span className="block h-1.5 rounded w-4/6" style={{ background: 'var(--q-surface-10)' }} />
+                        <span className="block h-1.5 rounded w-3/6" style={{ background: 'var(--q-surface-10)' }} />
                       </div>
                       <p className="text-[10px] text-[#a36a16] italic">Pendent de correcció</p>
                     </div>
@@ -11339,10 +10181,10 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   type: 'slide' as const, title: 'Slide explicació', desc: 'Imatge o vídeo amb text. No puntua, només informa.',
                   preview: (
                     <div className="space-y-1.5">
-                      <div className="aspect-video rounded-md border border-white/[0.08] bg-gradient-to-br from-white/15 to-white/5 flex items-center justify-center">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/50"><polygon points="5 3 19 12 5 21" /></svg>
+                      <div className="aspect-video rounded-md border flex items-center justify-center" style={{ borderColor: 'var(--q-border)', background: 'var(--q-surface-10)' }}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: 'var(--q-text-50)' }}><polygon points="5 3 19 12 5 21" /></svg>
                       </div>
-                      <span className="block h-1.5 rounded bg-white/[0.08] w-4/6" />
+                      <span className="block h-1.5 rounded w-4/6" style={{ background: 'var(--q-surface-10)' }} />
                     </div>
                   ),
                 },
@@ -11380,6 +10222,7 @@ type NewsTileType =
   | 'headline'|'subhead'|'byline'|'paragraph'|'pullquote'|'list'|'caption'
   | 'image'|'gallery'|'video'|'audio'|'embed'
   | 'stat'|'chart'|'table'
+  | 'link'
   | 'divider'|'spacer';
 
 type NewsTileCat = 'Text'|'Media'|'Data'|'Structure';
@@ -11408,6 +10251,7 @@ const NEWS_TYPES: Record<NewsTileType, { label: string; icon: string; cat: NewsT
   stat:      { label: 'Xifra',           icon: '#',  cat: 'Data',      w: 3,  h: 3, content: '37%|del personal enquestat' },
   chart:     { label: 'Gràfic',          icon: '⌁',  cat: 'Data',      w: 6,  h: 4 },
   table:     { label: 'Taula',           icon: '⊟',  cat: 'Data',      w: 8,  h: 4 },
+  link:      { label: 'Enllaç',          icon: '↗',  cat: 'Text',      w: 6,  h: 1, content: 'Visita TAVIL|https://tavil.net|button' },
   divider:   { label: 'Separador',       icon: '⎯',  cat: 'Structure', w: 12, h: 1 },
   spacer:    { label: 'Espai',           icon: '∅',  cat: 'Structure', w: 12, h: 1 },
 };
@@ -11420,15 +10264,15 @@ const NG_GAP = 8;
 
 // Editorial theme tokens — cream/bone (per design handoff).
 const NT = {
-  bg: '#efece4',
-  panel: '#faf8f1',
-  surface: '#ffffff',
-  ink: '#1a1714',
-  mute: 'rgba(26,23,20,0.55)',
-  soft: 'rgba(26,23,20,0.08)',
-  accent: '#bf211e',
+  bg: 'var(--nt-bg)',
+  panel: 'var(--nt-panel)',
+  surface: 'var(--nt-surface)',
+  ink: 'var(--nt-ink)',
+  mute: 'var(--nt-mute)',
+  soft: 'var(--nt-soft)',
+  accent: 'var(--tavil-accent)',
   accentInk: '#ffffff',
-  grid: 'rgba(26,23,20,0.06)',
+  grid: 'var(--nt-grid)',
   headlineFont: 'var(--font-display)',
   bodyFont: 'var(--font-display)',
   uiFont: '"Inter", ui-sans-serif, system-ui, sans-serif',
@@ -11548,30 +10392,67 @@ function StatTileContent({ tile, editable, onChange }: { tile: NewsTile; editabl
   );
 }
 
+// ─── URL helpers + inline markdown link rendering ────────────────────────────
+const SAFE_URL_RE = /^(https?:\/\/|mailto:)/i;
+function safeUrl(u: string): string | null {
+  const t = (u || '').trim();
+  return SAFE_URL_RE.test(t) ? t : null;
+}
+function renderInlineLinks(text: string): React.ReactNode[] {
+  // Parse [label](url) — sanitize URLs (http/https/mailto only).
+  const nodes: React.ReactNode[] = [];
+  const re = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let last = 0, m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) nodes.push(text.slice(last, m.index));
+    const href = safeUrl(m[2]);
+    if (href) {
+      nodes.push(
+        <a key={m.index} href={href} target="_blank" rel="noopener noreferrer"
+           style={{ color: NT.accent, textDecoration: 'underline' }}>{m[1]}</a>
+      );
+    } else {
+      nodes.push(m[0]);
+    }
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
+}
+function detectVideoEmbed(url: string): string | null {
+  const u = safeUrl(url); if (!u) return null;
+  let m = u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+  if (m) return `https://www.youtube.com/embed/${m[1]}`;
+  m = u.match(/vimeo\.com\/(\d+)/);
+  if (m) return `https://player.vimeo.com/video/${m[1]}`;
+  return null;
+}
+
 // ─── Tile content (per type) ─────────────────────────────────────────────────
-function NewsTileContent({ tile, editable, onChange, onRequestImage }: {
+function NewsTileContent({ tile, editable, onChange, onRequestImage, onRequestVideo }: {
   tile: NewsTile;
   editable: boolean;
   onChange: (content: string) => void;
   onRequestImage: () => void;
+  onRequestVideo?: () => void;
 }) {
   switch (tile.type) {
     case 'headline':
       return editable
         ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 'clamp(28px, 4vw, 52px)', lineHeight: 1.05, letterSpacing: '-0.02em', color: NT.ink }} />
-        : <div style={{ fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 'clamp(28px, 4vw, 52px)', lineHeight: 1.05, letterSpacing: '-0.02em', color: NT.ink }}>{tile.content}</div>;
+        : <div style={{ fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 'clamp(28px, 4vw, 52px)', lineHeight: 1.05, letterSpacing: '-0.02em', color: NT.ink }}>{renderInlineLinks(tile.content ?? '')}</div>;
     case 'subhead':
       return editable
         ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.headlineFont, fontWeight: 400, fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3, color: NT.mute }} />
-        : <div style={{ fontFamily: NT.headlineFont, fontWeight: 400, fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3, color: NT.mute }}>{tile.content}</div>;
+        : <div style={{ fontFamily: NT.headlineFont, fontWeight: 400, fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3, color: NT.mute }}>{renderInlineLinks(tile.content ?? '')}</div>;
     case 'byline':
       return editable
         ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.uiFont, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: NT.mute }} />
-        : <div style={{ fontFamily: NT.uiFont, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: NT.mute }}>{tile.content}</div>;
+        : <div style={{ fontFamily: NT.uiFont, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: NT.mute }}>{renderInlineLinks(tile.content ?? '')}</div>;
     case 'paragraph':
       return editable
         ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55, color: NT.ink }} />
-        : <div style={{ fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55, color: NT.ink, whiteSpace: 'pre-wrap' }}>{tile.content}</div>;
+        : <div style={{ fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55, color: NT.ink, whiteSpace: 'pre-wrap' }}>{renderInlineLinks(tile.content ?? '')}</div>;
     case 'pullquote':
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%' }}>
@@ -11590,7 +10471,7 @@ function NewsTileContent({ tile, editable, onChange, onRequestImage }: {
             {items.map((li, i) => (
               <div key={i} style={{ display: 'flex', gap: 10, padding: '2px 0' }}>
                 <span style={{ color: NT.accent, fontFamily: NT.uiFont, fontSize: 12, minWidth: 18 }}>{String(i + 1).padStart(2, '0')}</span>
-                <span>{li}</span>
+                <span>{renderInlineLinks(li)}</span>
               </div>
             ))}
           </div>
@@ -11599,7 +10480,7 @@ function NewsTileContent({ tile, editable, onChange, onRequestImage }: {
     case 'caption':
       return editable
         ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.bodyFont, fontSize: 12, lineHeight: 1.5, color: NT.mute, fontStyle: 'italic' }} />
-        : <div style={{ fontFamily: NT.bodyFont, fontSize: 12, lineHeight: 1.5, color: NT.mute, fontStyle: 'italic' }}>{tile.content}</div>;
+        : <div style={{ fontFamily: NT.bodyFont, fontSize: 12, lineHeight: 1.5, color: NT.mute, fontStyle: 'italic' }}>{renderInlineLinks(tile.content ?? '')}</div>;
     case 'image':
       if (tile.url) {
         return <img src={resolveImg(tile.url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />;
@@ -11627,8 +10508,68 @@ function NewsTileContent({ tile, editable, onChange, onRequestImage }: {
           {[0,1,2,3].map(i => <NewsStriped key={i} label={`#${i+1}`} mediaType="img" />)}
         </div>
       );
-    case 'video':
-      return <NewsStriped label="Vídeo" mediaType="video" />;
+    case 'video': {
+      const extUrl = (tile.content || '').trim();
+      const embed = extUrl ? detectVideoEmbed(extUrl) : null;
+      if (embed) {
+        return <iframe src={embed} title="video" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen style={{ width: '100%', height: '100%', border: 0, borderRadius: NT.tileRadius }} />;
+      }
+      if (tile.url) {
+        return <video src={resolveImg(tile.url)} controls style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }} />;
+      }
+      if (extUrl && safeUrl(extUrl)) {
+        return <video src={extUrl} controls style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }} />;
+      }
+      return (
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+          <NewsStriped label="Vídeo" mediaType="video" />
+          {editable && (
+            <div style={{ position: 'absolute', left: '50%', bottom: 12, transform: 'translateX(-50%)', display: 'flex', gap: 6 }}>
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onRequestVideo?.(); }}
+                style={{ background: NT.accent, color: NT.accentInk, border: 0, padding: '6px 12px', borderRadius: 999, fontFamily: NT.uiFont, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+              >Pujar vídeo</button>
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); const u = prompt('URL del vídeo (YouTube, Vimeo o mp4 directe):', ''); if (u && safeUrl(u)) onChange(u.trim()); }}
+                style={{ background: NT.surface, color: NT.ink, border: `1px solid ${NT.soft}`, padding: '6px 12px', borderRadius: 999, fontFamily: NT.uiFont, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+              >URL externa</button>
+            </div>
+          )}
+        </div>
+      );
+    }
+    case 'link': {
+      const parts = (tile.content || '').split('|');
+      const text = parts[0] || 'Enllaç';
+      const url  = parts[1] || '';
+      const style = (parts[2] || 'button').trim();
+      const href = safeUrl(url);
+      if (editable) {
+        return (
+          <div style={{ display: 'flex', gap: 6, height: '100%', alignItems: 'center', fontFamily: NT.uiFont, fontSize: 12 }}>
+            <input value={text} onChange={e => onChange(`${e.target.value}|${url}|${style}`)}
+              placeholder="Text" style={{ flex: 1, minWidth: 0, border: `1px solid ${NT.soft}`, padding: '6px 8px', borderRadius: 6, background: NT.surface, color: NT.ink, fontFamily: NT.uiFont, fontSize: 12 }} />
+            <input value={url} onChange={e => onChange(`${text}|${e.target.value}|${style}`)}
+              placeholder="https://…" style={{ flex: 2, minWidth: 0, border: `1px solid ${NT.soft}`, padding: '6px 8px', borderRadius: 6, background: NT.surface, color: NT.ink, fontFamily: NT.uiFont, fontSize: 12 }} />
+            <select value={style} onChange={e => onChange(`${text}|${url}|${e.target.value}`)}
+              style={{ border: `1px solid ${NT.soft}`, padding: '6px 8px', borderRadius: 6, background: NT.surface, color: NT.ink, fontFamily: NT.uiFont, fontSize: 12 }}>
+              <option value="button">Botó</option>
+              <option value="inline">Inline</option>
+            </select>
+          </div>
+        );
+      }
+      if (!href) return <div style={{ color: NT.mute, fontStyle: 'italic', fontSize: 13 }}>(enllaç incomplet)</div>;
+      if (style === 'inline') {
+        return <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: NT.accent, textDecoration: 'underline', fontFamily: NT.bodyFont, fontSize: 15 }}>{text}</a>;
+      }
+      return (
+        <a href={href} target="_blank" rel="noopener noreferrer"
+           style={{ display: 'inline-block', background: NT.accent, color: NT.accentInk, padding: '8px 16px', borderRadius: 999, fontFamily: NT.uiFont, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>{text} ↗</a>
+      );
+    }
     case 'audio':
       return (
         <div style={{
@@ -11741,7 +10682,7 @@ function NewsTilesViewer({ content }: { content: string }) {
 }
 
 // ─── Tile chrome ─────────────────────────────────────────────────────────────
-function NewsTileEl({ tile, selected, editing, gridLines, onSelect, onEdit, onChange, onDelete, onPointerDown, onResizePointerDown, onRequestImage }: {
+function NewsTileEl({ tile, selected, editing, gridLines, onSelect, onEdit, onChange, onDelete, onPointerDown, onResizePointerDown, onRequestImage, onRequestVideo }: {
   tile: NewsTile; selected: boolean; editing: string | null; gridLines: boolean;
   onSelect: (id: string) => void;
   onEdit: (id: string) => void;
@@ -11750,6 +10691,7 @@ function NewsTileEl({ tile, selected, editing, gridLines, onSelect, onEdit, onCh
   onPointerDown: (e: React.PointerEvent, t: NewsTile) => void;
   onResizePointerDown: (e: React.PointerEvent, t: NewsTile, dir: 'se'|'e'|'s') => void;
   onRequestImage: (id: string) => void;
+  onRequestVideo: (id: string) => void;
 }) {
   const def = NEWS_TYPES[tile.type];
   const padded = !['image','video','gallery','embed','spacer','divider','audio'].includes(tile.type);
@@ -11781,6 +10723,7 @@ function NewsTileEl({ tile, selected, editing, gridLines, onSelect, onEdit, onCh
         editable={editing === tile.id}
         onChange={(v) => onChange(tile.id, v)}
         onRequestImage={() => onRequestImage(tile.id)}
+        onRequestVideo={() => onRequestVideo(tile.id)}
       />
       {selected && (
         <>
@@ -11921,7 +10864,9 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
   const pendingImageId = useRef<string | null>(null);
+  const pendingVideoId = useRef<string | null>(null);
 
   // Load existing article
   useEffect(() => {
@@ -12125,6 +11070,23 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
       setError(e.message ?? 'Error pujant imatge');
     }
   };
+  const requestVideoUpload = (id: string) => {
+    pendingVideoId.current = id;
+    videoInputRef.current?.click();
+  };
+  const handleVideoFile = async (file: File) => {
+    const id = pendingVideoId.current;
+    pendingVideoId.current = null;
+    if (!id || !file) return;
+    try {
+      const { url } = await apiUploadMedia(file);
+      const m = url.match(/(\/uploads\/[^?#]+)/);
+      const rel = m ? m[1] : url;
+      setTiles(prev => prev.map(t => t.id === id ? { ...t, url: rel } : t));
+    } catch (e: any) {
+      setError(e.message ?? 'Error pujant vídeo');
+    }
+  };
 
   const handleSave = async () => {
     if (!title.trim()) { setError("El títol és obligatori"); return; }
@@ -12139,7 +11101,7 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
       const fields = {
         category, title: title.trim(), summary: summary.trim(),
         content: JSON.stringify(tiles),
-        author: '', date,
+        date,
         image: imageUrl, featured: featured ? 1 : 0,
       };
       if (articleId !== null) {
@@ -12191,13 +11153,20 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
         }}>✓ Article guardat</div>
       )}
 
-      {/* Hidden file input for image tile upload */}
+      {/* Hidden file inputs for image + video tile upload */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
         style={{ display: 'none' }}
         onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.currentTarget.value = ''; }}
+      />
+      <input
+        ref={videoInputRef}
+        type="file"
+        accept="video/mp4,video/webm,video/quicktime"
+        style={{ display: 'none' }}
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleVideoFile(f); e.currentTarget.value = ''; }}
       />
 
       {/* Top bar */}
@@ -12328,6 +11297,7 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
                     onPointerDown={preview ? () => {} : startTileDrag}
                     onResizePointerDown={startResize}
                     onRequestImage={requestImageUpload}
+                    onRequestVideo={requestVideoUpload}
                   />
                 </div>
               ))}
@@ -12552,7 +11522,8 @@ function App() {
 
   const [activeTab, setActiveTabState] = useState(() => sessionStorage.getItem('tavil_active_tab') ?? 'Inici');
   const [notifSubTab, setNotifSubTab] = useState<string | null>(null);
-  const setActiveTab = (tab: string) => {
+  const [adminIntent, setAdminIntent] = useState<'new' | null>(null);
+  const setActiveTab = (tab: string, intent?: 'new') => {
     // Clear sub-tab memory so returning to any section starts at its default.
     // F5 (page reload) doesn't call this, so F5-restore still works.
     ['activitats','campus','veu','solicituds','perfil','backoffice'].forEach(k =>
@@ -12560,7 +11531,9 @@ function App() {
     );
     sessionStorage.setItem('tavil_active_tab', tab);
     setActiveTabState(tab);
+    setAdminIntent(intent ?? null);
   };
+  const consumeAdminIntent = () => setAdminIntent(null);
 
   // Page transition — push style: both old and new pages rendered during the
   // transition window, old slides out while new slides in. Direction derived
@@ -12637,7 +11610,7 @@ function App() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [mobileNotifsOpen, setMobileNotifsOpen] = useState(false);
   const [navHidden, setNavHidden] = useState(false);
-  useEffect(() => { _setGlobalNavHidden = setNavHidden; return () => { _setGlobalNavHidden = null; }; }, []);
+  useEffect(() => { registerGlobalNavSetter(setNavHidden); return () => { registerGlobalNavSetter(null); }; }, []);
 
   // Glass + anchor header on scroll. Inici threshold 240px (past hero). Others 30px.
   // On tab change: reset to false + scroll to top so short pages don't inherit anchored state.
@@ -12659,7 +11632,7 @@ function App() {
   const searchRef = useRef<HTMLDivElement>(null);
 
   const userInitials = currentUser?.name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() ?? 'CH';
-  const userAvatar = useUserAvatar(currentUser?.id);
+  const userAvatar = currentUser?.avatar_url ?? null;
 
   const refreshNotifications = () => {
     apiGetNotifications().then(setNotifications).catch(() => {});
@@ -12825,7 +11798,14 @@ function App() {
       case 'Perfil': return <PerfilTab currentUser={currentUser} onUserUpdate={u => { setCurrentUser(u); }} onNavigate={setActiveTab} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} onLogout={handleLogout} />;
       case 'Empresa': return <EmpresaLandingTab onNavigate={setActiveTab} />;
       case 'Més': return <MesTab onNavigate={setActiveTab} currentUser={currentUser} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} onLogout={handleLogout} />;
-      case 'Backoffice': return <BackofficeTab currentUser={currentUser} onImpersonate={handleImpersonate} />;
+      case 'Backoffice':        return <BackofficeTab currentUser={currentUser} onImpersonate={handleImpersonate} />;
+      case 'admin-dashboard':   return <AdminBackoffice view="dashboard"  currentUser={currentUser} onNavigate={setActiveTab} intent={adminIntent} onConsumeIntent={consumeAdminIntent} />;
+      case 'admin-users':       return <AdminBackoffice view="users"      currentUser={currentUser} onNavigate={setActiveTab} onImpersonate={handleImpersonate} intent={adminIntent} onConsumeIntent={consumeAdminIntent} />;
+      case 'admin-news':        return <AdminBackoffice view="news"       currentUser={currentUser} onNavigate={setActiveTab} intent={adminIntent} onConsumeIntent={consumeAdminIntent} />;
+      case 'admin-activities':  return <AdminBackoffice view="activities" currentUser={currentUser} onNavigate={setActiveTab} intent={adminIntent} onConsumeIntent={consumeAdminIntent} />;
+      case 'admin-campus':      return <AdminBackoffice view="campus"     currentUser={currentUser} onNavigate={setActiveTab} intent={adminIntent} onConsumeIntent={consumeAdminIntent} />;
+      case 'admin-agenda':      return <AdminBackoffice view="agenda"     currentUser={currentUser} onNavigate={setActiveTab} intent={adminIntent} onConsumeIntent={consumeAdminIntent} />;
+      case 'admin-avisos':      return <AdminBackoffice view="avisos"     currentUser={currentUser} onNavigate={setActiveTab} intent={adminIntent} onConsumeIntent={consumeAdminIntent} />;
       default: return null;
     }
   };
@@ -12887,8 +11867,8 @@ function App() {
           </div>
         )}
 
-        {/* ── Desktop breadcrumb + title — hidden on mobile ── */}
-        {!isInici && (
+        {/* ── Desktop breadcrumb + title — hidden on mobile + admin (admin has own AdminHeader) ── */}
+        {!isInici && !tab.startsWith('admin-') && (
           <div className="hidden md:block mb-6 p-3 md:p-0 stagger-1">
             <div className="flex items-center gap-2 text-xs mb-2" style={{ color: 'var(--tavil-faint)' }}>
               <button onClick={() => setActiveTab('Inici')} className="flex items-center gap-1 transition-colors hover:text-[var(--tavil-accent)]">
@@ -12897,7 +11877,9 @@ function App() {
               <ChevronRight size={11} />
               <span style={{ color: 'var(--tavil-text)' }}>{section?.label}</span>
             </div>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 48, fontWeight: 600, lineHeight: 1, letterSpacing: '0em', color: 'var(--tavil-text)', margin: 0 }}>{section?.label}</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 48, fontWeight: 600, lineHeight: 1, letterSpacing: '0em', color: 'var(--tavil-text)', margin: 0 }}>
+              {tab === 'Perfil' ? (currentUser?.name ?? section?.label) : section?.label}
+            </h1>
           </div>
         )}
 
@@ -12958,7 +11940,7 @@ function App() {
             }
           </div>
           {SIDEBAR_SECTIONS.map((section) => (
-            <SidebarSection key={section.title} title={section.title} collapsed={sidebarCollapsed}>
+            <SidebarSection key={section.title} title={section.title} collapsed={sidebarCollapsed} isAdmin={(section as any).isAdmin}>
               {section.items.map((item) => (
                 <SidebarItem key={item.id} icon={item.icon} label={item.label} active={activeTab === item.id} onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); bubbleOriginYRef.current = r.top + r.height / 2; setActiveTab(item.id); }} collapsed={sidebarCollapsed} />
               ))}
@@ -12969,7 +11951,7 @@ function App() {
         <div className="mt-auto border-t border-gray-100 dark:border-zinc-800">
           <div className={cn("flex items-center p-4 gap-3", sidebarCollapsed && "justify-center p-3")}>
             {userAvatar
-              ? <img src={userAvatar} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+              ? <img src={resolveImg(userAvatar)} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
               : <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{userInitials}</div>}
             {!sidebarCollapsed && (
               <>
@@ -13157,7 +12139,7 @@ function App() {
                 className="flex items-center gap-2 p-1.5 hover:bg-gray-100/20 dark:hover:bg-zinc-800/30 rounded-lg transition-colors"
               >
                 {userAvatar
-                  ? <img src={userAvatar} alt="" className="w-7 h-7 rounded-full object-cover" />
+                  ? <img src={resolveImg(userAvatar)} alt="" className="w-7 h-7 rounded-full object-cover" />
                   : <div className="w-7 h-7 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold">{userInitials}</div>}
                 <div className="hidden lg:block text-left">
                   <p className="text-xs font-semibold hg-text text-gray-900 dark:text-white leading-none">{currentUser?.name ?? 'Usuari'}</p>

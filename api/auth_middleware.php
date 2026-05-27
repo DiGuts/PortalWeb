@@ -3,7 +3,29 @@ require_once __DIR__ . '/jwt.php';
 require_once __DIR__ . '/db.php';
 
 // ── USER_FIELDS returned in every user response ───────────────────────────────
-const USER_FIELDS = 'id, name, email, role, dept, phone, ext, location, onboarded, email_notifs, is_head, must_change_password';
+const USER_FIELDS = 'id, name, email, role, roles, dept, phone, ext, location, avatar_url, visible_in_directory, onboarded, email_notifs, is_head, must_change_password';
+
+// Decode users.roles JSON column into array, mutating the user row in-place.
+// Safe no-op if column missing or invalid.
+function decode_user_roles(array &$user): void {
+    if (!array_key_exists('roles', $user)) return;
+    $raw = $user['roles'];
+    if (is_array($raw)) return;
+    if ($raw === null || $raw === '') { $user['roles'] = []; return; }
+    $decoded = json_decode($raw, true);
+    $user['roles'] = is_array($decoded) ? array_values(array_filter($decoded, 'is_string')) : [];
+}
+
+function user_has_any_role(array $user, array $needed): bool {
+    if (in_array($user['role'] ?? '', $needed, true)) return true;
+    $roles = $user['roles'] ?? [];
+    if (is_string($roles)) {
+        $decoded = json_decode($roles, true);
+        $roles = is_array($decoded) ? $decoded : [];
+    }
+    foreach ($needed as $n) if (in_array($n, $roles, true)) return true;
+    return false;
+}
 
 function get_bearer_token(): ?string {
     $headers = function_exists('getallheaders') ? getallheaders() : [];
@@ -38,6 +60,7 @@ function auth_user(): array {
     if (!$user) {
         respond(['detail' => 'Usuari no trobat'], 401);
     }
+    decode_user_roles($user);
     // Block all requests (except change-password) if password change is required.
     if ((int)($user['must_change_password'] ?? 0) === 1) {
         $uri    = $_SERVER['REQUEST_URI'] ?? '';
@@ -52,7 +75,7 @@ function auth_user(): array {
 
 function require_admin(): array {
     $u = auth_user();
-    if ($u['role'] !== 'Administrador/a') {
+    if (!user_has_any_role($u, ['Administrador', 'Administrador/a'])) {
         respond(['detail' => 'Acció reservada a administradors'], 403);
     }
     return $u;
@@ -60,15 +83,15 @@ function require_admin(): array {
 
 function require_rrhh_or_admin(): array {
     $u = auth_user();
-    if (!in_array($u['role'], ['Administrador/a', 'Recursos humans'], true)) {
-        respond(['detail' => 'Acció reservada a RRHH o administradors'], 403);
+    if (!user_has_any_role($u, ['Administrador', 'Administrador/a', 'SolicitudsVacances', 'SolicitudsDissabtes', 'Sol·licituds', 'Recursos humans'])) {
+        respond(['detail' => 'Acció reservada a sol·licituds o administradors'], 403);
     }
     return $u;
 }
 
 function require_formacions_or_admin(): array {
     $u = auth_user();
-    if (!in_array($u['role'], ['Administrador/a', 'Recursos humans', 'Formacions'], true)) {
+    if (!user_has_any_role($u, ['Administrador', 'Administrador/a', 'Formacions', 'Recursos humans'])) {
         respond(['detail' => 'Acció reservada al gestor de formacions'], 403);
     }
     return $u;
@@ -76,7 +99,7 @@ function require_formacions_or_admin(): array {
 
 function require_comunicacions_or_admin(): array {
     $u = auth_user();
-    if (!in_array($u['role'], ['Administrador/a', 'Recursos humans', 'Comunicacions'], true)) {
+    if (!user_has_any_role($u, ['Administrador', 'Administrador/a', 'Comunicacions', 'Comunicació', 'Recursos humans'])) {
         respond(['detail' => 'Acció reservada al gestor de comunicacions'], 403);
     }
     return $u;
@@ -84,7 +107,7 @@ function require_comunicacions_or_admin(): array {
 
 function require_content_editor(): array {
     $u = auth_user();
-    if (!in_array($u['role'], ['Administrador/a', 'Recursos humans', 'Comunicacions', 'Formacions'], true)) {
+    if (!user_has_any_role($u, ['Administrador', 'Administrador/a', 'Comunicacions', 'Comunicació', 'Formacions', 'Recursos humans'])) {
         respond(['detail' => 'Acció reservada a editors de contingut'], 403);
     }
     return $u;

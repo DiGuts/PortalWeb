@@ -23,9 +23,30 @@ function _cast_user(array $row): array {
     $row['onboarded']    = (int)$row['onboarded'];
     $row['email_notifs'] = (int)$row['email_notifs'];
     $row['is_head']      = (int)$row['is_head'];
+    $row['visible_in_directory'] = (int)($row['visible_in_directory'] ?? 1);
     $row['must_change_password'] = (int)($row['must_change_password'] ?? 0);
     $row['is_demo_admin'] = ($row['email'] ?? '') === 'unaiclapers@tavil.net' ? 1 : 0;
+    $rolesRaw = $row['roles'] ?? '[]';
+    if (!is_array($rolesRaw)) {
+        $decoded = json_decode((string)$rolesRaw, true);
+        $rolesRaw = is_array($decoded) ? $decoded : [];
+    }
+    $row['roles'] = array_values(array_filter($rolesRaw, 'is_string'));
     return $row;
+}
+
+const _ALLOWED_NEW_ROLES = [
+    'Treballador/a', 'Cap de departament', 'Administrador',
+    'Formacions', 'Comunicacions', 'SolicitudsDissabtes', 'SolicitudsVacances',
+];
+
+function _sanitize_roles_payload($raw): string {
+    if (!is_array($raw)) return '[]';
+    $clean = array_values(array_unique(array_filter(
+        array_map(fn($r) => is_string($r) ? trim($r) : '', $raw),
+        fn($r) => in_array($r, _ALLOWED_NEW_ROLES, true)
+    )));
+    return json_encode($clean, JSON_UNESCAPED_UNICODE);
 }
 
 // GET /api/users/me
@@ -34,14 +55,21 @@ if ($method === 'GET' && $seg1 === 'me') {
     respond(_fetch_user($db, (int)$u['id']));
 }
 
-// PATCH /api/users/me
+// PATCH /api/users/me — user may change own avatar, directory visibility, and notif prefs.
+// All other personal data is admin-managed.
 elseif ($method === 'PATCH' && $seg1 === 'me' && $seg2 === '') {
     $u   = auth_user();
     $uid = (int)$u['id'];
-    $allowed = ['name', 'phone', 'ext', 'location', 'email_notifs'];
+    $allowed = ['email_notifs', 'avatar_url', 'visible_in_directory'];
     $updates = [];
     foreach ($allowed as $k) {
-        if (array_key_exists($k, $body)) $updates[$k] = $body[$k];
+        if (array_key_exists($k, $body)) {
+            if ($k === 'email_notifs' || $k === 'visible_in_directory') {
+                $updates[$k] = bool_val($body, $k) ? 1 : 0;
+            } else {
+                $updates[$k] = $body[$k];
+            }
+        }
     }
     if (!empty($updates)) {
         $set  = implode(', ', array_map(fn($k) => "$k=?", array_keys($updates)));
@@ -121,11 +149,15 @@ elseif ($method === 'POST' && $seg1 === '') {
     if ($exists->fetch()) respond(['detail' => 'Ja existeix un usuari amb aquest correu'], 409);
 
     $hashed = password_hash(str_val($body, 'temp_password'), PASSWORD_BCRYPT);
-    $db->prepare('INSERT INTO users (name, email, password, role, dept, is_head, must_change_password, onboarded, email_verified) VALUES (?,?,?,?,?,?,1,1,1)')
+    $rolesJson = _sanitize_roles_payload($body['roles'] ?? []);
+    $rolesArr  = json_decode($rolesJson, true) ?? [];
+    $isHead    = in_array('Cap de departament', $rolesArr) ? 1 : 0;
+    $primaryRole = count($rolesArr) > 0 ? $rolesArr[0] : 'Treballador/a';
+    $db->prepare('INSERT INTO users (name, email, password, role, roles, dept, is_head, must_change_password, onboarded, email_verified) VALUES (?,?,?,?,?,?,?,1,1,1)')
        ->execute([
            str_val($body,'name'), $email, $hashed,
-           str_val($body,'role'), str_val($body,'dept'),
-           bool_val($body,'is_head') ? 1 : 0,
+           $primaryRole, $rolesJson, str_val($body,'dept'),
+           $isHead,
        ]);
     $stmt = $db->prepare('SELECT ' . USER_FIELDS . ' FROM users WHERE email=?');
     $stmt->execute([$email]);
@@ -137,11 +169,25 @@ elseif ($method === 'POST' && $seg1 === '') {
 elseif ($method === 'PATCH' && is_numeric($seg1) && $seg2 === '') {
     require_admin();
     $user_id = (int)$seg1;
-    $allowed = ['name','email','role','dept','is_head'];
+    $allowed = ['name','email','role','dept','phone','ext','location','avatar_url','email_notifs'];
     $updates = [];
     foreach ($allowed as $k) {
         if (array_key_exists($k, $body)) {
-            $updates[$k] = ($k === 'is_head') ? (bool_val($body,'is_head') ? 1 : 0) : $body[$k];
+            if ($k === 'email_notifs') {
+                $updates[$k] = bool_val($body, $k) ? 1 : 0;
+            } else {
+                $updates[$k] = $body[$k];
+            }
+        }
+    }
+    if (array_key_exists('roles', $body)) {
+        $rolesJson = _sanitize_roles_payload($body['roles']);
+        $rolesArr  = json_decode($rolesJson, true) ?? [];
+        $updates['roles']   = $rolesJson;
+        $updates['is_head'] = in_array('Cap de departament', $rolesArr) ? 1 : 0;
+        // Auto-derive primary role for display/legacy
+        if (!array_key_exists('role', $body)) {
+            $updates['role'] = count($rolesArr) > 0 ? $rolesArr[0] : 'Treballador/a';
         }
     }
     if (array_key_exists('new_password', $body)) {

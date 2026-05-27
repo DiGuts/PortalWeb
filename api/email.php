@@ -27,12 +27,12 @@ function send_email(string $to, string $subject, string $html): void {
 
     // Open socket to SMTP server
     $errno = 0; $errstr = '';
-    $port = SMTP_PORT;
-    // Use TLS wrapper for port 465, STARTTLS for 587/25
+    $port    = SMTP_PORT;
     $use_ssl = ($port === 465);
     $host    = ($use_ssl ? 'ssl://' : '') . SMTP_HOST;
+    $ctx     = stream_context_create(['ssl' => ['verify_peer' => false, 'verify_peer_name' => false]]);
 
-    $sock = @fsockopen($host, $port, $errno, $errstr, 10);
+    $sock = @stream_socket_client($host . ':' . $port, $errno, $errstr, 10, STREAM_CLIENT_CONNECT, $ctx);
     if (!$sock) {
         error_log("[EMAIL ERROR] Cannot connect to " . SMTP_HOST . ":$port — $errstr ($errno)");
         return;
