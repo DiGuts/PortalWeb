@@ -8671,7 +8671,7 @@ function useSidebarSections(role?: string, roles?: string[]) {
         { id: 'Perfil', label: t('nav.perfil'), icon: UserCircle },
       ]
     },
-    ...(['Administrador', 'Administrador/a', 'Recursos humans', 'Comunicacions', 'Comunicació', 'Formacions', 'SolicitudsVacances', 'SolicitudsDissabtes'].some(r => (roles ?? []).includes(r) || role === r) ? [{
+    ...(['Administrador', 'Administrador/a', 'Recursos humans', 'Comunicacions', 'Comunicació', 'Formacions'].some(r => (roles ?? []).includes(r) || role === r) ? [{
       title: 'Administració',
       isAdmin: true as const,
       items: [

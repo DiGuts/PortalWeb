@@ -77,7 +77,7 @@ function AdminDashboard({ currentUser, onNavigate, counts }: {
     { id: 'new-formation',label: 'Nova formació',   sub: 'Curs o itinerari del Campus',       icon: GraduationCap,  target: 'admin-campus' },
     { id: 'new-agenda',   label: 'Nou esdeveniment',sub: 'Reunió o jornada corporativa',      icon: Calendar,       target: 'admin-agenda' },
   ];
-  const quickActions = allQuickActions.filter(a => a.target !== heroAction.target && allowed.has(a.target));
+  const quickActions = allQuickActions.filter(a => a.target !== heroAction.target && allowed.has(a.target)).slice(0, 4);
   const HeroIcon = heroAction.icon;
 
   const allModules = [
