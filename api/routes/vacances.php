@@ -89,7 +89,7 @@ elseif ($method === 'POST' && $id === null) {
 // PATCH /api/vacances/{id}/head
 elseif ($method === 'PATCH' && $id !== null && $sub === 'head') {
     $u = auth_user();
-    if (!in_array($u['role'], ['Administrador/a','Recursos humans'], true) && empty($u['is_head'])) {
+    if (!user_has_any_role($u, ['Administrador/a', 'Recursos humans', 'SolicitudsVacances']) && empty($u['is_head'])) {
         respond(['detail' => 'No autoritzat'], 403);
     }
     $row_stmt = $db->prepare('SELECT * FROM vacances WHERE id=?');
@@ -142,7 +142,7 @@ elseif ($method === 'PATCH' && $id !== null && $sub === 'head') {
 // PATCH /api/vacances/{id}/rrhh
 elseif ($method === 'PATCH' && $id !== null && $sub === 'rrhh') {
     $u = auth_user();
-    if (!in_array($u['role'], ['Recursos humans','Administrador/a'], true)) {
+    if (!user_has_any_role($u, ['Recursos humans', 'Administrador/a', 'SolicitudsVacances'])) {
         respond(['detail' => 'No autoritzat'], 403);
     }
     $row_stmt = $db->prepare('SELECT * FROM vacances WHERE id=?');

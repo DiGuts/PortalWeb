@@ -60,7 +60,7 @@ elseif ($method === 'DELETE' && $id !== null) {
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) { respond(['detail' => 'Not found'], 404); }
-    $is_approver = in_array($u['role'], ['Administrador/a', 'Recursos humans', 'Aprovacions'], true) || !empty($u['is_head']);
+    $is_approver = user_has_any_role($u, ['Administrador/a', 'Recursos humans', 'Aprovacions', 'SolicitudsDissabtes']) || !empty($u['is_head']);
     $is_author   = $row['author'] === $u['email'];
     if (!$is_approver && !$is_author) {
         respond(['detail' => 'No autoritzat'], 403);
