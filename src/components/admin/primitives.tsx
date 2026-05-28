@@ -84,9 +84,7 @@ export function AdminToolbar({ children }: { children: ReactNode }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-      padding: '14px 16px', marginBottom: 14,
-      background: 'linear-gradient(180deg, var(--tavil-card) 0%, var(--tavil-bgAlt) 100%)',
-      borderRadius: 10, border: `1px solid ${T.border}`,
+      marginBottom: 14,
     }}>{children}</div>
   );
 }
@@ -105,9 +103,9 @@ export function AdminSearch({ value, onChange, placeholder = 'Cerca…' }: {
       <input
         value={value} onChange={onChange} placeholder={placeholder}
         style={{
-          width: '100%', height: 42, padding: '0 14px 0 38px',
-          background: T.card, color: T.text,
-          border: `1px solid ${T.border}`, borderRadius: 10,
+          width: '100%', height: 40, padding: '0 14px 0 38px',
+          background: T.bgAlt, color: T.text,
+          border: `1px solid ${T.border}`, borderRadius: 8,
           fontFamily: F_BODY, fontSize: 14, outline: 'none', boxSizing: 'border-box',
         }}
       />
@@ -127,11 +125,13 @@ export function AdminFilterPills({ value, options, onChange }: {
         const active = value === o.id;
         return (
           <button key={o.id} onClick={() => onChange(o.id)} style={{
-            padding: '9px 14px', borderRadius: 8, minHeight: 36,
-            background: active ? T.text : 'transparent',
-            color: active ? T.bg : T.textMuted,
-            border: 'none', cursor: 'pointer',
+            padding: '6px 14px', borderRadius: 8, minHeight: 36,
+            background: active ? T.accent : 'white',
+            color: active ? '#fff' : T.textMuted,
+            border: `1px solid ${active ? T.accent : T.border}`,
+            cursor: 'pointer',
             fontFamily: F_BODY, fontSize: 13, fontWeight: 500,
+            transition: 'background 140ms, border-color 140ms, color 140ms',
           }}>
             {o.label}
             {o.count != null && (
