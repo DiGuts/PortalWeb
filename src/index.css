@@ -691,10 +691,12 @@ code {
   --tavil-accent-dark: #a21b18;
 
   /* Admin status colors */
-  --status-ok-fg:   #3f7a52;
-  --status-ok-bg:   rgba(63,122,82,0.10);
-  --status-warn-fg: #b6833a;
-  --status-warn-bg: rgba(182,131,58,0.10);
+  --status-ok-fg:     #3f7a52;
+  --status-ok-bg:     rgba(63,122,82,0.10);
+  --status-warn-fg:   #b6833a;
+  --status-warn-bg:   rgba(182,131,58,0.10);
+  --status-danger-fg: #c43d3d;
+  --status-danger-bg: rgba(196,61,61,0.10);
 
   /* Notícia extensa editor (NT) — light theme */
   --nt-bg:      #efece4;
@@ -715,10 +717,12 @@ html.dark {
   --tavil-faint: #7a8178;
 
   /* Admin status colors — lighten ~10% in dark */
-  --status-ok-fg:   #5b9772;
-  --status-ok-bg:   rgba(91,151,114,0.16);
-  --status-warn-fg: #d4a566;
-  --status-warn-bg: rgba(212,165,102,0.16);
+  --status-ok-fg:     #5b9772;
+  --status-ok-bg:     rgba(91,151,114,0.16);
+  --status-warn-fg:   #d4a566;
+  --status-warn-bg:   rgba(212,165,102,0.16);
+  --status-danger-fg: #e05c5c;
+  --status-danger-bg: rgba(224,92,92,0.16);
 
   /* Notícia extensa editor (NT) — dark theme */
   --nt-bg:      #121315;

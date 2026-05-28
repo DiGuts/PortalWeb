@@ -43,8 +43,10 @@ function modulesForRole(role?: string, roles?: string[]): Set<string> {
   const hr = (...r: string[]) => r.some(x => all.has(x));
   if (hr('Administrador', 'Administrador/a'))
     return new Set(['admin-users', 'admin-news', 'admin-avisos', 'admin-activities', 'admin-campus', 'admin-agenda']);
-  if (hr('Recursos humans', 'SolicitudsVacances', 'SolicitudsDissabtes'))
+  if (hr('Recursos humans'))
     return new Set(['admin-news', 'admin-avisos', 'admin-activities', 'admin-campus', 'admin-agenda']);
+  if (hr('SolicitudsVacances', 'SolicitudsDissabtes'))
+    return new Set(); // Solicituds approvers work from the main SolicitudsTab, not the backoffice
   if (hr('Comunicacions', 'Comunicació'))
     return new Set(['admin-news', 'admin-avisos', 'admin-activities', 'admin-agenda']);
   if (hr('Formacions'))
@@ -95,6 +97,29 @@ function AdminDashboard({ currentUser, onNavigate, counts }: {
     textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 12,
   };
 
+  if (allowed.size === 0) {
+    return (
+      <>
+        <AdminHeader
+          kicker={`Bon dia, ${firstName}`}
+          title="Sol·licituds"
+          subtitle="Gestiona les sol·licituds pendents des de la secció Sol·licituds del portal."
+        />
+        <div style={{
+          border: `1px dashed ${T.border}`, borderRadius: 12,
+          padding: '60px 30px', textAlign: 'center',
+          fontFamily: F_BODY, color: T.textFaint,
+        }}>
+          <FileText size={28} style={{ marginBottom: 12, color: T.textMuted }} />
+          <div style={{ fontSize: 15, fontWeight: 600, color: T.text, marginBottom: 6 }}>Accés via la pestanya Sol·licituds</div>
+          <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 360, marginInline: 'auto', lineHeight: 1.5 }}>
+            El teu rol dona accés a la gestió de sol·licituds directament des del portal, a la secció Sol·licituds.
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <AdminHeader
@@ -119,7 +144,7 @@ function AdminDashboard({ currentUser, onNavigate, counts }: {
           fontFamily: F_BODY, minHeight: 220,
           transition: 'transform 160ms ease-out, box-shadow 160ms ease-out',
         }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 18px 36px -16px rgba(191,33,30,0.55)'; }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 18px 36px -16px color-mix(in srgb, var(--tavil-accent) 55%, transparent)'; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none'; }}>
           <div style={{
             width: 52, height: 52, borderRadius: 12,
@@ -127,7 +152,7 @@ function AdminDashboard({ currentUser, onNavigate, counts }: {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}><HeroIcon size={26} /></div>
           <div>
-            <div style={{ fontFamily: F_DISPLAY, fontSize: 32, fontWeight: 500, lineHeight: 1.05, letterSpacing: '-0.01em' }}>{heroAction.label}</div>
+            <div style={{ fontFamily: F_DISPLAY, fontSize: 32, fontWeight: 600, lineHeight: 1.05, letterSpacing: '-0.01em' }}>{heroAction.label}</div>
             <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 8, maxWidth: 380, lineHeight: 1.4 }}>{heroAction.sub}</div>
           </div>
           <div style={{
@@ -142,7 +167,7 @@ function AdminDashboard({ currentUser, onNavigate, counts }: {
           return (
             <button key={a.id} onClick={() => onNavigate(a.target, 'new')} style={{
               padding: 18, background: T.card, border: `1px solid ${T.border}`,
-              borderRadius: 10, textAlign: 'left', cursor: 'pointer',
+              borderRadius: 12, textAlign: 'left', cursor: 'pointer',
               display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
               minHeight: 104, gap: 12,
               fontFamily: F_BODY, color: T.text,
@@ -169,7 +194,7 @@ function AdminDashboard({ currentUser, onNavigate, counts }: {
 
       <div style={labelStyle}>Mòduls</div>
       <div style={{
-        background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, overflow: 'hidden',
+        background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden',
       }}>
         {modules.map((m, i) => {
           const Icon = m.icon;
@@ -860,7 +885,7 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ flex: 1, height: 4, borderRadius: 2, background: T.bgAlt, overflow: 'hidden', minWidth: 40 }}>
-              <div style={{ height: '100%', width: pct + '%', background: pct >= 100 ? '#b6833a' : T.accent }} />
+              <div style={{ height: '100%', width: pct + '%', background: pct >= 100 ? 'var(--status-warn-fg)' : T.accent }} />
             </div>
             <span style={{ fontSize: 11, color: T.textFaint, fontFeatureSettings: '"tnum"' }}>{enr}/{cap}</span>
           </div>
@@ -1407,7 +1432,7 @@ function AdminAvisos({ notices, refresh, intent, onConsumeIntent }: { notices: N
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <div style={{
             width: 4, height: 32, borderRadius: 2, flexShrink: 0,
-            background: n.kind === 'danger' ? '#c43d3d' : n.kind === 'neutral' ? T.textFaint : '#b6833a',
+            background: n.kind === 'danger' ? 'var(--status-danger-fg)' : n.kind === 'neutral' ? T.textFaint : 'var(--status-warn-fg)',
           }} />
           <div style={{ minWidth: 0, overflow: 'hidden' }}>
             <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.title}</div>

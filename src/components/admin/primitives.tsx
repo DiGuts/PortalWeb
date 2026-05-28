@@ -65,7 +65,7 @@ export function AdminHeader({ kicker = 'Administració', title, subtitle, action
           {kicker}
         </div>
         <h1 style={{
-          fontFamily: F_DISPLAY, fontSize: 46, fontWeight: 500,
+          fontFamily: F_DISPLAY, fontSize: 46, fontWeight: 600,
           letterSpacing: '-0.005em', lineHeight: 1, margin: 0,
           color: T.text,
         }}>{title}</h1>
@@ -85,7 +85,8 @@ export function AdminToolbar({ children }: { children: ReactNode }) {
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
       padding: '14px 16px', marginBottom: 14,
-      background: T.card, border: `1px solid ${T.border}`, borderRadius: 10,
+      background: 'linear-gradient(180deg, var(--tavil-card) 0%, var(--tavil-bgAlt) 100%)',
+      borderRadius: 10, border: `1px solid ${T.border}`,
     }}>{children}</div>
   );
 }
@@ -105,8 +106,8 @@ export function AdminSearch({ value, onChange, placeholder = 'Cerca…' }: {
         value={value} onChange={onChange} placeholder={placeholder}
         style={{
           width: '100%', height: 42, padding: '0 14px 0 38px',
-          background: T.bgAlt, color: T.text,
-          border: `1px solid ${T.border}`, borderRadius: 8,
+          background: T.card, color: T.text,
+          border: `1px solid ${T.border}`, borderRadius: 10,
           fontFamily: F_BODY, fontSize: 14, outline: 'none', boxSizing: 'border-box',
         }}
       />

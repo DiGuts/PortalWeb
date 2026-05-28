@@ -4858,7 +4858,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
   const [vacDenyStage, setVacDenyStage] = useState<'head' | 'rrhh'>('head');
   const [vacDenyComment, setVacDenyComment] = useState('');
 
-  const isRRHH = ['Administrador', 'Administrador/a', 'Recursos humans', 'Aprovacions', 'SolicitudsVacances'].some(x => x === (currentUser?.role ?? '') || (currentUser?.roles ?? []).includes(x));
+  const isRRHH = ['Administrador', 'Administrador/a', 'Recursos humans', 'Aprovacions', 'SolicitudsVacances', 'SolicitudsDissabtes'].some(x => x === (currentUser?.role ?? '') || (currentUser?.roles ?? []).includes(x));
   const isHead = !!(currentUser?.is_head);
   const [mobileFormOpen, setMobileFormOpen] = useState(false);
 
@@ -8671,7 +8671,7 @@ function useSidebarSections(role?: string, roles?: string[]) {
         { id: 'Perfil', label: t('nav.perfil'), icon: UserCircle },
       ]
     },
-    ...(['Administrador', 'Administrador/a', 'Recursos humans', 'Comunicacions', 'Comunicació', 'Formacions'].some(r => (roles ?? []).includes(r) || role === r) ? [{
+    ...(['Administrador', 'Administrador/a', 'Recursos humans', 'Comunicacions', 'Comunicació', 'Formacions', 'SolicitudsVacances', 'SolicitudsDissabtes'].some(r => (roles ?? []).includes(r) || role === r) ? [{
       title: 'Administració',
       isAdmin: true as const,
       items: [
