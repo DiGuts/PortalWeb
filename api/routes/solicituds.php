@@ -12,7 +12,7 @@ $id   = isset($segments[1]) && is_numeric($segments[1]) ? (int)$segments[1] : nu
 // GET /api/solicituds
 if ($method === 'GET' && $id === null) {
     $u = auth_user();
-    if (in_array($u['role'], ['Administrador/a','Recursos humans'], true)) {
+    if (user_has_any_role($u, ['Administrador/a', 'Recursos humans', 'SolicitudsDissabtes', 'SolicitudsVacances'])) {
         $rows = $db->query('SELECT * FROM solicituds ORDER BY created_at DESC')->fetchAll();
     } else {
         $stmt = $db->prepare('SELECT * FROM solicituds WHERE author=? ORDER BY created_at DESC');

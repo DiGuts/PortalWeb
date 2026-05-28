@@ -24,7 +24,7 @@ if ($method === 'GET' && $id === null) {
     $role = $u['role'];
     $dept = $u['dept'] ?? '';
 
-    if (in_array($role, ['Administrador/a','Recursos humans'], true)) {
+    if (user_has_any_role($u, ['Administrador/a', 'Recursos humans', 'SolicitudsVacances'])) {
         $rows = $db->query('SELECT * FROM vacances ORDER BY created_at DESC')->fetchAll();
     } elseif (!empty($u['is_head'])) {
         $stmt = $db->prepare("SELECT * FROM vacances WHERE user_id=? OR (author_dept=? AND head_status='Pendent') ORDER BY created_at DESC");
