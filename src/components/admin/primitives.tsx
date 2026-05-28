@@ -126,9 +126,9 @@ export function AdminFilterPills({ value, options, onChange }: {
         return (
           <button key={o.id} onClick={() => onChange(o.id)} style={{
             padding: '6px 14px', borderRadius: 8, minHeight: 36,
-            background: active ? T.accent : 'white',
-            color: active ? '#fff' : T.textMuted,
-            border: `1px solid ${active ? T.accent : T.border}`,
+            background: active ? T.text : 'white',
+            color: active ? T.bg : T.textMuted,
+            border: `1px solid ${active ? T.text : T.border}`,
             cursor: 'pointer',
             fontFamily: F_BODY, fontSize: 13, fontWeight: 500,
             transition: 'background 140ms, border-color 140ms, color 140ms',
