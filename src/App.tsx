@@ -3501,15 +3501,17 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
       <div key={activeTab} className="anim-tab">
       {activeTab === 'Catàleg' && (
         <>
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-            <input type="text" value={campusSearch} onChange={e => setCampusSearch(e.target.value)} placeholder="Cercar cursos..." className="w-full max-w-md bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white" />
-          </div>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {kinds.map(t => <FilterChip key={t} label={t} active={kindFilter === t} onClick={() => setKindFilter(t)} />)}
-          </div>
-          <div className="flex flex-wrap gap-2 mb-6">
-            {statuses.map(s => <FilterChip key={s} label={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />)}
+          <div className="flex flex-wrap items-center gap-3 mb-6">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input type="text" value={campusSearch} onChange={e => setCampusSearch(e.target.value)} placeholder="Cercar cursos..." className="w-full bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white" />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {kinds.map(k => <FilterChip key={k} label={k} active={kindFilter === k} onClick={() => setKindFilter(k)} />)}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {statuses.map(s => <FilterChip key={s} label={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />)}
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {filteredCatalog.map((item, i) => (
@@ -3523,22 +3525,22 @@ function CampusTavilTab({ onBack }: { onBack?: () => void }) {
                 <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
                   {item.hours && <><Clock size={12} /><span>{item.hours}</span></>}
                   {!!item.mandatory && <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-bold">Obligatòria</span>}
-                  {item.type === 'Internes' && <span className="text-[10px] bg-red-50 dark:bg-red-950/20 text-red-600 px-1.5 py-0.5 rounded font-bold">{item.quizQuestions ?? 0} preguntes</span>}
+                  {item.type === 'Internes' && <span className="text-[10px] bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 px-1.5 py-0.5 rounded font-bold">{item.quizQuestions ?? 0} preguntes</span>}
                 </div>
                 {typeof item.progress === 'number' && item.progress > 0 && item.progress < 100 && (
-                  <><div className="flex justify-between text-xs text-gray-500 mt-3 mb-1"><span>Progrés</span><span>{item.progress}%</span></div><div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${item.progress}%` }} /></div></>
+                  <><div className="flex justify-between text-xs text-gray-500 mt-3 mb-1"><span>Progrés</span><span>{item.progress}%</span></div><div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="h-1.5 rounded-full" style={{ width: `${item.progress}%`, background: 'var(--tavil-accent)' }} /></div></>
                 )}
                 {item.type === 'Externes' && item.url && (
-                  <button onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')} className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-red-600 border border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/20 py-1.5 rounded-lg transition-colors">
+                  <button onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')} className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800 py-1.5 rounded-lg transition-colors">
                     <ExternalLink size={12} /> Obrir curs
                   </button>
                 )}
                 {item.type === 'Internes' && item.quizId && (
                   <button
                     onClick={() => window.open(`${window.location.pathname}?quiz=${item.quizId}${item.quizInProgress ? '&resume=1' : ''}`, '_blank')}
-                    className={`mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-white py-1.5 rounded-lg transition-colors ${item.quizInProgress ? 'bg-amber-600 hover:bg-amber-700' : 'bg-red-600 hover:bg-red-700'}`}
+                    className={`mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-white py-1.5 rounded-lg transition-colors ${item.quizInProgress ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#bf211e] hover:bg-[#a21b18]'}`}
                   >
-                    <PlayCircle size={12} /> {item.quizInProgress ? 'Continuar' : (item.quizAttempted ? 'Repetir' : 'Començar')}
+                    <PlayCircle size={12} /> {item.quizInProgress ? 'Continuar' : (item.quizAttempted ? 'Repetir' : 'Comença')}
                   </button>
                 )}
               </div>
