@@ -6,13 +6,13 @@ import { resolveImg } from '../../lib/resolveImg';
 import { DEPT_ORDER, avatarBg } from '../../lib/depts';
 import { useIsMobile } from '../../lib/useIsMobile';
 import { tabPrefetch, tabPrefetchAt, isTabCacheFresh } from '../../lib/tabPrefetch';
-import { FilterChip } from '../shared/FilterChip';
+import { DropdownMultiselect } from '../shared/DropdownMultiselect';
 import { Employee, apiGetEmployees } from '../../api';
 
 export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
     const { t } = useTranslation();
     const [employees, setEmployees] = useState<Employee[]>(() => tabPrefetch.employees ?? []);
-    const [activeFilter, setActiveFilter] = useState('Tots');
+    const [deptFilters, setDeptFilters] = useState<string[]>([]);
     const [dirSearch, setDirSearch] = useState('');
     const [view, setView] = useState<'graella' | 'departaments'>('graella');
 
@@ -21,7 +21,8 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
         apiGetEmployees().then(d => { setEmployees(d); tabPrefetch.employees = d; tabPrefetchAt.employees = Date.now(); }).catch(console.error);
     }, []);
 
-    const filtered = (activeFilter === 'Tots' ? employees : employees.filter(e => e.dept === activeFilter))
+    const filtered = employees
+        .filter(e => deptFilters.length === 0 || deptFilters.includes(e.dept))
         .filter(e => !dirSearch || [e.name, e.role, e.email, e.ext].some(f => f.toLowerCase().includes(dirSearch.toLowerCase())));
 
     const isMobileDir = useIsMobile();
@@ -119,11 +120,12 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                         <input type="text" value={dirSearch} onChange={e => setDirSearch(e.target.value)} placeholder="Cercar..." className="bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white w-40" />
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                        {['Tots', ...DEPT_ORDER].map(f => (
-                            <FilterChip key={f} label={f} active={activeFilter === f} onClick={() => setActiveFilter(f)} />
-                        ))}
-                    </div>
+                    <DropdownMultiselect
+                        options={DEPT_ORDER}
+                        value={deptFilters}
+                        onChange={setDeptFilters}
+                        placeholder="Tots els departaments"
+                    />
                 </div>
                 <div className="flex items-center border border-gray-200 dark:border-zinc-700 rounded-lg overflow-hidden flex-shrink-0">
                     <button onClick={() => setView('graella')} className={cn("flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors", view === 'graella' ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white" : "text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
