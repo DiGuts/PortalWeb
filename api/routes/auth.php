@@ -5,7 +5,7 @@ require_once __DIR__ . '/../jwt.php';
 require_once __DIR__ . '/../email.php';
 require_once __DIR__ . '/../helpers.php';
 
-const _USER_FIELDS_AUTH = 'id, name, email, role, dept, phone, ext, location, onboarded, email_notifs, is_head, must_change_password';
+const _USER_FIELDS_AUTH = 'id, name, email, role, roles, dept, phone, ext, location, avatar_url, visible_in_directory, onboarded, email_notifs, is_head, must_change_password';
 
 function _expires_at(int $minutes = 0, int $hours = 0): string {
     return date('Y-m-d H:i:s', time() + $minutes * 60 + $hours * 3600);
@@ -42,15 +42,20 @@ function _build_token_response(PDO $db, string $email): array {
 }
 
 function _user_out(array $row): array {
+    $rolesRaw = $row['roles'] ?? '[]';
+    $rolesArr = is_array($rolesRaw) ? $rolesRaw : (json_decode((string)$rolesRaw, true) ?: []);
     return [
         'id'          => (int)$row['id'],
         'name'        => $row['name'],
         'email'       => $row['email'],
         'role'        => $row['role'],
+        'roles'       => array_values(array_filter($rolesArr, 'is_string')),
         'dept'        => $row['dept'],
         'phone'       => $row['phone'] ?? '',
         'ext'         => $row['ext']   ?? '',
         'location'    => $row['location'] ?? '',
+        'avatar_url'  => $row['avatar_url'] ?? null,
+        'visible_in_directory' => (int)($row['visible_in_directory'] ?? 1),
         'onboarded'   => (int)($row['onboarded'] ?? 0),
         'email_notifs'=> (int)($row['email_notifs'] ?? 1),
         'is_head'     => (int)($row['is_head'] ?? 0),

@@ -34,3 +34,9 @@ function push_notification(PDO $db, int $user_id, string $title, string $body, s
     $stmt = $db->prepare('INSERT INTO notifications (user_id, title, body, tab) VALUES (?,?,?,?)');
     $stmt->execute([$user_id, $title, $body, $tab]);
 }
+
+/** Return [['id'=>int,'email'=>string,'email_notifs'=>int], ...] for admin users. */
+function admin_users(PDO $db): array {
+    $stmt = $db->query("SELECT id, email, email_notifs FROM users WHERE role='Administrador/a'");
+    return $stmt->fetchAll() ?: [];
+}

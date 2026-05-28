@@ -147,6 +147,139 @@
   animation: tavil-drawer-down 280ms var(--ease-out-quint) both;
 }
 
+
+/* ── Glass header — transparent on Inici, solid on hover ───────────────── */
+.header-glass {
+  background: transparent !important;
+  border-bottom-color: transparent !important;
+  /* Only bg+border transition (for hover glass). Never animate backdrop-filter. */
+  transition:
+    background   280ms cubic-bezier(.23,1,.32,1),
+    border-color 280ms cubic-bezier(.23,1,.32,1);
+}
+/* Static blur on hover — declared once, browser holds it; no per-frame update */
+.header-glass:hover {
+  background: rgba(255,255,255,0.22) !important;
+  border-bottom-color: rgba(255,255,255,0.18) !important;
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+}
+.dark .header-glass:hover {
+  background: rgba(0,0,0,0.28) !important;
+  border-bottom-color: rgba(255,255,255,0.08) !important;
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+}
+/* Header anchored — Inici only. Fixed+glass, slides in from top.
+   Only transform+opacity in keyframe (GPU composited). backdrop-filter static. */
+@keyframes header-anchor-in {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+.header-anchored {
+  will-change: transform, opacity;
+  animation: header-anchor-in 360ms cubic-bezier(.23,1,.32,1) both;
+  backdrop-filter: blur(18px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
+  background: rgba(0,0,0,0.38) !important;
+  border-bottom-color: rgba(255,255,255,0.1) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06), 0 4px 24px rgba(0,0,0,0.18);
+}
+/* Suppress hover color change when anchored — stays glass, text stays white */
+.header-anchored:hover,
+.dark .header-anchored:hover {
+  background: rgba(0,0,0,0.38) !important;
+  backdrop-filter: blur(18px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
+  border-bottom-color: rgba(255,255,255,0.1) !important;
+}
+.header-anchored .hg-text,
+.header-anchored:hover .hg-text,
+.dark .header-anchored .hg-text,
+.dark .header-anchored:hover .hg-text {
+  color: rgba(255,255,255,0.92) !important;
+}
+.header-anchored .hg-search,
+.header-anchored:hover .hg-search,
+.dark .header-anchored .hg-search,
+.dark .header-anchored:hover .hg-search {
+  background: rgba(255,255,255,0.22) !important;
+  color: rgba(255,255,255,0.96) !important;
+}
+.header-anchored .hg-search::placeholder,
+.dark .header-anchored .hg-search::placeholder {
+  color: rgba(255,255,255,0.75) !important;
+  opacity: 1;
+}
+
+/* Header dark-glass — non-Inici sticky pages. Same dark glass as anchored but NO slide-in animation. */
+.header-glass-dark {
+  backdrop-filter: blur(18px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
+  background: rgba(0,0,0,0.38) !important;
+  border-bottom-color: rgba(255,255,255,0.1) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06), 0 4px 24px rgba(0,0,0,0.18);
+  transition: background 280ms cubic-bezier(.23,1,.32,1), border-color 280ms cubic-bezier(.23,1,.32,1);
+}
+.header-glass-dark:hover,
+.dark .header-glass-dark:hover {
+  background: rgba(0,0,0,0.38) !important;
+  backdrop-filter: blur(18px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
+  border-bottom-color: rgba(255,255,255,0.1) !important;
+}
+.header-glass-dark .hg-text,
+.header-glass-dark:hover .hg-text,
+.dark .header-glass-dark .hg-text,
+.dark .header-glass-dark:hover .hg-text {
+  color: rgba(255,255,255,0.92) !important;
+}
+.header-glass-dark .hg-search,
+.header-glass-dark:hover .hg-search,
+.dark .header-glass-dark .hg-search,
+.dark .header-glass-dark:hover .hg-search {
+  background: rgba(255,255,255,0.22) !important;
+  color: rgba(255,255,255,0.96) !important;
+}
+.header-glass-dark .hg-search::placeholder,
+.dark .header-glass-dark .hg-search::placeholder {
+  color: rgba(255,255,255,0.75) !important;
+  opacity: 1;
+}
+
+/* Notification dot ring — transparent on glass so it doesn't show white ring on dark backdrop */
+.header-anchored .ring-white,
+.header-glass-dark .ring-white {
+  --tw-ring-color: transparent !important;
+}
+
+/* Inner text/icons: white when glass */
+.header-glass .hg-text {
+  color: rgba(255,255,255,0.82) !important;
+  transition: color 220ms ease;
+}
+.header-glass:hover .hg-text {
+  color: rgba(255,255,255,0.92) !important;
+}
+.dark .header-glass:hover .hg-text {
+  color: rgba(255,255,255,0.92) !important;
+}
+
+/* Search box */
+.header-glass .hg-search {
+  background: rgba(255,255,255,0.15) !important;
+  color: rgba(255,255,255,0.82) !important;
+  transition: background 220ms ease, color 220ms ease;
+}
+.header-glass:hover .hg-search {
+  background: rgba(255,255,255,0.18) !important;
+  color: rgba(255,255,255,0.9) !important;
+}
+.dark .header-glass:hover .hg-search {
+  background: rgba(255,255,255,0.12) !important;
+  color: rgba(255,255,255,0.9) !important;
+}
+
 /* ── Sol·licituds processades — animated expand/collapse drawer ─────────── */
 .sol-drawer {
   display: grid;
@@ -556,6 +689,21 @@ code {
   --tavil-accent: #bf211e;
   --tavil-accent-light: #f9eceb;
   --tavil-accent-dark: #a21b18;
+
+  /* Admin status colors */
+  --status-ok-fg:   #3f7a52;
+  --status-ok-bg:   rgba(63,122,82,0.10);
+  --status-warn-fg: #b6833a;
+  --status-warn-bg: rgba(182,131,58,0.10);
+
+  /* Notícia extensa editor (NT) — light theme */
+  --nt-bg:      #efece4;
+  --nt-panel:   #faf8f1;
+  --nt-surface: #ffffff;
+  --nt-ink:     #1a1714;
+  --nt-mute:    rgba(26,23,20,0.62);
+  --nt-soft:    rgba(26,23,20,0.10);
+  --nt-grid:    rgba(26,23,20,0.06);
 }
 html.dark {
   --tavil-bg: #121212;
@@ -565,6 +713,21 @@ html.dark {
   --tavil-text: #f0efe8;
   --tavil-muted: #a8afa6;
   --tavil-faint: #7a8178;
+
+  /* Admin status colors — lighten ~10% in dark */
+  --status-ok-fg:   #5b9772;
+  --status-ok-bg:   rgba(91,151,114,0.16);
+  --status-warn-fg: #d4a566;
+  --status-warn-bg: rgba(212,165,102,0.16);
+
+  /* Notícia extensa editor (NT) — dark theme */
+  --nt-bg:      #121315;
+  --nt-panel:   #1a1c20;
+  --nt-surface: #242629;
+  --nt-ink:     #f0efe8;
+  --nt-mute:    rgba(240,239,232,0.62);
+  --nt-soft:    rgba(240,239,232,0.10);
+  --nt-grid:    rgba(240,239,232,0.06);
 }
 
 /* ── Quiz editor: placeholders inherit theme ──────────────────────────────── */
@@ -731,6 +894,96 @@ html.dark .quiz-editor-surface {
 @media (max-width: 767px) {
   .hide-scrollbar::-webkit-scrollbar { display: none; }
   .hide-scrollbar { scrollbar-width: none; }
+}
+
+/* Admin backoffice: collapse two-pane below 1100px */
+@media (max-width: 1100px) {
+  .admin-twopane { grid-template-columns: 1fr !important; }
+}
+
+/* Admin backoffice: bento collapses gracefully on narrow viewports */
+@media (max-width: 900px) {
+  .admin-bento { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .admin-bento > button:first-child { grid-column: span 2 !important; grid-row: span 1 !important; min-height: 180px !important; }
+}
+@media (max-width: 540px) {
+  .admin-bento { grid-template-columns: 1fr !important; }
+  .admin-bento > button:first-child { grid-column: span 1 !important; }
+}
+
+/* Global reduced-motion sweep — disable all decorative animation classes */
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-in, .anim-fade-out, .anim-pop, .anim-scale-in,
+  .anim-tab, .anim-page-enter-h-fwd, .anim-slide-down, .anim-drawer-down,
+  .anim-sheet-enter, .anim-sheet-exit, .anim-item, .hover-lift,
+  .stagger-1, .stagger-2, .perfil-stag, .perfil-bleed,
+  .anim-spin {
+    animation: none !important;
+    transition: none !important;
+  }
+  * { scroll-behavior: auto !important; }
+}
+
+/* ── Perfil — full-bleed Informació hero + entrance choreography ─────────── */
+.perfil-bleed {
+  margin-inline: calc(var(--perfil-bleed-x, 0px) * -1);
+}
+@media (min-width: 768px)  { .perfil-bleed { --perfil-bleed-x: 16px; } }
+@media (min-width: 1024px) { .perfil-bleed { --perfil-bleed-x: 32px; } }
+
+.perfil-hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 100% 0%, var(--tavil-accent-light) 0%, transparent 55%),
+    radial-gradient(80% 60% at 0% 100%, rgba(94,87,76,0.06) 0%, transparent 60%),
+    linear-gradient(180deg, var(--tavil-card) 0%, var(--tavil-bgAlt) 100%);
+  border-bottom: 1px solid var(--tavil-border);
+}
+html.dark .perfil-hero {
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(191,33,30,0.18) 0%, transparent 55%),
+    radial-gradient(80% 60% at 0% 100%, rgba(255,255,255,0.04) 0%, transparent 60%),
+    linear-gradient(180deg, var(--tavil-card) 0%, var(--tavil-bgAlt) 100%);
+}
+/* Hairline grain (SVG-less, layered radial dots) */
+.perfil-hero::after {
+  content: "";
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(rgba(34,39,37,0.04) 1px, transparent 1px);
+  background-size: 14px 14px;
+  mix-blend-mode: multiply;
+  opacity: 0.6;
+}
+html.dark .perfil-hero::after {
+  background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+  mix-blend-mode: screen;
+}
+
+.perfil-stag {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: perfilStagIn 520ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 90ms + 40ms);
+  will-change: transform, opacity;
+}
+@keyframes perfilStagIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.perfil-qa {
+  background: var(--tavil-card);
+  transition: background 180ms cubic-bezier(0.23, 1, 0.32, 1),
+              transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.perfil-qa:hover { background: var(--tavil-bgAlt); transform: translateY(-1px); }
+.perfil-qa:active { transform: scale(0.985); }
+
+@media (prefers-reduced-motion: reduce) {
+  .perfil-stag { animation: none; opacity: 1; transform: none; }
+  .perfil-qa { transition: none; }
 }
 
 /* ── Mobile base overrides ───────────────────────────────────────────────── */

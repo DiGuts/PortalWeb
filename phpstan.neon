@@ -1,0 +1,17 @@
+parameters:
+    level: 5
+    paths:
+        - api
+    excludePaths:
+        - api/uploads/*
+        - api/migrations/*
+    ignoreErrors:
+        # PDO is dynamically typed — silence common false positives
+        - '#PDOStatement::fetch.*#'
+        - '#PDOStatement::fetchAll.*#'
+        # api/index.php injects $segments / $method / $body globals into route files
+        - '#Variable \$segments might not be defined#'
+        - '#Variable \$method might not be defined#'
+        - '#Variable \$body might not be defined#'
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false

@@ -4,6 +4,9 @@
 /node_modules
 /.pnp
 .pnp.js
+/vendor
+composer.lock
+phpstan-baseline.neon
 
 # testing
 /coverage

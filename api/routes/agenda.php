@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../auth_middleware.php';
 require_once __DIR__ . '/../helpers.php';
+require_once __DIR__ . '/../email.php';
 
 $db   = get_db();
 $body = request_body();
@@ -14,11 +15,32 @@ if ($method === 'POST' && $id === null) {
     $depts = isset($body['target_departments']) && is_array($body['target_departments']) && count($body['target_departments'])
         ? json_encode(array_values(array_filter(array_map('strval', $body['target_departments']))))
         : null;
-    $db->prepare('INSERT INTO agenda_events (title,day,month,time,location,type,target_departments) VALUES (?,?,?,?,?,?,?)')
-       ->execute([str_val($body,'title'), int_val($body,'day'), int_val($body,'month'), str_val($body,'time'), str_val($body,'location'), str_val($body,'type','Sessió interna'), $depts]);
+    $title    = str_val($body,'title');
+    $day      = int_val($body,'day');
+    $month    = int_val($body,'month');
+    $time     = str_val($body,'time');
+    $time_end = str_val($body,'time_end');
+    if ($time_end === '') $time_end = null;
+    $location = str_val($body,'location');
+    $type     = str_val($body,'type','Sessió interna');
+    $db->prepare('INSERT INTO agenda_events (title,day,month,time,time_end,location,type,target_departments) VALUES (?,?,?,?,?,?,?,?)')
+       ->execute([$title, $day, $month, $time, $time_end, $location, $type, $depts]);
     $row = $db->query('SELECT * FROM agenda_events WHERE id=' . $db->lastInsertId())->fetch();
     $row['id'] = (int)$row['id'];
     $row['target_departments'] = $row['target_departments'] ? json_decode($row['target_departments'], true) : [];
+
+    // Notify admins (push notif + email if their email_notifs flag is on).
+    $notif_title = "Nou event a l'agenda: $title";
+    $time_str = $time ? ($time_end ? " de $time a $time_end" : " a les $time") : '';
+    $notif_body  = "S'ha creat l'event \"$title\" el $day/$month" . $time_str . ($location ? " · $location" : '') . '.';
+    foreach (admin_users($db) as $admin) {
+        push_notification($db, (int)$admin['id'], $notif_title, $notif_body, 'Agenda');
+        if ((int)$admin['email_notifs'] === 1 && !empty($admin['email'])) {
+            $html = '<p>' . htmlspecialchars($notif_body) . '</p>';
+            send_email($admin['email'], $notif_title, $html);
+        }
+    }
+
     respond($row, 201);
 }
 
@@ -28,8 +50,10 @@ elseif ($method === 'PUT' && $id !== null) {
     $depts = isset($body['target_departments']) && is_array($body['target_departments']) && count($body['target_departments'])
         ? json_encode(array_values(array_filter(array_map('strval', $body['target_departments']))))
         : null;
-    $db->prepare('UPDATE agenda_events SET title=?,day=?,month=?,time=?,location=?,type=?,target_departments=? WHERE id=?')
-       ->execute([str_val($body,'title'), int_val($body,'day'), int_val($body,'month'), str_val($body,'time'), str_val($body,'location'), str_val($body,'type','Sessió interna'), $depts, $id]);
+    $time_end = str_val($body,'time_end');
+    if ($time_end === '') $time_end = null;
+    $db->prepare('UPDATE agenda_events SET title=?,day=?,month=?,time=?,time_end=?,location=?,type=?,target_departments=? WHERE id=?')
+       ->execute([str_val($body,'title'), int_val($body,'day'), int_val($body,'month'), str_val($body,'time'), $time_end, str_val($body,'location'), str_val($body,'type','Sessió interna'), $depts, $id]);
     respond(['ok' => true]);
 }
 
@@ -59,7 +83,7 @@ elseif ($method === 'GET' && $id === null) {
         if (!$is_admin) {
             $td = $r['target_departments'] ?? null;
             $tu = $r['target_users'] ?? null;
-            if ($td !== null && $td !== '' || $tu !== null && $tu !== '') {
+            if (($td !== null && $td !== '') || ($tu !== null && $tu !== '')) {
                 $target_depts = ($td && $td !== '') ? (json_decode($td, true) ?: []) : [];
                 $target_users = ($tu && $tu !== '') ? (json_decode($tu, true) ?: []) : [];
                 $dept_ok = !empty($target_depts) && in_array($user_dept, $target_depts, true);

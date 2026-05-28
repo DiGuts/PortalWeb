@@ -1,0 +1,16 @@
+{
+    "name": "tavil/portal-api",
+    "description": "TAVIL Portal — PHP backend (analysis tooling only)",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.0"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^1.11"
+    },
+    "scripts": {
+        "analyse": "phpstan analyse --memory-limit=512M",
+        "analyse:baseline": "phpstan analyse --generate-baseline"
+    }
+}

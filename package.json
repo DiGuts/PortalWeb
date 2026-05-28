@@ -40,7 +40,15 @@
     "dev": "concurrently -n frontend,backend -c cyan,yellow \"npm start\" \"npm run backend\"",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx,.js,.jsx --max-warnings=0",
+    "lint:report": "eslint src --ext .ts,.tsx,.js,.jsx -f stylish",
+    "audit:knip": "npx --yes knip --no-progress",
+    "audit:madge": "npx --yes madge --circular --extensions ts,tsx src",
+    "audit:madge:graph": "npx --yes madge --image deps.svg --extensions ts,tsx src",
+    "audit:depcheck": "npx --yes depcheck",
+    "audit:all": "npm run typecheck && npm run lint:report && npm run audit:knip && npm run audit:madge && npm run audit:depcheck"
   },
   "eslintConfig": {
     "extends": [
