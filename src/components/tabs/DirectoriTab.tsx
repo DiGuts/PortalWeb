@@ -59,15 +59,18 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
                 </div>
                 {/* Dept chips */}
                 <div style={{ padding: '0 0 18px 16px', display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }} className="hide-sb">
-                    {(['Tots', ...DEPT_ORDER]).map(f => (
-                        <button key={f} onClick={() => setActiveFilter(f)} style={{
-                            padding: '7px 14px', borderRadius: 999,
-                            background: activeFilter === f ? 'var(--tavil-text)' : 'var(--tavil-card)',
-                            color: activeFilter === f ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
-                            border: `1px solid ${activeFilter === f ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
-                            fontSize: 12.5, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
-                        }}>{f}</button>
-                    ))}
+                    {(['Tots', ...DEPT_ORDER]).map(f => {
+                        const isActive = f === 'Tots' ? deptFilters.length === 0 : deptFilters.includes(f);
+                        return (
+                            <button key={f} onClick={() => setDeptFilters(f === 'Tots' ? [] : [f])} style={{
+                                padding: '7px 14px', borderRadius: 999,
+                                background: isActive ? 'var(--tavil-text)' : 'var(--tavil-card)',
+                                color: isActive ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
+                                border: `1px solid ${isActive ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
+                                fontSize: 12.5, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
+                            }}>{f}</button>
+                        );
+                    })}
                     <div style={{ minWidth: 8, flexShrink: 0 }} />
                 </div>
                 {/* People list */}
