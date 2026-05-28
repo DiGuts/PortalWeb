@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { ChevronDown, Check, X } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
 interface Props {
@@ -36,15 +36,13 @@ export function DropdownMultiselect({ options, value, onChange, placeholder = 'T
         ? value.join(', ')
         : `${value[0]}, ${value[1]} +${value.length - 2}`;
 
-  const active = value.length > 0;
-
   return (
-    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+    <div ref={ref} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
       <button
         onClick={() => setOpen(o => !o)}
         className={cn(
           'flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium border transition-colors duration-150 whitespace-nowrap',
-          active
+          value.length > 0
             ? 'bg-[var(--tavil-text)] text-[var(--tavil-bg)] border-[var(--tavil-text)]'
             : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:border-gray-300 dark:hover:border-zinc-600'
         )}
@@ -56,6 +54,25 @@ export function DropdownMultiselect({ options, value, onChange, placeholder = 'T
           style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
         />
       </button>
+
+      {value.length > 1 && (
+        <button
+          onClick={clear}
+          aria-label="Esborra filtres"
+          style={{
+            width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'var(--tavil-accent-light)',
+            border: '1px solid color-mix(in srgb, var(--tavil-accent) 30%, transparent)',
+            color: 'var(--tavil-accent)',
+            cursor: 'pointer', transition: 'background 140ms',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--tavil-accent-light) 60%, var(--tavil-accent) 15%)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--tavil-accent-light)'; }}
+        >
+          <X size={11} strokeWidth={2.5} />
+        </button>
+      )}
 
       {open && (
         <div style={{
@@ -99,23 +116,6 @@ export function DropdownMultiselect({ options, value, onChange, placeholder = 'T
             );
           })}
 
-          {active && (
-            <div style={{
-              padding: '8px 14px', borderTop: '1px solid var(--tavil-border)',
-              display: 'flex', justifyContent: 'flex-end',
-            }}>
-              <button
-                onClick={clear}
-                style={{
-                  fontSize: 12, fontWeight: 500, color: 'var(--tavil-muted)',
-                  background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                  padding: '2px 0', textDecoration: 'underline',
-                }}
-              >
-                Esborra filtres
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>
