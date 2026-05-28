@@ -1074,11 +1074,6 @@ function ArticleBlocksEditor({ value, onChange }: ArticleBlocksEditorProps) {
 
 
 
-
-
-
-
-
 function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: User | null; onOpenDrawer?: () => void; onNavigate?: (tab: string) => void }) {
   const { t } = useTranslation();
   const [rawNews, setNews] = useState<NewsArticle[]>(() => tabPrefetch.news ?? []);
