@@ -20,4 +20,8 @@ i18n
     interpolation: { escapeValue: false },
   });
 
+i18n.on('languageChanged', (lng) => {
+  try { localStorage.setItem('tavil_lang', lng); } catch {}
+});
+
 export default i18n;

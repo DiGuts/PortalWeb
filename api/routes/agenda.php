@@ -67,7 +67,7 @@ elseif ($method === 'DELETE' && $id !== null) {
 // GET /api/agenda
 elseif ($method === 'GET' && $id === null) {
     $u = auth_user();
-    $is_admin = in_array($u['role'], ['Administrador/a', 'Recursos humans', 'Comunicacions', 'Formacions'], true);
+    $is_admin = user_has_any_role($u, ['Administrador', 'Administrador/a', 'Recursos humans', 'Comunicacions', 'Comunicació', 'Formacions']);
     if (isset($_GET['month'])) {
         $stmt = $db->prepare('SELECT * FROM agenda_events WHERE month=? ORDER BY day, time');
         $stmt->execute([(int)$_GET['month']]);
@@ -79,7 +79,9 @@ elseif ($method === 'GET' && $id === null) {
     $user_id   = (int)$u['id'];
     $result = [];
     foreach ($rows as &$r) {
-        $r['id'] = (int)$r['id'];
+        $r['id']    = (int)$r['id'];
+        $r['day']   = (int)$r['day'];
+        $r['month'] = (int)$r['month'];
         if (!$is_admin) {
             $td = $r['target_departments'] ?? null;
             $tu = $r['target_users'] ?? null;

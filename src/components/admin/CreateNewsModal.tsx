@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiCreateNews, NewsArticle } from '../../api';
 import { AField, AInput, ATextarea, ASelect, AToggle, AdminCreateModalShell } from './primitives';
+import { useConfirm } from '../ConfirmDialog';
 
 const CATEGORY_OPTIONS = ['Comunicats interns', 'Notícies corporatives', 'Recursos humans', 'Esdeveniments', 'Innovació', 'Seguretat'];
 
@@ -11,22 +12,34 @@ export function CreateNewsModal({ open, onClose, onCreated }: {
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const [title, setTitle] = useState('');
+  const [titleTouched, setTitleTouched] = useState(false);
   const [category, setCategory] = useState(CATEGORY_OPTIONS[0]);
   const [summary, setSummary] = useState('');
   const [date, setDate] = useState(today);
   const [featured, setFeatured] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const { confirm, confirmNode } = useConfirm();
 
   useEffect(() => {
     if (open) {
-      setTitle(''); setCategory(CATEGORY_OPTIONS[0]); setSummary('');
-      setDate(today); setFeatured(false); setError(null); setSaving(false);
+      setTitle(''); setTitleTouched(false); setCategory(CATEGORY_OPTIONS[0]);
+      setSummary(''); setDate(today); setFeatured(false);
+      setError(null); setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  const isDirty = title.trim() !== '' || summary.trim() !== '';
+  const titleError = titleTouched && !title.trim();
+
+  const handleClose = async () => {
+    if (!isDirty) { onClose(); return; }
+    const ok = await confirm({ title: 'Descartar canvis?', message: 'Hi ha dades al formulari que es perdran.', confirmLabel: 'Sí, descarta', cancelLabel: 'Torna al formulari', destructive: true });
+    if (ok) onClose();
+  };
+
   const submit = async () => {
+    setTitleTouched(true);
     if (!title.trim()) { setError('Cal indicar el títol.'); return; }
     setError(null); setSaving(true);
     try {
@@ -43,32 +56,31 @@ export function CreateNewsModal({ open, onClose, onCreated }: {
   };
 
   return (
-    <AdminCreateModalShell
-      open={open} onClose={onClose} onSubmit={submit}
-      title="Crea un article" kicker="NOVA NOTÍCIA"
-      saveLabel="Crea article" savingLabel="Creant…"
-      saving={saving} error={error}
-      footerNote="Després de crear-lo, s'obrirà l'editor extens per al cos."
-    >
-      <AField label="Títol">
-        <AInput value={title} onChange={e => setTitle(e.target.value)} placeholder="Títol de l'article (CA)" />
-      </AField>
-      <AField label="Resum" hint="1–2 frases que apareixen a la llista i a l'inici.">
-        <ATextarea rows={3} value={summary} onChange={e => setSummary(e.target.value)} placeholder="Resum breu" />
-      </AField>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <AField label="Categoria">
-          <ASelect value={category} onChange={e => setCategory(e.target.value)} options={CATEGORY_OPTIONS} />
+    <>
+      <AdminCreateModalShell
+        open={open} onClose={handleClose} onSubmit={submit}
+        title="Crea un article" kicker="NOVA NOTÍCIA"
+        saveLabel="Crea article" savingLabel="Creant…"
+        saving={saving} error={error}
+        footerNote="Després de crear-lo, s'obrirà l'editor extens per al cos."
+      >
+        <AField label="Títol" required error={titleError ? 'El títol és obligatori.' : undefined}>
+          <AInput value={title} onChange={e => setTitle(e.target.value)} onBlur={() => setTitleTouched(true)} placeholder="Títol de l'article (CA)" hasError={titleError} />
         </AField>
-        <AField label="Data">
-          <AInput type="date" value={date} onChange={e => setDate(e.target.value)} />
+        <AField label="Resum" hint="1–2 frases que apareixen a la llista i a l'inici.">
+          <ATextarea rows={3} value={summary} onChange={e => setSummary(e.target.value)} placeholder="Resum breu" />
         </AField>
-      </div>
-      <AToggle
-        value={featured} onChange={setFeatured}
-        label="Destacada (publicada al portal)"
-        hint="Quan està activa, apareix al feed d'Inici i a Notícies."
-      />
-    </AdminCreateModalShell>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <AField label="Categoria">
+            <ASelect value={category} onChange={e => setCategory(e.target.value)} options={CATEGORY_OPTIONS} />
+          </AField>
+          <AField label="Data">
+            <AInput type="date" value={date} onChange={e => setDate(e.target.value)} />
+          </AField>
+        </div>
+        <AToggle value={featured} onChange={setFeatured} label="Destacada (publicada al portal)" hint="Quan està activa, apareix al feed d'Inici i a Notícies." />
+      </AdminCreateModalShell>
+      {confirmNode}
+    </>
   );
 }

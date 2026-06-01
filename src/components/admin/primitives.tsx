@@ -376,33 +376,39 @@ export function AdminDetailEmpty({ icon: Icon = FileText, label, hint }: {
   );
 }
 
-export function AField({ label, hint, optional, children }: {
+export function AField({ label, hint, optional, required, error, children }: {
   label: string;
   hint?: string;
   optional?: boolean;
+  required?: boolean;
+  error?: string;
   children: ReactNode;
 }) {
   return (
     <label style={{ display: 'block', fontFamily: F_BODY }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>
         <span style={{
-          fontSize: 12, fontWeight: 600, color: T.textMuted,
+          fontSize: 12, fontWeight: 600, color: error ? '#c0392b' : T.textMuted,
           textTransform: 'uppercase', letterSpacing: '0.12em',
         }}>{label}</span>
+        {required && <span style={{ fontSize: 11, color: T.accent }}>*</span>}
         {optional && <span style={{ fontSize: 11, color: T.textFaint, fontStyle: 'italic' }}>opcional</span>}
       </div>
       {children}
-      {hint && <div style={{ fontSize: 12.5, color: T.textMuted, marginTop: 6, lineHeight: 1.45 }}>{hint}</div>}
+      {error
+        ? <div style={{ fontSize: 12, color: '#c0392b', marginTop: 5 }}>{error}</div>
+        : hint && <div style={{ fontSize: 12.5, color: T.textMuted, marginTop: 6, lineHeight: 1.45 }}>{hint}</div>}
     </label>
   );
 }
 
-export function AInput({ value, onChange, placeholder, type = 'text', icon: Icon, ...rest }: {
+export function AInput({ value, onChange, placeholder, type = 'text', icon: Icon, hasError, ...rest }: {
   value?: string | number;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   type?: string;
   icon?: React.ComponentType<{ size?: number; style?: CSSProperties }>;
+  hasError?: boolean;
   [key: string]: any;
 }) {
   const [focus, setFocus] = useState(false);
@@ -416,12 +422,12 @@ export function AInput({ value, onChange, placeholder, type = 'text', icon: Icon
         onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
         style={{
           width: '100%', height: 44, padding: Icon ? '0 14px 0 38px' : '0 14px',
-          background: T.card, color: T.text,
-          border: `1px solid ${focus ? T.accent : T.border}`,
-          boxShadow: focus ? `0 0 0 3px ${T.accentLight}` : 'none',
+          background: hasError ? '#fdf0ef' : T.card, color: T.text,
+          border: `1.5px solid ${hasError ? '#c0392b' : focus ? T.accent : T.border}`,
+          boxShadow: focus && !hasError ? `0 0 0 3px ${T.accentLight}` : 'none',
           borderRadius: 8, outline: 'none', boxSizing: 'border-box',
           fontFamily: F_BODY, fontSize: 14.5,
-          transition: 'border-color 140ms, box-shadow 140ms',
+          transition: 'border-color 140ms, box-shadow 140ms, background 140ms',
         }}
         {...rest}
       />
@@ -429,25 +435,28 @@ export function AInput({ value, onChange, placeholder, type = 'text', icon: Icon
   );
 }
 
-export function ATextarea({ value, onChange, placeholder, rows = 4 }: {
+export function ATextarea({ value, onChange, onBlur, placeholder, rows = 4, hasError }: {
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
   placeholder?: string;
   rows?: number;
+  hasError?: boolean;
 }) {
   const [focus, setFocus] = useState(false);
   return (
     <textarea
       value={value ?? ''} onChange={onChange} placeholder={placeholder} rows={rows}
-      onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
+      onFocus={() => setFocus(true)}
+      onBlur={e => { setFocus(false); onBlur?.(e); }}
       style={{
         width: '100%', padding: 14, resize: 'vertical',
-        background: T.card, color: T.text,
-        border: `1px solid ${focus ? T.accent : T.border}`,
-        boxShadow: focus ? `0 0 0 3px ${T.accentLight}` : 'none',
+        background: hasError ? '#fdf0ef' : T.card, color: T.text,
+        border: `1.5px solid ${hasError ? '#c0392b' : focus ? T.accent : T.border}`,
+        boxShadow: focus && !hasError ? `0 0 0 3px ${T.accentLight}` : 'none',
         borderRadius: 8, outline: 'none', boxSizing: 'border-box',
         fontFamily: F_BODY, fontSize: 14.5, lineHeight: 1.55,
-        transition: 'border-color 140ms, box-shadow 140ms',
+        transition: 'border-color 140ms, box-shadow 140ms, background 140ms',
       }}
     />
   );

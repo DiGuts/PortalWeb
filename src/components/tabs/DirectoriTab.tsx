@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Menu, Search, Users, Phone, Mail, LayoutGrid } from 'lucide-react';
+import { Menu, Search, Users, Phone, Mail, LayoutGrid, Network } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { resolveImg } from '../../lib/resolveImg';
 import { DEPT_ORDER, avatarBg } from '../../lib/depts';
@@ -8,13 +8,14 @@ import { useIsMobile } from '../../lib/useIsMobile';
 import { tabPrefetch, tabPrefetchAt, isTabCacheFresh } from '../../lib/tabPrefetch';
 import { DropdownMultiselect } from '../shared/DropdownMultiselect';
 import { Employee, apiGetEmployees } from '../../api';
+import { OrganigramaView } from './OrganigramaView';
 
 export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {}) {
     const { t } = useTranslation();
     const [employees, setEmployees] = useState<Employee[]>(() => tabPrefetch.employees ?? []);
     const [deptFilters, setDeptFilters] = useState<string[]>([]);
     const [dirSearch, setDirSearch] = useState('');
-    const [view, setView] = useState<'graella' | 'departaments'>('graella');
+    const [view, setView] = useState<'graella' | 'departaments' | 'organigrama'>('graella');
 
     useEffect(() => {
         if (isTabCacheFresh('employees')) return;
@@ -114,6 +115,20 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
         );
     }
 
+    const viewToggle = (
+        <div className="flex items-center border border-gray-200 dark:border-zinc-700 rounded-lg overflow-hidden flex-shrink-0">
+            <button onClick={() => setView('graella')} className={cn("flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors", view === 'graella' ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white" : "text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
+                <LayoutGrid size={14} /> {t('directory.grid')}
+            </button>
+            <button onClick={() => setView('departaments')} className={cn("flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors", view === 'departaments' ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white" : "text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
+                <Users size={14} /> {t('directory.departments')}
+            </button>
+            <button onClick={() => setView('organigrama')} className={cn("flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors", view === 'organigrama' ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white" : "text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
+                <Network size={14} /> {t('directory.orgchart')}
+            </button>
+        </div>
+    );
+
     return (
         <div>
             <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">{t('directory.subtitle')}</p>
@@ -130,18 +145,13 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
                         placeholder="Tots els departaments"
                     />
                 </div>
-                <div className="flex items-center border border-gray-200 dark:border-zinc-700 rounded-lg overflow-hidden flex-shrink-0">
-                    <button onClick={() => setView('graella')} className={cn("flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors", view === 'graella' ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white" : "text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
-                        <LayoutGrid size={14} /> {t('directory.grid')}
-                    </button>
-                    <button onClick={() => setView('departaments')} className={cn("flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors", view === 'departaments' ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white" : "text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
-                        <Users size={14} /> {t('directory.departments')}
-                    </button>
-                </div>
+                {viewToggle}
             </div>
 
             <div key={view} className="anim-tab">
-            {view === 'graella' ? (
+            {view === 'organigrama' ? (
+                <OrganigramaView employees={employees} search={dirSearch} deptFilters={deptFilters} />
+            ) : view === 'graella' ? (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {filtered.map((emp, i) => (
                         <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 anim-item" style={{ '--i': i } as React.CSSProperties}>

@@ -477,6 +477,7 @@ export interface Employee {
   initials: string;
   color: string;
   avatar_url?: string | null;
+  is_head?: number;
 }
 
 export async function apiGetEmployees(dept?: string): Promise<Employee[]> {
@@ -863,6 +864,7 @@ export interface Quiz {
   category: string;
   time_limit: number;
   passing_score: number;
+  mandatory: number;
   active: number;
   start_at: string | null;
   end_at: string | null;
@@ -901,6 +903,7 @@ export interface QuizIn {
   category: string;
   time_limit: number;
   passing_score: number;
+  mandatory?: number;
   active: number;
   start_at: string | null;
   end_at: string | null;
@@ -950,6 +953,13 @@ export async function apiUpdateQuiz(id: number, body: QuizIn): Promise<Quiz> {
 
 export async function apiDeleteQuiz(id: number): Promise<void> {
   await apiFetch(`/api/quizzes/${id}`, { method: 'DELETE' });
+}
+
+export async function apiSetQuizMandatory(id: number, mandatory: boolean): Promise<{ ok: boolean; mandatory: number }> {
+  return apiFetch(`/api/quizzes/${id}/mandatory`, {
+    method: 'PUT',
+    body: JSON.stringify({ mandatory: mandatory ? 1 : 0 }),
+  });
 }
 
 export async function apiSubmitQuizAttempt(id: number, answers: Record<string, unknown>): Promise<QuizAttemptResult> {

@@ -11,7 +11,7 @@ import {
   apiGetActivities, apiCreateActivity, apiUpdateActivity, apiDeleteActivity,
   apiGetAgendaEvents, apiCreateAgendaEvent, apiUpdateAgendaEvent, apiDeleteAgendaEvent,
   apiGetAllNotices, apiCreateNotice, apiUpdateNotice, apiDeleteNotice,
-  apiGetCourses, apiGetQuizzes, apiCreateExternalCourse, apiUpdateExternalCourse, apiDeleteExternalCourse,
+  apiGetCourses, apiGetQuizzes, apiCreateExternalCourse, apiUpdateExternalCourse, apiDeleteExternalCourse, apiSetQuizMandatory,
   ExternalCoursePayload, API_BASE,
 } from '../../api';
 import {
@@ -957,13 +957,14 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [draft, setDraft] = useState<Partial<ExternalCoursePayload>>({});
+  const [quizMandatoryOverride, setQuizMandatoryOverride] = useState<Record<number, number>>({});
   const { confirm, confirmNode } = useConfirm();
 
   const rows: FormationRow[] = useMemo(() => {
     const qz: FormationRow[] = quizzes.map(z => ({
       kind: 'quiz', id: z.id, refId: z.id,
       title: z.title, category: z.category, hours: '',
-      mandatory: 0, is_external: 0, image: z.image, description: z.description,
+      mandatory: quizMandatoryOverride[z.id] ?? z.mandatory ?? 0, is_external: 0, image: z.image, description: z.description,
       questions: z.question_count ?? z.questions?.length ?? 0,
       time_limit: z.time_limit, passing_score: z.passing_score,
       active: z.active, start_at: z.start_at, end_at: z.end_at,
@@ -976,7 +977,7 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
       start_at: c.start_at, end_at: c.end_at,
     }));
     return [...qz, ...ex];
-  }, [quizzes, externals]);
+  }, [quizzes, externals, quizMandatoryOverride]);
 
   const rowKey = (r: FormationRow) => `${r.kind}-${r.id}`;
   const selected = rows.find(r => rowKey(r) === selectedKey) || null;
@@ -1091,7 +1092,7 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
     },
     { key: 'category', label: 'Categoria', width: '120px', render: (r) => <span style={{ color: T.textMuted, fontSize: 12 }}>{r.category || '—'}</span> },
     { key: 'hours', label: 'Hores/Preguntes', width: '110px', align: 'right', render: (r) => <span style={{ color: T.textMuted, fontSize: 12, fontFeatureSettings: '"tnum"' }}>{r.kind === 'quiz' ? `${r.questions} q` : (r.hours || '—')}</span> },
-    { key: 'mandatory', label: 'Obligatori', width: '90px', render: (r) => r.kind === 'external' && r.mandatory ? <AStatusPill status="active" /> : <span style={{ color: T.textFaint, fontSize: 12 }}>—</span> },
+    { key: 'mandatory', label: 'Obligatori', width: '90px', render: (r) => r.mandatory ? <AStatusPill status="active" /> : <span style={{ color: T.textFaint, fontSize: 12 }}>—</span> },
     { key: 'type', label: 'Tipus', width: '90px', render: (r) => <span style={{ color: T.textMuted, fontSize: 12 }}>{r.kind === 'quiz' ? 'Interna' : 'Externa'}</span> },
   ];
 
@@ -1169,6 +1170,22 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
                     <div><div style={{ color: T.textFaint, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 2 }}>Aprovat</div><div style={{ color: T.textMuted, fontFeatureSettings: '"tnum"' }}>{selected.passing_score}%</div></div>
                   </div>
                 </div>
+                <AToggle
+                  value={!!selected.mandatory}
+                  onChange={async (v) => {
+                    const id = selected.refId;
+                    const prev = selected.mandatory;
+                    setQuizMandatoryOverride(m => ({ ...m, [id]: v ? 1 : 0 }));
+                    try {
+                      await apiSetQuizMandatory(id, v);
+                    } catch (e: any) {
+                      setQuizMandatoryOverride(m => ({ ...m, [id]: prev }));
+                      alert(e?.message ?? 'Error');
+                    }
+                  }}
+                  label="Obligatori"
+                  hint="Tots els destinataris l'han de completar."
+                />
                 <div style={{ fontSize: 12, color: T.textMuted }}>
                   Les formacions internes s'editen amb l'editor extens (preguntes, multimèdia, audiència). Prem "Obre l'editor" per modificar-la.
                 </div>
@@ -1217,6 +1234,11 @@ function AdminAgenda({ events, refresh, intent, onConsumeIntent }: { events: Age
 
   const save = async () => {
     if (!selected) return;
+    const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
+    const tStart = (draft.time ?? selected.time ?? '').trim();
+    const tEnd = (draft.time_end ?? '').trim();
+    if (!timeRe.test(tStart)) { alert("Hora d'inici no vàlida (HH:MM)."); return; }
+    if (tEnd && !timeRe.test(tEnd)) { alert('Hora final no vàlida (HH:MM).'); return; }
     setSaving(true);
     try {
       await apiUpdateAgendaEvent(selected.id, {

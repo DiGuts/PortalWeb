@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useLayoutEffect, useCallba
 import { LoginScreen } from './components/mobile/auth/LoginScreen';
 import { MediaUploader } from './components/MediaUploader';
 import { AdminBackoffice } from './components/admin/AdminBackoffice';
+import { CreateAgendaModal, EditAgendaModal } from './components/admin/CreateAgendaModal';
 import { ConfirmModal as SharedConfirmModal } from './components/ConfirmDialog';
 import { VerifyScreen } from './components/mobile/auth/VerifyScreen';
 import { ForgotScreen } from './components/mobile/auth/ForgotScreen';
@@ -31,12 +32,16 @@ import { tabPrefetch, tabPrefetchAt, isTabCacheFresh, prefetchTabData, resetTabP
 import { Skeleton, SkeletonText, SkeletonCard } from './components/shared/Skeleton';
 import { SidebarItem, SidebarSection } from './components/shared/Sidebar';
 import { FilterChip } from './components/shared/FilterChip';
+import { DropdownMultiselect } from './components/shared/DropdownMultiselect';
+import { DatePicker } from './components/shared/AgendaPickers';
+import { AgendaTab } from './components/tabs/AgendaTab';
 import { DirectoriTab } from './components/tabs/DirectoriTab';
+import { CampusTavilTab } from './components/tabs/CampusTavilTab';
 import { UnderlineTab } from './components/shared/UnderlineTab';
 import { EditModal } from './components/shared/EditModal';
 import { Toggle } from './components/shared/Toggle';
 import { resolveImg } from './lib/resolveImg';
-import { DEPT_ORDER, avatarBg } from './lib/depts';
+import { DEPT_ORDER, avatarBg, deptLabel } from './lib/depts';
 import { MobileAppHeader } from './components/mobile/MobileAppHeader';
 import { MobileDrawer } from './components/mobile/MobileDrawer';
 import { MesTab, MesSettingsGroup } from './components/mobile/MesTab';
@@ -57,7 +62,7 @@ import {
   apiGetEnquestes, apiRespondreEnquesta, Enquesta,
   apiGetSolicituds, apiCreateSolicitud, apiUpdateSolicitud, apiDeleteSolicitud, Solicitud,
   Notice, apiGetNotices,
-  NewsArticle, apiGetNews, apiGetNewsArticle, apiCreateNews, apiUpdateNews, apiDeleteNews, localizeNews,
+  NewsArticle, NewsTranslations, apiGetNews, apiGetNewsArticle, apiCreateNews, apiUpdateNews, apiDeleteNews, localizeNews,
   Activity, apiGetActivities, apiCreateActivity, apiUpdateActivity, apiDeleteActivity, apiEnrollActivity,
   AgendaEvent, apiGetAgendaEvents, apiCreateAgendaEvent, apiUpdateAgendaEvent, apiDeleteAgendaEvent,
   apiUploadImage, apiUploadMedia, apiGetImages, API_BASE,
@@ -1950,6 +1955,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
 }
 
 // ── Agenda Tab ────────────────────────────────────────────────────────────────
+// AgendaTab is now in src/components/tabs/AgendaTab.tsx
 
 const EVENT_COLORS: Record<string, string> = {
   "Sessió interna":    "bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300",
@@ -1959,682 +1965,8 @@ const EVENT_COLORS: Record<string, string> = {
   "Fira":              "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300",
 };
 
-
-// Catalonia public holidays 2026. Virtual events merged into the agenda client-side.
-// Negative ids signal "not stored in DB" so admin edit/delete is suppressed.
-const FESTIUS_2026: AgendaEvent[] = [
-  { id: -10101, title: 'Any Nou',                       day:  1, month:  1, time: '', location: '', type: 'Festiu' },
-  { id: -10106, title: 'Reis',                          day:  6, month:  1, time: '', location: '', type: 'Festiu' },
-  { id: -10403, title: 'Divendres Sant',                day:  3, month:  4, time: '', location: '', type: 'Festiu' },
-  { id: -10406, title: 'Dilluns de Pasqua',             day:  6, month:  4, time: '', location: '', type: 'Festiu' },
-  { id: -10501, title: 'Festa del Treball',             day:  1, month:  5, time: '', location: '', type: 'Festiu' },
-  { id: -10624, title: 'Sant Joan',                     day: 24, month:  6, time: '', location: '', type: 'Festiu' },
-  { id: -10815, title: "L'Assumpció",                   day: 15, month:  8, time: '', location: '', type: 'Festiu' },
-  { id: -10911, title: 'Diada de Catalunya',            day: 11, month:  9, time: '', location: '', type: 'Festiu' },
-  { id: -11012, title: "Festa Nacional d'Espanya",      day: 12, month: 10, time: '', location: '', type: 'Festiu' },
-  { id: -11101, title: 'Tots Sants',                    day:  1, month: 11, time: '', location: '', type: 'Festiu' },
-  { id: -11206, title: 'La Constitució',                day:  6, month: 12, time: '', location: '', type: 'Festiu' },
-  { id: -11208, title: 'La Puríssima',                  day:  8, month: 12, time: '', location: '', type: 'Festiu' },
-  { id: -11225, title: 'Nadal',                         day: 25, month: 12, time: '', location: '', type: 'Festiu' },
-  { id: -11226, title: 'Sant Esteve',                   day: 26, month: 12, time: '', location: '', type: 'Festiu' },
-];
-
-function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: { currentUser: User | null; initDate: { day: number; month: number; year: number } | null; onInitDateConsumed: () => void; onOpenDrawer?: () => void }) {
-  const [apiAgendaEvents, setApiAgendaEvents] = useState<AgendaEvent[]>(() => tabPrefetch.agendaEvents ?? []);
-  const [, setView] = useState<'calendar' | 'list'>('calendar');
-  const [activeFilter, setActiveFilter] = useState('Tots');
-  const [deptFilter, setDeptFilter] = useState('Tots');
-  const today0 = new Date();
-  const [currentMonth, setCurrentMonth] = useState(today0.getMonth() + 1);
-  const [currentYear, setCurrentYear] = useState(today0.getFullYear());
-
-  // Merge Catalonia 2026 festius client-side. Real TAVIL events come from API.
-  const agendaEvents = useMemo<AgendaEvent[]>(
-    () => currentYear === 2026 ? [...apiAgendaEvents, ...FESTIUS_2026] : apiAgendaEvents,
-    [apiAgendaEvents, currentYear]
-  );
-  const [selectedDay, setSelectedDay] = useState<number | null>(today0.getDate());
-  useScrollIntoViewWhen<HTMLDivElement>(selectedDay, { threshold: 0.5, block: 'center', delay: 80 });
-  const isAdmin = (() => {
-    const r = currentUser?.role ?? '';
-    const rs = currentUser?.roles ?? [];
-    return ['Administrador', 'Administrador/a', 'Recursos humans', 'Comunicacions', 'Comunicació', 'Formacions'].some(x => x === r || rs.includes(x));
-  })();
-  const { t } = useTranslation();
-  const MONTH_NAMES = t('common.months', { returnObjects: true }) as string[];
-
-  const eventRailColor = (ev: AgendaEvent): string => {
-    switch (ev.type) {
-      case 'Festiu':              return '#e05c5c';
-      case 'Activitat empresa':   return '#4ead7a';
-      case 'Visita comercial':    return '#e8944a';
-      case 'Fira':                return '#5b9bd6';
-      case 'Sessió interna':      return '#9b7fd4';
-      case 'Formació presencial': return '#3dbfbf';
-      case 'Formació externa':    return '#6da8e0';
-      default:                    return 'var(--tavil-muted)';
-    }
-  };
-
-  const DAYS = t('common.days', { returnObjects: true }) as string[];
-  const MONTHS_GENITIVE = t('common.monthsGenitive', { returnObjects: true }) as string[];
-
-  const dayNameCa = (d: number, m: number, y: number): string =>
-    DAYS[new Date(y, m - 1, d).getDay()] ?? '';
-
-  const monthGenitiu = (m: number): string =>
-    MONTHS_GENITIVE[m] ?? '';
-
-  useEffect(() => {
-    if (initDate) {
-      setCurrentMonth(initDate.month);
-      setCurrentYear(initDate.year);
-      setSelectedDay(initDate.day);
-      setView('calendar');
-      onInitDateConsumed();
-    }
-  }, [initDate, onInitDateConsumed]);
-
-  // New event form state
-  const [showEventForm, setShowEventForm] = useState(false);
-  const [closingEventForm, setClosingEventForm] = useState(false);
-  // Hide bottom nav when any form sheet is open
-  useEffect(() => { setGlobalNavHidden(showEventForm); }, [showEventForm]);
-  const [eTitle, setETitle] = useState('');
-  const [eDate, setEDate] = useState('');
-  const [eTime, setETime] = useState('');
-  const [eTimeEnd, setETimeEnd] = useState('');
-  const [eLocation, setELocation] = useState('');
-  const [eType, setEType] = useState('Sessió interna');
-  const [eDepts, setEDepts] = useState<string[]>([]);
-  const [eSaving, setESaving] = useState(false);
-
-  const closeEventForm = () => {
-    setClosingEventForm(true);
-    setTimeout(() => { setShowEventForm(false); setClosingEventForm(false); }, 260);
-  };
-
-  const handleCreateEvent = async () => {
-    if (!eTitle.trim() || !eDate) return;
-    const [, mStr, dStr] = eDate.split('-');
-    const day = parseInt(dStr); const month = parseInt(mStr);
-    if (!day || !month) return;
-    setESaving(true);
-    try {
-      await apiCreateAgendaEvent({ title: eTitle.trim(), day, month,
-        time: eTime.trim(), time_end: eTimeEnd.trim() || undefined,
-        location: eLocation.trim(), type: eType, target_departments: eDepts });
-      setApiAgendaEvents(await apiGetAgendaEvents());
-      closeEventForm();
-      setTimeout(() => { setETitle(''); setEDate(''); setETime(''); setETimeEnd(''); setELocation(''); setEDepts([]); }, 260);
-    } catch (e) { console.error(e); }
-    finally { setESaving(false); }
-  };
-
-  // Edit event state
-  const [evEditId, setEvEditId] = useState<number | null>(null);
-  const [evEditClosing, setEvEditClosing] = useState(false);
-  const closeEvEdit = () => { setEvEditClosing(true); setTimeout(() => { setEvEditId(null); setEvEditClosing(false); }, 220); };
-  const [eeTitle, setEeTitle] = useState('');
-  const [eeDate, setEeDate] = useState('');
-  const [eeTime, setEeTime] = useState('');
-  const [eeTimeEnd, setEeTimeEnd] = useState('');
-  const [eeLocation, setEeLocation] = useState('');
-  const [eeType, setEeType] = useState('Sessió interna');
-  const [eeDepts, setEeDepts] = useState<string[]>([]);
-  const [eeSaving, setEeSaving] = useState(false);
-
-  const openEvEdit = (ev: AgendaEvent) => {
-    setEvEditId(ev.id); setEeTitle(ev.title);
-    const yyyy = String(currentYear);
-    const mm = String(ev.month).padStart(2, '0');
-    const dd = String(ev.day).padStart(2, '0');
-    setEeDate(`${yyyy}-${mm}-${dd}`);
-    setEeTime(ev.time || '');
-    setEeTimeEnd(ev.time_end || '');
-    setEeLocation(ev.location || ''); setEeType(ev.type);
-    setEeDepts(ev.target_departments ?? []);
-  };
-
-  const handleSaveEvEdit = async () => {
-    if (!evEditId || !eeTitle.trim() || !eeDate) return;
-    const [, mStr, dStr] = eeDate.split('-');
-    const day = parseInt(dStr); const month = parseInt(mStr);
-    if (!day || !month) return;
-    setEeSaving(true);
-    try {
-      await apiUpdateAgendaEvent(evEditId, { title: eeTitle.trim(), day,
-        month, time: eeTime.trim(), time_end: eeTimeEnd.trim() || undefined,
-        location: eeLocation.trim(), type: eeType, target_departments: eeDepts });
-      setApiAgendaEvents(await apiGetAgendaEvents());
-      setEvEditId(null);
-    } catch (e) { console.error(e); }
-    finally { setEeSaving(false); }
-  };
-
-  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
-
-  const handleDeleteEvent = (id: number) => {
-    setConfirmModal({
-      message: t('agenda.confirmDelete'),
-      onConfirm: async () => {
-        setConfirmModal(null);
-        try { await apiDeleteAgendaEvent(id); setApiAgendaEvents(await apiGetAgendaEvents()); }
-        catch (e) { console.error(e); }
-      },
-    });
-  };
-
-  useEffect(() => {
-    if (isTabCacheFresh('agendaEvents')) return;
-    apiGetAgendaEvents().then(d => { setApiAgendaEvents(d); tabPrefetch.agendaEvents = d; tabPrefetchAt.agendaEvents = Date.now(); }).catch(console.error);
-  }, []);
-
-  const navigateMonth = (dir: 1 | -1) => {
-    setCurrentMonth(m => {
-      const nm = m + dir;
-      if (nm > 12) { setCurrentYear(y => y + 1); return 1; }
-      if (nm < 1) { setCurrentYear(y => y - 1); return 12; }
-      return nm;
-    });
-  };
-
-  const filters = ['Tots', 'Festiu', 'Fira', 'Visita comercial', 'Sessió interna', 'Activitat empresa'];
-
-  // Festius always pass (affect everyone). Events with no target_departments are visible to all.
-  // Otherwise the selected deptFilter must be in target_departments. 'Tots' = no filtering.
-  const passesDept = (e: AgendaEvent): boolean => {
-    if (deptFilter === 'Tots') return true;
-    if (e.type === 'Festiu') return true;
-    const td = e.target_departments;
-    if (!td || td.length === 0) return true;
-    return td.includes(deptFilter);
-  };
-
-  const filteredEvents = (activeFilter === 'Tots' ? agendaEvents : agendaEvents.filter(e => e.type === activeFilter))
-    .filter(passesDept);
-
-  // Build calendar cell events map for the current month
-  const calendarEvents: Record<number, AgendaEvent[]> = {};
-  filteredEvents.filter(e => e.month === currentMonth && e.id !== undefined).forEach(e => {
-    if (!calendarEvents[e.day]) calendarEvents[e.day] = [];
-    calendarEvents[e.day].push(e);
-  });
-
-  const today = new Date();
-  const isToday = (day: number) => day === today.getDate() && currentMonth === today.getMonth() + 1 && currentYear === today.getFullYear();
-
-  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-  const firstDayOfWeek = new Date(currentYear, currentMonth - 1, 1).getDay();
-  const mondayOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-  const isMobileAgenda = useIsMobile();
-  const cells: (number | null)[] = [...Array(mondayOffset).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-
-  // ── Mobile layout ──────────────────────────────────────────────────────────
-          if (isMobileAgenda) {
-          const EVENT_BAR_COLORS: Record<string, string> = {
-          'Festiu': '#22c55e',
-          'Fira': '#f59e0b',
-          'Visita comercial': '#3b82f6',
-          'Sessió interna': '#8b5cf6',
-          'Activitat empresa': 'var(--tavil-accent)',
-        };
-          // Week strip: 7 days of the current week (Mon–Sun), anchored to today
-          const todayDate = new Date();
-          const todayDay = todayDate.getDate();
-          const todayMonth = todayDate.getMonth() + 1;
-          const todayYear = todayDate.getFullYear();
-          const dow = todayDate.getDay(); // 0=Sun
-          const mondayShift = dow === 0 ? -6 : 1 - dow;
-          const weekDayLabels = ['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'];
-          const weekDays = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(todayDate);
-          d.setDate(todayDate.getDate() + mondayShift + i);
-          return { n: d.getDate(), l: weekDayLabels[i], month: d.getMonth() + 1, year: d.getFullYear() };
-        });
-          const selDay = selectedDay ?? todayDay;
-          const selMonth = currentMonth;
-          const selEvents = filteredEvents.filter(e => e.day === selDay && e.month === selMonth);
-          return (
-          <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
-          {/* Top bar */}
-          <div style={{ height: 82, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
-            <button onClick={onOpenDrawer} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)' }}>
-              <Menu size={18} />
-            </button>
-            {isAdmin && (
-                <button onClick={() => setShowEventForm(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, padding: '0 14px', borderRadius: 10, background: 'var(--tavil-accent)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  <Plus size={15} /> Nou
-                </button>
-            )}
-          </div>
-          {/* Header text */}
-          <div style={{ padding: '8px 20px 16px' }}>
-            <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>
-              {MONTH_NAMES[todayMonth - 1]} {todayYear}
-            </div>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 600, lineHeight: 1, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Agenda</h1>
-          </div>
-          {/* Week strip */}
-          <div style={{ padding: '4px 16px 18px', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
-            {weekDays.map(d => {
-              const active = d.n === selDay && d.month === selMonth;
-              const isTod = d.n === todayDay && d.month === todayMonth && d.year === todayYear;
-              return (
-                  <button key={d.n + '-' + d.month} onClick={() => { setSelectedDay(d.n); setCurrentMonth(d.month); setCurrentYear(d.year); }} style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0 6px',
-                    background: active ? 'var(--tavil-text)' : 'transparent',
-                    color: active ? 'var(--tavil-bg)' : 'var(--tavil-text)',
-                    border: `1px solid ${active ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
-                    borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit',
-                    transition: 'background-color 200ms var(--ease-out-cubic), color 200ms var(--ease-out-cubic), border-color 200ms var(--ease-out-cubic)',
-                  }}>
-                    <span style={{ fontSize: 10, fontWeight: 500, opacity: active ? 0.7 : 0.6, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{d.l}</span>
-                    <span style={{ fontSize: 18, fontWeight: 600, marginTop: 2, fontFamily: 'var(--font-display)' }}>{d.n}</span>
-                    {isTod && !active && <div style={{ width: 4, height: 4, borderRadius: 2, background: 'var(--tavil-accent)', marginTop: 3 }} />}
-                  </button>
-              );
-            })}
-        </div>
-        {/* Filter row */}
-        <div style={{ padding: '0 16px 12px', display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          {filters.map(f => (
-            <button key={f} onClick={() => setActiveFilter(f)} style={{
-              flexShrink: 0, padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
-              background: activeFilter === f ? 'var(--tavil-text)' : 'var(--tavil-card)',
-              color: activeFilter === f ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
-              border: `1px solid ${activeFilter === f ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
-              transition: 'background-color 160ms var(--ease-out-cubic), color 160ms var(--ease-out-cubic), border-color 160ms var(--ease-out-cubic)',
-            }}>{f}</button>
-          ))}
-        </div>
-        <div style={{ padding: '0 16px 14px' }}>
-          <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)} style={{
-            width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', background: 'var(--tavil-card)',
-            color: 'var(--tavil-text)', padding: '9px 12px', fontSize: 13, fontFamily: 'inherit', outline: 'none',
-          }}>
-            <option value="Tots">Tots els departaments</option>
-            {DEPT_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-        </div>
-        {/* Event count + timeline */}
-        <div style={{ padding: '0 20px' }}>
-          <div style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginBottom: 14 }}>
-            {selEvents.length === 1 ? t('agenda.event', { count: 1 }) : t('agenda.events', { count: selEvents.length })} · {selDay === todayDay && selMonth === todayMonth ? t('agenda.today') : `${selDay} ${MONTH_NAMES[selMonth - 1]}`}
-          </div>
-          {selEvents.length === 0 && (
-            <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 28, textAlign: 'center', color: 'var(--tavil-faint)', fontSize: 13 }}>
-              {t('agenda.noEvents')}
-            </div>
-          )}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {selEvents.sort((a, b) => (a.time || '').localeCompare(b.time || '')).map((ev, j) => {
-              const tStart = (ev.time || '').trim();
-              const tEnd = (ev.time_end || '').trim();
-              return (
-                <div key={j} style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
-                  <div style={{ width: 52, flexShrink: 0, paddingTop: 2 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--tavil-text)', fontFeatureSettings: '"tnum"' }}>{tStart || '—'}</div>
-                    {tEnd && <div style={{ fontSize: 10.5, color: 'var(--tavil-faint)', marginTop: 1 }}>{tEnd}</div>}
-                  </div>
-                  <div style={{ width: 3, background: EVENT_BAR_COLORS[ev.type] ?? 'var(--tavil-accent)', borderRadius: 2, flexShrink: 0, alignSelf: 'stretch' }} />
-                  <div style={{ flex: 1, minWidth: 0, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 14 }}>
-                    <div style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1.25, color: 'var(--tavil-text)', marginBottom: 6 }}>{ev.title}</div>
-                    {ev.location && (
-                      <div style={{ fontSize: 12, color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-                        <MapPin size={12} />{ev.location}
-                      </div>
-                    )}
-                    <div style={{ fontSize: 12, color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <span style={{ fontSize: 10.5, fontWeight: 600, background: 'var(--tavil-faint)', borderRadius: 5, padding: '1px 7px' }}>{ev.type}</span>
-                    </div>
-                    {isAdmin && ev.id >= 0 && (
-                      <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
-                        <button onClick={() => openEvEdit(ev)} style={{ background: 'none', border: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', padding: 0 }}><Pencil size={13} /></button>
-                        <button onClick={() => handleDeleteEvent(ev.id)} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 0 }}><Trash2 size={13} /></button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        {/* Admin: new event bottom sheet */}
-        {isAdmin && showEventForm && createPortal(
-          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${closingEventForm ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeEventForm}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }} className={closingEventForm ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 18 }}>Nou event</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <input type="text" value={eTitle} onChange={e => setETitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
-                <input type="date" value={eDate} onChange={e => setEDate(e.target.value)} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <div>
-                    <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Inici</div>
-                    <input type="time" value={eTime} onChange={e => setETime(e.target.value)} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Final <span style={{ textTransform: 'none', fontWeight: 400 }}>(opcional)</span></div>
-                    <input type="time" value={eTimeEnd} onChange={e => setETimeEnd(e.target.value)} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
-                  </div>
-                </div>
-                <input type="text" value={eLocation} onChange={e => setELocation(e.target.value)} placeholder="Lloc" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
-                <div>
-                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8, fontWeight: 600 }}>Tipus</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {Object.keys(EVENT_COLORS).map(t => (
-                      <button key={t} onClick={() => setEType(t)} style={{ padding: '7px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', background: eType === t ? 'var(--tavil-text)' : 'var(--tavil-bg)', color: eType === t ? 'var(--tavil-bg)' : 'var(--tavil-muted)', border: `1px solid ${eType === t ? 'var(--tavil-text)' : 'var(--tavil-border)'}` }}>{t}</button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8, fontWeight: 600 }}>
-                    Departaments {eDepts.length === 0 ? '(tots)' : `(${eDepts.length})`}
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {DEPT_ORDER.map(d => (
-                      <button key={d} onClick={() => setEDepts(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])}
-                        style={{ padding: '6px 11px', borderRadius: 999, fontSize: 12, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', background: eDepts.includes(d) ? 'var(--tavil-accent)' : 'var(--tavil-bg)', color: eDepts.includes(d) ? '#fff' : 'var(--tavil-muted)', border: `1px solid ${eDepts.includes(d) ? 'var(--tavil-accent)' : 'var(--tavil-border)'}` }}>{d}</button>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                  <button onClick={closeEventForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
-                  <button onClick={handleCreateEvent} disabled={!eTitle.trim() || !eDate || eSaving} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!eTitle.trim() || !eDate || eSaving) ? 0.5 : 1 }}>{eSaving ? 'Desant...' : 'Crear event'}</button>
-                </div>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
-        {/* Admin: edit event bottom sheet */}
-        {isAdmin && evEditId !== null && createPortal(
-          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${evEditClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeEvEdit}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }} className={evEditClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 18 }}>Editar event</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <input type="text" value={eeTitle} onChange={e => setEeTitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
-                <input type="date" value={eeDate} onChange={e => setEeDate(e.target.value)} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <div>
-                    <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Inici</div>
-                    <input type="time" value={eeTime} onChange={e => setEeTime(e.target.value)} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Final <span style={{ textTransform: 'none', fontWeight: 400 }}>(opcional)</span></div>
-                    <input type="time" value={eeTimeEnd} onChange={e => setEeTimeEnd(e.target.value)} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
-                  </div>
-                </div>
-                <input type="text" value={eeLocation} onChange={e => setEeLocation(e.target.value)} placeholder="Lloc" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
-                <div>
-                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8, fontWeight: 600 }}>Tipus</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {Object.keys(EVENT_COLORS).map(t => (
-                      <button key={t} onClick={() => setEeType(t)} style={{ padding: '7px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', background: eeType === t ? 'var(--tavil-text)' : 'var(--tavil-bg)', color: eeType === t ? 'var(--tavil-bg)' : 'var(--tavil-muted)', border: `1px solid ${eeType === t ? 'var(--tavil-text)' : 'var(--tavil-border)'}` }}>{t}</button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8, fontWeight: 600 }}>
-                    Departaments {eeDepts.length === 0 ? '(tots)' : `(${eeDepts.length})`}
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {DEPT_ORDER.map(d => (
-                      <button key={d} onClick={() => setEeDepts(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])}
-                        style={{ padding: '6px 11px', borderRadius: 999, fontSize: 12, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', background: eeDepts.includes(d) ? 'var(--tavil-accent)' : 'var(--tavil-bg)', color: eeDepts.includes(d) ? '#fff' : 'var(--tavil-muted)', border: `1px solid ${eeDepts.includes(d) ? 'var(--tavil-accent)' : 'var(--tavil-border)'}` }}>{d}</button>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                  <button onClick={closeEvEdit} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
-                  <button onClick={handleSaveEvEdit} disabled={!eeTitle.trim() || !eeDate || eeSaving} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!eeTitle.trim() || !eeDate || eeSaving) ? 0.5 : 1 }}>{eeSaving ? 'Desant...' : 'Desar'}</button>
-                </div>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
-        {confirmModal && createPortal(
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm anim-fade-in" onClick={() => setConfirmModal(null)}>
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6 w-full max-w-xs mx-4 shadow-xl anim-scale-in" onClick={e => e.stopPropagation()}>
-              <p className="text-sm text-gray-700 dark:text-zinc-300 mb-4">{confirmModal.message}</p>
-              <div className="flex gap-2 justify-end">
-                <button onClick={() => setConfirmModal(null)} className="px-3 py-1.5 text-xs border border-gray-200 dark:border-zinc-700 rounded-lg text-gray-600 dark:text-zinc-400">Cancel·lar</button>
-                <button onClick={confirmModal.onConfirm} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg font-semibold">Eliminar</button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
-      </div>
-    );
-  }
-
-  const selDay = selectedDay ?? today.getDate();
-  const selEvents = filteredEvents.filter(e => e.day === selDay && e.month === currentMonth);
-
-  return (
-    <div>
-      {/* Page header */}
-      <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontSize: 11, color: 'var(--tavil-faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em' }}>
-          {t('agenda.subtitle')}
-        </div>
-        {isAdmin && (
-          <button onClick={() => setShowEventForm(v => !v)} style={{ height: 36, padding: '0 14px', borderRadius: 10, background: 'var(--tavil-accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Plus size={14} /> {t('agenda.newEvent')}
-          </button>
-        )}
-      </div>
-
-      {/* Filter row */}
-      <div style={{ marginBottom: 22, display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {filters.map(f => (
-            <button key={f} onClick={() => setActiveFilter(f)} style={{
-              padding: '6px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer',
-              background: activeFilter === f ? 'var(--tavil-text)' : 'var(--tavil-card)',
-              color: activeFilter === f ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
-              border: `1px solid ${activeFilter === f ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
-              transition: 'background-color 160ms var(--ease-out-cubic), color 160ms var(--ease-out-cubic), border-color 160ms var(--ease-out-cubic)',
-            }}>{f}</button>
-          ))}
-        </div>
-        <div style={{ marginLeft: 'auto' }}>
-          <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)} style={{
-            borderRadius: 10, border: '1px solid var(--tavil-border)', background: 'var(--tavil-card)',
-            color: 'var(--tavil-text)', padding: '7px 12px', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', cursor: 'pointer',
-          }}>
-            <option value="Tots">Tots els departaments</option>
-            {DEPT_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-        </div>
-      </div>
-
-      {/* New event modal */}
-      {isAdmin && showEventForm && (
-        <EditModal title="Nou event" onClose={() => setShowEventForm(false)}>
-          <div className="grid grid-cols-2 gap-3">
-            <input type="text" value={eTitle} onChange={e => setETitle(e.target.value)} placeholder="Títol *" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            <input type="date" value={eDate} onChange={e => setEDate(e.target.value)} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Inici</label>
-              <input type="time" value={eTime} onChange={e => setETime(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Final <span className="normal-case font-normal">(opcional)</span></label>
-              <input type="time" value={eTimeEnd} onChange={e => setETimeEnd(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            </div>
-            <input type="text" value={eLocation} onChange={e => setELocation(e.target.value)} placeholder="Lloc" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            <select value={eType} onChange={e => setEType(e.target.value)} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white">
-              {Object.keys(EVENT_COLORS).map(tp => <option key={tp}>{tp}</option>)}
-            </select>
-            <div className="col-span-2">
-              <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 mb-1.5">Departaments {eDepts.length === 0 ? '(tots)' : `(${eDepts.length})`}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {DEPT_ORDER.map(d => (
-                  <button key={d} type="button" onClick={() => setEDepts(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])}
-                    className={`text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${eDepts.includes(d) ? 'bg-red-600 text-white border-red-600' : 'bg-white dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 border-gray-200 dark:border-zinc-700 hover:border-red-300 hover:text-red-600'}`}>{d}</button>
-                ))}
-              </div>
-            </div>
-            <div className="col-span-2 flex justify-end gap-2 items-center">
-              <button onClick={() => setShowEventForm(false)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800">Cancel·lar</button>
-              <button onClick={handleCreateEvent} disabled={!eTitle.trim() || !eDate || eSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">{eSaving ? 'Desant...' : 'Crear event'}</button>
-            </div>
-          </div>
-        </EditModal>
-      )}
-
-      {/* Two-column grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 28, alignItems: 'start' }}>
-
-        {/* Left: calendar card */}
-        <div style={{ padding: 0 }}>
-          {/* Month nav */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, letterSpacing: '0.01em', color: 'var(--tavil-text)' }}>
-              {MONTH_NAMES[currentMonth - 1]} {currentYear}
-            </div>
-            <div style={{ display: 'flex', gap: 4 }}>
-              <button onClick={() => navigateMonth(-1)} style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)' }}>
-                <ChevronLeft size={14} />
-              </button>
-              <button onClick={() => navigateMonth(1)} style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)' }}>
-                <ChevronRight size={14} />
-              </button>
-            </div>
-          </div>
-
-          {/* Weekday labels */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, marginBottom: 10 }}>
-            {['Dl','Dt','Dc','Dj','Dv','Ds','Dg'].map(w => (
-              <div key={w} style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.1em', textAlign: 'center', padding: '6px 0' }}>{w}</div>
-            ))}
-          </div>
-
-          {/* Day cells */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
-            {cells.map((d, i) => {
-              if (d === null) return <div key={i} />;
-              const evs = calendarEvents[d] || [];
-              const active = d === selDay;
-              const todayCell = isToday(d);
-              return (
-                <button key={i} onClick={() => setSelectedDay(d === selectedDay ? null : d)} style={{
-                  aspectRatio: '1/1.05', borderRadius: 10,
-                  background: active && todayCell ? '#b91c1c' : active ? 'var(--tavil-text)' : todayCell ? 'oklch(0.94 0.025 22)' : 'var(--tavil-card)',
-                  color: active ? 'var(--tavil-bg)' : todayCell ? '#c0392b' : 'var(--tavil-text)',
-                  border: `1.5px solid ${todayCell ? (active ? '#7f1d1d' : 'oklch(0.80 0.07 22)') : active ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
-                  padding: '7px 7px 5px', cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-                  position: 'relative', transition: 'opacity 120ms',
-                }}>
-                  <div style={{ fontSize: 15, fontWeight: todayCell ? 700 : 500, fontFamily: 'var(--font-display)', letterSpacing: '0.01em', marginBottom: 'auto' }}>{d}</div>
-                  {evs.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%', marginTop: 4 }}>
-                      {evs.slice(0, 4).map((ev, ei) => (
-                        <div key={ei} style={{ width: '100%', height: 3, borderRadius: 1.5, background: active ? 'rgba(255,255,255,0.65)' : eventRailColor(ev) }} />
-                      ))}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right: day detail */}
-        <div>
-          <div style={{ fontSize: 11, color: 'var(--tavil-faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>
-            {isToday(selDay) ? t('agenda.today') : `${selDay} ${monthGenitiu(currentMonth)}`}
-          </div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 32, letterSpacing: '-0.015em', marginBottom: 6, color: 'var(--tavil-text)' }}>
-            {selEvents.length} {selEvents.length === 1 ? 'esdeveniment' : 'esdeveniments'}
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--tavil-muted)', marginBottom: 20 }}>
-            {dayNameCa(selDay, currentMonth, currentYear)} {selDay} {monthGenitiu(currentMonth)} · hora local Barcelona
-          </div>
-
-          {selEvents.length === 0 ? (
-            <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: 28, textAlign: 'center', color: 'var(--tavil-faint)', fontSize: 13 }}>
-              {t('agenda.noEvents')}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {selEvents.sort((a, b) => (a.time || '').localeCompare(b.time || '')).map(ev => {
-                const tStart = (ev.time || '').trim();
-                const tEnd = (ev.time_end || '').trim();
-                const color = eventRailColor(ev);
-                return (
-                  <div key={ev.id} style={{ display: 'flex', gap: 14 }}>
-                    <div style={{ width: 64, flexShrink: 0, paddingTop: 2 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tavil-text)', fontFeatureSettings: '"tnum"' }}>{tStart || '—'}</div>
-                      {tEnd && <div style={{ fontSize: 11, color: 'var(--tavil-faint)', marginTop: 1 }}>{tEnd}</div>}
-                    </div>
-                    <div style={{ width: 3, background: color, borderRadius: 2, flexShrink: 0, alignSelf: 'stretch' }} />
-                    <div style={{ flex: 1, minWidth: 0, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 14 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25, color: 'var(--tavil-text)', marginBottom: 6 }}>{ev.title}</div>
-                      {ev.location && (
-                        <div style={{ fontSize: 12, color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-                          <MapPin size={12} />{ev.location}
-                        </div>
-                      )}
-                      <div style={{ fontSize: 12, color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 600, background: 'var(--tavil-bgAlt)', color: 'var(--tavil-muted)', borderRadius: 5, padding: '2px 7px' }}>{ev.type}</span>
-                      </div>
-                      {isAdmin && ev.id >= 0 && (
-                        <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
-                          <button onClick={() => evEditId === ev.id ? setEvEditId(null) : openEvEdit(ev)} style={{ background: 'none', border: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', padding: 0 }}><Pencil size={13} /></button>
-                          <button onClick={() => handleDeleteEvent(ev.id)} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 0 }}><Trash2 size={13} /></button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {evEditId !== null && (
-        <EditModal title="Editar event" onClose={() => setEvEditId(null)}>
-          <div className="grid grid-cols-2 gap-2">
-            <input type="text" value={eeTitle} onChange={e => setEeTitle(e.target.value)} placeholder="Títol *" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-            <input type="date" value={eeDate} onChange={e => setEeDate(e.target.value)} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Inici</label>
-              <input type="time" value={eeTime} onChange={e => setEeTime(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Final <span className="normal-case font-normal">(opcional)</span></label>
-              <input type="time" value={eeTimeEnd} onChange={e => setEeTimeEnd(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-            </div>
-            <input type="text" value={eeLocation} onChange={e => setEeLocation(e.target.value)} placeholder="Lloc" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-            <select value={eeType} onChange={e => setEeType(e.target.value)} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white">
-              {Object.keys(EVENT_COLORS).map(tp => <option key={tp}>{tp}</option>)}
-            </select>
-            <div className="col-span-2">
-              <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 mb-1.5">Departaments {eeDepts.length === 0 ? '(tots)' : `(${eeDepts.length})`}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {DEPT_ORDER.map(d => (
-                  <button key={d} type="button" onClick={() => setEeDepts(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])}
-                    className={`text-[11px] font-medium px-2.5 py-1 rounded-full border transition-all ${eeDepts.includes(d) ? 'bg-red-600 text-white border-red-600' : 'bg-white dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 border-gray-200 dark:border-zinc-700 hover:border-red-300 hover:text-red-600'}`}>{d}</button>
-                ))}
-              </div>
-            </div>
-            <div className="col-span-2 flex justify-end gap-2">
-              <button onClick={() => setEvEditId(null)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400">Cancel·lar</button>
-              <button onClick={handleSaveEvEdit} disabled={!eeTitle.trim() || !eeDate || eeSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">{eeSaving ? 'Desant...' : 'Desar'}</button>
-            </div>
-          </div>
-        </EditModal>
-      )}
-      {confirmModal && <ConfirmModal message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} />}
-    </div>
-  );
-}
+// NOTE: FESTIUS_2026 and the AgendaTab function body live in src/components/tabs/AgendaTab.tsx.
+// EVENT_COLORS is kept here because it is also used by AdminBackoffice inline forms.
 
 
 // ── Espai Corporatiu Tab ──────────────────────────────────────────────────────
@@ -3072,508 +2404,7 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
   );
 }
 
-// ── Campus TAVIL Tab ──────────────────────────────────────────────────────────
 
-const STATUS_COLORS: Record<string, string> = {
-  "En curs":   "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300",
-  "Pendent":   "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300",
-  "Completat": "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-300",
-};
-
-function CampusTavilTab({ onBack }: { onBack?: () => void }) {
-  type CatalogItem = {
-    id: string;
-    type: 'Externes' | 'Internes';
-    title: string;
-    description: string;
-    category?: string;
-    hours?: string;
-    mandatory?: boolean;
-    status: 'Pendent' | 'En curs' | 'Completat';
-    progress?: number;
-    url?: string;
-    quizId?: number;
-    quizInProgress?: boolean;
-    quizAttempted?: boolean;
-    quizQuestions?: number;
-  };
-  const { t } = useTranslation();
-  const [courses, setCourses] = useState<Course[]>(() => tabPrefetch.courses ?? []);
-  const [activeTab, setActiveTab] = usePersistedSubTab<string>('campus', 'Catàleg', ['Catàleg', 'El meu progrés', 'Proves', ] as const);
-  const [kindFilter, setKindFilter] = useState('Totes');
-  const [statusFilter, setStatusFilter] = useState('Tots els estats');
-  const [campusSearch, setCampusSearch] = useState('');
-  const isMobileCampus = useIsMobile();
-  const [mobileCat, setMobileCat] = useState('Tot');
-  const [quizList, setQuizList] = useState<Quiz[]>([]);
-  const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
-  useEffect(() => { scrollPageToTop(); }, [activeQuiz]);
-  const [quizAnswers, setQuizAnswers] = useState<Record<string, any>>({});
-  const [quizResult, setQuizResult] = useState<QuizAttemptResult | null>(null);
-  const [quizSubmitting, setQuizSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (isTabCacheFresh('courses')) return;
-    apiGetCourses().then(d => { setCourses(d); tabPrefetch.courses = d; tabPrefetchAt.courses = Date.now(); }).catch(console.error);
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === 'Proves' || activeTab === 'Catàleg') {
-      apiGetQuizzes().then(setQuizList).catch(console.error);
-    }
-  }, [activeTab]);
-
-  const startQuiz = async (q: Quiz) => {
-    const full = await apiGetQuiz(q.id);
-    setActiveQuiz(full);
-    setQuizAnswers({});
-    setQuizResult(null);
-  };
-
-  const submitQuiz = async () => {
-    if (!activeQuiz) return;
-    setQuizSubmitting(true);
-    try {
-      const result = await apiSubmitQuizAttempt(activeQuiz.id, quizAnswers);
-      setQuizResult(result);
-      apiGetQuizzes().then(setQuizList).catch(console.error);
-    } catch (e) { console.error(e); }
-    finally { setQuizSubmitting(false); }
-  };
-
-  const completed = courses.filter(c => c.user_status === 'Completat');
-  const pending = courses.filter(c => c.user_status === 'Pendent');
-  const completedHours = completed.reduce((s, c) => s + (parseInt(c.hours) || 0), 0);
-  const mandatoryPending = courses.find(c => !!c.mandatory && c.user_status === 'Pendent');
-
-  const kinds = ['Totes', 'Externes', 'Internes'];
-  const statuses = ['Tots els estats', 'Pendent', 'En curs', 'Completat'];
-
-  const externes: CatalogItem[] = courses
-    .filter(c => c.is_external === 1)
-    .map(c => ({
-      id: `course-${c.id}`,
-      type: 'Externes',
-      title: c.title,
-      description: c.description ?? '',
-      category: c.category,
-      hours: c.hours,
-      mandatory: !!c.mandatory,
-      status: c.user_status === 'Completat' ? 'Completat' : (c.user_progress > 0 ? 'En curs' : 'Pendent'),
-      progress: c.user_progress,
-      url: c.url,
-    }));
-
-  const internes: CatalogItem[] = quizList
-    .filter(q => !q.is_presential)
-    .map(q => ({
-      id: `quiz-${q.id}`,
-      type: 'Internes',
-      title: q.title,
-      description: q.description ?? '',
-      category: q.category,
-      status: q.user_attempt?.passed ? 'Completat' : (q.in_progress ? 'En curs' : 'Pendent'),
-      quizId: q.id,
-      quizInProgress: !!q.in_progress,
-      quizAttempted: !!q.user_attempt,
-      quizQuestions: q.question_count ?? 0,
-    }));
-
-  const catalog: CatalogItem[] = [...externes, ...internes];
-  const filteredCatalog = catalog.filter(item => {
-    const matchKind = kindFilter === 'Totes' || item.type === kindFilter;
-    const matchStatus = statusFilter === 'Tots els estats' || item.status === statusFilter;
-    const q = campusSearch.trim().toLowerCase();
-    const matchSearch = !q || [item.title, item.description, item.category ?? '', item.type].some(f => f.toLowerCase().includes(q));
-    return matchKind && matchStatus && matchSearch;
-  });
-
-
-  if (isMobileCampus) {
-    const inProgress = courses.filter(c => c.user_progress > 0 && c.user_progress < 100);
-    const MOBILE_CATS = ['Tot', 'Seguretat', 'Qualitat', 'Sistemes', 'Comercial', 'Compliance', 'Producció', 'Habilitats'];
-    const mobileFiltered = courses.filter(c => mobileCat === 'Tot' || c.category === mobileCat);
-    return (
-      <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
-        {/* Top bar */}
-        <div style={{ height: 82, display: 'flex', alignItems: 'center', padding: '0 16px', position: 'relative' }}>
-          <button onClick={onBack} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0, zIndex: 1 }}>
-            <ChevronLeft size={18} />
-          </button>
-          <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Campus TAVIL</span>
-        </div>
-        {/* Kicker + title */}
-        <div style={{ padding: '0 20px 12px' }}>
-          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>{t('campus.kicker')}</div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, lineHeight: 1.05, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Campus TAVIL</h1>
-          <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>{t('campus.mobileSubtitle')}</p>
-        </div>
-        {/* 3-stat grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '0 16px 20px' }}>
-          {[
-            { value: String(inProgress.length), label: t('campus.inProgress'), color: 'var(--tavil-accent)' },
-            { value: String(completed.length), label: t('campus.completedCount'), color: '#7a8a6b' },
-            { value: `${completedHours}h`, label: t('campus.thisYear'), color: 'var(--tavil-text)' },
-          ].map((s, i) => (
-            <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: '12px 10px', textAlign: 'center' }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, color: s.color, letterSpacing: '0em', lineHeight: 1 }}>{s.value}</div>
-              <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginTop: 4 }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Continue card — first in-progress */}
-        {inProgress[0] && (
-          <div style={{ padding: '0 16px 20px' }}>
-            <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>{t('campus.continueWhere')}</div>
-            <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden' }}>
-              <div style={{ height: 80, background: 'var(--tavil-accent)', display: 'flex', alignItems: 'center', padding: '0 18px' }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.15)', padding: '3px 10px', borderRadius: 999 }}>{inProgress[0].category}</span>
-              </div>
-              <div style={{ padding: '14px 16px' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 10 }}>{inProgress[0].title}</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8 }}>
-                  <span>{inProgress[0].hours}</span><span>{inProgress[0].user_progress}{t('campus.completedPct')}</span>
-                </div>
-                <div style={{ height: 5, background: 'var(--tavil-border)', borderRadius: 3 }}>
-                  <div style={{ height: 5, width: '100%', background: 'var(--tavil-accent)', borderRadius: 3, transform: `scaleX(${inProgress[0].user_progress / 100})`, transformOrigin: 'left', transition: 'transform 400ms var(--ease-out-quint)' }} />
-                </div>
-                {inProgress[0].url && (
-                  <button onClick={() => window.open(inProgress[0].url, '_blank', 'noopener,noreferrer')} style={{ marginTop: 14, width: '100%', height: 42, borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                    {t('campus.continue')}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Category pills */}
-        <div style={{ padding: '0 16px 14px', overflowX: 'auto', display: 'flex', gap: 8 }} className="hide-sb">
-          {MOBILE_CATS.map(c => (
-            <button key={c} onClick={() => setMobileCat(c)} style={{
-              flexShrink: 0, height: 32, padding: '0 14px', borderRadius: 999,
-              background: mobileCat === c ? 'var(--tavil-text)' : 'var(--tavil-card)',
-              color: mobileCat === c ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
-              fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-              border: `1px solid ${mobileCat === c ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
-            } as React.CSSProperties}>{c}</button>
-          ))}
-        </div>
-
-        {/* Course list */}
-        <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {mobileFiltered.map((course, i) => (
-            <div key={i} className="anim-item" style={{ '--i': i, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: '14px 16px' } as React.CSSProperties}>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--tavil-muted)', background: 'var(--tavil-bg)', border: '1px solid var(--tavil-border)', borderRadius: 6, padding: '2px 8px' }}>{course.category}</span>
-                <span style={{ fontSize: 10.5, fontWeight: 700, borderRadius: 6, padding: '2px 8px', marginLeft: 'auto', background: course.user_status === 'Completat' ? '#d1fae5' : course.user_progress > 0 ? '#fef3c7' : 'var(--tavil-bg)', color: course.user_status === 'Completat' ? '#065f46' : course.user_progress > 0 ? '#92400e' : 'var(--tavil-muted)' }}>{course.user_status}</span>
-              </div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 6, lineHeight: 1.3 }}>{course.title}</div>
-              <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--tavil-muted)', alignItems: 'center' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={11} />{course.hours}</span>
-                {!!course.mandatory && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#92400e', background: '#fef3c7', borderRadius: 6, padding: '1px 7px' }}>Obligatòria</span>}
-              </div>
-              {course.user_progress > 0 && course.user_progress < 100 && (
-                <div style={{ marginTop: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--tavil-muted)', marginBottom: 5 }}><span>Progrés</span><span>{course.user_progress}%</span></div>
-                  <div style={{ height: 4, background: 'var(--tavil-border)', borderRadius: 2 }}>
-                    <div style={{ height: 4, width: '100%', background: 'var(--tavil-accent)', borderRadius: 2, transform: `scaleX(${course.user_progress / 100})`, transformOrigin: 'left', transition: 'transform 400ms var(--ease-out-quint)' }} />
-                  </div>
-                </div>
-              )}
-              {course.url && (
-                <button onClick={() => window.open(course.url, '_blank', 'noopener,noreferrer')} style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', height: 38, borderRadius: 10, border: '1px solid #e8d0cf', background: 'transparent', color: 'var(--tavil-accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  <ExternalLink size={13} /> Obrir curs
-                </button>
-              )}
-            </div>
-          ))}
-          {mobileFiltered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 32, color: 'var(--tavil-faint)', fontSize: 13 }}>Cap formació disponible en aquesta categoria.</div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Plataforma de formació interna i desenvolupament professional</p>
-      <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
-        {['Catàleg', 'El meu progrés', 'Proves'].map(tab => (
-          <UnderlineTab key={tab} label={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)} />
-        ))}
-      </div>
-
-      <div key={activeTab} className="anim-tab">
-      {activeTab === 'Catàleg' && (
-        <>
-          <div className="flex flex-wrap items-center gap-3 mb-6">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input type="text" value={campusSearch} onChange={e => setCampusSearch(e.target.value)} placeholder="Cercar cursos..." className="w-full bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white" />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {kinds.map(k => <FilterChip key={k} label={k} active={kindFilter === k} onClick={() => setKindFilter(k)} />)}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {statuses.map(s => <FilterChip key={s} label={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />)}
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {filteredCatalog.map((item, i) => (
-              <div key={item.id} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 anim-item" style={{ '--i': i } as React.CSSProperties}>
-                <div className="flex items-start justify-between mb-3">
-                  <span className="text-[11px] font-bold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{item.type}{item.category ? ` · ${item.category}` : ''}</span>
-                  <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded", STATUS_COLORS[item.status])}>{item.status}</span>
-                </div>
-                <h4 className="font-bold text-gray-900 dark:text-white mb-2 text-sm">{item.title}</h4>
-                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed line-clamp-2">{item.description}</p>
-                <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                  {item.hours && <><Clock size={12} /><span>{item.hours}</span></>}
-                  {!!item.mandatory && <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-bold">Obligatòria</span>}
-                  {item.type === 'Internes' && <span className="text-[10px] bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 px-1.5 py-0.5 rounded font-bold">{item.quizQuestions ?? 0} preguntes</span>}
-                </div>
-                {typeof item.progress === 'number' && item.progress > 0 && item.progress < 100 && (
-                  <><div className="flex justify-between text-xs text-gray-500 mt-3 mb-1"><span>Progrés</span><span>{item.progress}%</span></div><div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="h-1.5 rounded-full" style={{ width: `${item.progress}%`, background: 'var(--tavil-accent)' }} /></div></>
-                )}
-                {item.type === 'Externes' && item.url && (
-                  <button onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')} className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800 py-1.5 rounded-lg transition-colors">
-                    <ExternalLink size={12} /> Obrir curs
-                  </button>
-                )}
-                {item.type === 'Internes' && item.quizId && (
-                  <button
-                    onClick={() => window.open(`${window.location.pathname}?quiz=${item.quizId}${item.quizInProgress ? '&resume=1' : ''}`, '_blank')}
-                    className={`mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-white py-1.5 rounded-lg transition-colors ${item.quizInProgress ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#bf211e] hover:bg-[#a21b18]'}`}
-                  >
-                    <PlayCircle size={12} /> {item.quizInProgress ? 'Continuar' : (item.quizAttempted ? 'Repetir' : 'Comença')}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {activeTab === 'El meu progrés' && (
-        <>
-          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 mb-6">
-            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Resum del meu progrés</h3>
-            <div className="grid grid-cols-2 gap-4 text-center">
-              {[{ label: "Completats", value: String(completed.length), icon: CheckCircle, color: "text-green-500" }, { label: "Hores formació", value: `${completedHours}h`, icon: Clock, color: "text-purple-500" }].map((s, i) => (
-                <div key={i}><p className="text-3xl font-bold text-gray-900 dark:text-white">{s.value}</p><p className="text-xs text-gray-500 mt-1">{s.label}</p></div>
-              ))}
-            </div>
-          </div>
-          {['Pendents', 'Completats'].map(group => {
-            const items = courses.filter(c => {
-              if (group === 'Pendents') return c.user_status === 'Pendent';
-              return c.user_status === 'Completat';
-            });
-            return (
-              <div key={group} className="mb-6">
-                <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3 flex items-center gap-2">
-                  {group}
-                  <span className="text-[11px] font-bold bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 px-2 py-0.5 rounded-full">{items.length}</span>
-                </h3>
-                {items.length > 0 ? (
-                  <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 divide-y divide-gray-50 dark:divide-zinc-800">
-                    {items.map((c, i) => (
-                      <div key={i} className="flex items-center gap-4 p-4">
-                        <GraduationCap size={16} className="text-gray-400 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 dark:text-white text-sm">{c.title}</p>
-                          <p className="text-xs text-gray-500">{c.hours} · {c.category}{!!c.mandatory ? ' · ' : ''}{!!c.mandatory && <span className="text-orange-500 font-medium">Obligatòria</span>}</p>
-                          {c.user_progress > 0 && c.user_progress < 100 && <div className="flex items-center gap-2 mt-1.5"><div className="flex-1 bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${c.user_progress}%` }} /></div><span className="text-[10px] text-gray-500">{c.user_progress}%</span></div>}
-                        </div>
-                        <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded flex-shrink-0", STATUS_COLORS[c.user_status])}>{c.user_status}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 dark:text-zinc-500">Cap curs en aquest estat.</p>
-                )}
-              </div>
-            );
-          })}
-        </>
-      )}
-
-      {activeTab === 'Proves' && (  
-        <>
-          {activeQuiz ? (
-            <div className="max-w-2xl mx-auto">
-              {quizResult ? (
-                /* ── Results screen ── */
-                <div className="space-y-4 anim-fade-in">
-                  <div className={`rounded-2xl p-6 text-center ${quizResult.passed ? 'bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800'}`}>
-                    <div className={`text-4xl font-bold mb-1 ${quizResult.passed ? 'text-green-600' : 'text-red-600'}`}>{quizResult.percentage}%</div>
-                    <p className={`font-semibold text-sm ${quizResult.passed ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-                      {quizResult.passed ? '✓ Aprovat' : '✗ No aprovat'}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">{quizResult.score} / {quizResult.max_score} punts</p>
-                  </div>
-                  {/* Per-question breakdown */}
-                  {activeQuiz.questions?.map(q => {
-                    const r = quizResult.results[String(q.id)];
-                    if (!r) return null;
-                    return (
-                      <div key={q.id} className={`rounded-xl border p-4 text-sm ${r.correct === true ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/10' : r.correct === false ? 'border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/10' : 'border-gray-200 dark:border-zinc-700'}`}>
-                        <div className="flex items-start gap-2">
-                          <span className={`mt-0.5 flex-shrink-0 ${r.correct === true ? 'text-green-500' : r.correct === false ? 'text-red-500' : 'text-gray-400'}`}>
-                            {r.correct === true ? <CheckCircle size={16} /> : r.correct === false ? <X size={16} /> : <AlignLeft size={16} />}
-                          </span>
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900 dark:text-white">{q.question}</p>
-                            {r.correct === null && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1 italic">Resposta oberta: {r.answer}</p>}
-                            {q.explanation && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">{q.explanation}</p>}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <div className="flex gap-2 justify-center pt-2">
-                    <button onClick={() => { setActiveQuiz(null); setQuizResult(null); }} className="px-5 py-2 rounded-xl bg-gray-100 dark:bg-zinc-800 text-sm font-medium text-gray-700 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors">Tornar a la llista</button>
-                    <button onClick={() => startQuiz(activeQuiz)} className="px-5 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors">Repetir prova</button>
-                  </div>
-                </div>
-              ) : (
-                /* ── Quiz taking ── */
-                <div className="space-y-5 anim-fade-in">
-                  <div className="flex items-center gap-3 mb-2">
-                    <button onClick={() => setActiveQuiz(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 transition-colors"><ChevronLeft size={20} /></button>
-                    <div>
-                      <h2 className="text-lg font-bold text-gray-900 dark:text-white">{activeQuiz.title}</h2>
-                      {activeQuiz.description && <p className="text-xs text-gray-500 dark:text-zinc-400">{activeQuiz.description}</p>}
-                    </div>
-                  </div>
-
-                  {activeQuiz.questions?.map((q, qi) => (
-                    <div key={q.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 space-y-3">
-                      <div className="flex items-start gap-2">
-                        <span className="text-xs font-bold text-gray-400 mt-0.5">{qi + 1}.</span>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{q.question}</p>
-                      </div>
-
-                      {q.type === 'multiple_choice' && (
-                        <div className="space-y-2 pl-5">
-                          {q.options?.map((o, oi) => (
-                            <label key={o.id} className="flex items-center gap-3 cursor-pointer group">
-                              <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${quizAnswers[String(q.id)] === String(o.id) ? 'border-red-600 bg-red-600' : 'border-gray-300 dark:border-zinc-600 group-hover:border-red-400'}`}
-                                onClick={() => setQuizAnswers(a => ({ ...a, [String(q.id)]: String(o.id) }))}>
-                                {quizAnswers[String(q.id)] === String(o.id) && <span className="w-2 h-2 rounded-full bg-white" />}
-                              </div>
-                              <span className="text-xs font-bold text-gray-400 w-4">{String.fromCharCode(65 + oi)}</span>
-                              <span className="text-sm text-gray-700 dark:text-zinc-300">{o.text}</span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
-
-                      {q.type === 'matching' && (
-                        <div className="space-y-2 pl-5">
-                          <p className="text-xs text-gray-400 mb-2">Escriu el valor de la dreta que correspon a cada element</p>
-                          {q.options?.map(o => (
-                            <div key={o.id} className="flex items-center gap-2">
-                              <span className="text-sm text-gray-700 dark:text-zinc-300 w-32 truncate font-medium">{o.text}</span>
-                              <span className="text-gray-400">→</span>
-                              <input
-                                value={(quizAnswers[String(q.id)] as any)?.[String(o.id)] ?? ''}
-                                onChange={e => setQuizAnswers(a => ({
-                                  ...a,
-                                  [String(q.id)]: { ...((a[String(q.id)] as any) ?? {}), [String(o.id)]: e.target.value }
-                                }))}
-                                className="flex-1 border border-gray-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-red-400"
-                                placeholder="Resposta..."
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {q.type === 'open_text' && (
-                        <div className="pl-5">
-                          <textarea
-                            value={quizAnswers[String(q.id)] ?? ''}
-                            onChange={e => setQuizAnswers(a => ({ ...a, [String(q.id)]: e.target.value }))}
-                            className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/30 resize-none"
-                            rows={3}
-                            placeholder="Escriu la teva resposta..."
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                  <button
-                    onClick={submitQuiz}
-                    disabled={quizSubmitting}
-                    className="w-full py-3 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 disabled:opacity-50 transition-colors"
-                  >
-                    {quizSubmitting ? 'Enviant…' : 'Enviar respostes'}
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* ── Quiz list ── */
-            <div className="space-y-3">
-              {quizList.length === 0 && (
-                <div className="text-center py-10 text-gray-400 text-sm">No hi ha proves disponibles de moment</div>
-              )}
-              {quizList.map(q => (
-                <div key={q.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 flex items-center gap-4 hover:border-red-300 dark:hover:border-red-700 transition-colors">
-                  <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/20 flex items-center justify-center text-red-600 flex-shrink-0">
-                    <GraduationCap size={20} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">{q.title}</p>
-                      {q.user_attempt && (
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${q.user_attempt.passed ? 'bg-green-100 dark:bg-green-950/30 text-green-600' : 'bg-red-100 dark:bg-red-950/30 text-red-600'}`}>
-                          {q.user_attempt.passed ? `Aprovat · ${q.user_attempt.score}/${q.user_attempt.max_score}` : `No aprovat · ${q.user_attempt.score}/${q.user_attempt.max_score}`}
-                        </span>
-                      )}
-                    </div>
-                    {q.is_presential ? (
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        📍 {q.location || 'Presencial'}
-                        {q.start_at ? ` · ${new Date(q.start_at).toLocaleDateString('ca-ES', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
-                        {q.end_at && q.end_at !== q.start_at ? ` – ${new Date(q.end_at).toLocaleDateString('ca-ES', { day: 'numeric', month: 'short' })}` : ''}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-gray-400 mt-0.5 truncate">
-                        {q.question_count ?? 0} preguntes · {q.passing_score}% per aprovar
-                        {q.time_limit ? ` · ${q.time_limit} min` : ''}
-                        {q.category ? ` · ${q.category}` : ''}
-                      </p>
-                    )}
-                    {q.description && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1 truncate">{q.description}</p>}
-                  </div>
-                  {q.is_presential ? (
-                    <span className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 text-xs font-semibold">Presencial</span>
-                  ) : (
-                  <button
-                    onClick={() => window.open(`${window.location.pathname}?quiz=${q.id}${q.in_progress ? '&resume=1' : ''}`, '_blank')}
-                    className={`flex-shrink-0 px-4 py-2 rounded-lg text-white text-xs font-semibold transition-colors ${q.in_progress ? 'bg-amber-600 hover:bg-amber-700' : 'bg-red-600 hover:bg-red-700'}`}
-                  >
-                    {q.in_progress ? 'Continuar' : (q.user_attempt ? 'Repetir' : 'Començar')}
-                  </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      
-      </div>
-    </div>
-  );
-}
 
 // ── Veu de l'Empleat Tab ──────────────────────────────────────────────────────
 
@@ -4673,11 +3504,24 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
   const [mobileFormOpen, setMobileFormOpen] = useState(false);
 
   const fetchSolicituds = () => {
-    apiGetSolicituds().then(d => { setDiesNoOrdinaris(d); tabPrefetch.solicituds = d; tabPrefetchAt.solicituds = Date.now(); }).catch(console.error);
+    return apiGetSolicituds().then(d => { setDiesNoOrdinaris(d); tabPrefetch.solicituds = d; tabPrefetchAt.solicituds = Date.now(); }).catch(console.error);
   };
 
   const fetchVacances = () => {
-    apiGetVacances().then(d => { setVacances(d); tabPrefetch.vacances = d; tabPrefetchAt.vacances = Date.now(); }).catch(console.error);
+    return apiGetVacances().then(d => { setVacances(d); tabPrefetch.vacances = d; tabPrefetchAt.vacances = Date.now(); }).catch(console.error);
+  };
+
+  // Manual refresh with visible feedback: spin the icon while fetching, with a
+  // small floor so the spin is perceptible even when the network is instant.
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await Promise.all([fetchSolicituds(), fetchVacances(), new Promise(r => setTimeout(r, 650))]);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   useEffect(() => {
@@ -4697,16 +3541,28 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
     : s === 'Denegada' ? 'bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400'
     : 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400';
 
+  // Id of the request row currently playing the approve/deny animation (one per entity).
+  const [approvingId, setApprovingId] = useState<number | null>(null);
+  const [approvingVacId, setApprovingVacId] = useState<number | null>(null);
+  const [denyOutId, setDenyOutId] = useState<number | null>(null);
+  const [denyOutVacId, setDenyOutVacId] = useState<number | null>(null);
+
   const handleApprove = async (id: number) => {
+    setApprovingId(id);
+    await new Promise(r => setTimeout(r, 480)); // let the row animation play
     try {
       await apiUpdateSolicitud(id, 'Aprovada');
       fetchSolicituds();
     } catch (e) {
       console.error('Error approving:', e);
+    } finally {
+      setApprovingId(null);
     }
   };
 
   const handleDenyConfirm = async (id: number) => {
+    setDenyOutId(id);
+    await new Promise(r => setTimeout(r, 480)); // let the row animation play
     try {
       await apiUpdateSolicitud(id, 'Denegada', denyMotive.trim());
       fetchSolicituds();
@@ -4714,6 +3570,8 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
       setDenyMotive('');
     } catch (e) {
       console.error('Error denying:', e);
+    } finally {
+      setDenyOutId(null);
     }
   };
 
@@ -4766,8 +3624,8 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
             <ChevronLeft size={18} />
           </button>
           <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Sol·licituds</span>
-          <button onClick={() => { fetchSolicituds(); fetchVacances(); }} style={{ width: 36, height: 36, borderRadius: 18, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-muted)', flexShrink: 0, zIndex: 1, marginLeft: 'auto' }}>
-            <RefreshCw size={15} />
+          <button onClick={handleRefresh} disabled={refreshing} aria-label="Refrescar" style={{ width: 36, height: 36, borderRadius: 18, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: refreshing ? 'wait' : 'pointer', color: refreshing ? 'var(--tavil-accent)' : 'var(--tavil-muted)', flexShrink: 0, zIndex: 1, marginLeft: 'auto', transition: 'color 150ms' }}>
+            <RefreshCw size={15} className={cn(refreshing && "animate-spin")} />
           </button>
         </div>
         {/* Header kicker + title + subtitle */}
@@ -4836,7 +3694,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                 <div className="mobile-kicker" style={{ marginBottom: 8 }}>PENDENT APROVACIÓ</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {diesNoOrdinaris.filter(d => d.status === 'Pendent' && d.author !== currentUser?.email).map((d, i) => (
-                    <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: '12px 14px' }}>
+                    <div key={i} className={cn(approvingId === d.id && "anim-approve-out", denyOutId === d.id && "anim-deny-out")} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: '12px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)' }}>{formatDate(d.date)}</div>
                         <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#fef3c7', color: '#b45309' }}>Pendent</span>
@@ -4916,7 +3774,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(d.status) }}>{d.status}</span>
                                 {(isRRHH || isHead) && (
-                                  <button onClick={() => askDeleteSol(d.id, formatDate(d.date))} style={{ background: 'none', border: 'none', color: 'var(--tavil-faint)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
+                                  <button onClick={() => askDeleteSol(d.id, formatDate(d.date))} style={{ background: 'none', border: 'none', color: 'var(--tavil-faint)', cursor: 'pointer', padding: 0, minWidth: 36, minHeight: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}><Trash2 size={15} /></button>
                                 )}
                               </div>
                             </div>
@@ -5013,7 +3871,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>Data</label>
-                  <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} min={today} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                  <DatePicker value={selectedDate} onChange={setSelectedDate} minDate={today} emphasizeSaturday />
                 </div>
                 <div>
                   <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>Comentaris</label>
@@ -5039,11 +3897,11 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>Data inici</label>
-                  <input type="date" value={vacStartDate} onChange={e => setVacStartDate(e.target.value)} min={today} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                  <DatePicker value={vacStartDate} onChange={setVacStartDate} minDate={today} />
                 </div>
                 <div>
                   <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>Data fi</label>
-                  <input type="date" value={vacEndDate} onChange={e => setVacEndDate(e.target.value)} min={vacStartDate || today} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                  <DatePicker value={vacEndDate} onChange={setVacEndDate} minDate={vacStartDate || today} />
                 </div>
                 <div>
                   <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>Comentaris</label>
@@ -5077,6 +3935,21 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
           </div>,
           document.body
         )}
+      {solConfirm && (
+        <ConfirmModal
+          message={solConfirm.message}
+          onConfirm={() => { const id = solConfirm.id; setSolConfirm(null); handleSolDelete(id); }}
+          onCancel={() => setSolConfirm(null)}
+        />
+      )}
+      {solToast && createPortal(
+        <div style={{ position: 'fixed', top: 12, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 10001, pointerEvents: 'none' }}>
+          <div className="anim-pop" style={{ whiteSpace: 'nowrap', padding: '10px 22px', borderRadius: 999, fontSize: 13.5, fontWeight: 500, color: '#fff', background: 'rgba(34,110,54,0.96)', backdropFilter: 'blur(8px)', boxShadow: '0 4px 24px rgba(0,0,0,0.18)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 15, lineHeight: 1 }}>✓</span>{solToast}
+          </div>
+        </div>,
+        document.body
+      )}
       </div>
     );
   }
@@ -5085,8 +3958,8 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
     <div>
       <div className="flex items-center justify-between mb-5">
         <p className="text-gray-500 dark:text-zinc-400 text-sm">{t('solicituds.subtitle')}</p>
-        <button onClick={() => { fetchSolicituds(); fetchVacances(); }} className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800">
-          <RefreshCw size={12} /> Refresca
+        <button onClick={handleRefresh} disabled={refreshing} className={cn("flex items-center gap-1.5 text-xs transition-colors px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:cursor-wait", refreshing ? "text-[var(--tavil-accent)]" : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200")}>
+          <RefreshCw size={12} className={cn(refreshing && "animate-spin")} /> {refreshing ? 'Refrescant…' : 'Refresca'}
         </button>
       </div>
       {visibleTabs.length > 1 && (
@@ -5120,7 +3993,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                 {diesNoOrdinaris.filter(d => d.status === 'Pendent').length > 0 && (
                   <div className="space-y-3">
                     {diesNoOrdinaris.filter(d => d.status === 'Pendent').map(d => (
-                      <div key={d.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
+                      <div key={d.id} className={cn("bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4", approvingId === d.id && "anim-approve-out", denyOutId === d.id && "anim-deny-out")}>
                         <div className="flex items-start gap-3">
                           <Calendar size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
@@ -5210,13 +4083,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">{t('solicituds.requestedDay')}</label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  min={today}
-                  onChange={e => setSelectedDate(e.target.value)}
-                  className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white"
-                />
+                <DatePicker value={selectedDate} onChange={setSelectedDate} minDate={today} emphasizeSaturday />
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">{t('solicituds.comments')}</label>
@@ -5282,8 +4149,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                 )}
                 <div>
                   <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">{t('solicituds.requestedDay')}</label>
-                  <input type="date" value={selectedDate} min={today} onChange={e => setSelectedDate(e.target.value)}
-                    className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+                  <DatePicker value={selectedDate} onChange={setSelectedDate} minDate={today} emphasizeSaturday />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">{t('solicituds.comments')}</label>
@@ -5339,19 +4205,27 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
         const showReviewPanel = isHead || isRRHH;
 
         const handleVacApprove = async (id: number) => {
+          setApprovingVacId(id);
+          await new Promise(r => setTimeout(r, 480)); // let the row animation play
           try {
             if (isHead) await apiUpdateVacancaHead(id, 'Aprovada');
             else await apiUpdateVacancaRrhh(id, 'Aprovada');
             fetchVacances(); onNotifChange?.();
-          } catch {}
+          } catch {} finally {
+            setApprovingVacId(null);
+          }
         };
         const handleVacDenyConfirm = async (id: number) => {
+          setDenyOutVacId(id);
+          await new Promise(r => setTimeout(r, 480)); // let the row animation play
           try {
             if (vacDenyStage === 'head') await apiUpdateVacancaHead(id, 'Denegada', vacDenyComment.trim());
             else await apiUpdateVacancaRrhh(id, 'Denegada', vacDenyComment.trim());
             fetchVacances(); onNotifChange?.();
             setVacDenyingId(null); setVacDenyComment('');
-          } catch {}
+          } catch {} finally {
+            setDenyOutVacId(null);
+          }
         };
         // Live conveni validation for current user's own existing vacances.
         const ownVacances = vacances.filter(v => v.user_id === currentUser?.id);
@@ -5415,7 +4289,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                   </h3>
                   <div className="space-y-3">
                     {reviewList.map(v => (
-                      <div key={v.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
+                      <div key={v.id} className={cn("bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4", approvingVacId === v.id && "anim-approve-out", denyOutVacId === v.id && "anim-deny-out")}>
                         <div className="flex items-start gap-3">
                           <Calendar size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
@@ -5507,13 +4381,11 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                       )}
                       <div>
                         <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Data d'inici</label>
-                        <input type="date" value={vacStartDate} min={today} onChange={e => setVacStartDate(e.target.value)}
-                          className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+                        <DatePicker value={vacStartDate} onChange={setVacStartDate} minDate={today} />
                       </div>
                       <div>
                         <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Data de fi</label>
-                        <input type="date" value={vacEndDate} min={vacStartDate || today} onChange={e => setVacEndDate(e.target.value)}
-                          className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+                        <DatePicker value={vacEndDate} onChange={setVacEndDate} minDate={vacStartDate || today} />
                       </div>
                       <div>
                         <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Comentaris (opcional)</label>
@@ -5719,7 +4591,11 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
   }, [showNotifs]);
 
   // Avatar (user-editable; rest of personal data is admin-managed).
-  const avatarUrl: string | null = currentUser?.avatar_url ?? null;
+  // Staged: pending* only persists when user presses "Desa" on edit-profile modal.
+  const savedAvatarUrl: string | null = currentUser?.avatar_url ?? null;
+  const [pendingAvatar, setPendingAvatar] = useState<string | null | undefined>(undefined); // undefined = no change
+  const [avatarSaving, setAvatarSaving] = useState(false);
+  const avatarUrl: string | null = pendingAvatar !== undefined ? (pendingAvatar || null) : savedAvatarUrl;
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarFileRef = useRef<HTMLInputElement | null>(null);
   const handleAvatarPick = async (file: File) => {
@@ -5729,20 +4605,30 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
       const url = await apiUploadImage(file);
       const m = url.match(/(\/uploads\/[^?#]+)/);
       const rel = m ? m[1] : url;
-      const updated = await apiUpdateMe({ avatar_url: rel });
-      onUserUpdate(updated);
+      setPendingAvatar(rel);
     } catch (e: any) {
       alert(e?.message ?? 'Error pujant la imatge');
     } finally {
       setAvatarUploading(false);
     }
   };
-  const handleAvatarRemove = async () => {
+  const handleAvatarRemove = () => {
+    setPendingAvatar('');
+  };
+  const discardAvatarPending = () => setPendingAvatar(undefined);
+  const commitAvatarPending = async (): Promise<boolean> => {
+    if (pendingAvatar === undefined) return true;
+    setAvatarSaving(true);
     try {
-      const updated = await apiUpdateMe({ avatar_url: '' });
+      const updated = await apiUpdateMe({ avatar_url: pendingAvatar ?? '' });
       onUserUpdate(updated);
+      setPendingAvatar(undefined);
+      return true;
     } catch (e: any) {
-      alert(e?.message ?? 'Error eliminant la imatge');
+      alert(e?.message ?? 'Error desant la foto');
+      return false;
+    } finally {
+      setAvatarSaving(false);
     }
   };
 
@@ -6421,8 +5307,8 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
             <div
               className="fixed inset-0 z-[60] flex items-center justify-center anim-fade-in"
               style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
-              onClick={() => setShowEdit(false)}
-              onKeyDown={e => { if (e.key === 'Escape') setShowEdit(false); }}
+              onClick={() => { discardAvatarPending(); setShowEdit(false); }}
+              onKeyDown={e => { if (e.key === 'Escape') { discardAvatarPending(); setShowEdit(false); } }}
               tabIndex={-1}
             >
               <div
@@ -6439,7 +5325,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
                   <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)', margin: 0 }}>Editar perfil</h3>
-                  <button onClick={() => setShowEdit(false)} style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--tavil-muted)' }}>
+                  <button onClick={() => { discardAvatarPending(); setShowEdit(false); }} style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--tavil-muted)' }}>
                     <X size={16} />
                   </button>
                 </div>
@@ -6553,22 +5439,26 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                   </span>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
-                      onClick={() => setShowEdit(false)}
+                      onClick={() => { discardAvatarPending(); setShowEdit(false); }}
+                      disabled={avatarSaving}
                       style={{
                         padding: '8px 14px', borderRadius: 8,
                         background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
-                        color: 'var(--tavil-text)', fontSize: 13.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                        color: 'var(--tavil-text)', fontSize: 13.5, fontWeight: 600, fontFamily: 'inherit', cursor: avatarSaving ? 'wait' : 'pointer',
+                        opacity: avatarSaving ? 0.6 : 1,
                       }}
                     >Cancel·la</button>
                     <button
-                      onClick={() => setShowEdit(false)}
+                      onClick={async () => { const ok = await commitAvatarPending(); if (ok) setShowEdit(false); }}
+                      disabled={avatarSaving}
                       style={{
                         display: 'inline-flex', alignItems: 'center', gap: 6,
                         padding: '8px 14px', borderRadius: 8,
                         background: 'var(--tavil-accent)', border: 'none',
-                        color: 'var(--tavil-bg)', fontSize: 13.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                        color: 'var(--tavil-bg)', fontSize: 13.5, fontWeight: 600, fontFamily: 'inherit',
+                        cursor: avatarSaving ? 'wait' : 'pointer', opacity: avatarSaving ? 0.7 : 1,
                       }}
-                    ><Check size={14} /> Desa els canvis</button>
+                    ><Check size={14} /> {avatarSaving ? 'Desant…' : 'Desa els canvis'}</button>
                   </div>
                 </div>
               </div>
@@ -7577,6 +6467,9 @@ function BoAgendaPanel({ events, onRefresh, cardCls, inputCls, btnGhost }: {
     const [,mStr,dStr] = aDate.split('-');
     const day = parseInt(dStr); const month = parseInt(mStr);
     if (!day || !month) return;
+    const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
+    if (!timeRe.test(aTime.trim())) { alert("Hora d'inici no vàlida (HH:MM)."); return; }
+    if (aTimeEnd.trim() && !timeRe.test(aTimeEnd.trim())) { alert('Hora final no vàlida (HH:MM).'); return; }
     setSaving(true);
     try {
       const fields = { title: aTitle.trim(), day, month, time: aTime.trim(), time_end: aTimeEnd.trim() || undefined, location: aLocation.trim(), type: aType, target_departments: aDepts };
@@ -8846,17 +7739,10 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
               <div className="flex gap-3">
                 <button
                   onClick={resumeQuiz}
-                  className="flex-1 px-5 py-3 rounded-xl text-white font-semibold text-sm transition-colors hover:brightness-110"
+                  className="w-full px-5 py-3 rounded-xl text-white font-semibold text-sm transition-colors hover:brightness-110"
                   style={{ background: '#bf211e' }}
                 >
                   Continuar →
-                </button>
-                <button
-                  onClick={restartQuiz}
-                  className="flex-1 px-5 py-3 rounded-xl text-sm font-medium border transition-colors"
-                  style={{ background: 'var(--q-surface)', color: 'var(--q-text-80)', borderColor: 'var(--q-border)' }}
-                >
-                  Començar de nou
                 </button>
               </div>
             </div>
@@ -8946,18 +7832,11 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
               })}
             </div>
 
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={() => { setStage('intro'); setIdx(0); setAnswers({}); setResult(null); }}
-                className="px-6 py-3 rounded-full text-sm font-semibold transition-colors"
-                style={{ background: 'var(--q-surface-10)', color: 'var(--q-text)' }}
-              >
-                Repetir
-              </button>
+            <div className="flex justify-center">
               <button
                 onClick={() => window.close()}
-                className="px-6 py-3 rounded-full text-sm font-semibold transition-colors"
-                style={{ background: 'var(--q-text)', color: passed ? '#f0fdf4' : '#fff1f2' }}
+                className="px-10 py-3 rounded-full text-sm font-semibold transition-colors w-full max-w-xs"
+                style={{ background: passed ? '#14532d' : '#7f1d1d', color: '#fff' }}
               >
                 Tancar
               </button>
@@ -10055,6 +8934,7 @@ interface NewsTile {
   x: number; y: number; w: number; h: number;
   content?: string;
   url?: string;     // image upload (TAVIL extension; null on first drop)
+  translations?: Partial<Record<'es'|'en', string>>;
 }
 
 const NEWS_TYPES: Record<NewsTileType, { label: string; icon: string; cat: NewsTileCat; w: number; h: number; content?: string }> = {
@@ -10251,43 +9131,46 @@ function detectVideoEmbed(url: string): string | null {
 }
 
 // ─── Tile content (per type) ─────────────────────────────────────────────────
-function NewsTileContent({ tile, editable, onChange, onRequestImage, onRequestVideo }: {
+function NewsTileContent({ tile, editable, activeLang, onChange, onRequestImage, onRequestVideo }: {
   tile: NewsTile;
   editable: boolean;
+  activeLang: 'ca'|'es'|'en';
   onChange: (content: string) => void;
   onRequestImage: () => void;
   onRequestVideo?: () => void;
 }) {
+  const tc = activeLang === 'ca' ? (tile.content ?? '') : (tile.translations?.[activeLang] ?? tile.content ?? '');
+  const edKey = `${tile.id}-${activeLang}`;
   switch (tile.type) {
     case 'headline':
       return editable
-        ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 'clamp(28px, 4vw, 52px)', lineHeight: 1.05, letterSpacing: '-0.02em', color: NT.ink }} />
-        : <div style={{ fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 'clamp(28px, 4vw, 52px)', lineHeight: 1.05, letterSpacing: '-0.02em', color: NT.ink }}>{renderInlineLinks(tile.content ?? '')}</div>;
+        ? <EditableText key={edKey} initialContent={tc} onChange={onChange} style={{ fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 'clamp(28px, 4vw, 52px)', lineHeight: 1.05, letterSpacing: '-0.02em', color: NT.ink }} />
+        : <div style={{ fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 'clamp(28px, 4vw, 52px)', lineHeight: 1.05, letterSpacing: '-0.02em', color: NT.ink }}>{renderInlineLinks(tc)}</div>;
     case 'subhead':
       return editable
-        ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.headlineFont, fontWeight: 400, fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3, color: NT.mute }} />
-        : <div style={{ fontFamily: NT.headlineFont, fontWeight: 400, fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3, color: NT.mute }}>{renderInlineLinks(tile.content ?? '')}</div>;
+        ? <EditableText key={edKey} initialContent={tc} onChange={onChange} style={{ fontFamily: NT.headlineFont, fontWeight: 400, fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3, color: NT.mute }} />
+        : <div style={{ fontFamily: NT.headlineFont, fontWeight: 400, fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3, color: NT.mute }}>{renderInlineLinks(tc)}</div>;
     case 'byline':
       return editable
-        ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.uiFont, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: NT.mute }} />
-        : <div style={{ fontFamily: NT.uiFont, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: NT.mute }}>{renderInlineLinks(tile.content ?? '')}</div>;
+        ? <EditableText key={edKey} initialContent={tc} onChange={onChange} style={{ fontFamily: NT.uiFont, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: NT.mute }} />
+        : <div style={{ fontFamily: NT.uiFont, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: NT.mute }}>{renderInlineLinks(tc)}</div>;
     case 'paragraph':
       return editable
-        ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55, color: NT.ink }} />
-        : <div style={{ fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55, color: NT.ink, whiteSpace: 'pre-wrap' }}>{renderInlineLinks(tile.content ?? '')}</div>;
+        ? <EditableText key={edKey} initialContent={tc} onChange={onChange} style={{ fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55, color: NT.ink }} />
+        : <div style={{ fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55, color: NT.ink, whiteSpace: 'pre-wrap' }}>{renderInlineLinks(tc)}</div>;
     case 'pullquote':
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%' }}>
           <div style={{ width: 32, height: 2, background: NT.accent }} />
           {editable
-            ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.headlineFont, fontWeight: 500, fontSize: 'clamp(18px, 1.8vw, 24px)', lineHeight: 1.25, color: NT.ink, fontStyle: 'italic', flex: 1 }} />
-            : <div style={{ fontFamily: NT.headlineFont, fontWeight: 500, fontSize: 'clamp(18px, 1.8vw, 24px)', lineHeight: 1.25, color: NT.ink, fontStyle: 'italic', flex: 1, whiteSpace: 'pre-wrap' }}>{tile.content}</div>}
+            ? <EditableText key={edKey} initialContent={tc} onChange={onChange} style={{ fontFamily: NT.headlineFont, fontWeight: 500, fontSize: 'clamp(18px, 1.8vw, 24px)', lineHeight: 1.25, color: NT.ink, fontStyle: 'italic', flex: 1 }} />
+            : <div style={{ fontFamily: NT.headlineFont, fontWeight: 500, fontSize: 'clamp(18px, 1.8vw, 24px)', lineHeight: 1.25, color: NT.ink, fontStyle: 'italic', flex: 1, whiteSpace: 'pre-wrap' }}>{tc}</div>}
         </div>
       );
     case 'list': {
-      const items = String(tile.content || '').split('\n').filter(Boolean);
+      const items = tc.split('\n').filter(Boolean);
       return editable
-        ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.bodyFont, fontSize: 14, lineHeight: 1.6, color: NT.ink }} />
+        ? <EditableText key={edKey} initialContent={tc} onChange={onChange} style={{ fontFamily: NT.bodyFont, fontSize: 14, lineHeight: 1.6, color: NT.ink }} />
         : (
           <div style={{ fontFamily: NT.bodyFont, fontSize: 14, lineHeight: 1.6, color: NT.ink }}>
             {items.map((li, i) => (
@@ -10301,8 +9184,8 @@ function NewsTileContent({ tile, editable, onChange, onRequestImage, onRequestVi
     }
     case 'caption':
       return editable
-        ? <EditableText key={tile.id} initialContent={tile.content ?? ''} onChange={onChange} style={{ fontFamily: NT.bodyFont, fontSize: 12, lineHeight: 1.5, color: NT.mute, fontStyle: 'italic' }} />
-        : <div style={{ fontFamily: NT.bodyFont, fontSize: 12, lineHeight: 1.5, color: NT.mute, fontStyle: 'italic' }}>{renderInlineLinks(tile.content ?? '')}</div>;
+        ? <EditableText key={edKey} initialContent={tc} onChange={onChange} style={{ fontFamily: NT.bodyFont, fontSize: 12, lineHeight: 1.5, color: NT.mute, fontStyle: 'italic' }} />
+        : <div style={{ fontFamily: NT.bodyFont, fontSize: 12, lineHeight: 1.5, color: NT.mute, fontStyle: 'italic' }}>{renderInlineLinks(tc)}</div>;
     case 'image':
       if (tile.url) {
         return <img src={resolveImg(tile.url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />;
@@ -10495,7 +9378,7 @@ function NewsTilesViewer({ content }: { content: string }) {
             position: 'absolute', ...newsTileBox(t, cw, NG_ROW_H),
             padding: padded ? '6px 4px' : 0, overflow: 'hidden',
           }}>
-            <NewsTileContent tile={t} editable={false} onChange={() => {}} onRequestImage={() => {}} />
+            <NewsTileContent tile={t} editable={false} activeLang="ca" onChange={() => {}} onRequestImage={() => {}} />
           </div>
         );
       })}
@@ -10504,8 +9387,9 @@ function NewsTilesViewer({ content }: { content: string }) {
 }
 
 // ─── Tile chrome ─────────────────────────────────────────────────────────────
-function NewsTileEl({ tile, selected, editing, gridLines, onSelect, onEdit, onChange, onDelete, onPointerDown, onResizePointerDown, onRequestImage, onRequestVideo }: {
+function NewsTileEl({ tile, selected, editing, gridLines, activeLang, onSelect, onEdit, onChange, onDelete, onPointerDown, onResizePointerDown, onRequestImage, onRequestVideo }: {
   tile: NewsTile; selected: boolean; editing: string | null; gridLines: boolean;
+  activeLang: 'ca'|'es'|'en';
   onSelect: (id: string) => void;
   onEdit: (id: string) => void;
   onChange: (id: string, content: string) => void;
@@ -10543,6 +9427,7 @@ function NewsTileEl({ tile, selected, editing, gridLines, onSelect, onEdit, onCh
       <NewsTileContent
         tile={tile}
         editable={editing === tile.id}
+        activeLang={activeLang}
         onChange={(v) => onChange(tile.id, v)}
         onRequestImage={() => onRequestImage(tile.id)}
         onRequestVideo={() => onRequestVideo(tile.id)}
@@ -10675,6 +9560,8 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
   const [coverImage, setCoverImage] = useState('');
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [featured, setFeatured] = useState(false);
+  const [translations, setTranslations] = useState<NewsTranslations>({});
+  const [editorLang, setEditorLang] = useState<'ca'|'es'|'en'>('ca');
 
   // Composer state
   const [tiles, setTiles] = useState<NewsTile[]>([]);
@@ -10701,6 +9588,7 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
         setDate((a.date || '').slice(0, 10));
         setCoverImage(a.image || '');
         setFeatured(a.featured === 1);
+        setTranslations((a.translations as NewsTranslations) ?? {});
         const c = (a.content || '').trim();
         if (!c) { setTiles([]); return; }
         // Try parse new tile-array format
@@ -10869,8 +9757,13 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedId, editingId]);
 
-  const updateTileContent = (id: string, content: string) =>
-    setTiles(prev => prev.map(t => t.id === id ? { ...t, content } : t));
+  const updateTileContent = (id: string, content: string) => {
+    if (editorLang === 'ca') {
+      setTiles(prev => prev.map(t => t.id === id ? { ...t, content } : t));
+    } else {
+      setTiles(prev => prev.map(t => t.id === id ? { ...t, translations: { ...t.translations, [editorLang]: content } } : t));
+    }
+  };
   const deleteTile = (id: string) => {
     setTiles(prev => prev.filter(t => t.id !== id));
     setSelectedId(null);
@@ -10925,6 +9818,7 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
         content: JSON.stringify(tiles),
         date,
         image: imageUrl, featured: featured ? 1 : 0,
+        translations,
       };
       if (articleId !== null) {
         await apiUpdateNews(articleId, fields);
@@ -11033,6 +9927,18 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
           }}>{error}</span>
         )}
         <div style={{ display: 'flex', gap: 6 }}>
+          {/* Language switcher */}
+          <div style={{ display: 'flex', border: `1px solid ${NT.soft}`, borderRadius: NT.radius, overflow: 'hidden' }}>
+            {(['ca','es','en'] as const).map(lang => (
+              <button key={lang} onClick={() => setEditorLang(lang)} style={{
+                background: editorLang === lang ? NT.ink : 'transparent',
+                color: editorLang === lang ? NT.bg : NT.mute,
+                border: 'none', padding: '6px 10px',
+                fontFamily: NT.uiFont, fontSize: 11, fontWeight: 600,
+                cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.06em',
+              }}>{lang}</button>
+            ))}
+          </div>
           <button onClick={() => setPreview(p => !p)} style={{
             background: 'transparent', border: `1px solid ${NT.soft}`,
             color: NT.ink, padding: '6px 12px', borderRadius: NT.radius,
@@ -11111,6 +10017,7 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
                     tile={tt}
                     selected={!preview && selectedId === tt.id}
                     editing={preview ? null : editingId}
+                    activeLang={editorLang}
                     gridLines={gridLines}
                     onSelect={preview ? () => {} : setSelectedId}
                     onEdit={preview ? () => {} : setEditingId}
@@ -11238,6 +10145,36 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
                     border: `1px solid ${NT.soft}`, borderRadius: NT.radius, outline: 'none', resize: 'vertical',
                   }} />
               </div>
+              {/* Translations */}
+              {(['es', 'en'] as const).map(lang => (
+                <div key={lang} style={{ gridColumn: '1 / -1', borderTop: `1px solid ${NT.soft}`, paddingTop: 14, marginTop: 4 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: NT.mute, marginBottom: 10 }}>
+                    {lang === 'es' ? '🇪🇸 Castellà' : '🇬🇧 Anglès'}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>Títol</label>
+                      <input
+                        value={translations[lang]?.title ?? ''}
+                        onChange={e => setTranslations(t => ({ ...t, [lang]: { ...t[lang], title: e.target.value } }))}
+                        placeholder={`Títol en ${lang === 'es' ? 'castellà' : 'anglès'} (deixa buit = usa el CA)`}
+                        style={{ width: '100%', padding: '8px 10px', fontFamily: NT.uiFont, fontSize: 13, background: NT.surface, color: NT.ink, border: `1px solid ${NT.soft}`, borderRadius: NT.radius, outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>Resum</label>
+                      <textarea
+                        value={translations[lang]?.summary ?? ''}
+                        onChange={e => setTranslations(t => ({ ...t, [lang]: { ...t[lang], summary: e.target.value } }))}
+                        placeholder={`Resum en ${lang === 'es' ? 'castellà' : 'anglès'} (deixa buit = usa el CA)`}
+                        rows={2}
+                        style={{ width: '100%', padding: '8px 10px', fontFamily: NT.bodyFont, fontSize: 13, lineHeight: 1.4, background: NT.surface, color: NT.ink, border: `1px solid ${NT.soft}`, borderRadius: NT.radius, outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+
               <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <button type="button" onClick={() => setFeatured(v => !v)} style={{
                   position: 'relative', width: 40, height: 22, borderRadius: 999, border: 'none',
@@ -11551,6 +10488,12 @@ function App() {
     }
   }, [isDarkMode]);
 
+  // Expose sidebar width to fixed/anchored elements (e.g. Campus mandatory bar)
+  // via the `body.sidebar-collapsed` class consumed by the --shell-left CSS var.
+  useEffect(() => {
+    document.body.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+  }, [sidebarCollapsed]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -11614,7 +10557,7 @@ function App() {
       case 'Agenda': return <AgendaTab currentUser={currentUser} initDate={agendaInitDate} onInitDateConsumed={() => setAgendaInitDate(null)} onOpenDrawer={openDrawer} />;
       case 'Directori': return <DirectoriTab onOpenDrawer={openDrawer} />;
       case 'Espai': return <EspaiCorporatiuTab onBack={goBack} />;
-      case 'Campus': return <CampusTavilTab onBack={goBack} />;
+      case 'Campus': return <CampusTavilTab onBack={goBack} currentUser={currentUser} pageActive={activeTab === 'Campus'} />;
       case 'Veu': return <VeuEmpleatTab currentUser={currentUser} initialSubTab={notifSubTab} onSubTabConsumed={() => setNotifSubTab(null)} onBack={goBack} />;
       case 'Solicituds': return <SolicitudsTab currentUser={currentUser} onNotifChange={refreshNotifications} initialSubTab={notifSubTab} onSubTabConsumed={() => setNotifSubTab(null)} onBack={goBack} />;
       case 'Perfil': return <PerfilTab currentUser={currentUser} onUserUpdate={u => { setCurrentUser(u); }} onNavigate={setActiveTab} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} onLogout={handleLogout} />;
@@ -11628,6 +10571,52 @@ function App() {
       case 'admin-campus':      return <AdminBackoffice view="campus"     currentUser={currentUser} onNavigate={setActiveTab} intent={adminIntent} onConsumeIntent={consumeAdminIntent} />;
       case 'admin-agenda':      return <AdminBackoffice view="agenda"     currentUser={currentUser} onNavigate={setActiveTab} intent={adminIntent} onConsumeIntent={consumeAdminIntent} />;
       case 'admin-avisos':      return <AdminBackoffice view="avisos"     currentUser={currentUser} onNavigate={setActiveTab} intent={adminIntent} onConsumeIntent={consumeAdminIntent} />;
+      case 'Notificacions': return (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-3xl font-display text-gray-900 dark:text-white" style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>{t('notifications.title')}</h2>
+            {notifications.length > 0 && (
+              <div className="flex items-center gap-2">
+                {notifications.some(n => !n.read) && (
+                  <button onClick={() => apiMarkAllNotifsRead().then(refreshNotifications).catch(() => {})} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[var(--tavil-border)] text-[var(--tavil-text)] hover:bg-[var(--tavil-bgAlt)]">{t('notifications.markAllRead')}</button>
+                )}
+                <button onClick={() => apiClearAllNotifications().then(refreshNotifications).catch(() => {})} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[var(--tavil-border)] text-[var(--tavil-muted)] hover:text-red-600 hover:border-red-300 inline-flex items-center gap-1.5"><Trash2 size={12} /> {t('notifications.deleteAll')}</button>
+              </div>
+            )}
+          </div>
+          {notifications.length === 0 ? (
+            <div className="text-center py-20 text-sm text-gray-400">{t('notifications.empty')}</div>
+          ) : (
+            <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 divide-y divide-gray-50 dark:divide-zinc-800">
+              {notifications.map((n, i) => (
+                <div
+                  key={n.id}
+                  onClick={() => {
+                    if (!n.read) apiMarkNotifRead(n.id).then(refreshNotifications).catch(() => {});
+                    if (n.tab) {
+                      const [mainTab, sub] = n.tab.split('/');
+                      setNotifSubTab(sub ?? null);
+                      setActiveTab(mainTab);
+                    }
+                  }}
+                  className={cn("flex items-start gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors anim-item", !n.read && "bg-red-50/40 dark:bg-red-950/10")}
+                  style={{ '--i': i } as React.CSSProperties}
+                >
+                  <div className={cn("w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5", !n.read ? "bg-red-100 dark:bg-red-950/30" : "bg-gray-100 dark:bg-zinc-800")}>
+                    <FileText size={15} className={!n.read ? "text-red-600" : "text-gray-400"} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={cn("text-sm font-semibold", !n.read ? "text-gray-900 dark:text-white" : "text-gray-600 dark:text-zinc-400")}>{n.title}</p>
+                    <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">{n.body}</p>
+                    <p className="text-[11px] text-gray-400 mt-2">{timeAgo(n.created_at, t)}</p>
+                  </div>
+                  {!n.read && <span className="w-2 h-2 bg-red-600 rounded-full flex-shrink-0 mt-2"></span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
       default: return null;
     }
   };
@@ -11930,6 +10919,14 @@ function App() {
                       </button>
                     </div>
                   )}
+                  <div className="px-4 py-3 border-t border-gray-100 dark:border-zinc-800">
+                    <button
+                      onClick={() => { setActiveTab('Notificacions'); setIsNotifOpen(false); }}
+                      className="text-[var(--tavil-text)] text-xs font-semibold hover:underline w-full text-center"
+                    >
+                      Veure totes
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -11978,9 +10975,6 @@ function App() {
                   </div>
                   <button onClick={() => { setActiveTab('Perfil'); setIsProfileMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-lg transition-colors">
                     <UserCircle size={14} /> {t('profile.myProfile')}
-                  </button>
-                  <button onClick={() => { setActiveTab('Perfil'); setIsProfileMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-lg transition-colors">
-                    <Settings size={14} /> {t('profile.settings')}
                   </button>
                   {!!currentUser?.is_demo_admin && (
                   <div className="border-t border-gray-100 dark:border-zinc-800 mt-2 pt-2">

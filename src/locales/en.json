@@ -173,7 +173,7 @@
   },
   "agenda": {
     "subtitle": "Internal calendar for meetings and events",
-    "newEvent": "+ New event",
+    "newEvent": "New event",
     "today": "Today",
     "confirmDelete": "Are you sure you want to delete this event? This action cannot be undone.",
     "event": "{{count}} event",
@@ -184,6 +184,7 @@
     "subtitle": "Search employees by name, department, role or extension",
     "grid": "Grid",
     "departments": "Departments",
+    "orgchart": "Org chart",
     "all": "All",
     "ext": "Ext.",
     "kicker": "Team",

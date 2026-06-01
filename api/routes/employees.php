@@ -9,7 +9,7 @@ if ($method !== 'GET') respond(['detail' => 'Not found'], 404);
 auth_user();
 $db = get_db();
 
-$sql = 'SELECT e.*, u.avatar_url
+$sql = 'SELECT e.*, u.avatar_url, COALESCE(u.is_head, 0) AS is_head
         FROM employees e
         LEFT JOIN users u ON u.email = e.email
         WHERE (u.visible_in_directory IS NULL OR u.visible_in_directory = 1)';

@@ -174,7 +174,7 @@
   "agenda": {
     "confirmDelete": "Segur que vols eliminar aquest event? Aquesta acció no es pot desfer.",
     "subtitle": "Calendari intern de reunions i esdeveniments",
-    "newEvent": "+ Nou event",
+    "newEvent": "Nou esdeveniment",
     "today": "Avui",
     "event": "{{count}} esdeveniment",
     "events": "{{count}} esdeveniments",
@@ -184,6 +184,7 @@
     "subtitle": "Cerca treballadors per nom, departament, càrrec o extensió",
     "grid": "Graella",
     "departments": "Departaments",
+    "orgchart": "Organigrama",
     "all": "Tots",
     "ext": "Ext.",
     "kicker": "Equip",

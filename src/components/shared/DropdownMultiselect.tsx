@@ -7,9 +7,11 @@ interface Props {
   value: string[];
   onChange: (v: string[]) => void;
   placeholder?: string;
+  getLabel?: (opt: string) => string;
 }
 
-export function DropdownMultiselect({ options, value, onChange, placeholder = 'Tots' }: Props) {
+export function DropdownMultiselect({ options, value, onChange, placeholder = 'Tots', getLabel }: Props) {
+  const labelFor = (opt: string) => (getLabel ? getLabel(opt) : opt);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -31,10 +33,10 @@ export function DropdownMultiselect({ options, value, onChange, placeholder = 'T
   const label = value.length === 0
     ? placeholder
     : value.length === 1
-      ? value[0]
+      ? labelFor(value[0])
       : value.length === 2
-        ? value.join(', ')
-        : `${value[0]}, ${value[1]} +${value.length - 2}`;
+        ? value.map(labelFor).join(', ')
+        : `${labelFor(value[0])}, ${labelFor(value[1])} +${value.length - 2}`;
 
   return (
     <div ref={ref} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -110,7 +112,7 @@ export function DropdownMultiselect({ options, value, onChange, placeholder = 'T
                   {checked && <Check size={10} strokeWidth={3} color="var(--tavil-bg)" />}
                 </span>
                 <span style={{ fontSize: 13.5, color: 'var(--tavil-text)', fontWeight: checked ? 500 : 400 }}>
-                  {opt}
+                  {labelFor(opt)}
                 </span>
               </button>
             );

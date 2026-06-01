@@ -173,7 +173,7 @@
   },
   "agenda": {
     "subtitle": "Calendario interno de reuniones y eventos",
-    "newEvent": "+ Nuevo evento",
+    "newEvent": "Nou evento",
     "today": "Hoy",
     "confirmDelete": "¿Seguro que quieres eliminar este evento? Esta acción no se puede deshacer.",
     "event": "{{count}} evento",
@@ -184,6 +184,7 @@
     "subtitle": "Busca trabajadores por nombre, departamento, cargo o extensión",
     "grid": "Cuadrícula",
     "departments": "Departamentos",
+    "orgchart": "Organigrama",
     "all": "Todos",
     "ext": "Ext.",
     "kicker": "Equipo",
