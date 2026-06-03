@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ExternalLink } from 'lucide-react';
 import { apiCreateExternalCourse } from '../../api';
 import { AField, AInput, ATextarea, ASelect, AToggle, AdminCreateModalShell } from './primitives';
+import { DatePicker } from '../shared/AgendaPickers';
 import { useConfirm } from '../ConfirmDialog';
 import { DeptSearch } from './DeptSearch';
 
@@ -94,10 +95,10 @@ export function CreateExternalCourseModal({ open, onClose, onCreated }: {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <AField label="Inici">
-            <AInput type="date" value={startAt} onChange={e => setStartAt(e.target.value)} />
+            <DatePicker value={startAt} onChange={setStartAt} />
           </AField>
           <AField label="Final (opcional)">
-            <AInput type="date" value={endAt} onChange={e => setEndAt(e.target.value)} />
+            <DatePicker value={endAt} onChange={setEndAt} />
           </AField>
         </div>
         <AToggle value={mandatory} onChange={setMandatory} label="Formació obligatòria" hint="Tots els destinataris l'han de completar." />

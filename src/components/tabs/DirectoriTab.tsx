@@ -27,9 +27,9 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
         .filter(e => !dirSearch || [e.name, e.role, e.email, e.ext].some(f => f.toLowerCase().includes(dirSearch.toLowerCase())));
 
     const isMobileDir = useIsMobile();
-    const grouped = DEPT_ORDER.reduce((acc, dept) => {
-        const members = filtered.filter(e => e.dept === dept);
-        if (members.length > 0) acc[dept] = members;
+    const grouped = filtered.reduce((acc, e) => {
+        if (!acc[e.dept]) acc[e.dept] = [];
+        acc[e.dept].push(e);
         return acc;
     }, {} as Record<string, Employee[]>);
 
@@ -58,21 +58,14 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
                         />
                     </div>
                 </div>
-                {/* Dept chips */}
-                <div style={{ padding: '0 0 18px 16px', display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }} className="hide-sb">
-                    {(['Tots', ...DEPT_ORDER]).map(f => {
-                        const isActive = f === 'Tots' ? deptFilters.length === 0 : deptFilters.includes(f);
-                        return (
-                            <button key={f} onClick={() => setDeptFilters(f === 'Tots' ? [] : [f])} style={{
-                                padding: '7px 14px', borderRadius: 999,
-                                background: isActive ? 'var(--tavil-text)' : 'var(--tavil-card)',
-                                color: isActive ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
-                                border: `1px solid ${isActive ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
-                                fontSize: 12.5, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
-                            }}>{f}</button>
-                        );
-                    })}
-                    <div style={{ minWidth: 8, flexShrink: 0 }} />
+                {/* Dept filter */}
+                <div style={{ padding: '0 16px 18px' }}>
+                    <DropdownMultiselect
+                        options={DEPT_ORDER}
+                        value={deptFilters}
+                        onChange={setDeptFilters}
+                        placeholder="Tots els departaments"
+                    />
                 </div>
                 {/* People list */}
                 <div style={{ padding: '0 16px' }}>

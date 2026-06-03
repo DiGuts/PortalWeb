@@ -53,10 +53,17 @@ if ($script_name && str_starts_with($uri, $script_name)) {
 $uri    = '/' . ltrim($uri, '/');
 $method = strtoupper($_SERVER['REQUEST_METHOD']);
 
-// ── Serve uploads statically ──────────────────────────────────────────────────
-if (preg_match('#^/uploads/([^/]+)$#', $uri, $m)) {
-    $filename = basename($m[1]);
-    $filepath = UPLOADS_DIR . '/' . $filename;
+// ── Serve uploads statically (supports subdirectories) ───────────────────────
+if (preg_match('#^/uploads/(.+)$#', $uri, $m)) {
+    $rel      = str_replace('\\', '/', $m[1]);
+    $filepath = realpath(UPLOADS_DIR . '/' . $rel);
+    $uploadsR = realpath(UPLOADS_DIR);
+    // Path-traversal guard: resolved path must be inside UPLOADS_DIR
+    if (!$filepath || !$uploadsR || strpos($filepath, $uploadsR . DIRECTORY_SEPARATOR) !== 0) {
+        http_response_code(404);
+        echo json_encode(['detail' => 'Not found']);
+        exit;
+    }
     if (!file_exists($filepath)) {
         http_response_code(404);
         echo json_encode(['detail' => 'Not found']);
@@ -92,6 +99,7 @@ $route_file = match ($base) {
     'notifications' => __DIR__ . '/routes/notifications.php',
     'activities'    => __DIR__ . '/routes/activities.php',
     'agenda'        => __DIR__ . '/routes/agenda.php',
+    'certificates'  => __DIR__ . '/routes/certificates.php',
     'courses'       => __DIR__ . '/routes/courses.php',
     'employees'     => __DIR__ . '/routes/employees.php',
     'enquestes'     => __DIR__ . '/routes/enquestes.php',

@@ -34,6 +34,7 @@ import { SidebarItem, SidebarSection } from './components/shared/Sidebar';
 import { FilterChip } from './components/shared/FilterChip';
 import { DropdownMultiselect } from './components/shared/DropdownMultiselect';
 import { DatePicker } from './components/shared/AgendaPickers';
+import { AField, AInput, ATextarea, ASelect, AdminCreateModalShell } from './components/admin/primitives';
 import { AgendaTab } from './components/tabs/AgendaTab';
 import { DirectoriTab } from './components/tabs/DirectoriTab';
 import { CampusTavilTab } from './components/tabs/CampusTavilTab';
@@ -766,6 +767,11 @@ function isTileArrayContent(s: string): boolean {
   } catch { return false; }
 }
 
+function contentHasHeadline(s: string): boolean {
+  try { return (JSON.parse(s) as any[]).some(t => t.type === 'headline'); }
+  catch { return false; }
+}
+
 function parseBlocks(s: string): ArticleBlock[] {
   try { return JSON.parse(s) as ArticleBlock[]; }
   catch { return []; }
@@ -823,7 +829,7 @@ function RichBlockViewer({ blocks }: { blocks: ArticleBlock[] }) {
               )}>{block.content}</p>
             )}
             {block.type === 'text' && (
-              <p className="text-gray-700 dark:text-zinc-300 text-sm leading-relaxed whitespace-pre-wrap">{block.content}</p>
+              <p className="text-gray-600 dark:text-zinc-300 text-[19px] leading-relaxed whitespace-pre-wrap font-normal">{block.content}</p>
             )}
             {block.type === 'image' && block.url && (
               <figure>
@@ -1188,14 +1194,16 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
               <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--tavil-accent)', textTransform: 'uppercase', letterSpacing: '0.12em', background: 'rgba(191,33,30,0.08)', borderRadius: 6, padding: '3px 8px' }}>{selectedNews.category}</span>
               <span style={{ fontSize: 10, color: 'var(--tavil-muted)', background: 'var(--tavil-faint)', borderRadius: 6, padding: '3px 8px' }}>{selectedNews.date}</span>
             </div>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, lineHeight: 1.15, margin: '0 0 12px', letterSpacing: '0em', color: 'var(--tavil-text)' }}>{selectedNews.title}</h1>
+            {!(isTileArrayContent(selectedNews.content) && contentHasHeadline(selectedNews.content)) && (
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, lineHeight: 1.15, margin: '0 0 12px', letterSpacing: '0em', color: 'var(--tavil-text)' }}>{selectedNews.title}</h1>
+            )}
             {selectedNews.summary && <p style={{ fontSize: 14, color: 'var(--tavil-muted)', lineHeight: 1.5, margin: '0 0 16px' }}>{selectedNews.summary}</p>}
             {selectedNews.content && (
               isTileArrayContent(selectedNews.content)
-                ? <NewsTilesViewer content={selectedNews.content} />
+                ? <NewsTilesViewer content={selectedNews.content} lang={lang} />
                 : isRichContent(selectedNews.content)
                   ? <RichBlockViewer blocks={parseBlocks(selectedNews.content)} />
-                  : <div style={{ fontSize: 14, color: 'var(--tavil-text)', lineHeight: 1.65 }}>{renderMarkdownLite(selectedNews.content)}</div>
+                  : <div style={{ fontSize: 19, fontWeight: 400, color: 'var(--tavil-muted)', lineHeight: 1.65 }}>{renderMarkdownLite(selectedNews.content)}</div>
             )}
           </div>
         </div>
@@ -1331,17 +1339,19 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
               <span className={cn("text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider", NEWS_CAT_COLORS[selectedNews.category] ?? "bg-gray-100 text-gray-600")}>{selectedNews.category}</span>
               <span className="text-xs text-gray-400">{selectedNews.date}</span>
             </div>
-            <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-4 leading-tight">{selectedNews.title}</h1>
+            {!(isTileArrayContent(selectedNews.content) && contentHasHeadline(selectedNews.content)) && (
+              <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-4 leading-tight">{selectedNews.title}</h1>
+            )}
             <div className="flex items-center gap-4 text-xs text-gray-400 mb-6 pb-6 border-b border-gray-100 dark:border-zinc-800">
               <div className="flex items-center gap-1.5"><Calendar size={14} /><span>{selectedNews.date}</span></div>
             </div>
             {selectedNews.summary && <p className="text-gray-600 dark:text-zinc-300 text-base leading-relaxed mb-6 font-medium">{selectedNews.summary}</p>}
             {selectedNews.content && (
               isTileArrayContent(selectedNews.content)
-                ? <NewsTilesViewer content={selectedNews.content} />
+                ? <NewsTilesViewer content={selectedNews.content} lang={lang} />
                 : isRichContent(selectedNews.content)
                   ? <RichBlockViewer blocks={parseBlocks(selectedNews.content)} />
-                  : <div className="text-gray-700 dark:text-zinc-400 text-sm leading-relaxed">{renderMarkdownLite(selectedNews.content)}</div>
+                  : <div className="text-gray-600 dark:text-zinc-300 text-[19px] leading-relaxed font-normal">{renderMarkdownLite(selectedNews.content)}</div>
             )}
           </div>
         </div>
@@ -1496,19 +1506,33 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
   const [aDate, setADate] = useState('');
   const [aTime, setATime] = useState('');
   const [aLocation, setALocation] = useState('');
-  const [aCapacity, setACapacity] = useState('');
+  const [aCapacity, setACapacity] = useState('20');
+  const [aUnlimited, setAUnlimited] = useState(false);
+  const [aLink, setALink] = useState('');
   const [aSaving, setASaving] = useState(false);
+  const [aTitleTouched, setATitleTouched] = useState(false);
+  const [aActError, setAActError] = useState<string | null>(null);
+
+  const resetActForm = () => {
+    setATitle(''); setADesc(''); setADate(''); setATime(''); setALocation('');
+    setACapacity('20'); setAUnlimited(false); setALink('');
+    setATitleTouched(false); setAActError(null);
+  };
 
   const handleCreateActivity = async () => {
-    if (!aTitle.trim()) return;
+    setATitleTouched(true);
+    if (!aTitle.trim()) { setAActError('Cal indicar el títol.'); return; }
+    setAActError(null);
     setASaving(true);
     try {
       await apiCreateActivity({ title: aTitle.trim(), category: aCategory, description: aDesc.trim(),
-        date: aDate.trim(), time: aTime.trim(), location: aLocation.trim(), capacity: parseInt(aCapacity) || 0 });
+        date: aDate.trim(), time: aTime.trim(), location: aLocation.trim(),
+        capacity: aUnlimited ? 0 : (parseInt(aCapacity) || 0),
+        link: aLink.trim() });
       setActivities(await apiGetActivities());
       setShowActForm(false);
-      setATitle(''); setADesc(''); setADate(''); setATime(''); setALocation(''); setACapacity('');
-    } catch (e) { console.error(e); }
+      resetActForm();
+    } catch (e: any) { setAActError(e?.message ?? 'Error creant activitat'); }
     finally { setASaving(false); }
   };
 
@@ -1521,13 +1545,17 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
   const [aeTime, setAeTime] = useState('');
   const [aeLocation, setAeLocation] = useState('');
   const [aeCapacity, setAeCapacity] = useState('');
+  const [aeUnlimited, setAeUnlimited] = useState(false);
+  const [aeLink, setAeLink] = useState('');
   const [aeSaving, setAeSaving] = useState(false);
 
   const openActEdit = (act: Activity) => {
     setActEditId(act.id);
     setAeTitle(act.title); setAeCategory(act.category); setAeDesc(act.description);
     setAeDate(act.date); setAeTime(act.time); setAeLocation(act.location);
-    setAeCapacity(String(act.capacity));
+    setAeUnlimited(act.capacity === 0);
+    setAeCapacity(act.capacity > 0 ? String(act.capacity) : '20');
+    setAeLink(act.link ?? '');
   };
 
   const handleSaveActEdit = async () => {
@@ -1536,7 +1564,9 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
     try {
       await apiUpdateActivity(actEditId, { title: aeTitle.trim(), category: aeCategory,
         description: aeDesc.trim(), date: aeDate.trim(), time: aeTime.trim(),
-        location: aeLocation.trim(), capacity: parseInt(aeCapacity) || 0 });
+        location: aeLocation.trim(),
+        capacity: aeUnlimited ? 0 : (parseInt(aeCapacity) || 0),
+        link: aeLink.trim() });
       setActivities(await apiGetActivities());
       setActEditId(null);
     } catch (e) { console.error(e); }
@@ -1655,14 +1685,18 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                     <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
                       <Clock size={11} /><span>{act.date}{act.time ? ` · ${act.time}` : ''}</span>
                     </div>
-                    {act.capacity > 0 && (
+                    {act.capacity > 0 ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                         <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'var(--tavil-faint)', overflow: 'hidden' }}>
                           <div style={{ height: '100%', width: '100%', transform: `scaleX(${pct / 100})`, transformOrigin: 'left', background: full ? '#f59e0b' : 'var(--tavil-accent)', transition: 'transform 400ms var(--ease-out-quint)' }} />
                         </div>
                         <span style={{ fontSize: 11, color: 'var(--tavil-faint)', fontFeatureSettings: '"tnum"' }}>{act.enrolled}/{act.capacity}</span>
                       </div>
-                    )}
+                    ) : isProperes ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10, fontSize: 11, color: '#22c55e', fontWeight: 500 }}>
+                        <Users size={11} /><span>Places lliures · {act.enrolled} inscrits</span>
+                      </div>
+                    ) : null}
                     {isProperes && (
                       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                         <button
@@ -1712,24 +1746,45 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         )}
 
         {/* Admin form portal */}
-        {isAdmin && showActForm && (
-          <EditModal title="Nova activitat" onClose={() => setShowActForm(false)}>
-            <div className="grid grid-cols-2 gap-3">
-              <input type="text" value={aTitle} onChange={e => setATitle(e.target.value)} placeholder="Títol *" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-              <select value={aCategory} onChange={e => setACategory(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white">
-                {['Esport','Cultura','Social','RSC','Benestar'].map(c => <option key={c}>{c}</option>)}
-              </select>
-              <input type="date" value={aDate} onChange={e => setADate(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-              <input type="text" value={aTime} onChange={e => setATime(e.target.value)} placeholder="Hora (ex: 10:00)" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-              <input type="text" value={aLocation} onChange={e => setALocation(e.target.value)} placeholder="Lloc" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-              <textarea value={aDesc} onChange={e => setADesc(e.target.value)} placeholder="Descripció" rows={2} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white resize-none" />
-              <input type="number" value={aCapacity} onChange={e => setACapacity(e.target.value)} placeholder="Aforament (0 = il·limitat)" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-              <div className="flex justify-end gap-2 items-center">
-                <button onClick={() => setShowActForm(false)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800">Cancel·lar</button>
-                <button onClick={handleCreateActivity} disabled={!aTitle.trim() || aSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">{aSaving ? 'Desant...' : 'Crear activitat'}</button>
-              </div>
+        {isAdmin && (
+          <AdminCreateModalShell
+            open={showActForm} onClose={() => { setShowActForm(false); resetActForm(); }} onSubmit={handleCreateActivity}
+            title="Crea una activitat" kicker="NOVA ACTIVITAT"
+            saveLabel="Crea activitat" savingLabel="Creant…"
+            saving={aSaving} error={aActError}
+          >
+            <AField label="Títol" required error={aTitleTouched && !aTitle.trim() ? 'El títol és obligatori.' : undefined}>
+              <AInput value={aTitle} onChange={e => { setATitle(e.target.value); if (aActError) setAActError(null); }} onBlur={() => setATitleTouched(true)} placeholder="Nom de l'activitat" hasError={aTitleTouched && !aTitle.trim()} />
+            </AField>
+            <AField label="Descripció">
+              <ATextarea rows={3} value={aDesc} onChange={e => setADesc(e.target.value)} placeholder="Breu descripció" />
+            </AField>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <AField label="Data">
+                <DatePicker value={aDate} onChange={setADate} />
+              </AField>
+              <AField label="Hora">
+                <AInput type="time" value={aTime} onChange={e => setATime(e.target.value)} icon={Clock} />
+              </AField>
             </div>
-          </EditModal>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <AField label="Categoria">
+                <ASelect value={aCategory} onChange={e => setACategory(e.target.value)} options={['Esport','Cultura','Social','RSC','Benestar']} />
+              </AField>
+              <AField label="Aforament">
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button type="button" onClick={() => setAUnlimited(v => !v)} title={aUnlimited ? 'Il·limitat' : 'Limitat'} style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 8, border: '1.5px solid', borderColor: aUnlimited ? 'var(--tavil-accent)' : 'var(--tavil-border)', background: aUnlimited ? 'var(--tavil-accent-light)' : 'var(--tavil-card)', color: aUnlimited ? 'var(--tavil-accent)' : 'var(--tavil-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 140ms' }}>∞</button>
+                  {!aUnlimited ? <AInput type="number" value={aCapacity} onChange={e => setACapacity(e.target.value)} /> : <span style={{ fontSize: 13, color: 'var(--tavil-accent)', fontWeight: 500 }}>Il·limitat</span>}
+                </div>
+              </AField>
+            </div>
+            <AField label="Ubicació">
+              <AInput value={aLocation} onChange={e => setALocation(e.target.value)} placeholder="Sala, edifici, ciutat…" icon={MapPin} />
+            </AField>
+            <AField label="Enllaç extern" optional>
+              <AInput value={aLink} onChange={e => setALink(e.target.value)} placeholder="https://…" />
+            </AField>
+          </AdminCreateModalShell>
         )}
 
         {/* Detail modal (shared with desktop) */}
@@ -1746,7 +1801,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)' }}><Calendar size={14} /><span>{selectedAct.date}{selectedAct.time ? ` · ${selectedAct.time}` : ''}</span></div>
                 {selectedAct.location && <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)' }}><MapPin size={14} /><span>{selectedAct.location}</span></div>}
               </div>
-              {selectedAct.capacity > 0 && (
+              {selectedAct.capacity > 0 ? (
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--tavil-muted)', marginBottom: 6 }}>
                     <span>{selectedAct.enrolled} / {selectedAct.capacity} places</span>
@@ -1756,27 +1811,37 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                     <div style={{ height: 5, borderRadius: 3, background: 'var(--tavil-accent)', width: `${Math.min((selectedAct.enrolled / selectedAct.capacity) * 100, 100)}%` }} />
                   </div>
                 </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#22c55e', fontWeight: 500, marginBottom: 20 }}>
+                  <Users size={12} /><span>Places lliures · {selectedAct.enrolled} inscrits</span>
+                </div>
               )}
               {enrollError && <p style={{ fontSize: 13, color: 'var(--tavil-accent)', marginBottom: 10 }}>{enrollError}</p>}
-              <button
-                onClick={async () => {
-                  if (enrolledId === selectedAct.id) return;
-                  try {
-                    await apiEnrollActivity(selectedAct.id);
-                    setEnrolledId(selectedAct.id);
-                    setActivities(await apiGetActivities());
-                  } catch (e: any) { setEnrollError(e.message ?? 'Error'); }
-                }}
-                disabled={enrolledId === selectedAct.id}
-                style={{
-                  width: '100%', height: 50, borderRadius: 14, border: 'none',
-                  background: enrolledId === selectedAct.id ? '#22c55e' : 'var(--tavil-accent)',
-                  color: '#fff', fontSize: 15, fontWeight: 600, cursor: enrolledId === selectedAct.id ? 'default' : 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                {enrolledId === selectedAct.id ? '✓ Inscrit/a' : "Inscriure's"}
-              </button>
+              {selectedAct.link ? (
+                <a href={selectedAct.link} target="_blank" rel="noopener noreferrer" style={{ width: '100%', height: 50, borderRadius: 14, background: 'var(--tavil-accent)', color: '#fff', fontSize: 15, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' }}>
+                  Més informació i inscripció
+                </a>
+              ) : (
+                <button
+                  onClick={async () => {
+                    if (enrolledId === selectedAct.id) return;
+                    try {
+                      await apiEnrollActivity(selectedAct.id);
+                      setEnrolledId(selectedAct.id);
+                      setActivities(await apiGetActivities());
+                    } catch (e: any) { setEnrollError(e.message ?? 'Error'); }
+                  }}
+                  disabled={enrolledId === selectedAct.id}
+                  style={{
+                    width: '100%', height: 50, borderRadius: 14, border: 'none',
+                    background: enrolledId === selectedAct.id ? '#22c55e' : 'var(--tavil-accent)',
+                    color: '#fff', fontSize: 15, fontWeight: 600, cursor: enrolledId === selectedAct.id ? 'default' : 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {enrolledId === selectedAct.id ? '✓ Inscrit/a' : "Inscriure's"}
+                </button>
+              )}
             </div>
           </div>,
           document.body
@@ -1803,24 +1868,45 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         <p className="text-gray-500 dark:text-zinc-400 text-sm">Esdeveniments socials, esportius i culturals per als treballadors de TAVIL</p>
         {isAdmin && <button onClick={() => setShowActForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">+ Nova activitat</button>}
       </div>
-      {isAdmin && showActForm && (
-        <EditModal title="Nova activitat" onClose={() => setShowActForm(false)}>
-          <div className="grid grid-cols-2 gap-3">
-            <input type="text" value={aTitle} onChange={e => setATitle(e.target.value)} placeholder="Títol *" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            <select value={aCategory} onChange={e => setACategory(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white">
-              {['Esport','Cultura','Social','RSC','Benestar'].map(c => <option key={c}>{c}</option>)}
-            </select>
-            <input type="date" value={aDate} onChange={e => setADate(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            <input type="text" value={aTime} onChange={e => setATime(e.target.value)} placeholder="Hora (ex: 10:00)" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            <input type="text" value={aLocation} onChange={e => setALocation(e.target.value)} placeholder="Lloc" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            <textarea value={aDesc} onChange={e => setADesc(e.target.value)} placeholder="Descripció" rows={2} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white resize-none" />
-            <input type="number" value={aCapacity} onChange={e => setACapacity(e.target.value)} placeholder="Aforament (0 = il·limitat)" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none dark:bg-zinc-800 dark:text-white" />
-            <div className="flex justify-end gap-2 items-center">
-              <button onClick={() => setShowActForm(false)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800">Cancel·lar</button>
-              <button onClick={handleCreateActivity} disabled={!aTitle.trim() || aSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">{aSaving ? 'Desant...' : 'Crear activitat'}</button>
-            </div>
+      {isAdmin && (
+        <AdminCreateModalShell
+          open={showActForm} onClose={() => { setShowActForm(false); resetActForm(); }} onSubmit={handleCreateActivity}
+          title="Crea una activitat" kicker="NOVA ACTIVITAT"
+          saveLabel="Crea activitat" savingLabel="Creant…"
+          saving={aSaving} error={aActError}
+        >
+          <AField label="Títol" required error={aTitleTouched && !aTitle.trim() ? 'El títol és obligatori.' : undefined}>
+            <AInput value={aTitle} onChange={e => { setATitle(e.target.value); if (aActError) setAActError(null); }} onBlur={() => setATitleTouched(true)} placeholder="Nom de l'activitat" hasError={aTitleTouched && !aTitle.trim()} />
+          </AField>
+          <AField label="Descripció">
+            <ATextarea rows={3} value={aDesc} onChange={e => setADesc(e.target.value)} placeholder="Breu descripció" />
+          </AField>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <AField label="Data">
+              <DatePicker value={aDate} onChange={setADate} />
+            </AField>
+            <AField label="Hora">
+              <AInput type="time" value={aTime} onChange={e => setATime(e.target.value)} icon={Clock} />
+            </AField>
           </div>
-        </EditModal>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <AField label="Categoria">
+              <ASelect value={aCategory} onChange={e => setACategory(e.target.value)} options={['Esport','Cultura','Social','RSC','Benestar']} />
+            </AField>
+            <AField label="Aforament">
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button type="button" onClick={() => setAUnlimited(v => !v)} title={aUnlimited ? 'Il·limitat' : 'Limitat'} style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 8, border: '1.5px solid', borderColor: aUnlimited ? 'var(--tavil-accent)' : 'var(--tavil-border)', background: aUnlimited ? 'var(--tavil-accent-light)' : 'var(--tavil-card)', color: aUnlimited ? 'var(--tavil-accent)' : 'var(--tavil-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 140ms' }}>∞</button>
+                {!aUnlimited ? <AInput type="number" value={aCapacity} onChange={e => setACapacity(e.target.value)} /> : <span style={{ fontSize: 13, color: 'var(--tavil-accent)', fontWeight: 500 }}>Il·limitat</span>}
+              </div>
+            </AField>
+          </div>
+          <AField label="Ubicació">
+            <AInput value={aLocation} onChange={e => setALocation(e.target.value)} placeholder="Sala, edifici, ciutat…" icon={MapPin} />
+          </AField>
+          <AField label="Enllaç extern" optional>
+            <AInput value={aLink} onChange={e => setALink(e.target.value)} placeholder="https://…" />
+          </AField>
+        </AdminCreateModalShell>
       )}
       <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-5">
         {[`Properes (${upcoming.length})`, `Passades (${past.length})`].map(tab => {
@@ -1862,19 +1948,31 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
               <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><Clock size={13} /><span>{act.time}</span></div>
               <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><MapPin size={13} /><span>{act.location}</span></div>
             </div>
-            <div className={isProperes ? "mb-4" : ""}>
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
-                <span className="flex items-center gap-1"><Users size={11} />{act.enrolled} / {act.capacity} places</span>
-                {isProperes && act.capacity > 0 && <span className="text-green-600 font-medium">{available} disponibles</span>}
+            {act.capacity > 0 ? (
+              <div className={isProperes ? "mb-4" : ""}>
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+                  <span className="flex items-center gap-1"><Users size={11} />{act.enrolled} / {act.capacity} places</span>
+                  {isProperes && <span className="text-green-600 font-medium">{available} disponibles</span>}
+                </div>
+                <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5">
+                  <div className={cn("h-1.5 rounded-full", isProperes ? "bg-red-500" : "bg-gray-400 dark:bg-zinc-600")} style={{ width: `${(act.enrolled / act.capacity) * 100}%` }} />
+                </div>
               </div>
-              <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5">
-                <div className={cn("h-1.5 rounded-full", isProperes ? "bg-red-500" : "bg-gray-400 dark:bg-zinc-600")} style={{ width: `${act.capacity > 0 ? (act.enrolled / act.capacity) * 100 : 0}%` }} />
+            ) : isProperes ? (
+              <div className="flex items-center gap-1.5 text-xs text-green-600 font-medium mb-4">
+                <Users size={11} /><span>{act.enrolled} inscrits · Places lliures</span>
               </div>
-            </div>
+            ) : null}
             {isProperes && (
-              <button onClick={() => { setSelectedAct(act); setEnrolledId(null); setEnrollError(''); }} className="text-red-600 text-sm font-medium flex items-center gap-1 hover:underline mt-4">
-                Veure detalls i inscriure's <ArrowRight size={14} />
-              </button>
+              act.link ? (
+                <a href={act.link} target="_blank" rel="noopener noreferrer" className="text-red-600 text-sm font-medium flex items-center gap-1 hover:underline mt-4">
+                  Veure detalls i inscriure's <ArrowRight size={14} />
+                </a>
+              ) : (
+                <button onClick={() => { setSelectedAct(act); setEnrolledId(null); setEnrollError(''); }} className="text-red-600 text-sm font-medium flex items-center gap-1 hover:underline mt-4">
+                  Veure detalls i inscriure's <ArrowRight size={14} />
+                </button>
+              )
             )}
             {isAdmin && (
               <div className="flex gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-zinc-800">
@@ -1900,55 +1998,119 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
               <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><Clock size={13} /><span>{selectedAct.time}</span></div>
               <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><MapPin size={13} /><span>{selectedAct.location}</span></div>
             </div>
-            <div className="mb-5">
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
-                <span className="flex items-center gap-1"><Users size={11} />{selectedAct.enrolled} / {selectedAct.capacity} places</span>
-                {selectedAct.capacity > 0 && <span className="text-green-600 font-medium">{Math.max(0, selectedAct.capacity - selectedAct.enrolled)} disponibles</span>}
+            {selectedAct.capacity > 0 ? (
+              <div className="mb-5">
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+                  <span className="flex items-center gap-1"><Users size={11} />{selectedAct.enrolled} / {selectedAct.capacity} places</span>
+                  <span className="text-green-600 font-medium">{Math.max(0, selectedAct.capacity - selectedAct.enrolled)} disponibles</span>
+                </div>
+                <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5">
+                  <div className="h-1.5 rounded-full bg-red-500" style={{ width: `${Math.min((selectedAct.enrolled / selectedAct.capacity) * 100, 100)}%` }} />
+                </div>
               </div>
-              <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5">
-                <div className="h-1.5 rounded-full bg-red-500" style={{ width: `${selectedAct.capacity > 0 ? Math.min((selectedAct.enrolled / selectedAct.capacity) * 100, 100) : 0}%` }} />
+            ) : (
+              <div className="flex items-center gap-1.5 text-xs text-green-600 font-medium mb-5">
+                <Users size={11} /><span>Places lliures · {selectedAct.enrolled} inscrits</span>
               </div>
-            </div>
+            )}
             {enrollError && <p className="text-red-500 text-xs mb-3">{enrollError}</p>}
-            <button
-              onClick={async () => {
-                setEnrollError('');
-                try {
-                  await apiEnrollActivity(selectedAct.id);
-                  setEnrolledId(selectedAct.id);
-                  setActivities(await apiGetActivities());
-                } catch (e: any) {
-                  setEnrollError(e.message ?? 'Error en la inscripció');
-                }
-              }}
-              disabled={enrolledId === selectedAct.id || (selectedAct.capacity > 0 && selectedAct.enrolled >= selectedAct.capacity)}
-              className="press w-full bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold py-2.5 rounded-lg transition-colors text-sm"
-            >
-              {enrolledId === selectedAct.id ? '✓ Inscrit!' : selectedAct.capacity > 0 && selectedAct.enrolled >= selectedAct.capacity ? 'Activitat completa' : "Inscriure's"}
-            </button>
+            {selectedAct.link ? (
+              <a href={selectedAct.link} target="_blank" rel="noopener noreferrer" className="press w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-lg transition-colors text-sm flex items-center justify-center gap-1.5">
+                Més informació i inscripció <ArrowRight size={14} />
+              </a>
+            ) : (
+              <button
+                onClick={async () => {
+                  setEnrollError('');
+                  try {
+                    await apiEnrollActivity(selectedAct.id);
+                    setEnrolledId(selectedAct.id);
+                    setActivities(await apiGetActivities());
+                  } catch (e: any) {
+                    setEnrollError(e.message ?? 'Error en la inscripció');
+                  }
+                }}
+                disabled={enrolledId === selectedAct.id || (selectedAct.capacity > 0 && selectedAct.enrolled >= selectedAct.capacity)}
+                className="press w-full bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold py-2.5 rounded-lg transition-colors text-sm"
+              >
+                {enrolledId === selectedAct.id ? '✓ Inscrit!' : selectedAct.capacity > 0 && selectedAct.enrolled >= selectedAct.capacity ? 'Activitat completa' : "Inscriure's"}
+              </button>
+            )}
           </div>
         </div>,
         document.body
       )}
-      {actEditId !== null && (
-        <EditModal title="Editar activitat" onClose={() => setActEditId(null)}>
-          <div className="grid grid-cols-2 gap-2">
-            <input type="text" value={aeTitle} onChange={e => setAeTitle(e.target.value)} placeholder="Títol *" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-            <select value={aeCategory} onChange={e => setAeCategory(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white">
-              {['Esport','Cultura','Social','RSC','Benestar'].map(c => <option key={c}>{c}</option>)}
-            </select>
-            <input type="number" value={aeCapacity} onChange={e => setAeCapacity(e.target.value)} placeholder="Aforament" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-            <input type="date" value={aeDate} onChange={e => setAeDate(e.target.value)} className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-            <input type="text" value={aeTime} onChange={e => setAeTime(e.target.value)} placeholder="Hora" className="border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-            <input type="text" value={aeLocation} onChange={e => setAeLocation(e.target.value)} placeholder="Lloc" className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-            <textarea value={aeDesc} onChange={e => setAeDesc(e.target.value)} placeholder="Descripció" rows={2} className="col-span-2 border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white resize-none" />
-            <div className="col-span-2 flex justify-end gap-2">
-              <button onClick={() => setActEditId(null)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400">Cancel·lar</button>
-              <button onClick={handleSaveActEdit} disabled={!aeTitle.trim() || aeSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">{aeSaving ? 'Desant...' : 'Desar'}</button>
+      {actEditId !== null && (() => {
+        const lCls = 'text-[10px] font-semibold text-[var(--tavil-accent)] uppercase tracking-widest block mb-1.5';
+        const iCls = 'w-full border border-[var(--tavil-border)] rounded-xl px-3.5 py-2.5 text-sm bg-[var(--tavil-card)] text-[var(--tavil-text)] placeholder-[var(--tavil-faint)] focus:outline-none focus:ring-2 focus:ring-[var(--tavil-accent)]/25 focus:border-[var(--tavil-accent)]';
+        return (
+          <EditModal title="" onClose={() => setActEditId(null)}>
+            <div className="space-y-4 -mt-2">
+              <div>
+                <div className="text-[10px] font-bold text-[var(--tavil-accent)] uppercase tracking-[0.14em] mb-0.5">Editar activitat</div>
+                <div className="text-xl font-bold text-[var(--tavil-text)]" style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>{aeTitle || 'Activitat'}</div>
+              </div>
+              <div>
+                <label className={lCls}>Títol <span className="text-[var(--tavil-accent)]">*</span></label>
+                <input value={aeTitle} onChange={e => setAeTitle(e.target.value)} className={iCls} placeholder="Nom de l'activitat" autoFocus />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={lCls}>Categoria</label>
+                  <select value={aeCategory} onChange={e => setAeCategory(e.target.value)} className={iCls}>
+                    {['Esport','Cultura','Social','RSC','Benestar','Formació','Jornada','Salut','Voluntariat'].map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={lCls}>Aforament</label>
+                  <div className="flex gap-2 items-center">
+                    <button type="button" onClick={() => setAeUnlimited(v => !v)} title={aeUnlimited ? 'Il·limitat' : 'Limitat'} className={`flex-shrink-0 w-11 h-11 rounded-xl border text-base flex items-center justify-center cursor-pointer transition-all ${aeUnlimited ? 'border-[var(--tavil-accent)] bg-[var(--tavil-accent-light)] text-[var(--tavil-accent)]' : 'border-[var(--tavil-border)] bg-[var(--tavil-card)] text-[var(--tavil-faint)]'}`}>∞</button>
+                    {!aeUnlimited
+                      ? <input type="number" value={aeCapacity} onChange={e => setAeCapacity(e.target.value)} className={iCls} placeholder="20" min={1} />
+                      : <span className="text-sm font-medium text-[var(--tavil-accent)]">Il·limitat</span>}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className={lCls}>Data</label>
+                <DatePicker value={aeDate} onChange={setAeDate} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={lCls}>Hora inici</label>
+                  <input type="time" value={aeTime} onChange={e => setAeTime(e.target.value)} className={iCls} />
+                </div>
+                <div>
+                  <label className={lCls}>Hora final <span className="font-normal normal-case tracking-normal opacity-60">(opcional)</span></label>
+                  <input type="time" className={iCls} />
+                </div>
+              </div>
+              <div>
+                <label className={lCls}>Ubicació</label>
+                <div className="relative">
+                  <MapPin size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--tavil-faint)] pointer-events-none" />
+                  <input value={aeLocation} onChange={e => setAeLocation(e.target.value)} className={`${iCls} pl-9`} placeholder="Sala, edifici, ciutat…" />
+                </div>
+              </div>
+              <div>
+                <label className={lCls}>Descripció</label>
+                <textarea value={aeDesc} onChange={e => setAeDesc(e.target.value)} rows={3} className={`${iCls} resize-none`} placeholder="Breu descripció de l'activitat…" />
+              </div>
+              <div>
+                <label className={lCls}>Enllaç extern <span className="font-normal normal-case tracking-normal opacity-60">(opcional)</span></label>
+                <input value={aeLink} onChange={e => setAeLink(e.target.value)} className={iCls} placeholder="https://…" />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setActEditId(null)} className="press flex-1 py-2.5 rounded-xl border border-[var(--tavil-border)] text-sm text-[var(--tavil-muted)] hover:bg-[var(--tavil-bgAlt)] transition-colors">Cancel·la</button>
+                <button onClick={handleSaveActEdit} disabled={!aeTitle.trim() || aeSaving}
+                  className="press flex-1 py-2.5 rounded-xl bg-[var(--tavil-text)] text-[var(--tavil-bg)] text-sm font-semibold disabled:opacity-40 transition-opacity flex items-center justify-center gap-1.5">
+                  {aeSaving ? 'Desant…' : <><span>✓</span> Desa canvis</>}
+                </button>
+              </div>
             </div>
-          </div>
-        </EditModal>
-      )}
+          </EditModal>
+        );
+      })()}
       {confirmModal && <ConfirmModal message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} />}
     </div>
   );
@@ -4596,6 +4758,8 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
   const [pendingAvatar, setPendingAvatar] = useState<string | null | undefined>(undefined); // undefined = no change
   const [avatarSaving, setAvatarSaving] = useState(false);
   const avatarUrl: string | null = pendingAvatar !== undefined ? (pendingAvatar || null) : savedAvatarUrl;
+  const [showAvatarGallery, setShowAvatarGallery] = useState(false);
+  const [gallerySelected, setGallerySelected] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarFileRef = useRef<HTMLInputElement | null>(null);
   const handleAvatarPick = async (file: File) => {
@@ -4866,7 +5030,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
         <div style={{ padding: '10px 20px 22px', textAlign: 'center' }}>
           <button
             type="button"
-            onClick={() => avatarFileRef.current?.click()}
+            onClick={() => { setGallerySelected(avatarUrl); setShowAvatarGallery(true); }}
             disabled={avatarUploading}
             aria-label="Canviar foto de perfil"
             style={{
@@ -4887,6 +5051,72 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
           </button>
           <input ref={avatarFileRef} type="file" accept="image/*" style={{ display: 'none' }}
             onChange={e => { const f = e.target.files?.[0]; if (f) handleAvatarPick(f); e.currentTarget.value = ''; }} />
+          {/* ── Avatar gallery picker ── */}
+          {showAvatarGallery && (() => {
+            const ext = currentUser?.ext ?? '';
+            const PHOTOS_BASE = '/uploads/photos/';
+            const options: { url: string; label: string; candidates?: string[] }[] = [
+              ...(ext ? [{ url: `${PHOTOS_BASE}${ext}.png`, label: 'La meva foto', candidates: [`${PHOTOS_BASE}${ext}.png`, `${PHOTOS_BASE}${ext}.jpg`, `${PHOTOS_BASE}${ext}.jpeg`] }] : []),
+              { url: `${PHOTOS_BASE}tavil-logo.svg`, label: 'Logo TAVIL' },
+              { url: `${PHOTOS_BASE}tavil-banner.png`, label: 'Imatge corporativa' },
+            ];
+            return (
+              <div
+                className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm anim-fade-in"
+                onClick={e => { if (e.target === e.currentTarget) setShowAvatarGallery(false); }}
+              >
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 w-full max-w-sm mx-4 anim-scale-in"
+                  style={{ boxShadow: '0 8px 32px rgba(34,39,37,0.18)', border: '1px solid var(--tavil-border)' }}>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--tavil-accent)] mb-1">Perfil</div>
+                  <h3 className="font-bold text-[var(--tavil-text)] text-lg mb-4" style={{ fontFamily: 'var(--font-display)' }}>Canvia la foto de perfil</h3>
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    {options.map(opt => {
+                      const isSelected = gallerySelected === opt.url;
+                      return (
+                        <button key={opt.url} onClick={() => setGallerySelected(opt.url)}
+                          className="press flex flex-col items-center gap-1.5 focus:outline-none"
+                          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+                          <div className="relative w-full aspect-square rounded-xl overflow-hidden"
+                            style={{ border: isSelected ? '2.5px solid var(--tavil-text)' : '2px solid var(--tavil-border)', transition: 'border-color 140ms' }}>
+                            <img
+                              src={resolveImg(opt.url)}
+                              alt={opt.label}
+                              className="w-full h-full object-cover"
+                              onError={e => { (e.currentTarget.parentElement!.parentElement!).style.opacity = '0.35'; }}
+                            />
+                            {isSelected && (
+                              <div className="absolute inset-0 flex items-end justify-end p-1.5">
+                                <div className="w-5 h-5 rounded-full bg-[var(--tavil-text)] flex items-center justify-center">
+                                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#f7f7f2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-[11px] font-medium text-[var(--tavil-muted)]">{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => {
+                        if (gallerySelected) {
+                          setPendingAvatar(gallerySelected);
+                        }
+                        setShowAvatarGallery(false);
+                      }}
+                      disabled={!gallerySelected}
+                      className="press w-full py-2.5 rounded-xl text-sm font-semibold bg-[var(--tavil-text)] text-[var(--tavil-bg)] disabled:opacity-40 transition-opacity"
+                    >Confirmar</button>
+                    <button
+                      onClick={() => { setShowAvatarGallery(false); setTimeout(() => avatarFileRef.current?.click(), 100); }}
+                      className="press w-full py-2 rounded-xl text-sm font-medium text-[var(--tavil-muted)] hover:bg-[var(--tavil-bgAlt)] transition-colors"
+                    >Pujar foto pròpia…</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '0.01em', lineHeight: 1.1, color: 'var(--tavil-text)' }}>
             {name || 'Usuari'}
           </div>
@@ -5862,11 +6092,11 @@ function QuizBuilderModal({ quiz, onClose, onSaved }: {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>Inici</label>
-                <input type="date" value={startAt} onChange={e => setStartAt(e.target.value)} className={dateCls} />
+                <DatePicker value={startAt} onChange={setStartAt} />
               </div>
               <div>
                 <label className={labelCls}>Final</label>
-                <input type="date" value={endAt} onChange={e => setEndAt(e.target.value)} className={dateCls} />
+                <DatePicker value={endAt} onChange={setEndAt} />
               </div>
             </div>
             <div className="pt-2 border-t border-red-200/50 dark:border-red-800/40">
@@ -6333,11 +6563,11 @@ function ExternalCourseModal({ course, onClose, onSaved }: {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className={labelCls}>Data inici</label>
-              <input className={inputCls} type="date" value={startAt} onChange={e => setStartAt(e.target.value)} />
+              <DatePicker value={startAt} onChange={setStartAt} />
             </div>
             <div className="space-y-1.5">
               <label className={labelCls}>Data fi <span className="text-gray-400 font-normal">(opcional)</span></label>
-              <input className={inputCls} type="date" value={endAt} min={startAt || undefined} onChange={e => setEndAt(e.target.value)} />
+              <DatePicker value={endAt} onChange={setEndAt} minDate={startAt || undefined} />
             </div>
           </div>
 
@@ -6506,7 +6736,7 @@ function BoAgendaPanel({ events, onRefresh, cardCls, inputCls, btnGhost }: {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="md:col-span-2"><label className={labelCls}>Títol *</label><input value={aTitle} onChange={e => setATitle(e.target.value)} className={inputCls} placeholder="Títol de l'event" /></div>
-            <div className="md:col-span-2"><label className={labelCls}>Data *</label><input type="date" value={aDate} onChange={e => setADate(e.target.value)} className={inputCls} /></div>
+            <div className="md:col-span-2"><label className={labelCls}>Data *</label><DatePicker value={aDate} onChange={setADate} /></div>
             <div><label className={labelCls}>Hora inici</label><input type="time" value={aTime} onChange={e => setATime(e.target.value)} className={inputCls} /></div>
             <div><label className={labelCls}>Hora final <span className="normal-case text-gray-400">(opcional)</span></label><input type="time" value={aTimeEnd} onChange={e => setATimeEnd(e.target.value)} className={inputCls} /></div>
             <div className="md:col-span-2"><label className={labelCls}>Lloc</label><input value={aLocation} onChange={e => setALocation(e.target.value)} className={inputCls} placeholder="Sala, adreça..." /></div>
@@ -6637,6 +6867,7 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
   const [nnImage, setNnImage] = useState('');
   const [nnImageFile, setNnImageFile] = useState<File | null>(null);
   const [nnFeatured, setNnFeatured] = useState(false);
+  const [nnActive, setNnActive] = useState(true);
   const [nnSaving, setNnSaving] = useState(false);
   const [nnShowGallery, setNnShowGallery] = useState(false);
   const [nnGalleryImages, setNnGalleryImages] = useState<{ url: string; name: string }[]>([]);
@@ -6746,14 +6977,14 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
     });
   };
 
-  const openCreateNews = () => { setEditNewsItem(null); setNnTitle(''); setNnCategory('Comunicats interns'); setNnSummary(''); setNnContent(''); setNnDate(''); setNnImage(''); setNnImageFile(null); setNnFeatured(false); setNnShowGallery(false); setShowNewsForm(true); };
-  const openEditNews = (n: NewsArticle) => { setEditNewsItem(n); setNnTitle(n.title); setNnCategory(n.category); setNnSummary(n.summary); setNnContent(n.content ?? ''); setNnDate(n.date); setNnImage(n.image || ''); setNnImageFile(null); setNnFeatured(n.featured === 1); setNnShowGallery(false); setShowNewsForm(true); };
+  const openCreateNews = () => { setEditNewsItem(null); setNnTitle(''); setNnCategory('Comunicats interns'); setNnSummary(''); setNnContent(''); setNnDate(''); setNnImage(''); setNnImageFile(null); setNnFeatured(false); setNnActive(true); setNnShowGallery(false); setShowNewsForm(true); };
+  const openEditNews = (n: NewsArticle) => { setEditNewsItem(n); setNnTitle(n.title); setNnCategory(n.category); setNnSummary(n.summary); setNnContent(n.content ?? ''); setNnDate(n.date); setNnImage(n.image || ''); setNnImageFile(null); setNnFeatured(n.featured === 1); setNnActive(n.active !== 0); setNnShowGallery(false); setShowNewsForm(true); };
   const saveNews = async () => {
     setNnSaving(true); setError('');
     try {
       let imageUrl = nnImage;
       if (nnImageFile) imageUrl = await apiUploadImage(nnImageFile);
-      const fields = { category: nnCategory, title: nnTitle.trim(), summary: nnSummary.trim(), content: nnContent, date: nnDate.trim(), image: imageUrl, featured: nnFeatured ? 1 : 0 };
+      const fields = { category: nnCategory, title: nnTitle.trim(), summary: nnSummary.trim(), content: nnContent, date: nnDate.trim(), image: imageUrl, featured: nnFeatured ? 1 : 0, active: nnActive ? 1 : 0 };
       if (editNewsItem) await apiUpdateNews(editNewsItem.id, fields);
       else await apiCreateNews(fields);
       setShowNewsForm(false); loadNews(); showToast(editNewsItem ? 'Notícia actualitzada correctament' : 'Notícia creada correctament');
@@ -7057,13 +7288,21 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
                       {NEWS_CATS.map(c => <option key={c}>{c}</option>)}
                     </select>
                   </div>
-                  <div className="flex items-end pb-0.5">
+                  <div className="flex items-end pb-0.5 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setNnActive(v => !v)}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors flex-1 justify-center ${nnActive ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400' : 'border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:border-green-300 hover:text-green-600'}`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${nnActive ? 'bg-green-500' : 'bg-gray-400'}`} />
+                      {nnActive ? 'Activa' : 'Inactiva'}
+                    </button>
                     <button
                       type="button"
                       onClick={() => setNnFeatured(v => !v)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors w-full justify-center ${nnFeatured ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400' : 'border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:border-amber-300 hover:text-amber-600'}`}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors flex-1 justify-center ${nnFeatured ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400' : 'border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:border-amber-300 hover:text-amber-600'}`}
                     >
-                      <Star size={13} className={nnFeatured ? 'fill-amber-500 text-amber-500' : ''} />
+                      <Star size={12} className={nnFeatured ? 'fill-amber-500 text-amber-500' : ''} />
                       {nnFeatured ? 'Destacada' : 'Destacar'}
                     </button>
                   </div>
@@ -7078,7 +7317,7 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
                 </div>
                 <div>
                   <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Data</label>
-                  <input type="date" value={nnDate} onChange={e => setNnDate(e.target.value)} className={inputCls} />
+                  <DatePicker value={nnDate} onChange={setNnDate} />
                 </div>
                 <div>
                   <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Imatge</label>
@@ -8031,8 +8270,8 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
           <button
             onClick={() => setIdx(i => Math.min(total - 1, i + 1))}
             disabled={!answered}
-            className="px-6 py-2.5 rounded-full disabled:opacity-40 text-sm font-semibold transition-colors"
-            style={{ background: 'var(--q-text)', color: '#f7f7f2' }}
+            className="px-6 py-2.5 rounded-full disabled:opacity-40 text-sm font-semibold transition-colors hover:brightness-110"
+            style={{ background: '#bf211e', color: '#f7f7f2' }}
           >
             Següent →
           </button>
@@ -8781,11 +9020,11 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] block mb-1.5" style={{ color: 'var(--q-text-50)' }}>Inici</label>
-                    <input type="date" value={startAt} onChange={e => setStartAt(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-red-400 transition-colors" style={{ background: 'var(--q-surface-08)', border: '1px solid var(--q-border)', color: 'var(--q-text)', colorScheme: 'light dark' }} />
+                    <DatePicker value={startAt} onChange={setStartAt} />
                   </div>
                   <div>
                     <label className="text-[11px] block mb-1.5" style={{ color: 'var(--q-text-50)' }}>Final</label>
-                    <input type="date" value={endAt} onChange={e => setEndAt(e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-red-400 transition-colors" style={{ background: 'var(--q-surface-08)', border: '1px solid var(--q-border)', color: 'var(--q-text)', colorScheme: 'light dark' }} />
+                    <DatePicker value={endAt} onChange={setEndAt} />
                   </div>
                 </div>
               </section>
@@ -9156,8 +9395,8 @@ function NewsTileContent({ tile, editable, activeLang, onChange, onRequestImage,
         : <div style={{ fontFamily: NT.uiFont, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: NT.mute }}>{renderInlineLinks(tc)}</div>;
     case 'paragraph':
       return editable
-        ? <EditableText key={edKey} initialContent={tc} onChange={onChange} style={{ fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55, color: NT.ink }} />
-        : <div style={{ fontFamily: NT.bodyFont, fontSize: 15, lineHeight: 1.55, color: NT.ink, whiteSpace: 'pre-wrap' }}>{renderInlineLinks(tc)}</div>;
+        ? <EditableText key={edKey} initialContent={tc} onChange={onChange} style={{ fontFamily: NT.bodyFont, fontSize: 19, lineHeight: 1.65, color: NT.ink, fontWeight: 400 }} />
+        : <div style={{ fontFamily: NT.bodyFont, fontSize: 19, lineHeight: 1.65, color: NT.ink, whiteSpace: 'pre-wrap', fontWeight: 400 }}>{renderInlineLinks(tc)}</div>;
     case 'pullquote':
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%' }}>
@@ -9335,9 +9574,10 @@ function NewsTileContent({ tile, editable, activeLang, onChange, onRequestImage,
 }
 
 // ─── Read-only tiles viewer (used in news article view) ──────────────────────
-function NewsTilesViewer({ content }: { content: string }) {
+function NewsTilesViewer({ content, lang = 'ca' }: { content: string; lang?: string }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [cw, setCw] = useState(80);
+  const activeLang = (['ca','es','en'].includes(lang) ? lang : 'ca') as 'ca'|'es'|'en';
   const tiles: NewsTile[] = useMemo(() => {
     try {
       const parsed = JSON.parse(content);
@@ -9345,7 +9585,7 @@ function NewsTilesViewer({ content }: { content: string }) {
       return parsed.map((t: any) => ({
         id: t.id || newsUid(),
         type: t.type, x: t.x|0, y: t.y|0, w: t.w|0, h: t.h|0,
-        content: t.content, url: t.url,
+        content: t.content, url: t.url, translations: t.translations,
       } as NewsTile));
     } catch { return []; }
   }, [content]);
@@ -9378,7 +9618,7 @@ function NewsTilesViewer({ content }: { content: string }) {
             position: 'absolute', ...newsTileBox(t, cw, NG_ROW_H),
             padding: padded ? '6px 4px' : 0, overflow: 'hidden',
           }}>
-            <NewsTileContent tile={t} editable={false} activeLang="ca" onChange={() => {}} onRequestImage={() => {}} />
+            <NewsTileContent tile={t} editable={false} activeLang={activeLang} onChange={() => {}} onRequestImage={() => {}} />
           </div>
         );
       })}
@@ -9560,6 +9800,7 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
   const [coverImage, setCoverImage] = useState('');
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [featured, setFeatured] = useState(false);
+  const [articleActive, setArticleActive] = useState(true);
   const [translations, setTranslations] = useState<NewsTranslations>({});
   const [editorLang, setEditorLang] = useState<'ca'|'es'|'en'>('ca');
 
@@ -9588,6 +9829,7 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
         setDate((a.date || '').slice(0, 10));
         setCoverImage(a.image || '');
         setFeatured(a.featured === 1);
+        setArticleActive(a.active !== 0);
         setTranslations((a.translations as NewsTranslations) ?? {});
         const c = (a.content || '').trim();
         if (!c) { setTiles([]); return; }
@@ -9817,7 +10059,7 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
         category, title: title.trim(), summary: summary.trim(),
         content: JSON.stringify(tiles),
         date,
-        image: imageUrl, featured: featured ? 1 : 0,
+        image: imageUrl, featured: featured ? 1 : 0, active: articleActive ? 1 : 0,
         translations,
       };
       if (articleId !== null) {
@@ -9907,16 +10149,25 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
           <div style={{ fontSize: 10, color: NT.mute, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>
             Portal · Notícia extensa
           </div>
-          <input
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            placeholder="Títol de l'article…"
-            style={{
-              fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 14,
-              color: NT.ink, lineHeight: 1.2, background: 'transparent',
-              border: 'none', outline: 'none', padding: 0, minWidth: 200, maxWidth: 360,
-            }}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Títol de l'article…"
+              style={{
+                fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 14,
+                color: NT.ink, lineHeight: 1.2, background: 'transparent',
+                border: 'none', outline: 'none', padding: 0, minWidth: 200, maxWidth: 360,
+              }}
+            />
+            {editorLang !== 'ca' && (
+              <span style={{
+                fontSize: 9, fontFamily: NT.uiFont, fontWeight: 700, letterSpacing: '0.1em',
+                textTransform: 'uppercase', color: NT.accentInk,
+                background: NT.accent, padding: '2px 6px', borderRadius: 3, flexShrink: 0,
+              }}>{editorLang}</span>
+            )}
+          </div>
         </div>
         <div style={{ flex: 1 }} />
         {error && (
@@ -9929,15 +10180,22 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
         <div style={{ display: 'flex', gap: 6 }}>
           {/* Language switcher */}
           <div style={{ display: 'flex', border: `1px solid ${NT.soft}`, borderRadius: NT.radius, overflow: 'hidden' }}>
-            {(['ca','es','en'] as const).map(lang => (
-              <button key={lang} onClick={() => setEditorLang(lang)} style={{
-                background: editorLang === lang ? NT.ink : 'transparent',
-                color: editorLang === lang ? NT.bg : NT.mute,
-                border: 'none', padding: '6px 10px',
-                fontFamily: NT.uiFont, fontSize: 11, fontWeight: 600,
-                cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.06em',
-              }}>{lang}</button>
-            ))}
+            {(['ca','es','en'] as const).map((lang, i) => {
+              const isActive = editorLang === lang;
+              const isTranslation = lang !== 'ca';
+              return (
+                <button key={lang} onClick={() => setEditorLang(lang)} style={{
+                  background: isActive ? (isTranslation ? NT.accent : NT.ink) : 'transparent',
+                  color: isActive ? (isTranslation ? '#fff' : NT.bg) : NT.mute,
+                  border: 'none',
+                  borderRight: i < 2 ? `1px solid ${NT.soft}` : 'none',
+                  padding: '6px 10px',
+                  fontFamily: NT.uiFont, fontSize: 11, fontWeight: 600,
+                  cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.06em',
+                  transition: 'background 0.15s, color 0.15s',
+                }}>{lang}</button>
+              );
+            })}
           </div>
           <button onClick={() => setPreview(p => !p)} style={{
             background: 'transparent', border: `1px solid ${NT.soft}`,
@@ -10130,11 +10388,7 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>Data</label>
-                <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{
-                  width: '100%', padding: '8px 10px', fontFamily: NT.uiFont, fontSize: 13,
-                  background: NT.surface, color: NT.ink,
-                  border: `1px solid ${NT.soft}`, borderRadius: NT.radius, outline: 'none',
-                }} />
+                <DatePicker value={date} onChange={setDate} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>Resum</label>
@@ -10147,9 +10401,17 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
               </div>
               {/* Translations */}
               {(['es', 'en'] as const).map(lang => (
-                <div key={lang} style={{ gridColumn: '1 / -1', borderTop: `1px solid ${NT.soft}`, paddingTop: 14, marginTop: 4 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: NT.mute, marginBottom: 10 }}>
-                    {lang === 'es' ? '🇪🇸 Castellà' : '🇬🇧 Anglès'}
+                <div key={lang} style={{ gridColumn: '1 / -1', borderTop: `1px solid ${NT.soft}`, paddingTop: 16, marginTop: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <span style={{
+                      fontSize: 9, fontFamily: NT.uiFont, fontWeight: 700, letterSpacing: '0.12em',
+                      textTransform: 'uppercase', color: '#fff',
+                      background: NT.accent, padding: '2px 7px', borderRadius: 3,
+                    }}>{lang}</span>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: NT.mute, fontFamily: NT.uiFont }}>
+                      {lang === 'es' ? 'Castellà' : 'Anglès'}
+                      <span style={{ color: NT.mute, opacity: 0.5, marginLeft: 6, fontSize: 10 }}>— buit = usa CA</span>
+                    </span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div>
@@ -10176,6 +10438,19 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
               ))}
 
               <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button type="button" onClick={() => setArticleActive(v => !v)} style={{
+                  position: 'relative', width: 40, height: 22, borderRadius: 999, border: 'none',
+                  background: articleActive ? '#22c55e' : NT.soft, cursor: 'pointer', padding: 0, transition: 'background .15s',
+                }}>
+                  <span style={{
+                    position: 'absolute', top: 2, left: articleActive ? 20 : 2,
+                    width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.15)', transition: 'left .15s',
+                  }} />
+                </button>
+                <span style={{ fontSize: 13 }}>Notícia activa (visible a la pàgina de notícies)</span>
+              </div>
+              <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <button type="button" onClick={() => setFeatured(v => !v)} style={{
                   position: 'relative', width: 40, height: 22, borderRadius: 999, border: 'none',
                   background: featured ? NT.accent : NT.soft, cursor: 'pointer', padding: 0, transition: 'background .15s',
@@ -10186,7 +10461,7 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
                     boxShadow: '0 1px 2px rgba(0,0,0,0.15)', transition: 'left .15s',
                   }} />
                 </button>
-                <span style={{ fontSize: 13 }}>Notícia destacada</span>
+                <span style={{ fontSize: 13 }}>Notícia destacada (apareix al carrusel de portada)</span>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>Imatge de portada</label>

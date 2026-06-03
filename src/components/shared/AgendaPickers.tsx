@@ -26,7 +26,7 @@ const C = {
 // ── DatePicker ────────────────────────────────────────────────────────────────
 
 interface DatePickerProps {
-  value: string;          // 'YYYY-MM-DD' or ''
+  value: string | null | undefined;   // 'YYYY-MM-DD', '' or null/undefined → treated as empty
   onChange: (v: string) => void;
   error?: boolean;
   onClose?: () => void;   // fires when picker closes without selecting (for touched tracking)
@@ -37,7 +37,9 @@ interface DatePickerProps {
 
 export function DatePicker({ value, onChange, error, onClose, placeholder = 'Selecciona data', minDate, emphasizeSaturday }: DatePickerProps) {
   const today = new Date();
-  const parsed = value ? new Date(value + 'T00:00:00') : null;
+  const safeVal = value ?? '';
+  const _d = safeVal ? new Date(safeVal + 'T00:00:00') : null;
+  const parsed = _d && !isNaN(_d.getTime()) ? _d : null;
   const [open, setOpen] = useState(false);
   const [viewMonth, setViewMonth] = useState(parsed ? parsed.getMonth() : today.getMonth());
   const [viewYear, setViewYear] = useState(parsed ? parsed.getFullYear() : today.getFullYear());

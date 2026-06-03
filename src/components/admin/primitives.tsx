@@ -1,11 +1,11 @@
-import React, { useState, useEffect, ReactNode, CSSProperties } from 'react';
+import React, { useState, useEffect, useRef, ReactNode, CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, Plus, X, FileText, Check } from 'lucide-react';
 import { API_BASE } from '../../api';
 
 // ── Font constants ──────────────────────────────────────────────────────────
 export const F_DISPLAY = "'Barlow Condensed', 'Instrument Sans', system-ui, sans-serif";
-export const F_BODY = "'Barlow Semi Condensed', 'Instrument Sans', system-ui, sans-serif";
+export const F_BODY = "'Instrument Sans', system-ui, sans-serif";
 export const F_MONO = "'JetBrains Mono', ui-monospace, monospace";
 
 // ── Theme tokens (CSS var hooks) ────────────────────────────────────────────
@@ -52,21 +52,21 @@ export function AdminHeader({ kicker = 'Administració', title, subtitle, action
       <div style={{ minWidth: 0 }}>
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 8,
-          fontSize: 11, fontWeight: 600, color: T.textFaint,
-          textTransform: 'uppercase', letterSpacing: '0.18em', marginBottom: 12,
+          fontSize: 11, fontWeight: 600, color: T.accent,
+          textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10,
         }}>
           {badge && (
             <span style={{
-              fontSize: 9.5, padding: '2px 7px', borderRadius: 3,
-              background: T.accent, color: '#fff', letterSpacing: '0.14em',
+              fontSize: 9.5, padding: '2px 8px', borderRadius: 4,
+              background: T.accentLight, color: T.accent, letterSpacing: '0.14em',
               fontWeight: 700,
             }}>{badge}</span>
           )}
           {kicker}
         </div>
         <h1 style={{
-          fontFamily: F_DISPLAY, fontSize: 46, fontWeight: 600,
-          letterSpacing: '-0.005em', lineHeight: 1, margin: 0,
+          fontFamily: F_DISPLAY, fontSize: 44, fontWeight: 600,
+          letterSpacing: '-0.01em', lineHeight: 1, margin: 0,
           color: T.text,
         }}>{title}</h1>
         {subtitle && (
@@ -103,10 +103,10 @@ export function AdminSearch({ value, onChange, placeholder = 'Cerca…' }: {
       <input
         value={value} onChange={onChange} placeholder={placeholder}
         style={{
-          width: '100%', height: 40, padding: '0 14px 0 38px',
+          width: '100%', height: 38, padding: '0 14px 0 38px',
           background: T.bgAlt, color: T.text,
           border: `1px solid ${T.border}`, borderRadius: 8,
-          fontFamily: F_BODY, fontSize: 14, outline: 'none', boxSizing: 'border-box',
+          fontFamily: F_BODY, fontSize: 13.5, outline: 'none', boxSizing: 'border-box',
         }}
       />
     </div>
@@ -126,7 +126,7 @@ export function AdminFilterPills({ value, options, onChange }: {
         return (
           <button key={o.id} onClick={() => onChange(o.id)} style={{
             padding: '6px 14px', borderRadius: 8, minHeight: 36,
-            background: active ? T.text : 'white',
+            background: active ? T.text : T.card,
             color: active ? T.bg : T.textMuted,
             border: `1px solid ${active ? T.text : T.border}`,
             cursor: 'pointer',
@@ -156,22 +156,22 @@ export function ABtn({ children, onClick, variant = 'primary', icon: Icon, iconR
   style?: CSSProperties;
 }) {
   const variants: Record<BtnVariant, { bg: string; color: string; border: string; hover: string }> = {
-    primary:   { bg: T.text,       color: T.bg,    border: T.text,         hover: T.text },
-    secondary: { bg: T.card,       color: T.text,  border: T.border,       hover: T.bgAlt },
+    primary:   { bg: T.text,        color: T.bg,        border: T.text,        hover: `color-mix(in srgb, ${T.text} 82%, white)` },
+    secondary: { bg: T.card,        color: T.text,      border: T.border,      hover: T.bgAlt },
     ghost:     { bg: 'transparent', color: T.textMuted, border: 'transparent', hover: T.bgAlt },
-    accent:    { bg: T.accent,     color: '#fff',  border: T.accent,       hover: T.accentDark },
-    danger:    { bg: 'transparent', color: T.accent, border: T.accent,     hover: T.accentLight },
+    accent:    { bg: T.accent,      color: '#fff',      border: T.accent,      hover: T.accentDark },
+    danger:    { bg: 'transparent', color: '#dc2626',   border: '#dc2626',     hover: '#fef2f2' },
   };
   const v = variants[variant];
   const s = size === 'sm' ? { h: 34, px: 12, fs: 13 } : { h: 42, px: 16, fs: 14 };
   return (
-    <button onClick={onClick} disabled={disabled} style={{
-      height: s.h, padding: `0 ${s.px}px`, borderRadius: 7,
+    <button onClick={onClick} disabled={disabled} className="press" style={{
+      height: s.h, padding: `0 ${s.px}px`, borderRadius: 8,
       background: v.bg, color: v.color, border: `1px solid ${v.border}`,
       display: 'inline-flex', alignItems: 'center', gap: 6,
       cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
       fontFamily: F_BODY, fontSize: s.fs, fontWeight: 600,
-      whiteSpace: 'nowrap', transition: 'background 140ms', ...style,
+      whiteSpace: 'nowrap', transition: 'background 150ms, opacity 150ms', ...style,
     }}
     onMouseEnter={(e) => { if (!disabled) (e.currentTarget as HTMLButtonElement).style.background = v.hover; }}
     onMouseLeave={(e) => { if (!disabled) (e.currentTarget as HTMLButtonElement).style.background = v.bg; }}>
@@ -192,6 +192,13 @@ const STATUS_MAP: Record<string, { label: string; dot: string; bg: string; color
   pending:   { label: 'Pendent',   dot: 'var(--status-warn-fg)', bg: 'var(--status-warn-bg)',  color: 'var(--status-warn-fg)' },
   full:      { label: 'Complet',   dot: 'var(--status-warn-fg)', bg: 'var(--status-warn-bg)',  color: 'var(--status-warn-fg)' },
   upcoming:  { label: 'Proper',    dot: T.accent,                bg: T.accentLight,             color: T.accentDark },
+  approved:     { label: 'Aprovat',    dot: 'var(--status-ok-fg)',   bg: 'var(--status-ok-bg)',    color: 'var(--status-ok-fg)' },
+  rejected:     { label: 'Rebutjat',   dot: 'var(--color-danger)',   bg: '#fef2f2',                color: '#991b1b' },
+  // Formation tracking statuses
+  completat:    { label: 'Completat',  dot: 'var(--status-ok-fg)',   bg: 'var(--status-ok-bg)',    color: 'var(--status-ok-fg)' },
+  'en-curs':    { label: 'En curs',    dot: 'var(--status-warn-fg)', bg: 'var(--status-warn-bg)',  color: 'var(--status-warn-fg)' },
+  'no-aprovat': { label: 'No aprovat', dot: 'var(--color-danger)',   bg: '#fef2f2',                color: '#991b1b' },
+  'pendent-f':  { label: 'Pendent',    dot: T.textFaint,             bg: T.bgAlt,                  color: T.textMuted },
 };
 export function AStatusPill({ status }: { status: string }) {
   const it = STATUS_MAP[status] || { label: status, dot: T.textFaint, bg: T.bgAlt, color: T.textMuted };
@@ -246,7 +253,7 @@ export function AdminTable<TRow extends { id: number | string }>({ columns, rows
   const gridTemplate = columns.map(c => c.width || 'minmax(0, 1fr)').join(' ');
   return (
     <div style={{
-      background: T.card, border: `1px solid ${T.border}`, borderRadius: 10,
+      background: T.card, border: `1px solid ${T.border}`, borderRadius: 12,
       overflow: 'hidden', fontFamily: F_BODY,
     }}>
       <div style={{
@@ -269,11 +276,11 @@ export function AdminTable<TRow extends { id: number | string }>({ columns, rows
         return (
           <div key={row.id} onClick={() => onRowClick && onRowClick(row.id)} style={{
             display: 'grid', gridTemplateColumns: gridTemplate,
-            padding: '16px 18px', gap: 16, alignItems: 'center', minHeight: 56,
+            padding: '14px 18px', gap: 16, alignItems: 'center', minHeight: 52,
             borderBottom: i < rows.length - 1 ? `1px solid ${T.border}` : 'none',
-            background: isActive ? `color-mix(in srgb, ${T.accentLight} 70%, transparent)` : 'transparent',
+            background: isActive ? T.accentLight : 'transparent',
             cursor: onRowClick ? 'pointer' : 'default',
-            fontSize: 14, color: T.text, position: 'relative',
+            fontSize: 13.5, color: T.text, position: 'relative',
             transition: 'background 120ms',
           }}
           onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLDivElement).style.background = T.bgAlt; }}
@@ -311,7 +318,7 @@ export function AdminDetail({ title, badge, onClose, footer, children }: {
 }) {
   return (
     <div style={{
-      background: T.card, border: `1px solid ${T.border}`, borderRadius: 10,
+      background: T.card, border: `1px solid ${T.border}`, borderRadius: 12,
       display: 'flex', flexDirection: 'column', fontFamily: F_BODY,
       position: 'sticky', top: 90, maxHeight: 'calc(100vh - 120px)',
     }}>
@@ -361,7 +368,7 @@ export function AdminDetailEmpty({ icon: Icon = FileText, label, hint }: {
 }) {
   return (
     <div style={{
-      border: `1px dashed ${T.border}`, borderRadius: 10,
+      border: `1px dashed ${T.border}`, borderRadius: 12,
       padding: '60px 30px', textAlign: 'center', color: T.textFaint,
       fontFamily: F_BODY, position: 'sticky', top: 90,
     }}>
@@ -549,30 +556,61 @@ export function AToggle({ value, onChange, label, hint }: {
   );
 }
 
-export function AChipMulti({ value, onChange, options }: {
+export function AChipMulti({ value, onChange, options, searchable }: {
   value: string[];
   onChange: (v: string[]) => void;
   options: { value: string; label: string }[];
+  searchable?: boolean;
 }) {
+  const [q, setQ] = React.useState('');
   const toggle = (v: string) => {
     if (value.includes(v)) onChange(value.filter(x => x !== v));
     else onChange([...value, v]);
   };
+  const showSearch = searchable ?? options.length > 12;
+  const visible = q ? options.filter(o => o.label.toLowerCase().includes(q.toLowerCase())) : options;
+
+  // Selected chips always shown first in summary when filtering
+  const selected = options.filter(o => value.includes(o.value));
+  const unselectedVisible = visible.filter(o => !value.includes(o.value));
+  const displayList = q ? visible : [...selected, ...unselectedVisible];
+
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-      {options.map(o => {
-        const active = value.includes(o.value);
-        return (
-          <button key={o.value} onClick={() => toggle(o.value)} style={{
-            padding: '8px 14px', borderRadius: 999, minHeight: 34,
-            background: active ? T.accentLight : 'transparent',
-            color: active ? T.accentDark : T.textMuted,
-            border: `1px solid ${active ? T.accent : T.border}`,
-            cursor: 'pointer', fontFamily: F_BODY,
-            fontSize: 13, fontWeight: 500,
-          }}>{o.label}</button>
-        );
-      })}
+    <div>
+      {showSearch && (
+        <div style={{ position: 'relative', marginBottom: 8 }}>
+          <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: T.textFaint, pointerEvents: 'none' }} />
+          <input
+            type="text" value={q} onChange={e => setQ(e.target.value)}
+            placeholder="Cerca..."
+            style={{
+              width: '100%', height: 32, paddingLeft: 28, paddingRight: 10,
+              background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: 6,
+              fontSize: 12.5, color: T.text, outline: 'none', fontFamily: F_BODY,
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+      )}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        {displayList.map(o => {
+          const active = value.includes(o.value);
+          return (
+            <button key={o.value} onClick={() => toggle(o.value)} style={{
+              padding: '6px 12px', borderRadius: 999, minHeight: 30,
+              background: active ? T.accentLight : 'transparent',
+              color: active ? T.accentDark : T.textMuted,
+              border: `1px solid ${active ? T.accent : T.border}`,
+              cursor: 'pointer', fontFamily: F_BODY,
+              fontSize: 12.5, fontWeight: active ? 600 : 400,
+              transition: 'background 100ms, border-color 100ms',
+            }}>{o.label}</button>
+          );
+        })}
+        {displayList.length === 0 && (
+          <span style={{ fontSize: 12.5, color: T.textFaint, fontFamily: F_BODY }}>Sense resultats</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -693,11 +731,14 @@ export function AdminCreateModalShell({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  const mouseDownOnBackdrop = useRef(false);
+
   if (!open) return null;
 
   return createPortal(
     <div
-      onClick={onClose}
+      onMouseDown={(e) => { mouseDownOnBackdrop.current = e.target === e.currentTarget; }}
+      onClick={(e) => { if (mouseDownOnBackdrop.current && e.target === e.currentTarget) { mouseDownOnBackdrop.current = false; onClose(); } else { mouseDownOnBackdrop.current = false; } }}
       style={{
         position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(34,39,37,0.55)',
         backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',

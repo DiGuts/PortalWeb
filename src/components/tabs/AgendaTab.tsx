@@ -12,11 +12,13 @@ import { useScrollIntoViewWhen } from '../../lib/scroll';
 import { setGlobalNavHidden } from '../../lib/globalNav';
 import { tabPrefetch, tabPrefetchAt, isTabCacheFresh } from '../../lib/tabPrefetch';
 import { DEPT_ORDER, deptLabel } from '../../lib/depts';
+import { DeptSearch } from '../admin/DeptSearch';
 import { ConfirmModal as ConfirmModal } from '../ConfirmDialog';
 import {
   User, AgendaEvent,
   apiGetAgendaEvents, apiCreateAgendaEvent, apiUpdateAgendaEvent, apiDeleteAgendaEvent,
 } from '../../api';
+import { DatePicker } from '../shared/AgendaPickers';
 
 // ── Agenda Tab ────────────────────────────────────────────────────────────────
 
@@ -659,7 +661,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
               <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 18 }}>Nou event</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input type="text" value={eTitle} onChange={e => setETitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
-                <input type="date" value={eDate} onChange={e => setEDate(e.target.value)} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                <DatePicker value={eDate} onChange={setEDate} />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div>
                     <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Inici</div>
@@ -702,46 +704,50 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
         {/* Admin: edit event bottom sheet */}
         {isAdmin && evEditId !== null && createPortal(
           <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${evEditClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeEvEdit}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }} className={evEditClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 18 }}>Editar event</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <input type="text" value={eeTitle} onChange={e => setEeTitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
-                <input type="date" value={eeDate} onChange={e => setEeDate(e.target.value)} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <div>
-                    <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Inici</div>
-                    <input type="time" value={eeTime} onChange={e => setEeTime(e.target.value)} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Final <span style={{ textTransform: 'none', fontWeight: 400 }}>(opcional)</span></div>
-                    <input type="time" value={eeTimeEnd} onChange={e => setEeTimeEnd(e.target.value)} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
-                  </div>
-                </div>
-                <input type="text" value={eeLocation} onChange={e => setEeLocation(e.target.value)} placeholder="Lloc" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
-                <div>
-                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8, fontWeight: 600 }}>Tipus</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {Object.keys(EVENT_COLORS).map(t => (
-                      <button key={t} onClick={() => setEeType(t)} style={{ padding: '7px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', background: eeType === t ? 'var(--tavil-text)' : 'var(--tavil-bg)', color: eeType === t ? 'var(--tavil-bg)' : 'var(--tavil-muted)', border: `1px solid ${eeType === t ? 'var(--tavil-text)' : 'var(--tavil-border)'}` }}>{t}</button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8, fontWeight: 600 }}>
-                    Departaments {eeDepts.length === 0 ? '(tots)' : `(${eeDepts.length})`}
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {DEPT_ORDER.map(d => (
-                      <button key={d} onClick={() => setEeDepts(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])}
-                        style={{ padding: '6px 11px', borderRadius: 999, fontSize: 12, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', background: eeDepts.includes(d) ? 'var(--tavil-accent)' : 'var(--tavil-bg)', color: eeDepts.includes(d) ? '#fff' : 'var(--tavil-muted)', border: `1px solid ${eeDepts.includes(d) ? 'var(--tavil-accent)' : 'var(--tavil-border)'}` }}>{d}</button>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                  <button onClick={closeEvEdit} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
-                  <button onClick={handleSaveEvEdit} disabled={!eeTitle.trim() || !eeDate || eeSaving} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!eeTitle.trim() || !eeDate || eeSaving) ? 0.5 : 1 }}>{eeSaving ? 'Desant...' : 'Desar'}</button>
-                </div>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '24px 20px 48px', width: '100%', maxHeight: '88vh', overflowY: 'auto' }} className={evEditClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
+              {/* Kicker + live title */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--tavil-accent)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 2 }}>Editar esdeveniment</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--tavil-text)', letterSpacing: '-0.01em', lineHeight: 1.1 }}>{eeTitle || 'Esdeveniment'}</div>
               </div>
+              {(() => {
+                const lCls: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: 'var(--tavil-accent)', textTransform: 'uppercase', letterSpacing: '0.12em', display: 'block', marginBottom: 6 };
+                const iStyle: React.CSSProperties = { width: '100%', borderRadius: 12, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <div><label style={lCls}>Títol <span style={{ color: 'var(--tavil-accent)' }}>*</span></label>
+                      <input type="text" value={eeTitle} onChange={e => setEeTitle(e.target.value)} style={iStyle} placeholder="Títol de l'esdeveniment" /></div>
+                    <div><label style={lCls}>Data <span style={{ color: 'var(--tavil-accent)' }}>*</span></label>
+                      <DatePicker value={eeDate} onChange={setEeDate} /></div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div><label style={lCls}>Hora inici</label>
+                        <input type="time" value={eeTime} onChange={e => setEeTime(e.target.value)} style={iStyle} /></div>
+                      <div><label style={{ ...lCls }}>Hora final</label>
+                        <input type="time" value={eeTimeEnd} onChange={e => setEeTimeEnd(e.target.value)} style={iStyle} /></div>
+                    </div>
+                    <div><label style={lCls}>Ubicació</label>
+                      <div style={{ position: 'relative' }}>
+                        <MapPin size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+                        <input type="text" value={eeLocation} onChange={e => setEeLocation(e.target.value)} style={{ ...iStyle, paddingLeft: 34 }} placeholder="Sala, edifici, localitat…" />
+                      </div>
+                    </div>
+                    <div><label style={lCls}>Tipus</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {Object.keys(EVENT_COLORS).map(t => (
+                          <button key={t} onClick={() => setEeType(t)} style={{ padding: '7px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', background: eeType === t ? 'var(--tavil-text)' : 'transparent', color: eeType === t ? 'var(--tavil-bg)' : 'var(--tavil-muted)', border: `1px solid ${eeType === t ? 'var(--tavil-text)' : 'var(--tavil-border)'}` }}>{t}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div><label style={lCls}>Departaments destinataris</label>
+                      <DeptSearch value={eeDepts} onChange={setEeDepts} />
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+                      <button onClick={closeEvEdit} style={{ flex: 1, padding: '13px', borderRadius: 14, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·la</button>
+                      <button onClick={handleSaveEvEdit} disabled={!eeTitle.trim() || !eeDate || eeSaving} style={{ flex: 1, padding: '13px', borderRadius: 14, border: 'none', background: 'var(--tavil-text)', color: 'var(--tavil-bg)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!eeTitle.trim() || !eeDate || eeSaving) ? 0.4 : 1 }}>{eeSaving ? 'Desant…' : '✓ Desa canvis'}</button>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>,
           document.body

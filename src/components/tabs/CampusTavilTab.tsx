@@ -3,14 +3,94 @@ import { scrollPageToTop } from '../../lib/scroll';
 import { cn } from '../../lib/cn';
 import { useIsMobile } from '../../lib/useIsMobile';
 import { usePersistedSubTab } from '../../lib/usePersistedSubTab';
-import { ChevronLeft, Clock, ExternalLink, Search, PlayCircle, CheckCircle, GraduationCap, X, AlignLeft } from 'lucide-react';
+import { ChevronLeft, Clock, ExternalLink, Search, PlayCircle, GraduationCap, UploadCloud } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Course, Quiz, QuizAttemptResult, apiGetCourses, apiGetQuizzes, apiGetQuiz, apiSubmitQuizAttempt, apiUpdateCourseProgress, User } from '../../api';
+import { Course, Quiz, apiGetCourses, apiGetQuizzes, apiUpdateCourseProgress, apiUploadCertificate, openCertificateFile, User } from '../../api';
 import { FilterChip } from '../shared/FilterChip';
 import { UnderlineTab } from '../shared/UnderlineTab';
 
+
+// ── Certificate uploader: paste (Ctrl+V) · drag-drop · file picker ──────────
+function CertUploader({ onUpload, reupload = false }: { onUpload: (f: File) => void; reupload?: boolean }) {
+  const [clip, setClip] = useState<{ file: File; preview: string } | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => () => { if (clip) URL.revokeObjectURL(clip.preview); }, [clip]);
+
+  const acceptFile = (file: File) => {
+    if (clip) URL.revokeObjectURL(clip.preview);
+    if (file.type.startsWith('image/')) {
+      setClip({ file, preview: URL.createObjectURL(file) });
+    } else {
+      onUpload(file); // PDF → upload immediately, no preview needed
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const imgItem = Array.from(e.clipboardData.items).find(i => i.type.startsWith('image/'));
+    if (!imgItem) return;
+    const file = imgItem.getAsFile();
+    if (file) { e.preventDefault(); acceptFile(file); }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) acceptFile(file);
+  };
+
+  if (clip) {
+    return (
+      <div className="flex flex-col gap-1.5 rounded-lg border border-[#e3e2db] dark:border-zinc-700 p-2">
+        <img src={clip.preview} alt="" className="w-full h-20 object-cover rounded" />
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => { onUpload(clip.file); setClip(null); }}
+            className="flex-1 text-xs font-semibold py-1.5 rounded-md bg-[#222725] text-white hover:bg-[#2e3530] dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-white transition-colors"
+          >
+            Puja aquest certificat
+          </button>
+          <button
+            onClick={() => { URL.revokeObjectURL(clip.preview); setClip(null); }}
+            className="text-xs px-2.5 py-1.5 rounded-md border border-[#e3e2db] dark:border-zinc-700 text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <label
+      tabIndex={0}
+      className={cn(
+        "w-full flex flex-col items-center justify-center gap-0.5 text-xs text-gray-500 dark:text-zinc-400",
+        "border border-dashed rounded-lg py-2.5 px-3 transition-colors cursor-pointer outline-none",
+        "focus:border-[#222725] dark:focus:border-zinc-400",
+        dragOver
+          ? "border-[#222725] bg-gray-50 dark:border-zinc-400 dark:bg-zinc-800"
+          : "border-gray-300 dark:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800 hover:border-gray-400 dark:hover:border-zinc-500"
+      )}
+      onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+      onPaste={handlePaste}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click(); }}
+    >
+      <input ref={inputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="sr-only"
+        onChange={e => { const f = e.target.files?.[0]; if (f) acceptFile(f); }} />
+      <span className="flex items-center gap-1.5 font-medium">
+        <UploadCloud size={13} />
+        {reupload ? 'Torna a pujar' : 'Puja el certificat'}
+      </span>
+      <span className="text-[10px] opacity-50">PDF o imatge · arrossega o Ctrl+V</span>
+    </label>
+  );
+}
 
 interface Props {
   currentUser: User | null;
@@ -43,6 +123,9 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
     quizInProgress?: boolean;
     quizAttempted?: boolean;
     quizQuestions?: number;
+    isPresential?: boolean;
+    certificateStatus?: 'pending' | 'approved' | 'rejected' | null;
+    certificateId?: number | null;
   };
   const { t } = useTranslation();
   const [courses, setCourses] = useState<Course[]>(() => tabPrefetch.courses ?? []);
@@ -53,11 +136,6 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
   const isMobileCampus = useIsMobile();
   const [mobileCat, setMobileCat] = useState('Tot');
   const [quizList, setQuizList] = useState<Quiz[]>([]);
-  const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
-  useEffect(() => { scrollPageToTop(); }, [activeQuiz]);
-  const [quizAnswers, setQuizAnswers] = useState<Record<string, any>>({});
-  const [quizResult, setQuizResult] = useState<QuizAttemptResult | null>(null);
-  const [quizSubmitting, setQuizSubmitting] = useState(false);
 
   useEffect(() => {
     if (isTabCacheFresh('courses')) return;
@@ -81,43 +159,91 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
     }
   };
 
-  const startQuiz = async (q: Quiz) => {
-    const full = await apiGetQuiz(q.id);
-    setActiveQuiz(full);
-    setQuizAnswers({});
-    setQuizResult(null);
-  };
-
-  const submitQuiz = async () => {
-    if (!activeQuiz) return;
-    setQuizSubmitting(true);
+  const handleCertUpload = async (item: { courseId?: number; title: string }, file?: File) => {
+    if (!file || !item.courseId) return;
     try {
-      const result = await apiSubmitQuizAttempt(activeQuiz.id, quizAnswers);
-      setQuizResult(result);
-      apiGetQuizzes().then(setQuizList).catch(console.error);
-    } catch (e) { console.error(e); }
-    finally { setQuizSubmitting(false); }
+      await apiUploadCertificate(item.courseId, file);
+      setCourses(prev => prev.map(c =>
+        c.id === item.courseId ? { ...c, certificate_status: 'pending' } : c
+      ));
+      apiGetCourses().then(d => {
+        setCourses(d);
+        tabPrefetch.courses = d;
+        tabPrefetchAt.courses = Date.now();
+      }).catch(console.error);
+    } catch (e: any) {
+      alert(e?.message ?? 'Error pujant el certificat');
+    }
   };
 
   const completed = courses.filter(c => c.user_status === 'Completat');
-  const pending = courses.filter(c => c.user_status === 'Pendent');
   const completedHours = completed.reduce((s, c) => s + (parseInt(c.hours) || 0), 0);
-  // All pending mandatory items (courses + quizzes) — the sticky bar rotates
-  // through them carousel-style.
-  const mandatoryItems: { title: string; subtitle: string; action: (() => void) | null }[] = [
-    ...courses.filter(c => Number(c.mandatory) === 1 && c.user_status === 'Pendent').map(c => ({
+
+  const kinds = ['Totes', 'Externes', 'Internes'];
+  const statuses = ['Tots els estats', 'Pendent', 'En curs'];
+
+  const externes: CatalogItem[] = courses
+    .filter(c => c.is_external === 1)
+    .map(c => ({
+      id: `course-${c.id}`,
+      type: 'Externes',
       title: c.title,
-      subtitle: `${c.hours || ''}${c.hours && c.category ? ' · ' : ''}${c.category || ''}`,
-      action: c.url ? () => window.open(c.url, '_blank', 'noopener,noreferrer') : null,
-    })),
-    ...quizList.filter(q => Number(q.mandatory) === 1 && !q.is_presential && !q.user_attempt?.passed).map(q => ({
+      description: c.description ?? '',
+      category: c.category,
+      hours: c.hours,
+      mandatory: Number(c.mandatory) === 1,
+      status: c.user_status === 'Completat' ? 'Completat' : (c.user_progress > 0 ? 'En curs' : 'Pendent'),
+      progress: c.user_progress,
+      url: c.url,
+      courseId: c.id,
+      certificateStatus: c.certificate_status ?? null,
+      certificateId: c.certificate_id ?? null,
+    }));
+
+  const internes: CatalogItem[] = quizList
+    .map(q => ({
+      id: `quiz-${q.id}`,
+      type: 'Internes',
       title: q.title,
-      subtitle: `${q.question_count ?? 0} preguntes${q.category ? ' · ' + q.category : ''}`,
-      action: () => window.open(`${window.location.pathname}?quiz=${q.id}${q.in_progress ? '&resume=1' : ''}`, '_blank'),
-    })),
-  ];
+      description: q.description ?? '',
+      category: q.category,
+      mandatory: Number(q.mandatory) === 1,
+      status: q.user_attempt?.passed ? 'Completat' : (q.in_progress ? 'En curs' : (q.user_attempt ? 'No aprovat' : 'Pendent')),
+      quizId: q.id,
+      quizInProgress: !!q.in_progress,
+      quizAttempted: !!q.user_attempt,
+      quizQuestions: q.question_count ?? 0,
+      isPresential: q.is_presential === 1,
+    })) as CatalogItem[];
+
+  const catalog: CatalogItem[] = [...externes, ...internes].filter(
+    item => item.status !== 'Completat' && item.status !== 'No aprovat'
+  );
+  const filteredCatalog = catalog.filter(item => {
+    const matchKind = kindFilter === 'Totes' || item.type === kindFilter;
+    const matchStatus = statusFilter === 'Tots els estats' || item.status === statusFilter;
+    const q = campusSearch.trim().toLowerCase();
+    const matchSearch = !q || [item.title, item.description, item.category ?? '', item.type].some(f => f.toLowerCase().includes(q));
+    return matchKind && matchStatus && matchSearch;
+  });
+
+  // Sticky bar rotates only through catalog items already shown with the mandatory
+  // badge — sourced from catalog (is_external=1 + non-presential quizzes) so it
+  // never shows legacy internal courses that aren't in the catalog view.
+  const mandatoryItems: { title: string; subtitle: string; action: (() => void) | null }[] = catalog
+    .filter(item => item.mandatory && (
+      item.type === 'Externes' ? item.status === 'Pendent' : item.status !== 'Completat'
+    ))
+    .map(item => ({
+      title: item.title,
+      subtitle: item.type === 'Externes'
+        ? `${item.hours || ''}${item.hours && item.category ? ' · ' : ''}${item.category || ''}`
+        : `${item.quizQuestions ?? 0} preguntes${item.category ? ' · ' + item.category : ''}`,
+      action: item.type === 'Externes'
+        ? (item.url ? () => window.open(item.url!, '_blank', 'noopener,noreferrer') : null)
+        : (item.quizId ? () => window.open(`${window.location.pathname}?quiz=${item.quizId}${item.quizInProgress ? '&resume=1' : ''}`, '_blank') : null),
+    }));
   const [mandIdx, setMandIdx] = useState(0);
-  // Auto-rotate through pending mandatory items.
   useEffect(() => {
     if (!pageActive || mandatoryItems.length <= 1) return;
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
@@ -127,9 +253,6 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
   const mandSafeIdx = mandatoryItems.length ? mandIdx % mandatoryItems.length : 0;
   const mandatoryPending = mandatoryItems[mandSafeIdx] ?? null;
 
-  // Mandatory bar: gentle scroll-direction follow. Leans a few px toward the
-  // scroll direction, then springs back to rest when scrolling stops. Mutates
-  // transform via ref (no re-renders); CSS transition smooths it.
   const mandBarRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!mandatoryPending || !pageActive) return;
@@ -152,55 +275,11 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
     return () => { window.removeEventListener('scroll', onScroll); if (settle) window.clearTimeout(settle); };
   }, [mandatoryPending, pageActive]);
 
-  const kinds = ['Totes', 'Externes', 'Internes'];
-  const statuses = ['Tots els estats', 'Pendent', 'En curs', 'Completat'];
-
-  const externes: CatalogItem[] = courses
-    .filter(c => c.is_external === 1)
-    .map(c => ({
-      id: `course-${c.id}`,
-      type: 'Externes',
-      title: c.title,
-      description: c.description ?? '',
-      category: c.category,
-      hours: c.hours,
-      mandatory: Number(c.mandatory) === 1,
-      status: c.user_status === 'Completat' ? 'Completat' : (c.user_progress > 0 ? 'En curs' : 'Pendent'),
-      progress: c.user_progress,
-      url: c.url,
-      courseId: c.id,
-    }));
-
-  const internes: CatalogItem[] = quizList
-    .filter(q => !q.is_presential)
-    .map(q => ({
-      id: `quiz-${q.id}`,
-      type: 'Internes',
-      title: q.title,
-      description: q.description ?? '',
-      category: q.category,
-      mandatory: Number(q.mandatory) === 1,
-      status: q.user_attempt?.passed ? 'Completat' : (q.in_progress ? 'En curs' : (q.user_attempt ? 'No aprovat' : 'Pendent')),
-      quizId: q.id,
-      quizInProgress: !!q.in_progress,
-      quizAttempted: !!q.user_attempt,
-      quizQuestions: q.question_count ?? 0,
-    }));
-
-  const catalog: CatalogItem[] = [...externes, ...internes];
-  const filteredCatalog = catalog.filter(item => {
-    const matchKind = kindFilter === 'Totes' || item.type === kindFilter;
-    const matchStatus = statusFilter === 'Tots els estats' || item.status === statusFilter;
-    const q = campusSearch.trim().toLowerCase();
-    const matchSearch = !q || [item.title, item.description, item.category ?? '', item.type].some(f => f.toLowerCase().includes(q));
-    return matchKind && matchStatus && matchSearch;
-  });
-
 
   if (isMobileCampus) {
     const inProgress = courses.filter(c => c.user_progress > 0 && c.user_progress < 100);
     const MOBILE_CATS = ['Tot', 'Seguretat', 'Qualitat', 'Sistemes', 'Comercial', 'Compliance', 'Producció', 'Habilitats'];
-    const mobileFiltered = courses.filter(c => mobileCat === 'Tot' || c.category === mobileCat);
+    const mobileFiltered = courses.filter(c => c.user_status !== 'Completat' && (mobileCat === 'Tot' || c.category === mobileCat));
     return (
       <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
         {/* Top bar */}
@@ -280,7 +359,7 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
               <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 6, lineHeight: 1.3 }}>{course.title}</div>
               <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--tavil-muted)', alignItems: 'center' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={11} />{course.hours}</span>
-                {Number(course.mandatory) === 1 && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#92400e', background: '#fef3c7', borderRadius: 6, padding: '1px 7px' }}>Obligatòria</span>}
+                {Number(course.mandatory) === 1 && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#dc2626', background: '#fef2f2', borderRadius: 6, padding: '1px 7px' }}>Obligatòria</span>}
               </div>
               {course.user_progress > 0 && course.user_progress < 100 && (
                 <div style={{ marginTop: 10 }}>
@@ -332,21 +411,26 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
           <div className={cn("grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4", mandatoryPending && "pb-28")}>
             {filteredCatalog.map((item, i) => (
               <div key={item.id} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 anim-item flex flex-col" style={{ '--i': i } as React.CSSProperties}>
-                <div className="flex items-start justify-between mb-3">
-                  <span className={cn(
-                    "text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded",
-                    item.type === 'Internes'
-                      ? "bg-[#fed7aa] text-[#9a3412] dark:bg-[#5a2a0d] dark:text-[#fdba74]"
-                      : "bg-[#c7d2fe] text-[#3730a3] dark:bg-[#1e1b4b] dark:text-[#a5b4fc]"
-                  )}>{item.type}{item.category ? ` · ${item.category}` : ''}</span>
-                  <span className={cn("text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded", STATUS_COLORS[item.status])}>{item.status}</span>
+                <div className="flex items-start justify-between mb-3 gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={cn(
+                      "text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded",
+                      item.type === 'Internes'
+                        ? "bg-[#fed7aa] text-[#9a3412] dark:bg-[#5a2a0d] dark:text-[#fdba74]"
+                        : "bg-[#c7d2fe] text-[#3730a3] dark:bg-[#1e1b4b] dark:text-[#a5b4fc]"
+                    )}>{item.type}{item.category ? ` · ${item.category}` : ''}</span>
+                    {item.isPresential && (
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-[#d1fae5] text-[#065f46] dark:bg-[#14532d] dark:text-[#86efac]">Presencial</span>
+                    )}
+                  </div>
+                  <span className={cn("text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded flex-shrink-0", STATUS_COLORS[item.status])}>{item.status}</span>
                 </div>
                 <h4 className="font-semibold text-gray-900 dark:text-white mb-2 text-[15px] leading-snug">{item.title}</h4>
                 <p className="text-xs text-gray-500 dark:text-zinc-400 mb-4 leading-relaxed line-clamp-2 min-h-[2.5rem]">{item.description}</p>
                 <div className="mt-auto flex flex-col gap-2">
                   <div className="flex items-center gap-2 text-xs text-gray-500">
                     {item.hours && <><Clock size={12} /><span>{item.hours}</span></>}
-                    {!!item.mandatory && <span className="text-[10px] bg-[#efe6d4] text-[#7a6428] dark:bg-[#3a3220] dark:text-[#d9c79a] px-1.5 py-0.5 rounded font-semibold">Obligatòria</span>}
+                    {!!item.mandatory && <span className="text-[10px] bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400 px-1.5 py-0.5 rounded font-semibold">Obligatòria</span>}
                     {item.type === 'Internes' && <span className="text-[10px] bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 px-1.5 py-0.5 rounded font-semibold">{item.quizQuestions ?? 0} preguntes</span>}
                   </div>
                   {typeof item.progress === 'number' && item.progress > 0 && item.progress < 100 && (
@@ -357,13 +441,30 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
                       <ExternalLink size={12} /> Obrir curs
                     </button>
                   )}
-                  {item.type === 'Internes' && item.quizId && item.status !== 'Completat' && (
+                  {item.type === 'Externes' && item.certificateStatus === null && (
+                    <CertUploader onUpload={f => handleCertUpload(item, f)} />
+                  )}
+                  {item.type === 'Externes' && item.certificateStatus === 'pending' && (
+                    <div className="w-full flex items-center justify-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/20">
+                      <Clock size={11} /> Certificat pendent de validació
+                    </div>
+                  )}
+                  {item.type === 'Externes' && item.certificateStatus === 'rejected' && (
+                    <div className="flex flex-col gap-1.5">
+                      <div className="text-[11px] text-red-500 dark:text-red-400 text-center">Certificat rebutjat</div>
+                      <CertUploader onUpload={f => handleCertUpload(item, f)} reupload />
+                    </div>
+                  )}
+                  {item.type === 'Internes' && item.quizId && !item.isPresential && item.status !== 'Completat' && (
                     <button
                       onClick={() => window.open(`${window.location.pathname}?quiz=${item.quizId}${item.quizInProgress ? '&resume=1' : ''}`, '_blank')}
                       className={`w-full flex items-center justify-center gap-1.5 text-xs font-medium text-white py-1.5 rounded-lg transition-colors ${item.quizInProgress ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#8b8c89] hover:bg-[#222725]'}`}
                     >
                       <PlayCircle size={12} /> {item.quizInProgress ? 'Continuar' : 'Comença'}
                     </button>
+                  )}
+                  {item.type === 'Internes' && item.isPresential && item.status !== 'Completat' && (
+                    <p className="text-[11px] text-[var(--tavil-muted)] text-center py-1">Assistència validada per l'administrador</p>
                   )}
                 </div>
               </div>
@@ -379,7 +480,7 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
                 className="pointer-events-auto w-full max-w-[520px] flex items-center gap-3 rounded-xl border border-[var(--tavil-border)] bg-[var(--tavil-card)] px-4 py-3 shadow-[0_8px_32px_rgba(34,39,37,0.14)]"
                 style={{ transition: 'transform 420ms cubic-bezier(0.22,1,0.36,1)', willChange: 'transform' }}
               >
-                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7a6428] bg-[#efe6d4] px-2 py-1 rounded flex-shrink-0">Obligatòria</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 px-2 py-1 rounded flex-shrink-0">Obligatòria</span>
                 <div className="flex-1 min-w-0">
                   {/* keyed → fades on each carousel rotation */}
                   <div key={mandSafeIdx} className="anim-fade-in min-w-0">
@@ -405,7 +506,8 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
                 </div>
                 <button
                   onClick={() => mandatoryPending.action?.()}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[var(--tavil-accent)] text-white hover:opacity-90 transition-opacity flex-shrink-0 flex items-center gap-1.5"
+                  disabled={!mandatoryPending.action}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[var(--tavil-accent)] text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex-shrink-0 flex items-center gap-1.5"
                 >
                   <PlayCircle size={13} /> Fer la formació
                 </button>
@@ -466,7 +568,7 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
                           <p className="text-xs text-gray-500 mt-0.5">
                             {item.type === 'Externes' ? (item.hours ? `${item.hours}` : '') : `${item.quizQuestions ?? 0} preguntes`}
                             {item.category ? ` · ${item.category}` : ''}
-                            {item.mandatory ? <span className="text-[#7a6428] font-medium"> · Obligatòria</span> : null}
+                            {item.mandatory ? <span className="text-red-600 dark:text-red-400 font-medium"> · Obligatòria</span> : null}
                           </p>
                           {typeof item.progress === 'number' && item.progress > 0 && item.progress < 100 && (
                             <div className="flex items-center gap-2 mt-1.5">

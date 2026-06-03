@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useMemo, useLayoutEffect, useEffect, memo } from 'react';
 import { X, Users, Crown, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { Employee } from '../../api';
-import { DEPT_ORDER, avatarBg } from '../../lib/depts';
+import { DEPT_CANONICAL, avatarBg } from '../../lib/depts';
 import { resolveImg } from '../../lib/resolveImg';
 
 // ── Layout constants ──────────────────────────────────────────────────────────
@@ -107,8 +107,8 @@ export function OrganigramaView({ employees, search, deptFilters }: OrganigramaV
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const allDepts = useMemo<DeptGroup[]>(() => {
-    const ordered = DEPT_ORDER.filter(d => d !== 'Direcció General');
-    const extra = employees.map(e => e.dept).filter((d, i, arr) => arr.indexOf(d) === i && !DEPT_ORDER.includes(d));
+    const ordered = (DEPT_CANONICAL as readonly string[]).filter(d => d !== 'Direcció General');
+    const extra = employees.map(e => e.dept).filter((d, i, arr) => arr.indexOf(d) === i && !(DEPT_CANONICAL as readonly string[]).includes(d));
     return [...ordered, ...extra]
       .map(name => {
         const emps = employees.filter(e => e.dept === name);
@@ -160,6 +160,13 @@ export function OrganigramaView({ employees, search, deptFilters }: OrganigramaV
     // Slight delay so containerRef has correct dimensions after height is set
     requestAnimationFrame(() => centerView(false));
   }, [employees.length, canvasH, centerView]);
+
+  // Auto-center when search/filter changes result set
+  useEffect(() => {
+    if (!initializedRef.current) return;
+    requestAnimationFrame(() => centerView(true));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleDepts.length, search]);
 
   // ── Pan: direct DOM ───────────────────────────────────────────────────────
   const onMouseDown = useCallback((e: React.MouseEvent) => {

@@ -58,6 +58,17 @@ if ($method === 'GET' && $id === null) {
     $prog_map = [];
     foreach ($prog_stmt->fetchAll() as $p) $prog_map[$p['course_id']] = $p;
 
+    // Certificate status for this user
+    $cert_stmt = $db->prepare(
+        'SELECT course_id, id AS certificate_id, status AS certificate_status
+         FROM course_certificates WHERE user_id=? AND is_active=1'
+    );
+    $cert_stmt->execute([$uid]);
+    $cert_map = [];
+    foreach ($cert_stmt->fetchAll() as $c) {
+        $cert_map[(int)$c['course_id']] = $c;
+    }
+
     foreach ($rows as &$r) {
         $r['id']          = (int)$r['id'];
         $r['mandatory']   = (int)$r['mandatory'];
@@ -70,6 +81,9 @@ if ($method === 'GET' && $id === null) {
         $p = $prog_map[$r['id']] ?? null;
         $r['user_status']   = $p ? $p['status']   : 'Pendent';
         $r['user_progress'] = $p ? (int)$p['progress'] : 0;
+        $cert = $cert_map[$r['id']] ?? null;
+        $r['certificate_status'] = $cert ? $cert['certificate_status'] : null;
+        $r['certificate_id']     = $cert ? (int)$cert['certificate_id'] : null;
     }
     respond($rows);
 }
@@ -125,6 +139,8 @@ elseif ($method === 'PUT' && $id !== null && $sub === '') {
 elseif ($method === 'DELETE' && $id !== null && $sub === '') {
     require_formacions_or_admin();
     $db->prepare('DELETE FROM agenda_events WHERE course_id=?')->execute([$id]);
+    $db->prepare('DELETE FROM user_course_progress WHERE course_id=?')->execute([$id]);
+    $db->prepare('DELETE FROM course_certificates WHERE course_id=?')->execute([$id]);
     $db->prepare('DELETE FROM courses WHERE id=? AND is_external=1')->execute([$id]);
     respond(['status' => 'ok']);
 }
@@ -137,6 +153,58 @@ elseif ($method === 'PATCH' && $id !== null && $sub === 'progress') {
     $db->prepare('INSERT INTO user_course_progress (user_id, course_id, status, progress) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE status=VALUES(status), progress=VALUES(progress)')
        ->execute([$uid, $id, str_val($body,'status'), int_val($body,'progress')]);
     respond(['ok' => true]);
+}
+
+// GET /api/courses/{id}/users — user progress breakdown for a formation (admin)
+elseif ($method === 'GET' && $id !== null && $sub === 'users') {
+    require_formacions_or_admin();
+
+    $cq = $db->prepare('SELECT departments, target_users FROM courses WHERE id=? AND is_external=1');
+    $cq->execute([$id]);
+    $course = $cq->fetch();
+    if (!$course) respond(['detail' => 'Curs no trobat'], 404);
+
+    $depts    = json_decode($course['departments'] ?: '[]', true) ?: [];
+    $tgt_uids = json_decode($course['target_users'] ?? '[]', true) ?: [];
+
+    $sql    = 'SELECT u.id, u.name, u.dept,
+                      COALESCE(p.status, "Pendent") AS status,
+                      COALESCE(p.progress, 0) AS progress
+               FROM users u
+               LEFT JOIN user_course_progress p ON p.user_id=u.id AND p.course_id=?
+               WHERE u.active=1';
+    $params = [$id];
+
+    if (!empty($depts) || !empty($tgt_uids)) {
+        $conds = [];
+        if (!empty($depts)) {
+            $ph      = implode(',', array_fill(0, count($depts), '?'));
+            $conds[] = "u.dept IN ($ph)";
+            $params  = array_merge($params, $depts);
+        }
+        if (!empty($tgt_uids)) {
+            $ph      = implode(',', array_fill(0, count($tgt_uids), '?'));
+            $conds[] = "u.id IN ($ph)";
+            $params  = array_merge($params, $tgt_uids);
+        }
+        $sql .= ' AND (' . implode(' OR ', $conds) . ')';
+    }
+
+    $sql .= ' ORDER BY CASE COALESCE(p.status,"Pendent")
+                           WHEN "Completat" THEN 1
+                           WHEN "En curs"   THEN 2
+                           ELSE 3
+                       END, u.name';
+
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll();
+    foreach ($rows as &$r) {
+        $r['id']       = (int)$r['id'];
+        $r['progress'] = (int)$r['progress'];
+    }
+    unset($r);
+    respond($rows);
 }
 
 else {

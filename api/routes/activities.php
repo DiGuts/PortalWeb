@@ -12,8 +12,8 @@ $sub  = $segments[2] ?? '';
 // POST /api/activities
 if ($method === 'POST' && $id === null) {
     require_comunicacions_or_admin();
-    $db->prepare('INSERT INTO activities (title,category,description,date,time,location,capacity,enrolled,past) VALUES (?,?,?,?,?,?,?,0,0)')
-       ->execute([str_val($body,'title'), str_val($body,'category'), str_val($body,'description'), str_val($body,'date'), str_val($body,'time'), str_val($body,'location'), int_val($body,'capacity')]);
+    $db->prepare('INSERT INTO activities (title,category,description,date,time,location,capacity,link,enrolled,past) VALUES (?,?,?,?,?,?,?,?,0,0)')
+       ->execute([str_val($body,'title'), str_val($body,'category'), str_val($body,'description'), str_val($body,'date'), str_val($body,'time'), str_val($body,'location'), int_val($body,'capacity'), str_val($body,'link')]);
     $row = $db->query('SELECT * FROM activities WHERE id=' . $db->lastInsertId())->fetch();
     $row['id'] = (int)$row['id'];
     respond($row, 201);
@@ -48,8 +48,8 @@ elseif ($method === 'POST' && $id !== null && $sub === 'enroll') {
 // PUT /api/activities/{id}
 elseif ($method === 'PUT' && $id !== null) {
     require_comunicacions_or_admin();
-    $db->prepare('UPDATE activities SET title=?,category=?,description=?,date=?,time=?,location=?,capacity=? WHERE id=?')
-       ->execute([str_val($body,'title'), str_val($body,'category'), str_val($body,'description'), str_val($body,'date'), str_val($body,'time'), str_val($body,'location'), int_val($body,'capacity'), $id]);
+    $db->prepare('UPDATE activities SET title=?,category=?,description=?,date=?,time=?,location=?,capacity=?,link=? WHERE id=?')
+       ->execute([str_val($body,'title'), str_val($body,'category'), str_val($body,'description'), str_val($body,'date'), str_val($body,'time'), str_val($body,'location'), int_val($body,'capacity'), str_val($body,'link'), $id]);
     respond(['ok' => true]);
 }
 

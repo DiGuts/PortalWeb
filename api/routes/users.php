@@ -25,6 +25,7 @@ function _cast_user(array $row): array {
     $row['is_head']      = (int)$row['is_head'];
     $row['visible_in_directory'] = (int)($row['visible_in_directory'] ?? 1);
     $row['must_change_password'] = (int)($row['must_change_password'] ?? 0);
+    $row['active']               = (int)($row['active'] ?? 1);
     $row['is_demo_admin'] = ($row['email'] ?? '') === 'unaiclapers@tavil.net' ? 1 : 0;
     $rolesRaw = $row['roles'] ?? '[]';
     if (!is_array($rolesRaw)) {
@@ -129,6 +130,18 @@ elseif ($method === 'PATCH' && is_numeric($seg1) && $seg2 === 'role') {
     require_admin();
     $user_id = (int)$seg1;
     $db->prepare('UPDATE users SET role=? WHERE id=?')->execute([str_val($body,'role'), $user_id]);
+    respond(_fetch_user($db, $user_id));
+}
+
+// PATCH /api/users/{user_id}/active  (admin or RRHH: activate/deactivate)
+elseif ($method === 'PATCH' && is_numeric($seg1) && $seg2 === 'active') {
+    $caller  = require_rrhh_or_admin();
+    $user_id = (int)$seg1;
+    if ($user_id === (int)$caller['id']) {
+        respond(['detail' => 'No et pots desactivar a tu mateix'], 400);
+    }
+    $active = bool_val($body, 'active', true) ? 1 : 0;
+    $db->prepare('UPDATE users SET active=? WHERE id=?')->execute([$active, $user_id]);
     respond(_fetch_user($db, $user_id));
 }
 

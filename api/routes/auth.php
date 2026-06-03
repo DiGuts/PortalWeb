@@ -5,7 +5,7 @@ require_once __DIR__ . '/../jwt.php';
 require_once __DIR__ . '/../email.php';
 require_once __DIR__ . '/../helpers.php';
 
-const _USER_FIELDS_AUTH = 'id, name, email, role, roles, dept, phone, ext, location, avatar_url, visible_in_directory, onboarded, email_notifs, is_head, must_change_password';
+const _USER_FIELDS_AUTH = 'id, name, email, role, roles, dept, phone, ext, location, avatar_url, visible_in_directory, onboarded, email_notifs, is_head, must_change_password, active';
 
 function _expires_at(int $minutes = 0, int $hours = 0): string {
     return date('Y-m-d H:i:s', time() + $minutes * 60 + $hours * 3600);
@@ -60,6 +60,7 @@ function _user_out(array $row): array {
         'email_notifs'=> (int)($row['email_notifs'] ?? 1),
         'is_head'     => (int)($row['is_head'] ?? 0),
         'must_change_password' => (int)($row['must_change_password'] ?? 0),
+        'active'       => (int)($row['active'] ?? 1),
         'is_demo_admin' => ($row['email'] ?? '') === 'unaiclapers@tavil.net' ? 1 : 0,
     ];
 }
@@ -79,7 +80,10 @@ if ($method === 'POST' && $action === 'login') {
     $row = $stmt->fetch();
 
     if (!$row || !password_verify($password, $row['password'])) {
-        respond(['detail' => 'Credencials incorrectes'], 401);
+        respond(['detail' => 'Usuari o contrasenya incorrectes'], 401);
+    }
+    if (isset($row['active']) && (int)$row['active'] === 0) {
+        respond(['detail' => 'El teu compte ha sigut desactivat, parla amb RRHH per solucionar-ho'], 403);
     }
     if (EMAIL_VERIFY_ENABLED && empty($row['email_verified'])) {
         respond(['detail' => 'Verifica el teu correu electrònic abans d\'accedir'], 403);

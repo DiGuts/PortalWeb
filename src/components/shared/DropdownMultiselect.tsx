@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check, X } from 'lucide-react';
+import { ChevronDown, Check, X, Search } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
 interface Props {
@@ -13,10 +13,13 @@ interface Props {
 export function DropdownMultiselect({ options, value, onChange, placeholder = 'Tots', getLabel }: Props) {
   const labelFor = (opt: string) => (getLabel ? getLabel(opt) : opt);
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { setSearch(''); return; }
+    setTimeout(() => searchRef.current?.focus(), 50);
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
@@ -79,45 +82,67 @@ export function DropdownMultiselect({ options, value, onChange, placeholder = 'T
       {open && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 6px)', left: 0,
-          zIndex: 50, minWidth: 220, maxHeight: 320, overflowY: 'auto',
+          zIndex: 50, minWidth: 260, maxWidth: 340,
           background: 'var(--tavil-card)',
           border: '1px solid var(--tavil-border)',
-          borderRadius: 10,
+          borderRadius: 12,
           boxShadow: '0 8px 32px rgba(34,39,37,0.14)',
+          display: 'flex', flexDirection: 'column',
         }}>
-          {options.map((opt, i) => {
-            const checked = value.includes(opt);
-            return (
-              <button
-                key={opt}
-                onClick={() => toggle(opt)}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '9px 14px', background: 'transparent', border: 'none',
-                  borderBottom: i < options.length - 1 ? '1px solid var(--tavil-border)' : 'none',
-                  cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                  transition: 'background 100ms',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--tavil-bgAlt)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-              >
-                {/* Custom checkbox */}
-                <span style={{
-                  width: 16, height: 16, borderRadius: 4, flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: checked ? 'var(--tavil-text)' : 'transparent',
-                  border: checked ? '1.5px solid var(--tavil-text)' : '1.5px solid var(--tavil-border)',
-                  transition: 'background 120ms, border-color 120ms',
-                }}>
-                  {checked && <Check size={10} strokeWidth={3} color="var(--tavil-bg)" />}
-                </span>
-                <span style={{ fontSize: 13.5, color: 'var(--tavil-text)', fontWeight: checked ? 500 : 400 }}>
-                  {labelFor(opt)}
-                </span>
-              </button>
-            );
-          })}
-
+          {/* Search bar */}
+          <div style={{ position: 'relative', padding: '10px 10px 8px', borderBottom: '1px solid var(--tavil-border)', flexShrink: 0 }}>
+            <Search size={13} style={{ position: 'absolute', left: 22, top: '50%', transform: 'translateY(-6px)', color: 'var(--tavil-faint)', pointerEvents: 'none' }} />
+            <input
+              ref={searchRef}
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Cerca departament..."
+              style={{
+                width: '100%', height: 34, paddingLeft: 30, paddingRight: 10,
+                background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)',
+                borderRadius: 7, fontSize: 13, color: 'var(--tavil-text)', outline: 'none',
+                fontFamily: 'inherit', boxSizing: 'border-box',
+              }}
+            />
+          </div>
+          {/* Options list */}
+          <div style={{ maxHeight: 280, overflowY: 'auto' }}>
+            {options.filter(opt => !search || labelFor(opt).toLowerCase().includes(search.toLowerCase())).map((opt, i, arr) => {
+              const checked = value.includes(opt);
+              return (
+                <button
+                  key={opt}
+                  onClick={() => toggle(opt)}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '9px 14px', background: 'transparent', border: 'none',
+                    borderBottom: i < arr.length - 1 ? '1px solid var(--tavil-border)' : 'none',
+                    cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                    transition: 'background 100ms',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--tavil-bgAlt)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <span style={{
+                    width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: checked ? 'var(--tavil-text)' : 'transparent',
+                    border: checked ? '1.5px solid var(--tavil-text)' : '1.5px solid var(--tavil-border)',
+                    transition: 'background 120ms, border-color 120ms',
+                  }}>
+                    {checked && <Check size={10} strokeWidth={3} color="var(--tavil-bg)" />}
+                  </span>
+                  <span style={{ fontSize: 13, color: 'var(--tavil-text)', fontWeight: checked ? 500 : 400, lineHeight: 1.3 }}>
+                    {labelFor(opt)}
+                  </span>
+                </button>
+              );
+            })}
+            {options.filter(opt => !search || labelFor(opt).toLowerCase().includes(search.toLowerCase())).length === 0 && (
+              <div style={{ padding: '20px 14px', textAlign: 'center', color: 'var(--tavil-faint)', fontSize: 13 }}>Sense resultats</div>
+            )}
+          </div>
         </div>
       )}
     </div>

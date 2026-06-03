@@ -534,6 +534,49 @@ elseif ($method === 'GET' && $id !== null && $sub === 'non-completers') {
     respond(['non_completers' => $non_completers, 'total_audience' => count($audience), 'completed' => count($completer_ids)]);
 }
 
+// GET /api/quizzes/{id}/users — user attempt breakdown for a quiz (admin)
+elseif ($method === 'GET' && $id !== null && $sub === 'users') {
+    require_formacions_or_admin();
+
+    $qchk = $db->prepare('SELECT id FROM quizzes WHERE id=?');
+    $qchk->execute([$id]);
+    if (!$qchk->fetch()) respond(['detail' => 'Quiz no trobat'], 404);
+
+    $stmt = $db->prepare(
+        'SELECT u.id, u.name, u.dept,
+                CASE
+                    WHEN a.passed  = 1                    THEN "Completat"
+                    WHEN a.id     IS NOT NULL              THEN "No aprovat"
+                    WHEN qp.current_question_idx > 0       THEN "En curs"
+                    ELSE "Pendent"
+                END AS status,
+                a.score, a.max_score,
+                ROUND(CASE WHEN a.max_score > 0 THEN a.score / a.max_score * 100 ELSE 0 END) AS score_pct,
+                a.completed_at
+         FROM users u
+         LEFT JOIN quiz_attempts  a  ON a.user_id=u.id  AND a.quiz_id=?
+         LEFT JOIN quiz_progress  qp ON qp.user_id=u.id AND qp.quiz_id=?
+         WHERE u.active=1
+         ORDER BY
+             CASE
+                 WHEN a.passed=1                  THEN 1
+                 WHEN qp.current_question_idx > 0  THEN 2
+                 WHEN a.id IS NOT NULL              THEN 3
+                 ELSE 4
+             END, u.name'
+    );
+    $stmt->execute([$id, $id]);
+    $rows = $stmt->fetchAll();
+    foreach ($rows as &$r) {
+        $r['id']        = (int)$r['id'];
+        $r['score']     = $r['score']     !== null ? (int)$r['score']     : null;
+        $r['max_score'] = $r['max_score'] !== null ? (int)$r['max_score'] : null;
+        $r['score_pct'] = $r['score_pct'] !== null ? (int)$r['score_pct'] : null;
+    }
+    unset($r);
+    respond($rows);
+}
+
 else {
     respond(['detail' => 'Not found'], 404);
 }

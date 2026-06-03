@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiCreateNews, NewsArticle } from '../../api';
 import { AField, AInput, ATextarea, ASelect, AToggle, AdminCreateModalShell } from './primitives';
+import { DatePicker } from '../shared/AgendaPickers';
 import { useConfirm } from '../ConfirmDialog';
 
 const CATEGORY_OPTIONS = ['Comunicats interns', 'Notícies corporatives', 'Recursos humans', 'Esdeveniments', 'Innovació', 'Seguretat'];
@@ -17,6 +18,7 @@ export function CreateNewsModal({ open, onClose, onCreated }: {
   const [summary, setSummary] = useState('');
   const [date, setDate] = useState(today);
   const [featured, setFeatured] = useState(false);
+  const [active, setActive] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const { confirm, confirmNode } = useConfirm();
@@ -24,7 +26,7 @@ export function CreateNewsModal({ open, onClose, onCreated }: {
   useEffect(() => {
     if (open) {
       setTitle(''); setTitleTouched(false); setCategory(CATEGORY_OPTIONS[0]);
-      setSummary(''); setDate(today); setFeatured(false);
+      setSummary(''); setDate(today); setFeatured(false); setActive(true);
       setError(null); setSaving(false);
     }
   }, [open]);
@@ -45,7 +47,7 @@ export function CreateNewsModal({ open, onClose, onCreated }: {
     try {
       const created = await apiCreateNews({
         title: title.trim(), category, summary: summary.trim(),
-        content: '[]', date, image: '', featured: featured ? 1 : 0,
+        content: '[]', date, image: '', featured: featured ? 1 : 0, active: active ? 1 : 0,
       });
       onCreated(created);
     } catch (e: any) {
@@ -75,10 +77,11 @@ export function CreateNewsModal({ open, onClose, onCreated }: {
             <ASelect value={category} onChange={e => setCategory(e.target.value)} options={CATEGORY_OPTIONS} />
           </AField>
           <AField label="Data">
-            <AInput type="date" value={date} onChange={e => setDate(e.target.value)} />
+            <DatePicker value={date} onChange={setDate} />
           </AField>
         </div>
-        <AToggle value={featured} onChange={setFeatured} label="Destacada (publicada al portal)" hint="Quan està activa, apareix al feed d'Inici i a Notícies." />
+        <AToggle value={active} onChange={setActive} label="Activa" hint="Si està activada, l'article és visible a la pàgina de notícies." />
+        <AToggle value={featured} onChange={setFeatured} label="Destacada" hint="Si està activada, apareix al carrusel de portada. Requereix que l'article estigui actiu." />
       </AdminCreateModalShell>
       {confirmNode}
     </>

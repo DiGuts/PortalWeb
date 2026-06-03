@@ -23,6 +23,7 @@ export interface User {
   is_head: number;
   is_demo_admin: number;
   must_change_password: number;
+  active: number;
 }
 
 export interface TokenOut {
@@ -91,6 +92,9 @@ export async function apiFetch<T>(
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   if (res.status === 401) {
+    let detail: string | undefined;
+    try { detail = (await res.json()).detail; } catch {}
+    if (detail) throw new Error(detail);
     clearToken();
     onUnauthorizedCallback?.();
     throw new Error('No autoritzat');
@@ -103,6 +107,7 @@ export async function apiFetch<T>(
       onMustChangePasswordCallback?.();
       throw new Error('must_change_password');
     }
+    throw new Error(typeof detail === 'string' ? detail : 'Error 403');
   }
 
   if (!res.ok) {
@@ -496,20 +501,21 @@ export interface Activity {
   time: string;
   location: string;
   capacity: number;
+  link: string;
   enrolled: number;
   past: number;
 }
 
 export async function apiCreateActivity(fields: {
   title: string; category: string; description: string;
-  date: string; time: string; location: string; capacity: number;
+  date: string; time: string; location: string; capacity: number; link: string;
 }): Promise<Activity> {
   return apiFetch<Activity>('/api/activities', { method: 'POST', body: JSON.stringify(fields) });
 }
 
 export async function apiUpdateActivity(id: number, fields: {
   title: string; category: string; description: string;
-  date: string; time: string; location: string; capacity: number;
+  date: string; time: string; location: string; capacity: number; link: string;
 }): Promise<void> {
   await apiFetch(`/api/activities/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
 }
@@ -594,6 +600,7 @@ export interface NewsArticle {
   date: string;
   image: string;
   featured: number;
+  active: number;
   translations?: NewsTranslations | null;
   created_at: string;
 }
@@ -606,6 +613,7 @@ export interface NewsWritePayload {
   date: string;
   image: string;
   featured: number;
+  active: number;
   translations?: NewsTranslations;
 }
 
@@ -692,6 +700,24 @@ export interface Course {
   end_at: string | null;
   user_status: string;
   user_progress: number;
+  certificate_status?: 'pending' | 'approved' | 'rejected' | null;
+  certificate_id?: number | null;
+}
+
+// ── Certificates ──────────────────────────────────────────────────────────────
+
+export interface Certificate {
+  id: number;
+  user_id: number;
+  user_name: string;
+  user_dept: string;
+  course_id: number;
+  course_title: string;
+  filename: string;
+  status: 'pending' | 'approved' | 'rejected';
+  is_active: number;
+  uploaded_at: string;
+  reviewed_at: string | null;
 }
 
 export async function apiGetCourses(): Promise<Course[]> {
@@ -813,6 +839,10 @@ export async function apiAdminUpdateUser(id: number, fields: {
 
 export async function apiAdminDeleteUser(id: number): Promise<void> {
   await apiFetch(`/api/users/${id}`, { method: 'DELETE' });
+}
+
+export async function apiSetUserActive(id: number, active: boolean): Promise<void> {
+  await apiFetch(`/api/users/${id}/active`, { method: 'PATCH', body: JSON.stringify({ active }) });
 }
 
 // ── Admin: notices management ─────────────────────────────────────────────────
@@ -1010,6 +1040,51 @@ export async function apiGetQuizInProgressCount(): Promise<number> {
   return r.count;
 }
 
+export async function apiUploadCertificate(
+  courseId: number,
+  file: File
+): Promise<{ id: number; course_id: number; status: string; uploaded_at: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('course_id', String(courseId));
+  const token = getToken();
+  const res = await fetch(`${API_BASE}/api/certificates`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) {
+    let detail = `Error ${res.status}`;
+    try { const j = await res.json(); if (j.detail) detail = j.detail; } catch {}
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+export async function apiGetCertificates(status?: 'pending' | 'approved' | 'rejected'): Promise<Certificate[]> {
+  const qs = status ? `?status=${status}` : '';
+  return apiFetch<Certificate[]>(`/api/certificates${qs}`);
+}
+
+export async function apiReviewCertificate(id: number, action: 'approve' | 'reject'): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>(`/api/certificates/${id}/review`, {
+    method: 'PATCH',
+    body: JSON.stringify({ action }),
+  });
+}
+
+export async function openCertificateFile(id: number): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}/api/certificates/${id}/file`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
 export interface NonCompletersResult {
   non_completers: { id: number; name: string; email: string; dept: string }[];
   total_audience: number;
@@ -1018,6 +1093,26 @@ export interface NonCompletersResult {
 
 export async function apiGetQuizNonCompleters(id: number): Promise<NonCompletersResult> {
   return apiFetch<NonCompletersResult>(`/api/quizzes/${id}/non-completers`);
+}
+
+// ── Formation user progress (Seguiment) ───────────────────────────────────────
+
+export interface FormationUserProgress {
+  id: number;
+  name: string;
+  dept: string;
+  status: 'Completat' | 'En curs' | 'Pendent' | 'No aprovat';
+  progress?: number;      // for external courses (0-100)
+  score_pct?: number | null; // for quizzes
+  completed_at?: string | null;
+}
+
+export async function apiGetCourseUsers(courseId: number): Promise<FormationUserProgress[]> {
+  return apiFetch<FormationUserProgress[]>(`/api/courses/${courseId}/users`);
+}
+
+export async function apiGetQuizUsers(quizId: number): Promise<FormationUserProgress[]> {
+  return apiFetch<FormationUserProgress[]>(`/api/quizzes/${quizId}/users`);
 }
 
 export async function apiImpersonate(userId: number): Promise<TokenOut> {

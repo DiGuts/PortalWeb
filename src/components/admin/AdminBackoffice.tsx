@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, CSSProperties } from 'react';
 import {
   Plus, Check, Mail, MapPin, Clock, Users, Calendar, Newspaper,
   GraduationCap, Activity as ActivityIcon, ArrowRight, Settings,
-  LogOut, Image as ImageIcon, Globe, FileText, Bell,
+  LogOut, Image as ImageIcon, Globe, FileText, Bell, UserCheck, UserX,
 } from 'lucide-react';
 import {
   User, Activity, AgendaEvent, NewsArticle, Course, Quiz, Notice,
@@ -11,8 +11,11 @@ import {
   apiGetActivities, apiCreateActivity, apiUpdateActivity, apiDeleteActivity,
   apiGetAgendaEvents, apiCreateAgendaEvent, apiUpdateAgendaEvent, apiDeleteAgendaEvent,
   apiGetAllNotices, apiCreateNotice, apiUpdateNotice, apiDeleteNotice,
-  apiGetCourses, apiGetQuizzes, apiCreateExternalCourse, apiUpdateExternalCourse, apiDeleteExternalCourse, apiSetQuizMandatory,
+  apiGetCourses, apiGetQuizzes, apiGetQuiz, apiUpdateQuiz, apiCreateExternalCourse, apiUpdateExternalCourse, apiDeleteExternalCourse, apiDeleteQuiz, apiSetQuizMandatory,
+  apiSetUserActive,
   ExternalCoursePayload, API_BASE,
+  Certificate, apiGetCertificates, apiReviewCertificate, openCertificateFile,
+  FormationUserProgress, apiGetCourseUsers, apiGetQuizUsers,
 } from '../../api';
 import {
   T, F_DISPLAY, F_BODY, F_MONO, resolveUploadUrl,
@@ -23,6 +26,7 @@ import {
   Column,
 } from './primitives';
 import { DEPT_ORDER } from '../../lib/depts';
+import { DatePicker } from '../shared/AgendaPickers';
 import { ImageGalleryPicker } from './ImageGalleryPicker';
 import { CreateUserModal } from './CreateUserModal';
 import { CreateNewsModal } from './CreateNewsModal';
@@ -30,6 +34,7 @@ import { CreateActivityModal } from './CreateActivityModal';
 import { CreateAgendaModal } from './CreateAgendaModal';
 import { CreateNoticeModal } from './CreateNoticeModal';
 import { CreateExternalCourseModal } from './CreateExternalCourseModal';
+import { DeptSearch } from './DeptSearch';
 import { useConfirm } from '../ConfirmDialog';
 
 // Primitives + tokens imported from ./primitives. Modules below compose them.
@@ -93,7 +98,7 @@ function AdminDashboard({ currentUser, onNavigate, counts }: {
   const modules = allModules.filter(m => allowed.has(m.id));
 
   const labelStyle: CSSProperties = {
-    fontSize: 10.5, fontWeight: 600, color: T.textFaint,
+    fontSize: 10.5, fontWeight: 600, color: T.accent,
     textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 12,
   };
 
@@ -230,7 +235,7 @@ function AdminDashboard({ currentUser, onNavigate, counts }: {
 // ── Module: AdminUsers ──────────────────────────────────────────────────────
 
 const DEPT_OPTIONS = DEPT_ORDER;
-const OFFICE_OPTIONS = ['Alemanya', 'Canadà', 'Dinamarca', 'França', 'Itàlia', 'Mèxic', 'Polònia', 'Rússia', 'UK', 'USA', 'Holanda', 'Sant Jaume de llierca'];
+const OFFICE_OPTIONS = ['Alemanya', 'Austràlia', 'Canadà', 'Dinamarca', 'França', 'Holanda', 'Itàlia', 'Lituània', 'Mèxic', 'Polònia', 'Rússia', 'UK', 'USA', 'Sant Jaume de llierca'];
 const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: 'Treballador/a',       label: 'Treballador/a' },
   { value: 'Cap de departament',  label: 'Cap de departament' },
@@ -248,8 +253,9 @@ function mapServerRoleToPill(role: string, roles?: string[]): 'admin' | 'editor'
   return 'empleat';
 }
 
-function AdminUsers({ users, refresh, currentUser, onImpersonate, intent, onConsumeIntent }: {
+function AdminUsers({ users, setUsers, refresh, currentUser, onImpersonate, intent, onConsumeIntent }: {
   users: User[];
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
   refresh: () => void;
   currentUser: User | null;
   onImpersonate?: (id: number, name: string) => void;
@@ -259,7 +265,7 @@ function AdminUsers({ users, refresh, currentUser, onImpersonate, intent, onCons
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [q, setQ] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'editor' | 'empleat'>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'pending'>('all');
   const [draft, setDraft] = useState<Partial<User>>({});
   const [newPass, setNewPass] = useState('');
   const [saving, setSaving] = useState(false);
@@ -268,16 +274,19 @@ function AdminUsers({ users, refresh, currentUser, onImpersonate, intent, onCons
   const selected = users.find(u => u.id === selectedId) || null;
 
   useEffect(() => {
-    setDraft(selected ? { ...selected } : {});
+    setDraft(selected ? {
+      ...selected,
+      roles: selected.roles?.length ? selected.roles : ['Treballador/a'],
+    } : {});
     setNewPass('');
   }, [selectedId, selected?.id]);
 
   const filtered = useMemo(() => users.filter(u => {
     const pill = mapServerRoleToPill(u.role, u.roles);
     if (roleFilter !== 'all' && pill !== roleFilter) return false;
-    const status = u.must_change_password ? 'pending' : 'active';
-    if (statusFilter === 'active' && status !== 'active') return false;
-    if (statusFilter === 'inactive' && status === 'active') return false;
+    if (statusFilter === 'active' && (u.active === 0 || u.must_change_password)) return false;
+    if (statusFilter === 'inactive' && u.active !== 0) return false;
+    if (statusFilter === 'pending' && !u.must_change_password) return false;
     if (q && !(u.name + u.email + u.role + u.dept).toLowerCase().includes(q.toLowerCase())) return false;
     return true;
   }), [users, q, roleFilter, statusFilter]);
@@ -287,6 +296,8 @@ function AdminUsers({ users, refresh, currentUser, onImpersonate, intent, onCons
     admin: users.filter(u => mapServerRoleToPill(u.role, u.roles) === 'admin').length,
     editor: users.filter(u => mapServerRoleToPill(u.role, u.roles) === 'editor').length,
     empleat: users.filter(u => mapServerRoleToPill(u.role, u.roles) === 'empleat').length,
+    inactive: users.filter(u => u.active === 0).length,
+    pending: users.filter(u => u.active !== 0 && u.must_change_password).length,
   };
 
   const update = (patch: Partial<User>) => setDraft(prev => ({ ...prev, ...patch }));
@@ -325,6 +336,20 @@ function AdminUsers({ users, refresh, currentUser, onImpersonate, intent, onCons
     }
   };
 
+  const toggleActive = async () => {
+    if (!selected) return;
+    const newActive = selected.active === 0 ? 1 : 0;
+    // Optimistic update
+    setUsers(prev => prev.map(u => u.id === selected.id ? { ...u, active: newActive } : u));
+    try {
+      await apiSetUserActive(selected.id, newActive === 1);
+    } catch (e: any) {
+      // Rollback
+      setUsers(prev => prev.map(u => u.id === selected.id ? { ...u, active: selected.active } : u));
+      alert(e?.message ?? 'Error canviant l\'estat d\'accés');
+    }
+  };
+
   const columns: Column<User>[] = [
     {
       key: 'name', label: 'Usuari', width: 'minmax(0, 2fr)',
@@ -340,7 +365,7 @@ function AdminUsers({ users, refresh, currentUser, onImpersonate, intent, onCons
     },
     { key: 'dept', label: 'Departament', width: 'minmax(0, 1fr)', render: (u) => <span style={{ color: T.textMuted, fontSize: 12.5 }}>{u.dept || '—'}</span> },
     { key: 'role', label: 'Rol', width: '100px', render: (u) => <ARolePill role={mapServerRoleToPill(u.role, u.roles)} /> },
-    { key: 'status', label: 'Estat', width: '110px', render: (u) => <AStatusPill status={u.must_change_password ? 'pending' : 'active'} /> },
+    { key: 'status', label: 'Estat', width: '110px', render: (u) => <AStatusPill status={u.active === 0 ? 'inactive' : u.must_change_password ? 'pending' : 'active'} /> },
     { key: 'lastLogin', label: 'Últim accés', width: '110px', align: 'right', render: () => <span style={{ color: T.textFaint, fontSize: 12 }}>—</span> },
     ...(onImpersonate && currentUser?.is_demo_admin === 1 ? [{
       key: 'actions', label: '', width: '56px', align: 'right' as const,
@@ -399,7 +424,8 @@ function AdminUsers({ users, refresh, currentUser, onImpersonate, intent, onCons
         <AdminFilterPills value={statusFilter} onChange={(id) => setStatusFilter(id as any)} options={[
           { id: 'all', label: 'Tots els estats' },
           { id: 'active', label: 'Actius' },
-          { id: 'inactive', label: 'Pendents' },
+          { id: 'inactive', label: 'Inactius', count: counts.inactive },
+          { id: 'pending', label: 'Pendents', count: counts.pending },
         ]} />
       </AdminToolbar>
 
@@ -455,7 +481,26 @@ function AdminUsers({ users, refresh, currentUser, onImpersonate, intent, onCons
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <AField label="Departament">
-                <ASelect value={draft.dept ?? ''} onChange={(e) => update({ dept: e.target.value })} options={DEPT_OPTIONS} />
+                <>
+                  <input
+                    list="admin-dept-list"
+                    value={draft.dept ?? ''}
+                    onChange={(e) => update({ dept: e.target.value })}
+                    placeholder="Cerca departament…"
+                    style={{
+                      width: '100%', height: 44, padding: '0 14px',
+                      background: T.card, color: T.text,
+                      border: `1.5px solid ${T.border}`, borderRadius: 8,
+                      fontFamily: F_BODY, fontSize: 14.5, outline: 'none', boxSizing: 'border-box',
+                      transition: 'border-color 140ms',
+                    }}
+                    onFocus={e => { (e.target as HTMLInputElement).style.borderColor = T.accent; }}
+                    onBlur={e => { (e.target as HTMLInputElement).style.borderColor = T.border; }}
+                  />
+                  <datalist id="admin-dept-list">
+                    {DEPT_OPTIONS.map(d => <option key={d} value={d} />)}
+                  </datalist>
+                </>
               </AField>
               <AField label="Oficina">
                 <ASelect value={draft.location ?? ''} onChange={(e) => update({ location: e.target.value })} options={OFFICE_OPTIONS} />
@@ -485,6 +530,11 @@ function AdminUsers({ users, refresh, currentUser, onImpersonate, intent, onCons
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {onImpersonate && currentUser?.is_demo_admin === 1 && selected.id !== currentUser.id && (
                   <ABtn variant="secondary" size="sm" icon={Users} onClick={() => onImpersonate(selected.id, selected.name)}>Impersonar usuari</ABtn>
+                )}
+                {selected.active === 0 ? (
+                  <ABtn variant="secondary" size="sm" icon={UserCheck} onClick={toggleActive}>Activa l'accés</ABtn>
+                ) : (
+                  <ABtn variant="ghost" size="sm" icon={UserX} onClick={toggleActive}>Desactiva l'accés</ABtn>
                 )}
                 <ABtn variant="danger" size="sm" icon={LogOut} onClick={removeUser}>Elimina usuari</ABtn>
               </div>
@@ -524,6 +574,7 @@ function AdminNews({ news, refresh, intent, onConsumeIntent }: { news: NewsArtic
   const [category, setCategory] = useState('');
   const [date, setDate] = useState('');
   const [featuredDraft, setFeaturedDraft] = useState(0);
+  const [activeDraft, setActiveDraft] = useState(1);
   const [langDraft, setLangDraft] = useState<LangDraft>(emptyLangDraft());
   const [saving, setSaving] = useState(false);
   const { confirm, confirmNode } = useConfirm();
@@ -535,6 +586,7 @@ function AdminNews({ news, refresh, intent, onConsumeIntent }: { news: NewsArtic
     setCategory(selected?.category ?? '');
     setDate(selected?.date ?? '');
     setFeaturedDraft(selected?.featured ?? 0);
+    setActiveDraft(selected ? (selected.active !== 0 ? 1 : 0) : 1);
     if (selected) {
       const t = selected.translations || {};
       setLangDraft({
@@ -557,6 +609,7 @@ function AdminNews({ news, refresh, intent, onConsumeIntent }: { news: NewsArtic
     category !== selected.category ||
     date !== selected.date ||
     featuredDraft !== selected.featured ||
+    activeDraft !== (selected.active !== 0 ? 1 : 0) ||
     coverDraft !== (selected.image ?? '')
   );
 
@@ -573,6 +626,7 @@ function AdminNews({ news, refresh, intent, onConsumeIntent }: { news: NewsArtic
       date,
       image:    overrides.image ?? coverDraft,
       featured: featuredDraft,
+      active: activeDraft,
       translations,
     };
   };
@@ -753,14 +807,20 @@ function AdminNews({ news, refresh, intent, onConsumeIntent }: { news: NewsArtic
                   options={['Comunicats interns', 'Notícies corporatives', 'Recursos humans', 'Esdeveniments', 'Innovació', 'Seguretat']} />
               </AField>
               <AField label="Data">
-                <AInput type="date" value={date.slice(0, 10)} onChange={e => setDate(e.target.value)} />
+                <DatePicker value={date.slice(0, 10)} onChange={setDate} />
               </AField>
             </div>
             <AToggle
+              value={!!activeDraft}
+              onChange={v => setActiveDraft(v ? 1 : 0)}
+              label="Activa"
+              hint="Si està activada, l'article és visible a la pàgina de notícies."
+            />
+            <AToggle
               value={!!featuredDraft}
               onChange={v => setFeaturedDraft(v ? 1 : 0)}
-              label="Destacada (publicada al portal)"
-              hint="Quan està activa, apareix al feed d'Inici i a Notícies."
+              label="Destacada"
+              hint="Si està activada, apareix al carrusel de portada. Requereix que l'article estigui actiu."
             />
           </AdminDetail>
         ) : (
@@ -795,7 +855,7 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
     setDraft(selected ? {
       title: selected.title, description: selected.description, date: selected.date,
       time: selected.time, location: selected.location, category: selected.category,
-      capacity: selected.capacity,
+      capacity: selected.capacity, link: selected.link ?? '',
     } : {});
   }, [selected?.id]);
 
@@ -806,7 +866,8 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
     draft.time !== selected.time ||
     draft.location !== selected.location ||
     draft.category !== selected.category ||
-    draft.capacity !== selected.capacity
+    draft.capacity !== selected.capacity ||
+    (draft.link ?? '') !== (selected.link ?? '')
   );
 
   const save = async () => {
@@ -819,8 +880,10 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
         date: draft.date ?? selected.date,
         time: draft.time ?? selected.time,
         location: draft.location ?? selected.location,
+        category: draft.category ?? selected.category,
         capacity: draft.capacity ?? selected.capacity,
-      } as any);
+        link: (draft.link !== undefined ? draft.link : selected.link) ?? '',
+      });
       refresh();
     } catch (e: any) { alert(e?.message ?? 'Error desant'); }
     finally { setSaving(false); }
@@ -930,12 +993,20 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
             <AField label="Títol"><AInput value={draft.title ?? ''} onChange={e => setDraft(d => ({ ...d, title: e.target.value }))} /></AField>
             <AField label="Descripció"><ATextarea rows={4} value={draft.description ?? ''} onChange={e => setDraft(d => ({ ...d, description: e.target.value }))} /></AField>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <AField label="Data"><AInput type="date" value={(draft.date ?? '').slice(0, 10)} onChange={e => setDraft(d => ({ ...d, date: e.target.value }))} /></AField>
+              <AField label="Data"><DatePicker value={(draft.date ?? '').slice(0, 10)} onChange={(v) => setDraft(d => ({ ...d, date: v }))} /></AField>
               <AField label="Hora"><AInput type="time" value={draft.time ?? ''} onChange={e => setDraft(d => ({ ...d, time: e.target.value }))} icon={Clock} /></AField>
             </div>
             <AField label="Categoria"><AInput value={draft.category ?? ''} onChange={e => setDraft(d => ({ ...d, category: e.target.value }))} /></AField>
             <AField label="Ubicació"><AInput value={draft.location ?? ''} onChange={e => setDraft(d => ({ ...d, location: e.target.value }))} icon={MapPin} /></AField>
-            <AField label="Aforament"><AInput type="number" value={draft.capacity ?? 0} onChange={e => setDraft(d => ({ ...d, capacity: +e.target.value }))} /></AField>
+            <AField label="Aforament">
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button type="button" onClick={() => setDraft(d => ({ ...d, capacity: d.capacity === 0 ? 20 : 0 }))} title={(draft.capacity ?? 0) === 0 ? 'Il·limitat' : 'Limitat'} style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 8, border: '1.5px solid', borderColor: (draft.capacity ?? 0) === 0 ? 'var(--tavil-accent)' : 'var(--tavil-border)', background: (draft.capacity ?? 0) === 0 ? 'var(--tavil-accent-light)' : 'var(--tavil-card)', color: (draft.capacity ?? 0) === 0 ? 'var(--tavil-accent)' : 'var(--tavil-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 140ms', fontSize: 18 }}>∞</button>
+                {(draft.capacity ?? 0) !== 0
+                  ? <AInput type="number" value={draft.capacity ?? 0} onChange={e => setDraft(d => ({ ...d, capacity: +e.target.value }))} />
+                  : <span style={{ fontSize: 13, color: 'var(--tavil-accent)', fontWeight: 500 }}>Il·limitat</span>}
+              </div>
+            </AField>
+            <AField label="Enllaç extern" optional><AInput value={draft.link ?? ''} onChange={e => setDraft(d => ({ ...d, link: e.target.value }))} placeholder="https://…" /></AField>
           </AdminDetail>
         ) : (
           <AdminDetailEmpty icon={ActivityIcon} label="Selecciona una activitat" hint="Tria una fila per gestionar dates, aforament i inscripció." />
@@ -944,6 +1015,339 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
       <CreateActivityModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={onCreatedActivity} />
       {confirmNode}
     </>
+  );
+}
+
+// ── Module: AdminCertificats ─────────────────────────────────────────────────
+
+function AdminCertificats() {
+  const [certs, setCerts] = useState<Certificate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [reviewing, setReviewing] = useState<number | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    apiGetCertificates()
+      .then(setCerts)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleReview = async (id: number, action: 'approve' | 'reject') => {
+    setReviewing(id);
+    try {
+      await apiReviewCertificate(id, action);
+      setCerts(prev => prev.map(c =>
+        c.id === id ? { ...c, status: action === 'approve' ? 'approved' : 'rejected' } : c
+      ));
+    } catch (e: any) {
+      alert(e?.message ?? 'Error');
+    } finally {
+      setReviewing(null);
+    }
+  };
+
+  const handleViewFile = async (id: number) => {
+    try { await openCertificateFile(id); }
+    catch (e: any) { alert(e?.message ?? 'Error obrint el fitxer'); }
+  };
+
+  const filtered = statusFilter === 'all' ? certs : certs.filter(c => c.status === statusFilter);
+  const counts = {
+    pending:  certs.filter(c => c.status === 'pending').length,
+    approved: certs.filter(c => c.status === 'approved').length,
+    rejected: certs.filter(c => c.status === 'rejected').length,
+  };
+
+  const columns: Column<Certificate>[] = [
+    {
+      key: 'user_name' as any, label: 'Usuari', width: 'minmax(0,1.5fr)',
+      render: r => (
+        <span style={{ fontWeight: 600 }}>
+          {r.user_name}
+          <span style={{ fontWeight: 400, color: T.textMuted, marginLeft: 6, fontSize: 11 }}>{r.user_dept}</span>
+        </span>
+      ),
+    },
+    { key: 'course_title' as any, label: 'Curs',  width: 'minmax(0,2fr)', render: r => r.course_title },
+    { key: 'uploaded_at' as any,  label: 'Pujat', width: '110px',         render: r => new Date(r.uploaded_at).toLocaleDateString('ca-ES') },
+    { key: 'status' as any,       label: 'Estat', width: '120px',         render: r => <AStatusPill status={r.status} /> },
+    {
+      key: 'actions' as any, label: '', width: '180px',
+      render: r => (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <ABtn size="sm" variant="ghost" onClick={() => handleViewFile(r.id)}>Veure</ABtn>
+          {r.status === 'pending' && <>
+            <ABtn size="sm" variant="primary"   disabled={reviewing === r.id} onClick={() => handleReview(r.id, 'approve')}>✓</ABtn>
+            <ABtn size="sm" variant="secondary" disabled={reviewing === r.id} onClick={() => handleReview(r.id, 'reject')}>✗</ABtn>
+          </>}
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div>
+      <AdminToolbar>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {(['all', 'pending', 'approved', 'rejected'] as const).map(s => {
+            const label = s === 'all' ? 'Tots' : s === 'pending' ? 'Pendents' : s === 'approved' ? 'Aprovats' : 'Rebutjats';
+            const count = s !== 'all' ? counts[s] : undefined;
+            return (
+              <ABtn key={s} size="sm" variant={statusFilter === s ? 'primary' : 'ghost'} onClick={() => setStatusFilter(s)}>
+                {label}{count !== undefined && count > 0 && <span style={{ marginLeft: 5, opacity: 0.7 }}>{count}</span>}
+              </ABtn>
+            );
+          })}
+        </div>
+      </AdminToolbar>
+      {loading
+        ? <div style={{ textAlign: 'center', padding: 40, color: T.textMuted, fontFamily: F_BODY }}>Carregant certificats…</div>
+        : <AdminTable columns={columns} rows={filtered} emptyMessage="Cap certificat amb aquests filtres." />
+      }
+    </div>
+  );
+}
+
+// ── Module: AdminSeguiment (formation tracking) ──────────────────────────────
+
+interface SeguimentRow {
+  id: string; // composite key used as AdminTable id
+  kind: 'quiz' | 'external';
+  refId: number;
+  title: string;
+  category: string;
+  mandatory: number;
+  is_presential?: boolean;
+}
+
+function AdminSeguiment({ quizzes, externals }: { quizzes: Quiz[]; externals: Course[] }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [users, setUsers] = useState<FormationUserProgress[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('Tots');
+  const [search, setSearch] = useState('');
+
+  const rows: SeguimentRow[] = useMemo(() => [
+    ...externals.map(c => ({
+      id: `ext-${c.id}`,
+      kind: 'external' as const,
+      refId: c.id,
+      title: c.title,
+      category: c.category,
+      mandatory: c.mandatory,
+    })),
+    ...quizzes.map(q => ({
+      id: `quiz-${q.id}`,
+      kind: 'quiz' as const,
+      refId: q.id,
+      title: q.title,
+      category: q.category,
+      mandatory: q.mandatory ?? 0,
+      is_presential: q.is_presential === 1,
+    })),
+  ], [externals, quizzes]);
+
+  const selected = rows.find(r => r.id === selectedId) ?? null;
+
+  useEffect(() => {
+    if (!selectedId || !selected) return;
+    setUsersLoading(true);
+    setUsers([]);
+    setStatusFilter('Tots');
+    const req = selected.kind === 'external'
+      ? apiGetCourseUsers(selected.refId)
+      : apiGetQuizUsers(selected.refId);
+    req.then(setUsers).catch(console.error).finally(() => setUsersLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  const filteredRows = useMemo(() => rows.filter(r =>
+    !search ||
+    r.title.toLowerCase().includes(search.toLowerCase()) ||
+    (r.category ?? '').toLowerCase().includes(search.toLowerCase())
+  ), [rows, search]);
+
+  const counts = useMemo(() => ({
+    Completat:    users.filter(u => u.status === 'Completat').length,
+    'En curs':    users.filter(u => u.status === 'En curs').length,
+    Pendent:      users.filter(u => u.status === 'Pendent').length,
+    'No aprovat': users.filter(u => u.status === 'No aprovat').length,
+  }), [users]);
+
+  const filteredUsers: (FormationUserProgress & { id: number })[] = useMemo(() =>
+    (statusFilter === 'Tots' ? users : users.filter(u => u.status === statusFilter))
+      .map(u => ({ ...u })),
+  [users, statusFilter]);
+
+  const STATUS_PILL_KEY: Record<string, string> = {
+    Completat:    'completat',
+    'En curs':    'en-curs',
+    Pendent:      'pendent-f',
+    'No aprovat': 'no-aprovat',
+  };
+
+  const STATUS_FILTER_COLOR: Record<string, string> = {
+    Completat:    'var(--status-ok-fg)',
+    'En curs':    'var(--status-warn-fg)',
+    Pendent:      T.textMuted,
+    'No aprovat': 'var(--color-danger)',
+  };
+
+  const leftColumns: Column<SeguimentRow>[] = [
+    {
+      key: 'title' as any,
+      label: 'Formació',
+      width: 'minmax(0,1fr)',
+      render: r => (
+        <span style={{ fontWeight: 600 }}>
+          {r.title}
+          {r.mandatory ? (
+            <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fef2f2', borderRadius: 4, padding: '1px 5px' }}>
+              Oblig.
+            </span>
+          ) : null}
+          {r.is_presential ? (
+            <span style={{ marginLeft: 4, fontSize: 10, fontWeight: 700, color: '#065f46', background: '#d1fae5', borderRadius: 4, padding: '1px 5px' }}>
+              Presencial
+            </span>
+          ) : null}
+        </span>
+      ),
+    },
+    {
+      key: 'kind' as any,
+      label: 'Tipus',
+      width: '90px',
+      render: r => (
+        <span style={{
+          fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
+          background: r.kind === 'external' ? '#c7d2fe' : '#fed7aa',
+          color:      r.kind === 'external' ? '#3730a3' : '#9a3412',
+        }}>
+          {r.kind === 'external' ? 'Externa' : 'Interna'}
+        </span>
+      ),
+    },
+  ];
+
+  const rightColumns: Column<FormationUserProgress & { id: number }>[] = [
+    {
+      key: 'name' as any,
+      label: 'Usuari',
+      width: 'minmax(0,1.5fr)',
+      render: r => (
+        <span style={{ fontWeight: 600 }}>
+          {r.name}
+          <span style={{ fontWeight: 400, color: T.textMuted, marginLeft: 6, fontSize: 11 }}>{r.dept}</span>
+        </span>
+      ),
+    },
+    {
+      key: 'status' as any,
+      label: 'Estat',
+      width: '130px',
+      render: r => <AStatusPill status={STATUS_PILL_KEY[r.status] ?? 'pendent-f'} />,
+    },
+    {
+      key: 'detail' as any,
+      label: '',
+      width: '70px',
+      render: r => {
+        if (r.progress != null && r.progress > 0 && r.status !== 'Completat') {
+          return <span style={{ fontSize: 11, color: T.textMuted }}>{r.progress}%</span>;
+        }
+        if (r.score_pct != null && r.status !== 'Pendent') {
+          return <span style={{ fontSize: 11, color: T.textMuted }}>{r.score_pct}%</span>;
+        }
+        return null;
+      },
+    },
+  ];
+
+  return (
+    <AdminTwoPane
+      left={
+        <>
+          <AdminToolbar>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Cercar formació…"
+              style={{
+                flex: 1, padding: '6px 10px', borderRadius: 6,
+                border: `1px solid ${T.border}`, fontFamily: F_BODY, fontSize: 13,
+                background: T.bg, color: T.text, outline: 'none',
+              }}
+            />
+          </AdminToolbar>
+          <AdminTable
+            columns={leftColumns}
+            rows={filteredRows}
+            selectedId={selectedId}
+            onRowClick={id => setSelectedId(id as string)}
+            emptyMessage="Cap formació."
+          />
+        </>
+      }
+      right={
+        !selected ? (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            height: '100%', color: T.textFaint, fontFamily: F_BODY, fontSize: 13,
+            textAlign: 'center', padding: '0 24px',
+          }}>
+            Selecciona una formació per veure el seguiment d'usuaris
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div style={{ padding: '16px 20px 12px', borderBottom: `1px solid ${T.border}` }}>
+              <div style={{ fontFamily: F_BODY, fontWeight: 700, fontSize: 15, color: T.text, marginBottom: 10 }}>
+                {selected.title}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {(['Tots', 'Completat', 'En curs', 'Pendent', 'No aprovat'] as const).map(s => {
+                  const count = s === 'Tots' ? users.length : counts[s as keyof typeof counts];
+                  if (s !== 'Tots' && count === 0) return null;
+                  const isActive = statusFilter === s;
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => setStatusFilter(s)}
+                      style={{
+                        padding: '4px 12px', borderRadius: 999, border: 'none', cursor: 'pointer',
+                        fontFamily: F_BODY, fontSize: 12, fontWeight: 600,
+                        background: isActive
+                          ? (s === 'Tots' ? T.text : STATUS_FILTER_COLOR[s])
+                          : T.bgAlt,
+                        color: isActive ? (s === 'Tots' ? T.bg : 'white') : T.textMuted,
+                        transition: 'background 150ms, color 150ms',
+                      }}
+                    >
+                      {s} <span style={{ opacity: 0.7 }}>{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              {usersLoading ? (
+                <div style={{ textAlign: 'center', padding: 32, color: T.textMuted, fontFamily: F_BODY }}>
+                  Carregant…
+                </div>
+              ) : (
+                <AdminTable
+                  columns={rightColumns}
+                  rows={filteredUsers}
+                  emptyMessage="Cap usuari amb aquest filtre."
+                />
+              )}
+            </div>
+          </div>
+        )
+      }
+    />
   );
 }
 
@@ -956,9 +1360,12 @@ type FormationRow =
 function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: { quizzes: Quiz[]; externals: Course[]; refresh: () => void; intent?: 'new' | null; onConsumeIntent?: () => void }) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [q, setQ] = useState('');
-  const [draft, setDraft] = useState<Partial<ExternalCoursePayload>>({});
+  const [draft, setDraft] = useState<Partial<ExternalCoursePayload & { title: string; description: string; category: string; active: number; start_at: string | null; end_at: string | null; time_limit: number; passing_score: number; target_departments: string[] }>>({});
   const [quizMandatoryOverride, setQuizMandatoryOverride] = useState<Record<number, number>>({});
+  const [fullQuiz, setFullQuiz] = useState<Quiz | null>(null);
+  const [saving, setSaving] = useState(false);
   const { confirm, confirmNode } = useConfirm();
+  const [campusTab, setCampusTab] = useState<'formacions' | 'certificats' | 'seguiment'>('formacions');
 
   const rows: FormationRow[] = useMemo(() => {
     const qz: FormationRow[] = quizzes.map(z => ({
@@ -987,6 +1394,7 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
   }), [rows, q]);
 
   useEffect(() => {
+    setFullQuiz(null);
     if (selected && selected.kind === 'external') {
       let depts: string[] = [];
       try { depts = JSON.parse(selected.departments || '[]'); } catch {}
@@ -1002,6 +1410,24 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
         start_at: selected.start_at,
         end_at: selected.end_at,
       });
+    } else if (selected && selected.kind === 'quiz') {
+      setDraft({
+        title: selected.title,
+        description: selected.description,
+        category: selected.category,
+        mandatory: selected.mandatory,
+        active: selected.active,
+        start_at: selected.start_at,
+        end_at: selected.end_at,
+        time_limit: selected.time_limit,
+        passing_score: selected.passing_score,
+        target_departments: [],
+      });
+      // Fetch full quiz for questions (needed for PUT)
+      apiGetQuiz(selected.refId).then(full => {
+        setFullQuiz(full);
+        setDraft(d => ({ ...d, target_departments: full.target_departments ?? [] }));
+      }).catch(console.error);
     } else {
       setDraft({});
     }
@@ -1032,42 +1458,58 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
 
   const remove = async () => {
     if (!selected) return;
-    if (selected.kind !== 'external') {
-      await confirm({
-        title: 'Formació interna',
-        message: "Per eliminar una formació interna, obre l'editor extens.",
-        confirmLabel: 'Entesos',
-        cancelLabel: 'Tanca',
-        destructive: false,
-      });
-      return;
-    }
     const ok = await confirm(`Vols eliminar la formació "${selected.title}"? Aquesta acció no es pot desfer.`);
     if (!ok) return;
-    try { await apiDeleteExternalCourse(selected.refId); setSelectedKey(null); refresh(); }
-    catch (e: any) { alert(e?.message ?? 'Error'); }
+    try {
+      if (selected.kind === 'external') {
+        await apiDeleteExternalCourse(selected.refId);
+      } else {
+        await apiDeleteQuiz(selected.refId);
+      }
+      setSelectedKey(null);
+      refresh();
+    } catch (e: any) { alert(e?.message ?? 'Error'); }
   };
 
   const save = async () => {
-    if (!selected || selected.kind !== 'external') {
-      alert('Edició de formacions internes pendent.');
-      return;
-    }
+    if (!selected) return;
+    setSaving(true);
     try {
-      await apiUpdateExternalCourse(selected.refId, {
-        title: draft.title ?? '',
-        description: draft.description ?? '',
-        url: draft.url ?? '',
-        category: draft.category ?? '',
-        hours: draft.hours ?? '',
-        mandatory: draft.mandatory ?? 0,
-        departments: draft.departments ?? [],
-        target_users: draft.target_users ?? [],
-        start_at: draft.start_at,
-        end_at: draft.end_at,
-      });
+      if (selected.kind === 'external') {
+        await apiUpdateExternalCourse(selected.refId, {
+          title: draft.title ?? '',
+          description: draft.description ?? '',
+          url: draft.url ?? '',
+          category: draft.category ?? '',
+          hours: draft.hours ?? '',
+          mandatory: draft.mandatory ?? 0,
+          departments: draft.departments ?? [],
+          target_users: draft.target_users ?? [],
+          start_at: draft.start_at ?? null,
+          end_at: draft.end_at ?? null,
+        });
+      } else if (selected.kind === 'quiz' && fullQuiz) {
+        await apiUpdateQuiz(selected.refId, {
+          title: draft.title ?? selected.title,
+          description: draft.description ?? selected.description ?? '',
+          image: fullQuiz.image ?? '',
+          category: draft.category ?? selected.category,
+          time_limit: (draft as any).time_limit ?? selected.time_limit ?? 0,
+          passing_score: (draft as any).passing_score ?? selected.passing_score ?? 70,
+          mandatory: draft.mandatory ?? selected.mandatory ?? 0,
+          active: (draft as any).active ?? selected.active ?? 1,
+          start_at: (draft as any).start_at ?? null,
+          end_at: (draft as any).end_at ?? null,
+          target_departments: (draft as any).target_departments ?? fullQuiz.target_departments ?? [],
+          target_users: fullQuiz.target_users ?? [],
+          is_presential: fullQuiz.is_presential,
+          location: fullQuiz.location,
+          questions: (fullQuiz.questions ?? []) as any,
+        });
+      }
       refresh();
     } catch (e: any) { alert(e?.message ?? 'Error'); }
+    finally { setSaving(false); }
   };
 
   const tableRows = filtered.map(r => ({ ...r, id: rowKey(r) as any }));
@@ -1098,106 +1540,143 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
 
   return (
     <>
-      <AdminHeader
-        title="Formacions"
-        subtitle="Catàleg del Campus TAVIL: cursos, itineraris i sessions presencials."
-        actions={
-          <>
-            <ABtn variant="secondary" icon={Plus} onClick={newExternal}>Externa</ABtn>
-            <ABtn variant="primary" icon={Plus} onClick={newInternal}>Nova formació</ABtn>
-          </>
-        }
-      />
-      <AdminToolbar>
-        <AdminSearch value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca cursos, instructor, categoria…" />
-      </AdminToolbar>
-      <AdminTwoPane
-        left={<AdminTable columns={columns} rows={tableRows} selectedId={selectedKey} onRowClick={(id) => setSelectedKey(id as string)} emptyMessage="Cap formació." />}
-        right={selected ? (
-          <AdminDetail
-            badge={selected.kind === 'quiz' ? 'FORMACIÓ · INTERNA' : 'FORMACIÓ · EXTERNA'}
-            title={selected.title}
-            onClose={() => setSelectedKey(null)}
-            footer={
+      {confirmNode}
+      <div style={{ display: 'flex', gap: 8, padding: '0 0 16px' }}>
+        <ABtn variant={campusTab === 'formacions' ? 'primary' : 'ghost'} onClick={() => setCampusTab('formacions')}>Formacions</ABtn>
+        <ABtn variant={campusTab === 'certificats' ? 'primary' : 'ghost'} onClick={() => setCampusTab('certificats')}>Certificats</ABtn>
+        <ABtn variant={campusTab === 'seguiment' ? 'primary' : 'ghost'} onClick={() => setCampusTab('seguiment')}>Seguiment</ABtn>
+      </div>
+      {campusTab === 'certificats' && <AdminCertificats />}
+      {campusTab === 'seguiment' && <AdminSeguiment quizzes={quizzes} externals={externals} />}
+      {campusTab === 'formacions' && (
+        <>
+          <AdminHeader
+            title="Formacions"
+            subtitle="Catàleg del Campus TAVIL: cursos, itineraris i sessions presencials."
+            actions={
               <>
-                {selected.kind === 'external' && <ABtn variant="danger" size="sm" onClick={remove}>Elimina</ABtn>}
-                <ABtn variant="ghost" onClick={() => setSelectedKey(null)}>Tanca</ABtn>
-                {selected.kind === 'external'
-                  ? <ABtn variant="primary" icon={Check} onClick={save}>Desa</ABtn>
-                  : <ABtn variant="primary" icon={FileText} onClick={() => openExtendedEditor(selected.refId)}>Obre l'editor</ABtn>}
+                <ABtn variant="secondary" icon={Plus} onClick={newExternal}>Externa</ABtn>
+                <ABtn variant="primary" icon={Plus} onClick={newInternal}>Nova formació</ABtn>
               </>
             }
-          >
-            {selected.kind === 'external' ? (
-              <>
-                <AField label="Títol"><AInput value={draft.title ?? ''} onChange={(e) => setDraft(d => ({ ...d, title: e.target.value }))} /></AField>
-                <AField label="Descripció"><ATextarea rows={4} value={draft.description ?? ''} onChange={(e) => setDraft(d => ({ ...d, description: e.target.value }))} /></AField>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <AField label="Categoria">
-                    <ASelect value={draft.category ?? ''} onChange={(e) => setDraft(d => ({ ...d, category: e.target.value }))}
-                      options={['Comercial', 'Finances', 'Persones', 'Producció', 'Sostenibilitat']} />
-                  </AField>
-                  <AField label="Hores"><AInput value={draft.hours ?? ''} onChange={(e) => setDraft(d => ({ ...d, hours: e.target.value }))} placeholder="6" /></AField>
-                </div>
-                <AField label="URL extern">
-                  <AInput value={draft.url ?? ''} onChange={(e) => setDraft(d => ({ ...d, url: e.target.value }))} placeholder="https://…" />
-                </AField>
-                <AToggle
-                  value={!!draft.mandatory}
-                  onChange={(v) => setDraft(d => ({ ...d, mandatory: v ? 1 : 0 }))}
-                  label="Obligatori"
-                  hint="Tots els destinataris l'han de completar."
-                />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <AField label="Inici">
-                    <AInput type="date" value={draft.start_at?.slice(0, 10) ?? ''} onChange={(e) => setDraft(d => ({ ...d, start_at: e.target.value || null }))} />
-                  </AField>
-                  <AField label="Final">
-                    <AInput type="date" value={draft.end_at?.slice(0, 10) ?? ''} onChange={(e) => setDraft(d => ({ ...d, end_at: e.target.value || null }))} />
-                  </AField>
-                </div>
-              </>
+          />
+          <AdminToolbar>
+            <AdminSearch value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca cursos, instructor, categoria…" />
+          </AdminToolbar>
+          <AdminTwoPane
+            left={<AdminTable columns={columns} rows={tableRows} selectedId={selectedKey} onRowClick={(id) => setSelectedKey(id as string)} emptyMessage="Cap formació." />}
+            right={selected ? (
+              <AdminDetail
+                badge={selected.kind === 'quiz' ? 'FORMACIÓ · INTERNA' : 'FORMACIÓ · EXTERNA'}
+                title={selected.title}
+                onClose={() => setSelectedKey(null)}
+                footer={
+                  <>
+                    <ABtn variant="danger" size="sm" onClick={remove}>Elimina</ABtn>
+                    {selected.kind === 'quiz' && <ABtn variant="secondary" size="sm" icon={FileText} onClick={() => openExtendedEditor(selected.refId)}>Editor extens</ABtn>}
+                    <ABtn variant="ghost" onClick={() => setSelectedKey(null)}>Tanca</ABtn>
+                    <ABtn variant="primary" icon={Check} onClick={save} disabled={saving}>{saving ? 'Desant…' : 'Desa'}</ABtn>
+                  </>
+                }
+              >
+                {selected.kind === 'external' ? (
+                  <>
+                    <AField label="Títol"><AInput value={draft.title ?? ''} onChange={(e) => setDraft(d => ({ ...d, title: e.target.value }))} /></AField>
+                    <AField label="Descripció"><ATextarea rows={4} value={draft.description ?? ''} onChange={(e) => setDraft(d => ({ ...d, description: e.target.value }))} /></AField>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <AField label="Categoria">
+                        <ASelect value={draft.category ?? ''} onChange={(e) => setDraft(d => ({ ...d, category: e.target.value }))}
+                          options={['Comercial', 'Finances', 'Persones', 'Producció', 'Sostenibilitat']} />
+                      </AField>
+                      <AField label="Hores"><AInput value={draft.hours ?? ''} onChange={(e) => setDraft(d => ({ ...d, hours: e.target.value }))} placeholder="6" /></AField>
+                    </div>
+                    <AField label="URL extern">
+                      <AInput value={draft.url ?? ''} onChange={(e) => setDraft(d => ({ ...d, url: e.target.value }))} placeholder="https://…" />
+                    </AField>
+                    <AToggle
+                      value={!!draft.mandatory}
+                      onChange={(v) => setDraft(d => ({ ...d, mandatory: v ? 1 : 0 }))}
+                      label="Obligatori"
+                      hint="Tots els destinataris l'han de completar."
+                    />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <AField label="Inici">
+                        <DatePicker value={draft.start_at?.slice(0, 10) ?? ''} onChange={(v) => setDraft(d => ({ ...d, start_at: v || null }))} />
+                      </AField>
+                      <AField label="Final">
+                        <DatePicker value={draft.end_at?.slice(0, 10) ?? ''} onChange={(v) => setDraft(d => ({ ...d, end_at: v || null }))} />
+                      </AField>
+                    </div>
+                    <AField label="Departaments destinataris" hint="Si no en selecciones cap, és visible per a tothom.">
+                      <DeptSearch
+                        value={draft.departments ?? []}
+                        onChange={(v) => setDraft(d => ({ ...d, departments: v }))}
+                      />
+                    </AField>
+                  </>
+                ) : (
+                  <>
+                    <AField label="Títol">
+                      <AInput value={(draft as any).title ?? ''} onChange={e => setDraft(d => ({ ...d, title: e.target.value }))} />
+                    </AField>
+                    <AField label="Descripció">
+                      <ATextarea rows={3} value={(draft as any).description ?? ''} onChange={e => setDraft(d => ({ ...d, description: e.target.value }))} />
+                    </AField>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <AField label="Categoria">
+                        <AInput value={(draft as any).category ?? ''} onChange={e => setDraft(d => ({ ...d, category: e.target.value }))} />
+                      </AField>
+                      <AField label="Nota mínima (%)">
+                        <AInput type="number" value={(draft as any).passing_score ?? selected.passing_score ?? 70} onChange={e => setDraft(d => ({ ...d, passing_score: +e.target.value }))} />
+                      </AField>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <AField label="Temps límit (min)" hint="0 = sense límit">
+                        <AInput type="number" value={(draft as any).time_limit ?? selected.time_limit ?? 0} onChange={e => setDraft(d => ({ ...d, time_limit: +e.target.value }))} />
+                      </AField>
+                      <AField label="Preguntes" hint="Edita des de l'editor extens">
+                        <AInput value={String(selected.questions)} disabled />
+                      </AField>
+                    </div>
+                    <AToggle
+                      value={!!draft.mandatory}
+                      onChange={(v) => setDraft(d => ({ ...d, mandatory: v ? 1 : 0 }))}
+                      label="Obligatori"
+                      hint="Tots els destinataris l'han de completar."
+                    />
+                    <AToggle
+                      value={(draft as any).active !== undefined ? !!(draft as any).active : !!selected.active}
+                      onChange={(v) => setDraft(d => ({ ...d, active: v ? 1 : 0 }))}
+                      label="Publicat"
+                      hint="Si no és publicat, no es mostra als usuaris."
+                    />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <AField label="Inici">
+                        <DatePicker value={(draft as any).start_at} onChange={(v) => setDraft(d => ({ ...d, start_at: v || null }))} />
+                      </AField>
+                      <AField label="Final">
+                        <DatePicker value={(draft as any).end_at} onChange={(v) => setDraft(d => ({ ...d, end_at: v || null }))} />
+                      </AField>
+                    </div>
+                    <AField label="Departaments destinataris" hint="Si no en selecciones cap, és visible per a tothom.">
+                      <DeptSearch
+                        value={(draft as any).target_departments ?? []}
+                        onChange={(v) => setDraft(d => ({ ...d, target_departments: v }))}
+                      />
+                    </AField>
+                    <div style={{ fontSize: 12, color: T.textMuted, paddingTop: 4, borderTop: `1px solid ${T.border}` }}>
+                      Per editar preguntes, multimèdia i lògica de la prova, usa l'editor extens.
+                    </div>
+                  </>
+                )}
+              </AdminDetail>
             ) : (
-              <>
-                <div style={{
-                  padding: 14, background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: 8,
-                  display: 'flex', flexDirection: 'column', gap: 10,
-                }}>
-                  <div style={{ fontSize: 13.5, color: T.text }}>{selected.description || <em style={{ color: T.textFaint }}>Sense descripció.</em>}</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, fontSize: 11.5 }}>
-                    <div><div style={{ color: T.textFaint, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 2 }}>Categoria</div><div style={{ color: T.textMuted }}>{selected.category || '—'}</div></div>
-                    <div><div style={{ color: T.textFaint, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 2 }}>Preguntes</div><div style={{ color: T.textMuted, fontFeatureSettings: '"tnum"' }}>{selected.questions}</div></div>
-                    <div><div style={{ color: T.textFaint, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 2 }}>Aprovat</div><div style={{ color: T.textMuted, fontFeatureSettings: '"tnum"' }}>{selected.passing_score}%</div></div>
-                  </div>
-                </div>
-                <AToggle
-                  value={!!selected.mandatory}
-                  onChange={async (v) => {
-                    const id = selected.refId;
-                    const prev = selected.mandatory;
-                    setQuizMandatoryOverride(m => ({ ...m, [id]: v ? 1 : 0 }));
-                    try {
-                      await apiSetQuizMandatory(id, v);
-                    } catch (e: any) {
-                      setQuizMandatoryOverride(m => ({ ...m, [id]: prev }));
-                      alert(e?.message ?? 'Error');
-                    }
-                  }}
-                  label="Obligatori"
-                  hint="Tots els destinataris l'han de completar."
-                />
-                <div style={{ fontSize: 12, color: T.textMuted }}>
-                  Les formacions internes s'editen amb l'editor extens (preguntes, multimèdia, audiència). Prem "Obre l'editor" per modificar-la.
-                </div>
-              </>
+              <AdminDetailEmpty icon={GraduationCap} label="Selecciona una formació" hint="Tria una fila per editar el contingut, instructor i calendari." />
             )}
-          </AdminDetail>
-        ) : (
-          <AdminDetailEmpty icon={GraduationCap} label="Selecciona una formació" hint="Tria una fila per editar el contingut, instructor i calendari." />
-        )}
-      />
-      <CreateExternalCourseModal open={createExtOpen} onClose={() => setCreateExtOpen(false)} onCreated={onCreatedExternal} />
-      {confirmNode}
+          />
+          <CreateExternalCourseModal open={createExtOpen} onClose={() => setCreateExtOpen(false)} onCreated={onCreatedExternal} />
+        </>
+      )}
     </>
   );
 }
@@ -1353,10 +1832,9 @@ function AdminAgenda({ events, refresh, intent, onConsumeIntent }: { events: Age
                 options={['Sessió interna', 'Visita comercial', 'Fira', 'Festiu', 'Activitat empresa']} />
             </AField>
             <AField label="Departaments destinataris" hint="Si no en selecciones cap, l'esdeveniment és visible per a tothom.">
-              <AChipMulti
+              <DeptSearch
                 value={draft.target_departments ?? []}
                 onChange={(v) => setDraft(d => ({ ...d, target_departments: v }))}
-                options={DEPT_OPTIONS.map(d => ({ value: d, label: d }))}
               />
             </AField>
           </AdminDetail>
@@ -1580,7 +2058,7 @@ export function AdminBackoffice({ view, currentUser, onNavigate, onImpersonate, 
         <div style={{ padding: 60, textAlign: 'center', color: T.textFaint, fontSize: 13 }}>Carregant…</div>
       )}
       {!loading && view === 'dashboard'   && <AdminDashboard  currentUser={currentUser} onNavigate={onNavigate} counts={counts} />}
-      {!loading && view === 'users'       && <AdminUsers      users={users}     refresh={refresh} currentUser={currentUser} onImpersonate={onImpersonate} intent={intent} onConsumeIntent={onConsumeIntent} />}
+      {!loading && view === 'users'       && <AdminUsers      users={users} setUsers={setUsers}    refresh={refresh} currentUser={currentUser} onImpersonate={onImpersonate} intent={intent} onConsumeIntent={onConsumeIntent} />}
       {!loading && view === 'news'        && <AdminNews       news={news}       refresh={refresh} intent={intent} onConsumeIntent={onConsumeIntent} />}
       {!loading && view === 'activities'  && <AdminActivities activities={activities} refresh={refresh} intent={intent} onConsumeIntent={onConsumeIntent} />}
       {!loading && view === 'campus'      && <AdminCampus     quizzes={quizzes} externals={externals} refresh={refresh} intent={intent} onConsumeIntent={onConsumeIntent} />}
