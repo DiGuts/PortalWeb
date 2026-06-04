@@ -10852,6 +10852,11 @@ function App() {
       setImpersonatingMode(true);
       resetTabPrefetch();
       setActiveTab('Inici');
+      if (data.user.requires_prl) {
+        apiPreventionStatus().then(s => setPreventionPending(s.pending)).catch(() => {});
+      } else {
+        setPreventionPending([]);
+      }
     } catch (e: any) {
       alert(e.message);
     }
@@ -10865,6 +10870,7 @@ function App() {
     }
     setImpersonating(null);
     setImpersonatingMode(false);
+    setPreventionPending([]);
     resetTabPrefetch();
     apiGetMe().then(u => { setCurrentUser(u); }).catch(() => handleLogout());
   };
