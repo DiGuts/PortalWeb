@@ -5134,7 +5134,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
           </div>
           {(currentUser?.ext || currentUser?.email) && (
             <div style={{ fontSize: 12, color: 'var(--tavil-faint)', marginTop: 2 }}>
-              {currentUser.ext ? `Ext. ${currentUser.ext}` : ''}{currentUser.ext && currentUser.email ? ' · ' : ''}{currentUser.email ?? ''}
+              {currentUser.ext ? `Codi ${currentUser.ext}` : ''}{currentUser.ext && currentUser.email ? ' · ' : ''}{currentUser.email ?? ''}
             </div>
           )}
         </div>
@@ -5326,7 +5326,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                 {([
                   { I: Mail,     label: 'Correu corporatiu', value: currentUser?.email ?? '—' },
                   { I: Phone,    label: 'Telèfon',           value: currentUser?.phone || '—' },
-                  { I: Phone,    label: 'Extensió',          value: currentUser?.ext || '—' },
+                  { I: Phone,    label: 'Codi treballador',   value: currentUser?.ext || '—' },
                   { I: MapPin,   label: 'Oficina',           value: currentUser?.location || '—' },
                   { I: Calendar, label: 'Incorporació',      value: '12 setembre 2022' },
                 ] as { I: React.ElementType; label: string; value: string }[]).map((r, i, arr) => (
@@ -5649,7 +5649,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                       ['Rol',                currentUser?.role ?? '—'],
                       ['Departament',        currentUser?.dept ?? '—'],
                       ['Telèfon',            currentUser?.phone || '—'],
-                      ['Extensió',           currentUser?.ext || '—'],
+                      ['Codi treballador',    currentUser?.ext || '—'],
                       ['Oficina',            currentUser?.location || '—'],
                       ['Incorporació',       '12 setembre 2022'],
                     ] as [string, string][]).map(([k, v]) => (
@@ -7215,7 +7215,7 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
               {editUser && (
                 <>
                   <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Telèfon</label><input value={uPhone} onChange={e => setUPhone(e.target.value)} className={inputCls} placeholder="—" /></div>
-                  <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Extensió</label><input value={uExt} onChange={e => setUExt(e.target.value)} className={inputCls} placeholder="—" /></div>
+                  <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Codi treballador</label><input value={uExt} onChange={e => setUExt(e.target.value)} className={inputCls} placeholder="—" /></div>
                   <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Ubicació</label><input value={uLocation} onChange={e => setULocation(e.target.value)} className={inputCls} placeholder="—" /></div>
                   <div className="md:col-span-2">
                     <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-2">Foto de perfil</label>

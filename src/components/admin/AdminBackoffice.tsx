@@ -470,14 +470,14 @@ function AdminUsers({ users, setUsers, refresh, currentUser, onImpersonate, inte
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 600 }}>{selected.name}</div>
                 <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>{selected.role} · {selected.dept}</div>
-                <div style={{ fontSize: 11.5, color: T.textFaint, marginTop: 4 }}>Ext. {selected.ext || '—'} · {selected.location || '—'}</div>
+                <div style={{ fontSize: 11.5, color: T.textFaint, marginTop: 4 }}>Codi {selected.ext || '—'} · {selected.location || '—'}</div>
               </div>
             </div>
 
             <AField label="Nom complet"><AInput value={draft.name ?? ''} onChange={(e) => update({ name: e.target.value })} /></AField>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <AField label="Correu corporatiu"><AInput value={draft.email ?? ''} onChange={(e) => update({ email: e.target.value })} icon={Mail} /></AField>
-              <AField label="Extensió"><AInput value={draft.ext ?? ''} onChange={(e) => update({ ext: e.target.value })} /></AField>
+              <AField label="Codi treballador"><AInput value={draft.ext ?? ''} onChange={(e) => update({ ext: e.target.value })} /></AField>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <AField label="Departament">
@@ -1724,6 +1724,7 @@ function AdminAgenda({ events, refresh, intent, onConsumeIntent }: { events: Age
         title: draft.title ?? selected.title,
         day: draft.day ?? selected.day,
         month: draft.month ?? selected.month,
+        year: (draft as any).year ?? selected.year ?? new Date().getFullYear(),
         time: draft.time ?? selected.time,
         time_end: (draft.time_end ?? '').trim() || undefined,
         location: draft.location ?? selected.location,
