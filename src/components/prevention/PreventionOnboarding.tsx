@@ -1,8 +1,20 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { API_BASE, apiPreventionSign } from '../../api';
 
+type DocumentKey = 'inf_ca' | 'inf_en' | 'epi_1' | 'epi_2' | 'epi_3' | 'epi_3i' | 'epi_4';
+
+const DOC_TITLES: Record<DocumentKey, string> = {
+  inf_ca:  'Informació i Formació en Prevenció de Riscos Laborals',
+  inf_en:  'Information and Training on Occupational Risk Prevention',
+  epi_1:   'Lliurament d\'EPI – Grup 1 (Mecànics / Taller / Magatzem)',
+  epi_2:   'Lliurament d\'EPI – Grup 2 (Oficina Tècnica / Qualitat)',
+  epi_3:   'Lliurament d\'EPI – Grup 3 (Posta en Marxa / I+D)',
+  epi_3i:  'Lliurament d\'EPI – Grup 3 Internacional',
+  epi_4:   'Lliurament d\'EPI – Grup 4 (Personal d\'Oficines)',
+};
+
 interface Props {
-  documentKey: 'inf_ca' | 'inf_en';
+  documentKey: DocumentKey;
   onDone: () => void;
 }
 
@@ -108,9 +120,7 @@ export function PreventionOnboarding({ documentKey, onDone }: Props) {
     }
   };
 
-  const docTitle = documentKey === 'inf_ca'
-    ? 'Informació i Formació en Prevenció de Riscos Laborals'
-    : 'Information and Training on Occupational Risk Prevention';
+  const docTitle = DOC_TITLES[documentKey] ?? documentKey;
 
   const canSubmit = scrolledToEnd && hasSignature && !submitting;
 

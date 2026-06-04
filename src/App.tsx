@@ -11467,17 +11467,22 @@ function App() {
       {showChangePassword && (
         <ChangePasswordModal onDone={() => { setShowChangePassword(false); apiGetMe().then(setCurrentUser).catch(() => {}); }} forced />
       )}
-      {preventionPending.includes('inf') && !showChangePassword && (
-        <PreventionOnboarding
-          documentKey={(() => {
-            try { const l = localStorage.getItem('tavil_lang') || 'ca'; return l === 'en' ? 'inf_en' : 'inf_ca'; } catch { return 'inf_ca'; }
-          })()}
-          onDone={() => {
-            setPreventionPending(prev => prev.filter(k => k !== 'inf'));
-            apiPreventionStatus().then(s => setPreventionPending(s.pending)).catch(() => {});
-          }}
-        />
-      )}
+      {!showChangePassword && (() => {
+        const infPending = preventionPending.includes('inf');
+        const epiKey = preventionPending.find(k => k.startsWith('epi_'));
+        if (!infPending && !epiKey) return null;
+        const docKey = infPending
+          ? ((() => { try { return localStorage.getItem('tavil_lang') === 'en' ? 'inf_en' : 'inf_ca'; } catch { return 'inf_ca'; } })())
+          : epiKey!;
+        return (
+          <PreventionOnboarding
+            documentKey={docKey as any}
+            onDone={() => {
+              apiPreventionStatus().then(s => setPreventionPending(s.pending)).catch(() => {});
+            }}
+          />
+        );
+      })()}
       <MobileDrawer
         open={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}

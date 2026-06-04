@@ -62,6 +62,8 @@ function _user_out(array $row): array {
         'must_change_password' => (int)($row['must_change_password'] ?? 0),
         'active'       => (int)($row['active'] ?? 1),
         'is_demo_admin' => ($row['email'] ?? '') === 'unaiclapers@tavil.net' ? 1 : 0,
+        'requires_prl' => (int)($row['requires_prl'] ?? 0),
+        'epi_grup'     => $row['epi_grup'] ?? null,
     ];
 }
 
