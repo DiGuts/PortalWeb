@@ -11465,7 +11465,7 @@ function App() {
       </main>
 
       {showChangePassword && (
-        <ChangePasswordModal onDone={() => { setShowChangePassword(false); apiGetMe().then(setCurrentUser).catch(() => {}); }} forced />
+        <ChangePasswordModal onDone={() => window.location.reload()} forced />
       )}
       {!showChangePassword && (() => {
         const infPending = preventionPending.includes('inf');
@@ -11477,9 +11477,7 @@ function App() {
         return (
           <PreventionOnboarding
             documentKey={docKey as any}
-            onDone={() => {
-              apiPreventionStatus().then(s => setPreventionPending(s.pending)).catch(() => {});
-            }}
+            onDone={() => window.location.reload()}
           />
         );
       })()}
