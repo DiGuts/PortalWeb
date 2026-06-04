@@ -11477,6 +11477,8 @@ function App() {
         return (
           <PreventionOnboarding
             documentKey={docKey as any}
+            userName={currentUser?.name ?? ''}
+            userDept={currentUser?.dept ?? ''}
             onDone={() => window.location.reload()}
           />
         );

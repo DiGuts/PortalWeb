@@ -1141,9 +1141,9 @@ export async function apiPreventionStatus(): Promise<{ pending: string[] }> {
   return apiFetch('/prevention/status');
 }
 
-export async function apiPreventionSign(document_key: string, signature_data: string): Promise<{ ok: boolean }> {
+export async function apiPreventionSign(document_key: string, signature_data: string, pdf_data?: string): Promise<{ ok: boolean }> {
   return apiFetch('/prevention/sign', {
     method: 'POST',
-    body: JSON.stringify({ document_key, signature_data }),
+    body: JSON.stringify({ document_key, signature_data, ...(pdf_data ? { pdf_data } : {}) }),
   });
 }

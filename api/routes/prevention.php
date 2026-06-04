@@ -86,6 +86,7 @@ elseif ($method === 'POST' && $sub === 'sign') {
 
     $document_key   = str_val($body, 'document_key');
     $signature_data = str_val($body, 'signature_data');
+    $pdf_data       = str_val($body, 'pdf_data');  // base64 PDF, optional
 
     $valid_keys = ['inf_ca', 'inf_en', 'epi_1', 'epi_2', 'epi_3', 'epi_3i', 'epi_4'];
     if (!in_array($document_key, $valid_keys, true)) {
@@ -118,9 +119,26 @@ elseif ($method === 'POST' && $sub === 'sign') {
     $doc_name = $doc_names[$document_key] ?? $document_key;
     $date_str = date('d/m/Y H:i');
 
-    $sig_html = preg_match('/^data:image\/(png|jpeg|gif|webp);base64,/', $signature_data)
-        ? '<img src="' . htmlspecialchars($signature_data, ENT_QUOTES) . '" style="max-width:380px;border:1px solid #ddd;border-radius:6px;display:block;margin-top:8px;">'
-        : '<em>(signatura no disponible)</em>';
+    // Save signed PDF to disk if provided
+    $attachments = [];
+    if (!empty($pdf_data)) {
+        $signed_dir = UPLOADS_DIR . '/prevention/signed/';
+        if (!is_dir($signed_dir)) mkdir($signed_dir, 0755, true);
+        $safe_name = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $user['name']);
+        $filename  = $safe_name . '_' . $document_key . '_' . date('Ymd_Hi') . '.pdf';
+        file_put_contents($signed_dir . $filename, base64_decode($pdf_data));
+        $attachments[] = [
+            'filename' => $filename,
+            'mime'     => 'application/pdf',
+            'data'     => $pdf_data,
+        ];
+    }
+
+    $sig_html = (!empty($attachments))
+        ? '<p style="color:#1a7a1a;">PDF signat adjunt a aquest correu.</p>'
+        : (preg_match('/^data:image\/(png|jpeg|gif|webp);base64,/', $signature_data)
+            ? '<img src="' . htmlspecialchars($signature_data, ENT_QUOTES) . '" style="max-width:380px;border:1px solid #ddd;border-radius:6px;display:block;margin-top:8px;">'
+            : '<em>(signatura no disponible)</em>');
 
     $html = '
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
@@ -132,14 +150,14 @@ elseif ($method === 'POST' && $sub === 'sign') {
         <tr><td style="padding:8px 12px;background:#f5f7f5;font-weight:600;">Document</td><td style="padding:8px 12px;">' . htmlspecialchars($doc_name, ENT_QUOTES) . '</td></tr>
         <tr><td style="padding:8px 12px;background:#f5f7f5;font-weight:600;">Data i hora</td><td style="padding:8px 12px;">' . $date_str . '</td></tr>
       </table>
-      <h3 style="color:#1a2e1a;margin-bottom:8px;">Signatura del treballador:</h3>
-      ' . $sig_html . '
+      ' . (empty($attachments) ? '<h3 style="color:#1a2e1a;margin-bottom:8px;">Signatura del treballador:</h3>' . $sig_html : $sig_html) . '
     </div>';
 
     send_email(
         'crmit@tavil.net',
         'Document PRL signat — ' . $user['name'] . ' — ' . $date_str,
-        $html
+        $html,
+        $attachments
     );
 
     respond(['ok' => true]);

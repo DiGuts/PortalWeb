@@ -2,30 +2,59 @@
 require_once __DIR__ . '/config.php';
 
 /**
- * Send an HTML email via SMTP (TLS/STARTTLS).
+ * Send an HTML email via SMTP (TLS/STARTTLS), with optional attachments.
+ * $attachments = [['filename' => 'doc.pdf', 'mime' => 'application/pdf', 'data' => '<base64>'], ...]
  * Silent no-op if SMTP_HOST is not configured.
  */
-function send_email(string $to, string $subject, string $html): void {
+function send_email(string $to, string $subject, string $html, array $attachments = []): void {
     if (!SMTP_HOST) return;
 
-    $boundary = md5(uniqid('', true));
-    $headers  = implode("\r\n", [
+    $outer = md5(uniqid('outer', true));
+    $inner = md5(uniqid('inner', true));
+
+    if (empty($attachments)) {
+        // Simple multipart/alternative (original behavior)
+        $ct   = "Content-Type: multipart/alternative; boundary=\"$outer\"";
+        $body = implode("\r\n", [
+            "--$outer",
+            "Content-Type: text/html; charset=UTF-8",
+            "Content-Transfer-Encoding: base64",
+            "",
+            chunk_split(base64_encode($html)),
+            "--$outer--",
+        ]);
+    } else {
+        // multipart/mixed wraps (multipart/alternative + attachments)
+        $ct = "Content-Type: multipart/mixed; boundary=\"$outer\"";
+        $html_part = implode("\r\n", [
+            "--$inner",
+            "Content-Type: text/html; charset=UTF-8",
+            "Content-Transfer-Encoding: base64",
+            "",
+            chunk_split(base64_encode($html)),
+            "--$inner--",
+        ]);
+        $body = "--$outer\r\n"
+              . "Content-Type: multipart/alternative; boundary=\"$inner\"\r\n\r\n"
+              . $html_part . "\r\n";
+        foreach ($attachments as $att) {
+            $body .= "\r\n--$outer\r\n"
+                   . "Content-Type: " . $att['mime'] . "\r\n"
+                   . "Content-Transfer-Encoding: base64\r\n"
+                   . "Content-Disposition: attachment; filename=\"" . addslashes($att['filename']) . "\"\r\n\r\n"
+                   . chunk_split($att['data']) . "\r\n";
+        }
+        $body .= "--$outer--";
+    }
+
+    $headers = implode("\r\n", [
         'MIME-Version: 1.0',
         "From: " . SMTP_FROM_NAME . " <" . SMTP_FROM . ">",
         "To: $to",
         "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=",
-        "Content-Type: multipart/alternative; boundary=\"$boundary\"",
-    ]);
-    $body = implode("\r\n", [
-        "--$boundary",
-        "Content-Type: text/html; charset=UTF-8",
-        "Content-Transfer-Encoding: base64",
-        "",
-        chunk_split(base64_encode($html)),
-        "--$boundary--",
+        $ct,
     ]);
 
-    // Open socket to SMTP server
     $errno = 0; $errstr = '';
     $port    = SMTP_PORT;
     $use_ssl = ($port === 465);
@@ -42,7 +71,7 @@ function send_email(string $to, string $subject, string $html): void {
         $buf = '';
         while ($line = fgets($sock, 512)) {
             $buf .= $line;
-            if ($line[3] === ' ') break; // last line of response
+            if ($line[3] === ' ') break;
         }
         return $buf;
     };
@@ -53,7 +82,7 @@ function send_email(string $to, string $subject, string $html): void {
     };
 
     try {
-        $read(); // banner
+        $read();
         $cmd('EHLO ' . gethostname());
 
         if (!$use_ssl) {
