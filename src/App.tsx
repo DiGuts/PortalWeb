@@ -80,6 +80,7 @@ import {
   apiGetQuizResults, apiGetQuizProgress, apiSaveQuizProgress, apiClearQuizProgress, apiGetQuizInProgressCount,
   apiGetQuizNonCompleters, NonCompletersResult,
   apiImpersonate,
+  setImpersonatingMode,
 } from './api';
 
 
@@ -1529,6 +1530,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         date: aDate.trim(), time: aTime.trim(), location: aLocation.trim(),
         capacity: aUnlimited ? 0 : (parseInt(aCapacity) || 0),
         link: aLink.trim() });
+      tabPrefetch.agendaEvents = undefined;
       setActivities(await apiGetActivities());
       setShowActForm(false);
       resetActForm();
@@ -1567,6 +1569,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         location: aeLocation.trim(),
         capacity: aeUnlimited ? 0 : (parseInt(aeCapacity) || 0),
         link: aeLink.trim() });
+      tabPrefetch.agendaEvents = undefined;
       setActivities(await apiGetActivities());
       setActEditId(null);
     } catch (e) { console.error(e); }
@@ -1580,7 +1583,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
       message: t('activities.confirmDelete'),
       onConfirm: async () => {
         setConfirmModal(null);
-        try { await apiDeleteActivity(id); setActivities(await apiGetActivities()); }
+        try { await apiDeleteActivity(id); tabPrefetch.agendaEvents = undefined; setActivities(await apiGetActivities()); }
         catch (e) { console.error(e); }
       },
     });
@@ -4799,7 +4802,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
   // Edit-profile modal + directory visibility toggle + accordion + password modal.
   const [showEdit, setShowEdit] = useState(false);
   const [expandedRow, setExpandedRow] = useState<'notifs' | 'privacy' | 'support' | null>(null);
-  const [showChangePw, setShowChangePw] = useState(false);
+
   const [visInDir, setVisInDir] = useState<boolean>((currentUser?.visible_in_directory ?? 1) === 1);
   useEffect(() => {
     setVisInDir((currentUser?.visible_in_directory ?? 1) === 1);
@@ -5052,17 +5055,17 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
           <input ref={avatarFileRef} type="file" accept="image/*" style={{ display: 'none' }}
             onChange={e => { const f = e.target.files?.[0]; if (f) handleAvatarPick(f); e.currentTarget.value = ''; }} />
           {/* ── Avatar gallery picker ── */}
-          {showAvatarGallery && (() => {
+          {showAvatarGallery && createPortal((() => {
             const ext = currentUser?.ext ?? '';
             const PHOTOS_BASE = '/uploads/photos/';
             const options: { url: string; label: string; candidates?: string[] }[] = [
               ...(ext ? [{ url: `${PHOTOS_BASE}${ext}.png`, label: 'La meva foto', candidates: [`${PHOTOS_BASE}${ext}.png`, `${PHOTOS_BASE}${ext}.jpg`, `${PHOTOS_BASE}${ext}.jpeg`] }] : []),
-              { url: `${PHOTOS_BASE}tavil-logo.svg`, label: 'Logo TAVIL' },
-              { url: `${PHOTOS_BASE}tavil-banner.png`, label: 'Imatge corporativa' },
+              { url: '/tavil-header.jpg', label: 'Nau Tavil' },
+              { url: '/assets/images/tavilLogo.png', label: 'Logo Tavil' },
             ];
             return (
               <div
-                className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm anim-fade-in"
+                className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-md anim-fade-in"
                 onClick={e => { if (e.target === e.currentTarget) setShowAvatarGallery(false); }}
               >
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 w-full max-w-sm mx-4 anim-scale-in"
@@ -5082,7 +5085,16 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                               src={resolveImg(opt.url)}
                               alt={opt.label}
                               className="w-full h-full object-cover"
-                              onError={e => { (e.currentTarget.parentElement!.parentElement!).style.opacity = '0.35'; }}
+                              onError={e => {
+                                const img = e.currentTarget;
+                                const cands = opt.candidates;
+                                if (cands && !img.dataset.tried) {
+                                  img.dataset.tried = '1';
+                                  const next = cands.find(c => resolveImg(c) !== img.src);
+                                  if (next) { img.src = resolveImg(next); return; }
+                                }
+                                img.parentElement!.parentElement!.style.opacity = '0.35';
+                              }}
                             />
                             {isSelected && (
                               <div className="absolute inset-0 flex items-end justify-end p-1.5">
@@ -5099,12 +5111,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                   </div>
                   <div className="flex flex-col gap-2">
                     <button
-                      onClick={() => {
-                        if (gallerySelected) {
-                          setPendingAvatar(gallerySelected);
-                        }
-                        setShowAvatarGallery(false);
-                      }}
+                      onClick={() => { if (gallerySelected) setPendingAvatar(gallerySelected); setShowAvatarGallery(false); }}
                       disabled={!gallerySelected}
                       className="press w-full py-2.5 rounded-xl text-sm font-semibold bg-[var(--tavil-text)] text-[var(--tavil-bg)] disabled:opacity-40 transition-opacity"
                     >Confirmar</button>
@@ -5116,7 +5123,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                 </div>
               </div>
             );
-          })()}
+          })(), document.body)}
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '0.01em', lineHeight: 1.1, color: 'var(--tavil-text)' }}>
             {name || 'Usuari'}
           </div>
@@ -5257,7 +5264,10 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                   overflow: 'hidden',
                 }}
               />
-              <div
+              <button
+                type="button"
+                onClick={() => { setGallerySelected(avatarUrl); setShowAvatarGallery(true); }}
+                aria-label="Canviar foto de perfil"
                 style={{
                   position: 'absolute', left: 24, bottom: -56,
                   width: 112, height: 112, borderRadius: 999,
@@ -5267,12 +5277,13 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                   background: 'var(--tavil-accent)', color: 'var(--tavil-bg)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 500, letterSpacing: '-0.02em',
+                  cursor: 'pointer', padding: 0,
                 }}
               >
                 {avatarUrl
                   ? <img src={resolveImg(avatarUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <span>{initials}</span>}
-              </div>
+              </button>
             </div>
             <div
               style={{
@@ -5327,6 +5338,44 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Accés ràpid */}
+              <div style={{ marginTop: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--tavil-faint)', marginBottom: 10 }}>Accés ràpid</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button
+                    onClick={() => onNavigate?.('Solicituds')}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'background 140ms' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--tavil-bgAlt)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'var(--tavil-card)')}
+                  >
+                    <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--tavil-bgAlt)', color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FileText size={15} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)' }}>Les meves sol·licituds</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 1 }}>Dies no ordinaris</div>
+                    </div>
+                    <ArrowRight size={14} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
+                  </button>
+                  <a
+                    href="https://bizneohr.com/welcome?locale=es"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 12, textDecoration: 'none', fontFamily: 'inherit', transition: 'background 140ms' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--tavil-bgAlt)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'var(--tavil-card)')}
+                  >
+                    <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--tavil-bgAlt)', color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <ExternalLink size={15} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center' }}>
+                      <img src={process.env.PUBLIC_URL + '/assets/images/logoBizneo.svg'} alt="Bizneo HR" style={{ height: 18, width: 'auto', display: 'block' }} />
+                    </div>
+                    <ExternalLink size={14} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -5472,20 +5521,6 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                                 </div>
                                 <Toggle on={visInDir} onToggle={toggleVisInDir} />
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 12, borderTop: '1px solid var(--tavil-border)' }}>
-                                <div style={{ minWidth: 0 }}>
-                                  <div style={{ fontSize: 13.5, color: 'var(--tavil-text)' }}>Contrasenya</div>
-                                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 2 }}>Canvia la teva contrasenya d'accés al portal.</div>
-                                </div>
-                                <button
-                                  onClick={() => setShowChangePw(true)}
-                                  style={{
-                                    padding: '6px 12px', borderRadius: 8,
-                                    background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)',
-                                    color: 'var(--tavil-text)', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
-                                  }}
-                                >Canviar</button>
-                              </div>
                             </div>
                           )}
                           {r.id === 'support' && (
@@ -5527,10 +5562,6 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
               </button>
             </div>
           </div>
-
-          {showChangePw && (
-            <ChangePasswordModal onDone={() => setShowChangePw(false)} />
-          )}
 
           {/* Edit-profile modal */}
           {showEdit && createPortal(
@@ -5579,7 +5610,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button
-                        onClick={() => avatarFileRef.current?.click()}
+                        onClick={() => { setGallerySelected(avatarUrl); setShowAvatarGallery(true); }}
                         disabled={avatarUploading}
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -5589,7 +5620,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                           cursor: avatarUploading ? 'wait' : 'pointer', opacity: avatarUploading ? 0.6 : 1,
                         }}
                       >
-                        <Plus size={13} /> {avatarUploading ? 'Pujant…' : 'Puja una foto'}
+                        <Plus size={13} /> {avatarUploading ? 'Pujant…' : 'Canviar foto'}
                       </button>
                       <input ref={avatarFileRef} type="file" accept="image/jpeg,image/png" style={{ display: 'none' }}
                         onChange={e => { const f = e.target.files?.[0]; if (f) handleAvatarPick(f); e.currentTarget.value = ''; }} />
@@ -5832,6 +5863,76 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
         </div>
       )}
       </div>
+      {/* ── Avatar gallery picker (desktop) ── */}
+      {showAvatarGallery && createPortal((() => {
+        const ext = currentUser?.ext ?? '';
+        const PHOTOS_BASE = '/uploads/photos/';
+        const options: { url: string; label: string; candidates?: string[] }[] = [
+          ...(ext ? [{ url: `${PHOTOS_BASE}${ext}.png`, label: 'La meva foto', candidates: [`${PHOTOS_BASE}${ext}.png`, `${PHOTOS_BASE}${ext}.jpg`, `${PHOTOS_BASE}${ext}.jpeg`] }] : []),
+          { url: '/tavil-header.jpg', label: 'Nau Tavil' },
+          { url: '/assets/images/tavilLogo.png', label: 'Logo Tavil' },
+        ];
+        return (
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-md anim-fade-in"
+            onClick={e => { if (e.target === e.currentTarget) setShowAvatarGallery(false); }}
+          >
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 w-full max-w-sm mx-4 anim-scale-in"
+              style={{ boxShadow: '0 8px 32px rgba(34,39,37,0.18)', border: '1px solid var(--tavil-border)' }}>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--tavil-accent)] mb-1">Perfil</div>
+              <h3 className="font-bold text-[var(--tavil-text)] text-lg mb-4" style={{ fontFamily: 'var(--font-display)' }}>Canvia la foto de perfil</h3>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {options.map(opt => {
+                  const isSelected = gallerySelected === opt.url;
+                  return (
+                    <button key={opt.url} onClick={() => setGallerySelected(opt.url)}
+                      className="press flex flex-col items-center gap-1.5 focus:outline-none"
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+                      <div className="relative w-full aspect-square rounded-xl overflow-hidden"
+                        style={{ border: isSelected ? '2.5px solid var(--tavil-text)' : '2px solid var(--tavil-border)', transition: 'border-color 140ms' }}>
+                        <img
+                          src={resolveImg(opt.url)}
+                          alt={opt.label}
+                          className="w-full h-full object-cover"
+                          onError={e => {
+                            const img = e.currentTarget;
+                            const cands = opt.candidates;
+                            if (cands && !img.dataset.tried) {
+                              img.dataset.tried = '1';
+                              const next = cands.find(c => resolveImg(c) !== img.src);
+                              if (next) { img.src = resolveImg(next); return; }
+                            }
+                            img.parentElement!.parentElement!.style.opacity = '0.35';
+                          }}
+                        />
+                        {isSelected && (
+                          <div className="absolute inset-0 flex items-end justify-end p-1.5">
+                            <div className="w-5 h-5 rounded-full bg-[var(--tavil-text)] flex items-center justify-center">
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#f7f7f2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-medium text-[var(--tavil-muted)]">{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => { if (gallerySelected) setPendingAvatar(gallerySelected); setShowAvatarGallery(false); }}
+                  disabled={!gallerySelected}
+                  className="press w-full py-2.5 rounded-xl text-sm font-semibold bg-[var(--tavil-text)] text-[var(--tavil-bg)] disabled:opacity-40 transition-opacity"
+                >Confirmar</button>
+                <button
+                  onClick={() => { setShowAvatarGallery(false); setTimeout(() => avatarFileRef.current?.click(), 100); }}
+                  className="press w-full py-2 rounded-xl text-sm font-medium text-[var(--tavil-muted)] hover:bg-[var(--tavil-bgAlt)] transition-colors"
+                >Pujar foto pròpia…</button>
+              </div>
+            </div>
+          </div>
+        );
+      })(), document.body)}
     </div>
   );
 }
@@ -6694,15 +6795,15 @@ function BoAgendaPanel({ events, onRefresh, cardCls, inputCls, btnGhost }: {
 
   const handleSave = async () => {
     if (!aTitle.trim() || !aDate) return;
-    const [,mStr,dStr] = aDate.split('-');
-    const day = parseInt(dStr); const month = parseInt(mStr);
+    const [yStr,mStr,dStr] = aDate.split('-');
+    const day = parseInt(dStr); const month = parseInt(mStr); const year = parseInt(yStr);
     if (!day || !month) return;
     const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
     if (!timeRe.test(aTime.trim())) { alert("Hora d'inici no vàlida (HH:MM)."); return; }
     if (aTimeEnd.trim() && !timeRe.test(aTimeEnd.trim())) { alert('Hora final no vàlida (HH:MM).'); return; }
     setSaving(true);
     try {
-      const fields = { title: aTitle.trim(), day, month, time: aTime.trim(), time_end: aTimeEnd.trim() || undefined, location: aLocation.trim(), type: aType, target_departments: aDepts };
+      const fields = { title: aTitle.trim(), day, month, year, time: aTime.trim(), time_end: aTimeEnd.trim() || undefined, location: aLocation.trim(), type: aType, target_departments: aDepts };
       if (editId) await apiUpdateAgendaEvent(editId, fields);
       else await apiCreateAgendaEvent(fields);
       onRefresh(); reset();
@@ -6869,8 +6970,11 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
   const [nnFeatured, setNnFeatured] = useState(false);
   const [nnActive, setNnActive] = useState(true);
   const [nnSaving, setNnSaving] = useState(false);
-  const [nnShowGallery, setNnShowGallery] = useState(false);
-  const [nnGalleryImages, setNnGalleryImages] = useState<{ url: string; name: string }[]>([]);
+  const NEWS_IMAGE_PRESETS = [
+    { url: '/assets/images/carnet-test.png', label: 'Carnet empleat' },
+    { url: '/tavil-header.jpg', label: 'Nau Tavil' },
+    { url: '/assets/images/tavilLogo.png', label: 'Logo Tavil' },
+  ];
 
   // Scroll-into-view refs for inline opens (forms + expanded drawers).
   // Tied to the *id* of the active row so they re-fire when switching between rows.
@@ -6977,8 +7081,8 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
     });
   };
 
-  const openCreateNews = () => { setEditNewsItem(null); setNnTitle(''); setNnCategory('Comunicats interns'); setNnSummary(''); setNnContent(''); setNnDate(''); setNnImage(''); setNnImageFile(null); setNnFeatured(false); setNnActive(true); setNnShowGallery(false); setShowNewsForm(true); };
-  const openEditNews = (n: NewsArticle) => { setEditNewsItem(n); setNnTitle(n.title); setNnCategory(n.category); setNnSummary(n.summary); setNnContent(n.content ?? ''); setNnDate(n.date); setNnImage(n.image || ''); setNnImageFile(null); setNnFeatured(n.featured === 1); setNnActive(n.active !== 0); setNnShowGallery(false); setShowNewsForm(true); };
+  const openCreateNews = () => { setEditNewsItem(null); setNnTitle(''); setNnCategory('Comunicats interns'); setNnSummary(''); setNnContent(''); setNnDate(''); setNnImage(''); setNnImageFile(null); setNnFeatured(false); setNnActive(true); setShowNewsForm(true); };
+  const openEditNews = (n: NewsArticle) => { setEditNewsItem(n); setNnTitle(n.title); setNnCategory(n.category); setNnSummary(n.summary); setNnContent(n.content ?? ''); setNnDate(n.date); setNnImage(n.image || ''); setNnImageFile(null); setNnFeatured(n.featured === 1); setNnActive(n.active !== 0); setShowNewsForm(true); };
   const saveNews = async () => {
     setNnSaving(true); setError('');
     try {
@@ -7320,39 +7424,44 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
                   <DatePicker value={nnDate} onChange={setNnDate} />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Imatge</label>
-                  {nnImage && (
-                    <div className="relative mb-2 group w-fit">
-                      <img src={resolveImg(nnImage)} alt="" className="h-20 rounded-lg object-cover border border-gray-200 dark:border-zinc-700" />
-                      <button type="button" onClick={() => setNnImage('')} className="absolute top-1 right-1 bg-black/50 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><X size={10} /></button>
-                    </div>
-                  )}
-                  <div className="flex gap-2">
+                  <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-2">Imatge</label>
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    {NEWS_IMAGE_PRESETS.map(preset => {
+                      const selected = nnImage === preset.url && !nnImageFile;
+                      return (
+                        <button key={preset.url} type="button"
+                          onClick={() => { setNnImage(preset.url); setNnImageFile(null); }}
+                          className={`relative rounded-lg overflow-hidden border-2 transition-all ${selected ? 'border-red-500 shadow-sm' : 'border-gray-200 dark:border-zinc-700 hover:border-red-300'}`}>
+                          <img src={resolveImg(preset.url)} alt={preset.label} className="w-full h-16 object-cover" />
+                          <p className="text-[9px] font-medium text-center py-1 bg-white dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 truncate px-1">{preset.label}</p>
+                          {selected && (
+                            <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
+                              <Check size={9} className="text-white" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center gap-2">
                     <label className={`${btnGhost} cursor-pointer text-xs`}>
                       <input type="file" accept="image/*" className="sr-only" onChange={e => { setNnImageFile(e.target.files?.[0] ?? null); setNnImage(''); }} />
                       Pujar nova
                     </label>
-                    <button type="button" className={btnGhost} onClick={() => {
-                      if (nnGalleryImages.length === 0) apiGetImages().then(imgs => setNnGalleryImages(imgs));
-                      setNnShowGallery(v => !v);
-                    }}>
-                      Galeria
-                    </button>
+                    {nnImageFile && (
+                      <div className="flex items-center gap-1.5">
+                        <img src={URL.createObjectURL(nnImageFile)} alt="" className="h-6 w-6 rounded object-cover flex-shrink-0" />
+                        <span className="text-[10px] text-gray-500 dark:text-zinc-400 max-w-[100px] truncate">{nnImageFile.name}</span>
+                        <button type="button" onClick={() => setNnImageFile(null)} className="text-[10px] text-gray-400 hover:text-red-500 transition-colors"><X size={10} /></button>
+                      </div>
+                    )}
+                    {!nnImageFile && nnImage && !NEWS_IMAGE_PRESETS.find(p => p.url === nnImage) && (
+                      <div className="flex items-center gap-1.5">
+                        <img src={resolveImg(nnImage)} alt="" className="h-6 w-6 rounded object-cover flex-shrink-0" />
+                        <button type="button" onClick={() => setNnImage('')} className="text-[10px] text-gray-400 hover:text-red-500 transition-colors"><X size={10} /></button>
+                      </div>
+                    )}
                   </div>
-                  {nnImageFile && <p className="text-[10px] text-gray-400 mt-1">{nnImageFile.name}</p>}
-                  {nnShowGallery && (
-                    <div className="mt-2 grid grid-cols-4 gap-1.5 max-h-40 overflow-y-auto rounded-lg border border-gray-200 dark:border-zinc-700 p-2 bg-gray-50 dark:bg-zinc-800">
-                      {nnGalleryImages.length === 0
-                        ? <p className="col-span-4 text-xs text-gray-400 text-center py-4">Carregant…</p>
-                        : nnGalleryImages.map(img => (
-                          <button key={img.url} type="button" onClick={() => { setNnImage(img.url); setNnImageFile(null); setNnShowGallery(false); }}
-                            className={`relative rounded overflow-hidden border-2 transition-colors ${nnImage === img.url ? 'border-red-500' : 'border-transparent hover:border-red-300'}`}>
-                            <img src={resolveImg(img.url)} alt={img.name} className="w-full h-14 object-cover" />
-                          </button>
-                        ))
-                      }
-                    </div>
-                  )}
                 </div>
                 <div className="flex gap-2 justify-end pt-2 border-t border-gray-100 dark:border-zinc-800">
                   <button onClick={() => setShowNewsForm(false)} className={btnGhost}>Cancel·lar</button>
@@ -7609,7 +7718,6 @@ function useSidebarSections(role?: string, roles?: string[]) {
     {
       title: t('nav.personal'),
       items: [
-        { id: 'Solicituds', label: t('nav.solicituds'), icon: FileText },
         { id: 'Perfil', label: t('nav.perfil'), icon: UserCircle },
       ]
     },
@@ -10716,6 +10824,7 @@ function App() {
       setToken(data.access_token, true);
       setCurrentUser(data.user);
       setImpersonating({ name: userName });
+      setImpersonatingMode(true);
       resetTabPrefetch();
       setActiveTab('Inici');
     } catch (e: any) {
@@ -10730,6 +10839,7 @@ function App() {
       localStorage.removeItem('tavil_token_original');
     }
     setImpersonating(null);
+    setImpersonatingMode(false);
     resetTabPrefetch();
     apiGetMe().then(u => { setCurrentUser(u); }).catch(() => handleLogout());
   };
@@ -10829,7 +10939,7 @@ function App() {
       case 'Inici': return <InicialTab onNavigate={setActiveTab} onNavigateToDate={navigateToDate} onOpenDrawer={openDrawer} hasUnread={hasUnread} onOpenNotifs={openNotifs} currentUser={currentUser} />;
       case 'Notícies': return <NoticiesTab currentUser={currentUser} onOpenDrawer={openDrawer} onNavigate={setActiveTab} />;
       case 'Activitats': return <ActivitatsTab currentUser={currentUser} onBack={goBack} />;
-      case 'Agenda': return <AgendaTab currentUser={currentUser} initDate={agendaInitDate} onInitDateConsumed={() => setAgendaInitDate(null)} onOpenDrawer={openDrawer} />;
+      case 'Agenda': return <AgendaTab currentUser={currentUser} initDate={agendaInitDate} onInitDateConsumed={() => setAgendaInitDate(null)} onOpenDrawer={openDrawer} onNavigate={setActiveTab} />;
       case 'Directori': return <DirectoriTab onOpenDrawer={openDrawer} />;
       case 'Espai': return <EspaiCorporatiuTab onBack={goBack} />;
       case 'Campus': return <CampusTavilTab onBack={goBack} currentUser={currentUser} pageActive={activeTab === 'Campus'} />;
@@ -11260,9 +11370,9 @@ function App() {
                         onClick={() => {
                           setDemoRole(role);
                           if (currentUser) {
-                            const updated = { ...currentUser, role };
+                            const updated = { ...currentUser, role, roles: [] };
                             setCurrentUser(updated);
-                            apiUpdateMyRole(role).then(u => setCurrentUser(u)).catch(console.error);
+                            apiUpdateMyRole(role).then(u => setCurrentUser({ ...u, roles: [] })).catch(console.error);
                           }
                         }}
                         className={cn(

@@ -69,6 +69,7 @@ export function clearToken(): void {
 type OnUnauthorized = () => void;
 let onUnauthorizedCallback: OnUnauthorized | null = null;
 let onMustChangePasswordCallback: (() => void) | null = null;
+let _impersonatingMode = false;
 
 export function registerUnauthorizedHandler(cb: OnUnauthorized): void {
   onUnauthorizedCallback = cb;
@@ -76,6 +77,10 @@ export function registerUnauthorizedHandler(cb: OnUnauthorized): void {
 
 export function registerMustChangePasswordHandler(cb: () => void): void {
   onMustChangePasswordCallback = cb;
+}
+
+export function setImpersonatingMode(v: boolean): void {
+  _impersonatingMode = v;
 }
 
 export async function apiFetch<T>(
@@ -104,7 +109,7 @@ export async function apiFetch<T>(
     let detail: unknown;
     try { detail = (await res.json()).detail; } catch {}
     if (detail === 'must_change_password') {
-      onMustChangePasswordCallback?.();
+      if (!_impersonatingMode) onMustChangePasswordCallback?.();
       throw new Error('must_change_password');
     }
     throw new Error(typeof detail === 'string' ? detail : 'Error 403');
@@ -540,21 +545,29 @@ export interface AgendaEvent {
   title: string;
   day: number;
   month: number;
+  year?: number;
+  end_day?: number | null;
+  end_month?: number | null;
+  end_year?: number | null;
   time: string;
   time_end?: string | null;
   location: string;
   type: string;
   target_departments?: string[]; // null/undefined = visible to all
+  activity_id?: number | null;
+  quiz_id?: number | null;
 }
 
 export async function apiCreateAgendaEvent(fields: {
-  title: string; day: number; month: number; time: string; time_end?: string; location: string; type: string; target_departments?: string[];
+  title: string; day: number; month: number; year: number; time: string; time_end?: string;
+  location: string; type: string; target_departments?: string[]; end_date?: string;
 }): Promise<AgendaEvent> {
   return apiFetch<AgendaEvent>('/api/agenda', { method: 'POST', body: JSON.stringify(fields) });
 }
 
 export async function apiUpdateAgendaEvent(id: number, fields: {
-  title: string; day: number; month: number; time: string; time_end?: string; location: string; type: string; target_departments?: string[];
+  title: string; day: number; month: number; year: number; time: string; time_end?: string;
+  location: string; type: string; target_departments?: string[]; end_date?: string;
 }): Promise<void> {
   await apiFetch(`/api/agenda/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
 }
