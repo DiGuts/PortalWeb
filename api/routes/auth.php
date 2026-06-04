@@ -5,7 +5,7 @@ require_once __DIR__ . '/../jwt.php';
 require_once __DIR__ . '/../email.php';
 require_once __DIR__ . '/../helpers.php';
 
-const _USER_FIELDS_AUTH = 'id, name, email, role, roles, dept, phone, ext, location, avatar_url, visible_in_directory, onboarded, email_notifs, is_head, must_change_password, active';
+const _USER_FIELDS_AUTH = 'id, name, email, role, roles, dept, phone, ext, location, avatar_url, visible_in_directory, onboarded, email_notifs, is_head, must_change_password, active, requires_prl, epi_grup';
 
 function _expires_at(int $minutes = 0, int $hours = 0): string {
     return date('Y-m-d H:i:s', time() + $minutes * 60 + $hours * 3600);
