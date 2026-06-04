@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PDFTextField } from 'pdf-lib';
 import { API_BASE, apiPreventionSign } from '../../api';
 
 type DocumentKey = 'inf_ca' | 'inf_en' | 'epi_1' | 'epi_2' | 'epi_3' | 'epi_3i' | 'epi_4';
@@ -122,6 +122,7 @@ export function PreventionOnboarding({ documentKey, userName, userDept, onDone }
       const pdfArrayBuffer = await pdfResponse.arrayBuffer();
 
       const pdfDoc = await PDFDocument.load(pdfArrayBuffer, { ignoreEncryption: true });
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
       // Decode signature PNG
       const sigBase64 = signatureDataUrl.split(',')[1];
@@ -130,60 +131,91 @@ export function PreventionOnboarding({ documentKey, userName, userDept, onDone }
       for (let i = 0; i < sigBinary.length; i++) sigBytes[i] = sigBinary.charCodeAt(i);
       const sigImage = await pdfDoc.embedPng(sigBytes);
 
-      // Add A4 signature page
-      const W = 595.28, H = 841.89;
-      const page = pdfDoc.addPage([W, H]);
-      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
       const now = new Date();
-      const dateStr = now.toLocaleDateString('ca', {
-        day: '2-digit', month: '2-digit', year: 'numeric',
-      }) + ' ' + now.toLocaleTimeString('ca', { hour: '2-digit', minute: '2-digit' });
+      const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
 
-      // Header bar (dark green)
-      page.drawRectangle({ x: 0, y: H - 60, width: W, height: 60, color: rgb(0.1, 0.29, 0.1) });
-      page.drawText('PORTAL TAVIL  |  PREVENCIO DE RISCOS LABORALS', {
-        x: 30, y: H - 24, size: 9, font: fontBold, color: rgb(1, 1, 1),
-      });
-      page.drawText('Document signat digitalment', {
-        x: 30, y: H - 44, size: 13, font: fontBold, color: rgb(0.82, 1, 0.82),
-      });
+      // ── Fill AcroForm text fields ─────────────────────────────────────────
+      const form = pdfDoc.getForm();
+      const allFields = form.getFields();
+      console.log('[PRL] fields:', allFields.map(f => `${f.constructor.name}:${f.getName()}`));
 
-      // Info rows
-      const rows: [string, string][] = [
-        ['Document',       latinize(DOC_TITLES[documentKey] ?? documentKey)],
-        ['Treballador/a',  latinize(userName)],
-        ['Departament',    latinize(userDept)],
-        ['Data i hora',    dateStr],
-      ];
-      let y = H - 100;
-      for (const [label, value] of rows) {
-        page.drawText(label + ':', { x: 50, y, size: 11, font: fontBold, color: rgb(0.35, 0.35, 0.35) });
-        page.drawText(value,       { x: 180, y, size: 11, font,         color: rgb(0.1, 0.1, 0.1) });
-        y -= 26;
+      // Track where the signature widget lives so we can draw the image there
+      let sigRect: { x: number; y: number; width: number; height: number } | null = null;
+
+      for (const field of allFields) {
+        const name = field.getName();
+        const nameLow = name.toLowerCase();
+        try {
+          if (field instanceof PDFTextField) {
+            if (/nom|name|treballad|cognoms/i.test(nameLow)) {
+              field.setText(latinize(userName));
+            } else if (/data|date/i.test(nameLow)) {
+              field.setText(dateStr);
+            } else if (/lloc|departament|treball|dept|puesto|carrego|carrec/i.test(nameLow)) {
+              field.setText(latinize(userDept));
+            } else if (/sign|firma|signatur/i.test(nameLow)) {
+              // leave as-is but grab position
+            }
+          }
+        } catch (_) { /* skip unrecognised fields */ }
+
+        // Grab widget rectangle for signature field (any name)
+        if (/sign|firma|signatur/i.test(nameLow)) {
+          try {
+            const widgets = (field as any).acroField?.getWidgets?.() ?? [];
+            if (widgets.length > 0) {
+              sigRect = widgets[0].getRectangle();
+            }
+          } catch (_) {}
+        }
       }
 
-      // Separator
-      y -= 8;
-      page.drawLine({ start: { x: 50, y }, end: { x: W - 50, y }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) });
+      // ── Draw signature image on last page ─────────────────────────────────
+      const lastPage = pdfDoc.getPage(pdfDoc.getPageCount() - 1);
+      const { width: W, height: H } = lastPage.getSize();
 
-      // Signature area
-      y -= 24;
-      page.drawText('Signatura del treballador/a:', { x: 50, y, size: 11, font: fontBold, color: rgb(0.35, 0.35, 0.35) });
+      // Fallback: if no signature widget found, estimate position from page
+      // Based on TAVIL INF/EPI template: signature box is ~left side, ~38% from bottom
+      if (!sigRect) {
+        sigRect = { x: 78, y: H * 0.36, width: 210, height: 72 };
+      }
 
-      const maxSigW = W - 100;
-      const aspect  = sigImage.width / sigImage.height;
-      const sigW    = Math.min(maxSigW, 380);
-      const sigH    = sigW / aspect;
-      y -= (sigH + 14);
-      page.drawRectangle({ x: 50, y, width: sigW, height: sigH, borderColor: rgb(0.75, 0.75, 0.75), borderWidth: 0.5 });
-      page.drawImage(sigImage, { x: 50, y, width: sigW, height: sigH });
-
-      // Footer
-      page.drawText('Generat automaticament pel Portal TAVIL  |  ' + dateStr, {
-        x: 50, y: 28, size: 8, font, color: rgb(0.6, 0.6, 0.6),
+      // Draw signature image inside the widget rectangle (with 4pt inset)
+      const inset = 4;
+      lastPage.drawImage(sigImage, {
+        x: sigRect.x + inset,
+        y: sigRect.y + inset,
+        width:  sigRect.width  - inset * 2,
+        height: sigRect.height - inset * 2,
       });
+
+      // Also write date next to/below data field (best effort, ~same Y as signature, right side)
+      try {
+        const dateFieldExists = allFields.some(f => /data|date/i.test(f.getName().toLowerCase()) && f instanceof PDFTextField);
+        if (!dateFieldExists) {
+          // Draw date text near signature area if no Date field found
+          lastPage.drawText(dateStr, {
+            x: sigRect.x + sigRect.width + 20,
+            y: sigRect.y + sigRect.height / 2 - 5,
+            size: 10, font, color: rgb(0, 0, 0),
+          });
+        }
+      } catch (_) {}
+
+      // Also write worker name if no name field found
+      try {
+        const nameFieldExists = allFields.some(f => /nom|name|treballad|cognoms/i.test(f.getName().toLowerCase()) && f instanceof PDFTextField);
+        if (!nameFieldExists) {
+          lastPage.drawText(latinize(userName), {
+            x: sigRect.x,
+            y: sigRect.y + sigRect.height + 28,
+            size: 10, font, color: rgb(0, 0, 0),
+          });
+        }
+      } catch (_) {}
+
+      // Flatten form so filled fields are baked into the PDF
+      try { form.flatten(); } catch (_) {}
 
       return await pdfDoc.saveAsBase64();
     } catch (err) {
