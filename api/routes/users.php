@@ -26,6 +26,7 @@ function _cast_user(array $row): array {
     $row['visible_in_directory'] = (int)($row['visible_in_directory'] ?? 1);
     $row['must_change_password'] = (int)($row['must_change_password'] ?? 0);
     $row['active']               = (int)($row['active'] ?? 1);
+    $row['requires_prl']         = (int)($row['requires_prl'] ?? 0);
     $row['is_demo_admin'] = ($row['email'] ?? '') === 'unaiclapers@tavil.net' ? 1 : 0;
     $rolesRaw = $row['roles'] ?? '[]';
     if (!is_array($rolesRaw)) {
@@ -166,7 +167,7 @@ elseif ($method === 'POST' && $seg1 === '') {
     $rolesArr  = json_decode($rolesJson, true) ?? [];
     $isHead    = in_array('Cap de departament', $rolesArr) ? 1 : 0;
     $primaryRole = count($rolesArr) > 0 ? $rolesArr[0] : 'Treballador/a';
-    $db->prepare('INSERT INTO users (name, email, password, role, roles, dept, is_head, must_change_password, onboarded, email_verified) VALUES (?,?,?,?,?,?,?,1,1,1)')
+    $db->prepare('INSERT INTO users (name, email, password, role, roles, dept, is_head, must_change_password, onboarded, email_verified, requires_prl) VALUES (?,?,?,?,?,?,?,1,1,1,1)')
        ->execute([
            str_val($body,'name'), $email, $hashed,
            $primaryRole, $rolesJson, str_val($body,'dept'),
@@ -182,7 +183,7 @@ elseif ($method === 'POST' && $seg1 === '') {
 elseif ($method === 'PATCH' && is_numeric($seg1) && $seg2 === '') {
     require_admin();
     $user_id = (int)$seg1;
-    $allowed = ['name','email','role','dept','phone','ext','location','avatar_url','email_notifs'];
+    $allowed = ['name','email','role','dept','phone','ext','location','avatar_url','email_notifs','epi_grup'];
     $updates = [];
     foreach ($allowed as $k) {
         if (array_key_exists($k, $body)) {
@@ -192,6 +193,9 @@ elseif ($method === 'PATCH' && is_numeric($seg1) && $seg2 === '') {
                 $updates[$k] = $body[$k];
             }
         }
+    }
+    if (array_key_exists('requires_prl', $body)) {
+        $updates['requires_prl'] = bool_val($body, 'requires_prl') ? 1 : 0;
     }
     if (array_key_exists('roles', $body)) {
         $rolesJson = _sanitize_roles_payload($body['roles']);

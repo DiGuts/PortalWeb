@@ -52,6 +52,7 @@ import { LoginPage } from './components/auth/LoginPage';
 import { VerifyEmailPage } from './components/auth/VerifyEmailPage';
 import { OTPPage } from './components/auth/OTPPage';
 import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
+import { PreventionOnboarding } from './components/prevention/PreventionOnboarding';
 import { validateVacanca, ANNUAL_QUOTA_DAYS, laboralDaysBetween } from './conveni';
 import {
   User, AuthOut,
@@ -73,6 +74,7 @@ import {
   apiGetDeptHead, apiUpdateDept,
   Vacanca, apiGetVacances, apiCreateVacanca, apiUpdateVacancaHead, apiUpdateVacancaRrhh, apiDeleteVacanca,
   apiChangePassword,
+  apiPreventionStatus,
   apiAdminListUsers, apiAdminCreateUser, apiAdminUpdateUser, apiAdminDeleteUser,
   apiGetAllNotices, apiCreateNotice, apiUpdateNotice, apiDeleteNotice,
   Quiz, QuizIn, QuizAttemptResult, QuizResultRow,
@@ -6944,6 +6946,8 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
   const [uExt, setUExt] = useState('');
   const [uLocation, setULocation] = useState('');
   const [uAvatarUrl, setUAvatarUrl] = useState('');
+  const [uRequiresPrl, setURequiresPrl] = useState(true);
+  const [uEpiGrup, setUEpiGrup] = useState('');
   const [uSaving, setUSaving] = useState(false);
 
   // Notice form
@@ -7027,8 +7031,8 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
     return () => window.removeEventListener('message', onMsg);
   }, [subTab]);
 
-  const openCreateUser = () => { setEditUser(null); setUName(''); setUEmail(''); setUPass(''); setUNewPass(''); setURoles(['Treballador/a']); setUDept(DEPT_ORDER[0]); setUPhone(''); setUExt(''); setULocation(''); setUAvatarUrl(''); setShowUserForm(true); };
-  const openEditUser = (u: import('./api').User) => { setEditUser(u); setUName(u.name); setUEmail(u.email); setUPass(''); setUNewPass(''); setURoles(u.roles && u.roles.length > 0 ? u.roles : ['Treballador/a']); setUDept(u.dept); setUPhone(u.phone ?? ''); setUExt(u.ext ?? ''); setULocation(u.location ?? ''); setUAvatarUrl(u.avatar_url ?? ''); setShowUserForm(true); };
+  const openCreateUser = () => { setEditUser(null); setUName(''); setUEmail(''); setUPass(''); setUNewPass(''); setURoles(['Treballador/a']); setUDept(DEPT_ORDER[0]); setUPhone(''); setUExt(''); setULocation(''); setUAvatarUrl(''); setURequiresPrl(true); setUEpiGrup(''); setShowUserForm(true); };
+  const openEditUser = (u: import('./api').User) => { setEditUser(u); setUName(u.name); setUEmail(u.email); setUPass(''); setUNewPass(''); setURoles(u.roles && u.roles.length > 0 ? u.roles : ['Treballador/a']); setUDept(u.dept); setUPhone(u.phone ?? ''); setUExt(u.ext ?? ''); setULocation(u.location ?? ''); setUAvatarUrl(u.avatar_url ?? ''); setURequiresPrl(!!u.requires_prl); setUEpiGrup(u.epi_grup ?? ''); setShowUserForm(true); };
 
   const saveUser = async () => {
     setUSaving(true); setError('');
@@ -7037,10 +7041,11 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
         await apiAdminUpdateUser(editUser.id, {
           name: uName, email: uEmail, roles: uRoles, dept: uDept,
           phone: uPhone, ext: uExt, location: uLocation, avatar_url: uAvatarUrl,
+          requires_prl: uRequiresPrl ? 1 : 0, epi_grup: uEpiGrup || null,
           ...(uNewPass ? { new_password: uNewPass } : {}),
         });
       } else {
-        await apiAdminCreateUser({ name: uName, email: uEmail, temp_password: uPass, roles: uRoles, dept: uDept });
+        await apiAdminCreateUser({ name: uName, email: uEmail, temp_password: uPass, roles: uRoles, dept: uDept, requires_prl: uRequiresPrl ? 1 : 0 });
       }
       setShowUserForm(false); loadUsers(); showToast(editUser ? 'Usuari actualitzat correctament' : 'Usuari creat correctament');
     } catch (e: any) { setError(e.message); }
@@ -7190,6 +7195,22 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
                     );
                   })}
                 </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Grup EPI</label>
+                <select value={uEpiGrup} onChange={e => setUEpiGrup(e.target.value)} className={inputCls} style={{ fontFamily: 'inherit' }}>
+                  <option value="">Sense assignar</option>
+                  <option value="1">Grup 1</option>
+                  <option value="2">Grup 2</option>
+                  <option value="3">Grup 3</option>
+                  <option value="3i">Grup 3 Internacional</option>
+                  <option value="4">Grup 4</option>
+                </select>
+              </div>
+              <div className="md:col-span-2 flex items-center gap-3 pt-1">
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Firma PRL obligatòria</label>
+                <input type="checkbox" checked={uRequiresPrl} onChange={e => setURequiresPrl(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                <span className="text-[11px] text-gray-400">Activat = el treballador ha de signar documents PRL</span>
               </div>
               {editUser && (
                 <>
@@ -10749,6 +10770,7 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [headerSticky, setHeaderSticky] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [preventionPending, setPreventionPending] = useState<string[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [mobileNotifsOpen, setMobileNotifsOpen] = useState(false);
   const [navHidden, setNavHidden] = useState(false);
@@ -10787,6 +10809,9 @@ function App() {
     apiGetNotifications().then(setNotifications).catch(() => {});
     prefetchTabData(true);
     if (user.must_change_password) setShowChangePassword(true);
+    if (user.requires_prl) {
+      apiPreventionStatus().then(s => setPreventionPending(s.pending)).catch(() => {});
+    }
   };
 
   const handleAuthResult = (data: AuthOut) => {
@@ -10858,6 +10883,9 @@ function App() {
           apiGetNotifications().then(setNotifications).catch(() => {});
           prefetchTabData(true);
           if (user.must_change_password) setShowChangePassword(true);
+          if (user.requires_prl) {
+            apiPreventionStatus().then(s => setPreventionPending(s.pending)).catch(() => {});
+          }
         })
         .catch(() => clearToken());
     }
@@ -11432,6 +11460,17 @@ function App() {
 
       {showChangePassword && (
         <ChangePasswordModal onDone={() => { setShowChangePassword(false); apiGetMe().then(setCurrentUser).catch(() => {}); }} forced />
+      )}
+      {preventionPending.includes('inf') && !showChangePassword && (
+        <PreventionOnboarding
+          documentKey={(() => {
+            try { const l = localStorage.getItem('tavil_lang') || 'ca'; return l === 'en' ? 'inf_en' : 'inf_ca'; } catch { return 'inf_ca'; }
+          })()}
+          onDone={() => {
+            setPreventionPending(prev => prev.filter(k => k !== 'inf'));
+            apiPreventionStatus().then(s => setPreventionPending(s.pending)).catch(() => {});
+          }}
+        />
       )}
       <MobileDrawer
         open={isDrawerOpen}

@@ -24,6 +24,8 @@ export interface User {
   is_demo_admin: number;
   must_change_password: number;
   active: number;
+  requires_prl: number;
+  epi_grup: string | null;
 }
 
 export interface TokenOut {
@@ -838,7 +840,7 @@ export async function apiAdminListUsers(): Promise<User[]> {
 }
 
 export async function apiAdminCreateUser(fields: {
-  name: string; email: string; temp_password: string; roles: string[]; dept: string;
+  name: string; email: string; temp_password: string; roles: string[]; dept: string; requires_prl?: number;
 }): Promise<User> {
   return apiFetch<User>('/api/users', { method: 'POST', body: JSON.stringify(fields) });
 }
@@ -846,6 +848,7 @@ export async function apiAdminCreateUser(fields: {
 export async function apiAdminUpdateUser(id: number, fields: {
   name?: string; email?: string; roles?: string[]; dept?: string; new_password?: string;
   phone?: string; ext?: string; location?: string; avatar_url?: string; email_notifs?: number;
+  requires_prl?: number; epi_grup?: string | null;
 }): Promise<User> {
   return apiFetch<User>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(fields) });
 }
@@ -1130,4 +1133,17 @@ export async function apiGetQuizUsers(quizId: number): Promise<FormationUserProg
 
 export async function apiImpersonate(userId: number): Promise<TokenOut> {
   return apiFetch<TokenOut>(`/api/auth/impersonate/${userId}`, { method: 'POST' });
+}
+
+// ── Prevention / PRL ──────────────────────────────────────────────────────────
+
+export async function apiPreventionStatus(): Promise<{ pending: string[] }> {
+  return apiFetch('/prevention/status');
+}
+
+export async function apiPreventionSign(document_key: string, signature_data: string): Promise<{ ok: boolean }> {
+  return apiFetch('/prevention/sign', {
+    method: 'POST',
+    body: JSON.stringify({ document_key, signature_data }),
+  });
 }

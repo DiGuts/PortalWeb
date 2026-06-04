@@ -108,6 +108,7 @@ $route_file = match ($base) {
     'upload'        => __DIR__ . '/routes/upload.php',
     'quizzes'       => __DIR__ . '/routes/quizzes.php',
     'debug-mail'    => __DIR__ . '/routes/debug-mail.php',
+    'prevention'    => __DIR__ . '/routes/prevention.php',
     default         => null,
 };
 

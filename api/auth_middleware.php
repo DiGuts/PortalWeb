@@ -3,7 +3,7 @@ require_once __DIR__ . '/jwt.php';
 require_once __DIR__ . '/db.php';
 
 // ── USER_FIELDS returned in every user response ───────────────────────────────
-const USER_FIELDS = 'id, name, email, role, roles, dept, phone, ext, location, avatar_url, visible_in_directory, onboarded, email_notifs, is_head, must_change_password, active';
+const USER_FIELDS = 'id, name, email, role, roles, dept, phone, ext, location, avatar_url, visible_in_directory, onboarded, email_notifs, is_head, must_change_password, active, requires_prl, epi_grup';
 
 // Decode users.roles JSON column into array, mutating the user row in-place.
 // Safe no-op if column missing or invalid.
