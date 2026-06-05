@@ -10897,6 +10897,16 @@ function App() {
     }
   }, []);
 
+  // Dev-only: notify code-nav server (scripts/code-nav.js) of tab changes
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+    fetch('http://127.0.0.1:9999', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tab: activeTab }),
+    }).catch(() => {});
+  }, [activeTab]);
+
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
