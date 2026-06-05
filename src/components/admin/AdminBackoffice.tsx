@@ -649,21 +649,18 @@ function AdminNews({ news, refresh, intent, onConsumeIntent }: { news: NewsArtic
       refresh();
     } catch (e: any) { alert(e?.message ?? 'Error desant portada'); }
   };
+  const newsStatus = (n: NewsArticle) => !n.active ? 'draft' : n.featured ? 'featured' : 'activa';
   const filtered = useMemo(() => news.filter(n => {
-    if (statusFilter !== 'all') {
-      const s = n.featured ? 'published' : 'draft';
-      if (s !== statusFilter) return false;
-    }
+    if (statusFilter !== 'all' && newsStatus(n) !== statusFilter) return false;
     if (q && !(n.title + n.category).toLowerCase().includes(q.toLowerCase())) return false;
     return true;
   }), [news, q, statusFilter]);
 
   const counts = {
     all: news.length,
-    published: news.filter(n => n.featured).length,
-    draft: news.filter(n => !n.featured).length,
-    scheduled: 0,
-    archived: 0,
+    featured: news.filter(n => n.active && n.featured).length,
+    activa: news.filter(n => n.active && !n.featured).length,
+    draft: news.filter(n => !n.active).length,
   };
 
   const openExtendedEditor = (id: number) => {
@@ -718,7 +715,7 @@ function AdminNews({ news, refresh, intent, onConsumeIntent }: { news: NewsArtic
     },
     { key: 'category', label: 'Categoria', width: '140px', render: (n) => <span style={{ color: T.textMuted, fontSize: 12 }}>{n.category}</span> },
     { key: 'date', label: 'Data', width: '100px', render: (n) => <span style={{ color: T.textMuted, fontSize: 12, fontFeatureSettings: '"tnum"' }}>{n.date}</span> },
-    { key: 'status', label: 'Estat', width: '110px', render: (n) => <AStatusPill status={n.featured ? 'published' : 'draft'} /> },
+    { key: 'status', label: 'Estat', width: '110px', render: (n) => <AStatusPill status={newsStatus(n)} /> },
   ];
 
   return (
@@ -733,7 +730,8 @@ function AdminNews({ news, refresh, intent, onConsumeIntent }: { news: NewsArtic
         <div style={{ width: 1, height: 22, background: T.border }} />
         <AdminFilterPills value={statusFilter} onChange={setStatusFilter} options={[
           { id: 'all', label: 'Tots', count: counts.all },
-          { id: 'published', label: 'Publicats', count: counts.published },
+          { id: 'activa', label: 'Activa', count: counts.activa },
+          { id: 'featured', label: 'Destacada', count: counts.featured },
           { id: 'draft', label: 'Esborrany', count: counts.draft },
         ]} />
       </AdminToolbar>

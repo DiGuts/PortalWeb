@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, ReactNode, CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Plus, X, FileText, Check } from 'lucide-react';
+import { Search, Plus, X, FileText, Check, ChevronDown } from 'lucide-react';
 import { API_BASE } from '../../api';
 
 // ── Font constants ──────────────────────────────────────────────────────────
@@ -184,10 +184,12 @@ export function ABtn({ children, onClick, variant = 'primary', icon: Icon, iconR
 
 const STATUS_MAP: Record<string, { label: string; dot: string; bg: string; color: string }> = {
   published: { label: 'Publicat',  dot: 'var(--status-ok-fg)',   bg: 'var(--status-ok-bg)',    color: 'var(--status-ok-fg)' },
-  draft:     { label: 'Esborrany', dot: 'var(--status-warn-fg)', bg: 'var(--status-warn-bg)',  color: 'var(--status-warn-fg)' },
+  draft:     { label: 'Esborrany', dot: T.textFaint,             bg: T.bgAlt,                  color: T.textMuted },
   scheduled: { label: 'Programat', dot: T.accent,                bg: T.accentLight,             color: T.accentDark },
   archived:  { label: 'Arxivat',   dot: T.textFaint,             bg: T.bgAlt,                   color: T.textMuted },
   active:    { label: 'Actiu',     dot: 'var(--status-ok-fg)',   bg: 'var(--status-ok-bg)',    color: 'var(--status-ok-fg)' },
+  activa:    { label: 'Activa',    dot: 'var(--status-ok-fg)',   bg: 'var(--status-ok-bg)',    color: 'var(--status-ok-fg)' },
+  featured:  { label: 'Destacada', dot: '#d97706',               bg: '#fffbeb',                 color: '#92400e' },
   inactive:  { label: 'Inactiu',   dot: T.textFaint,             bg: T.bgAlt,                   color: T.textMuted },
   pending:   { label: 'Pendent',   dot: 'var(--status-warn-fg)', bg: 'var(--status-warn-bg)',  color: 'var(--status-warn-fg)' },
   full:      { label: 'Complet',   dot: 'var(--status-warn-fg)', bg: 'var(--status-warn-bg)',  color: 'var(--status-warn-fg)' },
@@ -409,14 +411,11 @@ export function AField({ label, hint, optional, required, error, children }: {
   );
 }
 
-export function AInput({ value, onChange, placeholder, type = 'text', icon: Icon, hasError, ...rest }: {
+export function AInput({ value, onChange, placeholder, type = 'text', icon: Icon, hasError, ...rest }: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> & {
   value?: string | number;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  placeholder?: string;
-  type?: string;
   icon?: React.ComponentType<{ size?: number; style?: CSSProperties }>;
   hasError?: boolean;
-  [key: string]: any;
 }) {
   const [focus, setFocus] = useState(false);
   return (
@@ -474,19 +473,94 @@ export function ASelect({ value, onChange, options }: {
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   options: (string | { value: string; label: string })[];
 }) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
+
+  const opts = options.map(o => typeof o === 'string' ? { value: o, label: o } : o);
+  const selectedLabel = opts.find(o => o.value === value)?.label ?? value;
+
+  const openDrop = () => {
+    const r = triggerRef.current?.getBoundingClientRect();
+    if (r) setDropPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!triggerRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const pick = (val: string) => {
+    const synth = { target: { value: val } } as React.ChangeEvent<HTMLSelectElement>;
+    onChange(synth);
+    setOpen(false);
+  };
+
   return (
-    <select value={value} onChange={onChange} style={{
-      width: '100%', height: 44, padding: '0 14px',
-      background: T.card, color: T.text,
-      border: `1px solid ${T.border}`, borderRadius: 8, outline: 'none',
-      fontFamily: F_BODY, fontSize: 14.5, boxSizing: 'border-box',
-    }}>
-      {options.map(o => {
-        const val = typeof o === 'string' ? o : o.value;
-        const lab = typeof o === 'string' ? o : o.label;
-        return <option key={val} value={val}>{lab}</option>;
-      })}
-    </select>
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={open ? () => setOpen(false) : openDrop}
+        style={{
+          width: '100%', height: 44, padding: '0 12px 0 14px',
+          background: T.card, color: T.text,
+          border: `1px solid ${open ? T.accent : T.border}`,
+          borderRadius: 8, outline: 'none', cursor: 'pointer',
+          fontFamily: F_BODY, fontSize: 14.5,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          transition: 'border-color 140ms',
+          boxSizing: 'border-box',
+        }}
+      >
+        <span>{selectedLabel}</span>
+        <ChevronDown size={15} style={{ color: 'var(--tavil-muted)', flexShrink: 0, transition: 'transform 140ms', transform: open ? 'rotate(180deg)' : 'none' }} />
+      </button>
+      {open && createPortal(
+        <div
+          onMouseDown={e => e.stopPropagation()}
+          style={{
+            position: 'fixed', top: dropPos.top, left: dropPos.left, width: dropPos.width,
+            zIndex: 99999,
+            background: T.card, border: `1px solid ${T.border}`,
+            borderRadius: 10, boxShadow: '0 8px 24px rgba(34,39,37,0.14)',
+            overflow: 'hidden',
+          }}
+        >
+          {opts.map(o => {
+            const sel = o.value === value;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => pick(o.value)}
+                style={{
+                  width: '100%', padding: '10px 14px',
+                  background: sel ? T.accentLight : 'transparent',
+                  color: sel ? T.accent : T.text,
+                  border: 'none', cursor: 'pointer',
+                  fontFamily: F_BODY, fontSize: 14, textAlign: 'left',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  transition: 'background 100ms',
+                  fontWeight: sel ? 600 : 400,
+                }}
+                onMouseEnter={e => { if (!sel) (e.currentTarget as HTMLButtonElement).style.background = T.bgAlt; }}
+                onMouseLeave={e => { if (!sel) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+              >
+                {o.label}
+                {sel && <Check size={13} style={{ color: T.accent, flexShrink: 0 }} />}
+              </button>
+            );
+          })}
+        </div>,
+        document.body
+      )}
+    </>
   );
 }
 

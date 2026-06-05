@@ -742,7 +742,7 @@ const ConfirmModal = SharedConfirmModal;
 
 // ── Rich Article ──────────────────────────────────────────────────────────────
 type BlockSpan = 1 | 2 | 3;
-type BlockType = 'heading' | 'text' | 'image' | 'quote' | 'divider';
+type BlockType = 'heading' | 'text' | 'image' | 'video' | 'quote' | 'divider';
 
 interface ArticleBlock {
   id: string;
@@ -819,6 +819,14 @@ function renderMarkdownLite(text: string): React.ReactNode {
   return <div>{out}</div>;
 }
 
+function toEmbedUrl(url: string): string | null {
+  const yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
+  const vi = url.match(/vimeo\.com\/(\d+)/);
+  if (vi) return `https://player.vimeo.com/video/${vi[1]}`;
+  return null;
+}
+
 function RichBlockViewer({ blocks }: { blocks: ArticleBlock[] }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-4">
@@ -846,6 +854,21 @@ function RichBlockViewer({ blocks }: { blocks: ArticleBlock[] }) {
                 {block.author && <footer className="text-xs text-gray-400 mt-2">— {block.author}</footer>}
               </blockquote>
             )}
+            {block.type === 'video' && block.url && (() => {
+              const embed = toEmbedUrl(block.url);
+              return (
+                <figure>
+                  {embed ? (
+                    <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                      <iframe src={embed} className="absolute inset-0 w-full h-full rounded-xl" allowFullScreen title={block.caption ?? 'Vídeo'} />
+                    </div>
+                  ) : (
+                    <video src={block.url} controls className="w-full rounded-xl" />
+                  )}
+                  {block.caption && <figcaption className="text-[11px] text-gray-400 mt-2 text-center italic">{block.caption}</figcaption>}
+                </figure>
+              );
+            })()}
             {block.type === 'divider' && (
               <hr className="border-gray-200 dark:border-zinc-700 my-2" />
             )}
@@ -888,6 +911,8 @@ function ArticleBlocksEditor({ value, onChange }: ArticleBlocksEditorProps) {
     }
   }, [blocks, onChange]);
 
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+
   const addBlock = (type: BlockType) => {
     const base: ArticleBlock = { id: mkBlockId(), type, span: 3 };
     const nb: ArticleBlock =
@@ -895,6 +920,7 @@ function ArticleBlocksEditor({ value, onChange }: ArticleBlocksEditorProps) {
       type === 'text'    ? { ...base, content: '' } :
       type === 'quote'   ? { ...base, content: '', author: '' } :
       type === 'image'   ? { ...base, url: '', caption: '' } :
+      type === 'video'   ? { ...base, url: '', caption: '' } :
       base;
     setBlocks(b => [...b, nb]);
   };
@@ -917,10 +943,20 @@ function ArticleBlocksEditor({ value, onChange }: ArticleBlocksEditorProps) {
     } catch { /* silent */ }
   };
 
+  const handleVideoUpload = async (id: string, file: File) => {
+    setUploadProgress(p => ({ ...p, [id]: 0 }));
+    try {
+      const { url } = await apiUploadMedia(file, frac => setUploadProgress(p => ({ ...p, [id]: frac })));
+      updateBlock(id, { url });
+    } catch (e: any) { alert(e?.message ?? 'Error pujant el vídeo'); }
+    finally { setUploadProgress(p => { const n = { ...p }; delete n[id]; return n; }); }
+  };
+
   const tools: Array<{ type: BlockType; label: string; Icon: any }> = [
     { type: 'heading', label: 'Capçalera', Icon: Heading2 },
     { type: 'text',    label: 'Text',      Icon: TypeIcon },
     { type: 'image',   label: 'Imatge',    Icon: ImageIcon },
+    { type: 'video',   label: 'Vídeo',     Icon: Video },
     { type: 'quote',   label: 'Cita',      Icon: Quote },
     { type: 'divider', label: 'Separador', Icon: Minus },
   ];
@@ -1069,6 +1105,48 @@ function ArticleBlocksEditor({ value, onChange }: ArticleBlocksEditorProps) {
                     value={b.caption ?? ''}
                     onChange={e => updateBlock(b.id, { caption: e.target.value })}
                     placeholder="Peu de foto (opcional)"
+                    className="w-full text-xs bg-transparent border-none outline-none text-gray-500"
+                  />
+                </div>
+              )}
+
+              {b.type === 'video' && (
+                <div className="space-y-2">
+                  {b.url && (() => {
+                    const embed = toEmbedUrl(b.url!);
+                    return embed ? (
+                      <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                        <iframe src={embed} className="absolute inset-0 w-full h-full rounded" allowFullScreen title="preview" />
+                      </div>
+                    ) : (
+                      <video src={b.url} controls className="w-full h-32 rounded object-cover" />
+                    );
+                  })()}
+                  {!b.url && (
+                    <div className="w-full h-24 rounded bg-gray-100 dark:bg-zinc-800 flex items-center justify-center gap-2 text-gray-400 text-xs">
+                      <Video size={16} /><span>Sense vídeo</span>
+                    </div>
+                  )}
+                  <input
+                    value={b.url ?? ''}
+                    onChange={e => updateBlock(b.id, { url: e.target.value })}
+                    placeholder="URL del vídeo (YouTube, Vimeo, o directe…)"
+                    className="w-full text-xs bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded px-2 py-1 outline-none text-gray-700 dark:text-zinc-300"
+                  />
+                  {uploadProgress[b.id] !== undefined ? (
+                    <div className="text-[10px] text-gray-500">Pujant… {Math.round(uploadProgress[b.id] * 100)}%</div>
+                  ) : (
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleVideoUpload(b.id, f); }}
+                      className="text-[10px] file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:bg-red-50 file:text-red-700 file:font-semibold"
+                    />
+                  )}
+                  <input
+                    value={b.caption ?? ''}
+                    onChange={e => updateBlock(b.id, { caption: e.target.value })}
+                    placeholder="Peu de vídeo (opcional)"
                     className="w-full text-xs bg-transparent border-none outline-none text-gray-500"
                   />
                 </div>
@@ -9347,7 +9425,7 @@ const NT = {
   bodyFont: 'var(--font-display)',
   uiFont: '"Inter", ui-sans-serif, system-ui, sans-serif',
   radius: 4,
-  tileRadius: 4,
+  tileRadius: 10,
   headlineWeight: 500,
 };
 
@@ -9371,6 +9449,30 @@ const newsRectsOverlap = (a: {x:number;y:number;w:number;h:number}, b: {x:number
 
 const newsWouldOverlap = (tiles: NewsTile[], candidate: {x:number;y:number;w:number;h:number}, excludeId?: string) =>
   tiles.some(t => t.id !== excludeId && newsRectsOverlap(candidate, t));
+
+// Push-down gravity: pinned tile stays fixed; all others are pushed down to avoid overlaps.
+// Iterates until stable (max 200 passes → no infinite loop).
+function newsResolveOverlaps(tiles: NewsTile[], pinnedId?: string): NewsTile[] {
+  const pinned = pinnedId ? tiles.find(t => t.id === pinnedId) : null;
+  const others = tiles.filter(t => t.id !== pinnedId).map(t => ({ ...t }));
+  others.sort((a, b) => a.y - b.y || a.x - b.x);
+  const placed: NewsTile[] = pinned ? [{ ...pinned }] : [];
+  for (const tile of others) {
+    let y = tile.y;
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const p of placed) {
+        if (newsRectsOverlap({ ...tile, y }, p)) {
+          y = p.y + p.h;
+          changed = true;
+        }
+      }
+    }
+    placed.push({ ...tile, y });
+  }
+  return placed;
+}
 
 const newsUid = () => Math.random().toString(36).slice(2, 9);
 
@@ -9764,7 +9866,7 @@ function NewsTileEl({ tile, selected, editing, gridLines, activeLang, onSelect, 
   onChange: (id: string, content: string) => void;
   onDelete: (id: string) => void;
   onPointerDown: (e: React.PointerEvent, t: NewsTile) => void;
-  onResizePointerDown: (e: React.PointerEvent, t: NewsTile, dir: 'se'|'e'|'s') => void;
+  onResizePointerDown: (e: React.PointerEvent, t: NewsTile, dir: 'se'|'sw'|'e'|'s') => void;
   onRequestImage: (id: string) => void;
   onRequestVideo: (id: string) => void;
 }) {
@@ -9784,7 +9886,9 @@ function NewsTileEl({ tile, selected, editing, gridLines, activeLang, onSelect, 
           : (gridLines || tile.type === 'spacer' ? `1px dashed ${NT.soft}` : `1px solid ${NT.soft}`),
         borderRadius: NT.tileRadius,
         padding: padded ? '14px 16px' : 0,
-        boxShadow: selected ? `0 6px 20px ${NT.soft}` : 'none',
+        boxShadow: selected
+          ? '0 8px 28px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08)'
+          : '0 1px 4px rgba(0,0,0,0.06), 0 2px 10px rgba(0,0,0,0.04)',
         cursor: editing === tile.id ? 'text' : 'grab',
         userSelect: editing === tile.id ? 'text' : 'none',
         touchAction: 'none',
@@ -9823,6 +9927,8 @@ function NewsTileEl({ tile, selected, editing, gridLines, activeLang, onSelect, 
           </div>
           <div onPointerDown={(e) => onResizePointerDown(e, tile, 'se')}
             style={{ position: 'absolute', right: -4, bottom: -4, width: 14, height: 14, background: NT.accent, borderRadius: '50%', cursor: 'nwse-resize', boxShadow: '0 0 0 2px white' }} />
+          <div onPointerDown={(e) => onResizePointerDown(e, tile, 'sw')}
+            style={{ position: 'absolute', left: -4, bottom: -4, width: 14, height: 14, background: NT.accent, borderRadius: '50%', cursor: 'nesw-resize', boxShadow: '0 0 0 2px white' }} />
           <div onPointerDown={(e) => onResizePointerDown(e, tile, 'e')}
             style={{ position: 'absolute', right: -3, top: '50%', width: 6, height: 28, background: NT.accent, transform: 'translateY(-50%)', borderRadius: 3, cursor: 'ew-resize' }} />
           <div onPointerDown={(e) => onResizePointerDown(e, tile, 's')}
@@ -9998,6 +10104,21 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
     [tiles],
   );
 
+  // Live projected positions while dragging/resizing — shows where tiles will land
+  const projectedTiles = useMemo<NewsTile[] | null>(() => {
+    if (!drag) return null;
+    if (drag.kind === 'move' && hoverGrid) {
+      const moved = tiles.map(tt => tt.id === drag.id
+        ? newsClamp({ ...tt, x: hoverGrid.x, y: hoverGrid.y })
+        : tt);
+      return newsResolveOverlaps(moved, drag.id);
+    }
+    if (drag.kind === 'resize') {
+      return newsResolveOverlaps(tiles, drag.id);
+    }
+    return null;
+  }, [drag, hoverGrid, tiles]);
+
   // ── Drag handlers ──────────────────────────────────────────────────────────
   const startPaletteDrag = useCallback((e: React.PointerEvent, type: NewsTileType) => {
     e.preventDefault();
@@ -10017,7 +10138,7 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
     setSelectedId(tile.id);
   }, [editingId]);
 
-  const startResize = useCallback((e: React.PointerEvent, tile: NewsTile, dir: 'se'|'e'|'s') => {
+  const startResize = useCallback((e: React.PointerEvent, tile: NewsTile, dir: 'se'|'sw'|'e'|'s') => {
     e.preventDefault();
     e.stopPropagation();
     setDrag({
@@ -10060,33 +10181,45 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
         const dx = (e.clientX - drag.x) / (metrics.cw + NG_GAP);
         const dy = (e.clientY - drag.y) / (metrics.rh + NG_GAP);
         const o = drag.origin;
-        let nw = o.w, nh = o.h;
-        if (drag.dir.includes('e')) nw = Math.round(o.w + dx);
-        if (drag.dir.includes('s')) nh = Math.round(o.h + dy);
-        nw = Math.max(1, Math.min(NG_COLS - o.x, nw));
-        nh = Math.max(1, nh);
-        setTiles(prev => prev.map(t => t.id === drag.id ? { ...t, w: nw, h: nh } : t));
+        let nx = o.x, nw = o.w, nh = o.h;
+        if (drag.dir === 'sw') {
+          // Right edge fixed; left edge moves
+          nx = Math.max(0, Math.min(o.x + o.w - 1, Math.round(o.x + dx)));
+          nw = Math.max(1, o.x + o.w - nx);
+          nh = Math.max(1, Math.round(o.h + dy));
+        } else {
+          if (drag.dir.includes('e')) nw = Math.round(o.w + dx);
+          if (drag.dir.includes('s')) nh = Math.round(o.h + dy);
+          nw = Math.max(1, Math.min(NG_COLS - o.x, nw));
+          nh = Math.max(1, nh);
+        }
+        setTiles(prev => prev.map(t => t.id === drag.id ? { ...t, x: nx, w: nw, h: nh } : t));
       }
     };
     const up = () => {
       if (drag.kind === 'palette') {
-        if (hoverGrid && !newsWouldOverlap(tiles, hoverGrid)) {
+        if (hoverGrid) {
           const def = NEWS_TYPES[drag.type as NewsTileType];
-          setTiles(prev => [...prev, newsClamp({
+          const newTile = newsClamp({
             id: newsUid(), type: drag.type, x: hoverGrid.x, y: hoverGrid.y,
             w: drag.w, h: drag.h, content: def.content,
-          })]);
+          });
+          setTiles(prev => newsResolveOverlaps([...prev, newTile], newTile.id));
         }
       } else if (drag.kind === 'move') {
         if (hoverGrid) {
           const tile = tiles.find(t => t.id === drag.id);
-          const candidate = { x: hoverGrid.x, y: hoverGrid.y, w: tile?.w ?? drag.w, h: tile?.h ?? drag.h };
-          if (!newsWouldOverlap(tiles, candidate, drag.id)) {
-            setTiles(prev => prev.map(tt => tt.id === drag.id
-              ? newsClamp({ ...tt, x: hoverGrid.x, y: hoverGrid.y })
-              : tt));
+          if (tile) {
+            setTiles(prev => newsResolveOverlaps(
+              prev.map(tt => tt.id === drag.id
+                ? newsClamp({ ...tt, x: hoverGrid.x, y: hoverGrid.y })
+                : tt),
+              drag.id,
+            ));
           }
         }
+      } else if (drag.kind === 'resize') {
+        setTiles(prev => newsResolveOverlaps(prev, drag.id));
       }
       setDrag(null); setHoverGrid(null);
     };
@@ -10375,30 +10508,29 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
               }}
             >
               {/* Drop indicator */}
-              {hoverGrid && drag && (drag.kind === 'palette' || drag.kind === 'move') && (() => {
-                const moveTile = drag.kind === 'move' ? tiles.find(t => t.id === drag.id) : null;
-                const candidate = { x: hoverGrid.x, y: hoverGrid.y, w: moveTile?.w ?? drag.w, h: moveTile?.h ?? drag.h };
-                const blocked = newsWouldOverlap(tiles, candidate, drag.kind === 'move' ? drag.id : undefined);
-                return (
-                  <div style={{
-                    position: 'absolute',
-                    ...newsTileBox(hoverGrid, metrics.cw, metrics.rh),
-                    background: blocked ? 'rgba(220,38,38,0.18)' : 'rgba(191,33,30,0.14)',
-                    border: blocked ? '1.5px dashed #dc2626' : `1.5px dashed ${NT.accent}`,
-                    borderRadius: NT.tileRadius,
-                    pointerEvents: 'none',
-                    transition: 'left .08s, top .08s, width .08s, height .08s',
-                  }} />
-                );
-              })()}
+              {hoverGrid && drag && (drag.kind === 'palette' || drag.kind === 'move') && (
+                <div style={{
+                  position: 'absolute',
+                  ...newsTileBox(hoverGrid, metrics.cw, metrics.rh),
+                  background: 'rgba(191,33,30,0.14)',
+                  border: `1.5px dashed ${NT.accent}`,
+                  borderRadius: NT.tileRadius,
+                  pointerEvents: 'none',
+                  transition: 'left .08s, top .08s, width .08s, height .08s',
+                }} />
+              )}
 
               {/* Tiles */}
-              {tiles.map(tt => (
+              {tiles.map(tt => {
+                const isDragged = drag?.kind === 'move' && drag.id === tt.id;
+                const isResizing = drag?.kind === 'resize' && drag.id === tt.id;
+                const renderTile = projectedTiles?.find(p => p.id === tt.id) ?? tt;
+                return (
                 <div key={tt.id} style={{
                   position: 'absolute',
-                  ...newsTileBox(tt, metrics.cw, metrics.rh),
-                  opacity: drag?.kind === 'move' && drag.id === tt.id && hoverGrid ? 0.35 : 1,
-                  transition: drag ? 'none' : 'left .15s, top .15s',
+                  ...newsTileBox(isDragged || isResizing ? tt : renderTile, metrics.cw, metrics.rh),
+                  opacity: isDragged && hoverGrid ? 0.35 : 1,
+                  transition: (isDragged || isResizing) ? 'none' : 'left .18s cubic-bezier(0.4,0,0.2,1), top .18s cubic-bezier(0.4,0,0.2,1), width .18s cubic-bezier(0.4,0,0.2,1), height .18s cubic-bezier(0.4,0,0.2,1)',
                 }}>
                   <NewsTileEl
                     tile={tt}
@@ -10416,7 +10548,8 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
                     onRequestVideo={requestVideoUpload}
                   />
                 </div>
-              ))}
+              );
+              })}
 
               {/* Empty state */}
               {tiles.length === 0 && (

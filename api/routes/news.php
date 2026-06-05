@@ -26,7 +26,7 @@ if ($method === 'POST' && $id === null) {
 // GET /api/news
 elseif ($method === 'GET' && $id === null) {
     $user = auth_user();
-    $is_admin = user_has_any_role($user, ['admin', 'comunicacions']);
+    $is_admin = user_has_any_role($user, ['Administrador', 'Administrador/a', 'Comunicacions', 'Comunicació', 'Recursos humans']);
     if (isset($_GET['featured'])) {
         $stmt = $db->prepare('SELECT * FROM news WHERE featured=? AND active=1 ORDER BY created_at DESC');
         $stmt->execute([(int)$_GET['featured']]);
