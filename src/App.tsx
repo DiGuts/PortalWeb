@@ -35,6 +35,7 @@ import { FilterChip } from './components/shared/FilterChip';
 import { DropdownMultiselect } from './components/shared/DropdownMultiselect';
 import { DatePicker } from './components/shared/AgendaPickers';
 import { AField, AInput, ATextarea, ASelect, AdminCreateModalShell } from './components/admin/primitives';
+import { DeptSearch } from './components/admin/DeptSearch';
 import { AgendaTab } from './components/tabs/AgendaTab';
 import { DirectoriTab } from './components/tabs/DirectoriTab';
 import { CampusTavilTab } from './components/tabs/CampusTavilTab';
@@ -65,7 +66,7 @@ import {
   apiGetSolicituds, apiCreateSolicitud, apiUpdateSolicitud, apiDeleteSolicitud, Solicitud,
   Notice, apiGetNotices,
   NewsArticle, NewsTranslations, apiGetNews, apiGetNewsArticle, apiCreateNews, apiUpdateNews, apiDeleteNews, localizeNews,
-  Activity, apiGetActivities, apiCreateActivity, apiUpdateActivity, apiDeleteActivity, apiEnrollActivity,
+  Activity, apiGetActivities, apiCreateActivity, apiUpdateActivity, apiDeleteActivity, apiEnrollActivity, apiUnenrollActivity, apiGetMyActivityEnrollments,
   AgendaEvent, apiGetAgendaEvents, apiCreateAgendaEvent, apiUpdateAgendaEvent, apiDeleteAgendaEvent,
   apiUploadImage, apiUploadMedia, apiGetImages, API_BASE,
   Employee, apiGetEmployees,
@@ -196,6 +197,8 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
   const MONTH_NAMES = t('common.months', { returnObjects: true }) as string[];
   const MONTH_ABBR_ARR = t('common.monthsAbbr', { returnObjects: true }) as string[];
   const MONTH_ABBR: Record<number, string> = Object.fromEntries(MONTH_ABBR_ARR.map((m, i) => [i + 1, m]));
+  const _daysAbbr = t('common.daysAbbr', { returnObjects: true }) as string[];
+  const daysMonFirst = [..._daysAbbr.slice(1), _daysAbbr[0]];
 
   // Open article directly from home: store target id + origin so NoticiesTab
   // mounts straight into detail view, and back returns to Inici.
@@ -213,7 +216,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
     const firstName = (currentUserProp?.name ?? '').split(' ')[0] || 'Hola';
     const MONTH_NAMES = t('common.months', { returnObjects: true }) as string[];
     const quickItems = [
-      { id: 'Solicituds', Icon: FileText, label: t('nav.solicituds') },
+      { id: 'Solicituds', Icon: FileText, label: t('home.solicitudsQuick') },
       { id: 'Agenda', Icon: Calendar, label: t('nav.agenda') },
       { id: 'Campus', Icon: GraduationCap, label: t('nav.campus') },
     ];
@@ -268,7 +271,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
 
         {/* Quick access */}
         <div style={{ padding: '24px 20px 4px' }}>
-          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Accés ràpid</div>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>{t('home.quickAccess')}</div>
           <div style={{
             fontFamily: 'var(--font-display)',
             fontSize: 24, fontWeight: 400, lineHeight: 1, letterSpacing: '-0.01em', color: 'var(--tavil-text)', marginBottom: 14,
@@ -645,7 +648,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
               </div>
             </div>
             <div className="grid grid-cols-7 gap-0.5 text-center">
-              {['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'].map(d => (
+              {daysMonFirst.map(d => (
                 <div key={d} className="text-[10px] font-semibold text-gray-400 py-1">{d}</div>
               ))}
               {miniCells.map((d, i) => (
@@ -674,13 +677,13 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
           {/* Upcoming this week — temporal data, card justified */}
           <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Properes activitats</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">{t("home.upcomingActivities")}</h3>
               <button onClick={() => onNavigate?.('Agenda')} className="text-gray-400 dark:text-zinc-500 text-xs font-medium flex items-center gap-1 hover:underline">
                 Veure <ArrowRight size={11} />
               </button>
             </div>
             {upcomingThisWeek.length === 0 ? (
-              <p className="text-xs text-gray-400 dark:text-zinc-500 py-2">Cap event aquesta setmana. Comprova l'agenda completa.</p>
+              <p className="text-xs text-gray-400 dark:text-zinc-500 py-2">{t("home.noEventsThisWeek")}</p>
             ) : (
               <div className="space-y-3">
                 {upcomingThisWeek.map(ev => (
@@ -701,16 +704,16 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
 
           {/* Dreceres — nav list, no card needed */}
           <div className="mt-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] mb-2 px-1" style={{ color: 'var(--tavil-faint)' }}>Dreceres</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] mb-2 px-1" style={{ color: 'var(--tavil-faint)' }}>{t("home.shortcuts")}</p>
             <div className="space-y-0.5">
               {[
-                { icon: Building2, title: "Empresa", color: "text-gray-500 dark:text-zinc-400", tab: "Empresa" },
-                { icon: Mail, title: "Correu corporatiu", color: "text-gray-500 dark:text-zinc-400", tab: undefined },
-                { icon: Database, title: "ERP / Gestió", color: "text-gray-500 dark:text-zinc-400", tab: undefined },
-                { icon: FolderOpen, title: "Gestor documental", color: "text-gray-500 dark:text-zinc-400", tab: undefined },
-                { icon: GraduationCap, title: "Campus TAVIL", color: "text-gray-500 dark:text-zinc-400", tab: "Campus" },
-                { icon: Users, title: "Directori", color: "text-gray-500 dark:text-zinc-400", tab: "Directori" },
-                { icon: ActivityIcon, title: "Connect", color: "text-gray-500 dark:text-zinc-400", tab: "Activitats" },
+                { icon: Building2, title: t('shortcuts.company'), color: "text-gray-500 dark:text-zinc-400", tab: "Empresa" },
+                { icon: Mail, title: t('shortcuts.corporateEmail'), color: "text-gray-500 dark:text-zinc-400", tab: undefined },
+                { icon: Database, title: t('shortcuts.erp'), color: "text-gray-500 dark:text-zinc-400", tab: undefined },
+                { icon: FolderOpen, title: t('shortcuts.documentManager'), color: "text-gray-500 dark:text-zinc-400", tab: undefined },
+                { icon: GraduationCap, title: t('shortcuts.campus'), color: "text-gray-500 dark:text-zinc-400", tab: "Campus" },
+                { icon: Users, title: t('shortcuts.directory'), color: "text-gray-500 dark:text-zinc-400", tab: "Directori" },
+                { icon: ActivityIcon, title: t('shortcuts.connect'), color: "text-gray-500 dark:text-zinc-400", tab: "Activitats" },
               ].map((item, i) => (
                 <div
                   key={i}
@@ -750,6 +753,7 @@ interface ArticleBlock {
   span: BlockSpan;
   content?: string;
   level?: 1 | 2 | 3;
+  textStyle?: 'lead' | 'body' | 'caption';
   url?: string;
   caption?: string;
   author?: string;
@@ -840,7 +844,17 @@ function RichBlockViewer({ blocks }: { blocks: ArticleBlock[] }) {
               )}>{block.content}</p>
             )}
             {block.type === 'text' && (
-              <p className="text-gray-600 dark:text-zinc-300 text-[19px] leading-relaxed whitespace-pre-wrap font-normal">{block.content}</p>
+              <p
+                className={
+                  block.textStyle === 'lead'    ? "text-gray-700 dark:text-zinc-200 text-lg leading-relaxed whitespace-pre-wrap" :
+                  block.textStyle === 'caption' ? "text-gray-500 dark:text-zinc-500 text-sm leading-relaxed whitespace-pre-wrap" :
+                                                  "text-gray-600 dark:text-zinc-300 text-base leading-relaxed whitespace-pre-wrap"
+                }
+                style={{
+                  fontWeight: block.textStyle === 'caption' ? 400 : 500,
+                  marginBottom: block.textStyle !== 'caption' ? 24 : 12,
+                }}
+              >{block.content}</p>
             )}
             {block.type === 'image' && block.url && (
               <figure>
@@ -1059,13 +1073,28 @@ function ArticleBlocksEditor({ value, onChange }: ArticleBlocksEditorProps) {
               )}
 
               {b.type === 'text' && (
-                <textarea
-                  value={b.content ?? ''}
-                  onChange={e => updateBlock(b.id, { content: e.target.value })}
-                  rows={4}
-                  placeholder="Paràgraf de text..."
-                  className="w-full text-sm bg-transparent border-none outline-none resize-y text-gray-700 dark:text-zinc-300 leading-relaxed"
-                />
+                <div className="space-y-1.5">
+                  <select
+                    value={b.textStyle ?? 'body'}
+                    onChange={e => updateBlock(b.id, { textStyle: e.target.value as 'lead' | 'body' | 'caption' })}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 border-none text-gray-600 dark:text-zinc-300"
+                  >
+                    <option value="lead">Entradeta (gran)</option>
+                    <option value="body">Cos (normal)</option>
+                    <option value="caption">Peu de pàgina (petit)</option>
+                  </select>
+                  <textarea
+                    value={b.content ?? ''}
+                    onChange={e => updateBlock(b.id, { content: e.target.value })}
+                    rows={4}
+                    placeholder="Paràgraf de text..."
+                    className={`w-full bg-transparent border-none outline-none resize-y leading-relaxed ${
+                      (b.textStyle ?? 'body') === 'lead'    ? 'text-base font-medium text-gray-700 dark:text-zinc-200' :
+                      (b.textStyle ?? 'body') === 'caption' ? 'text-xs text-gray-400 dark:text-zinc-500' :
+                                                              'text-sm text-gray-700 dark:text-zinc-300'
+                    }`}
+                  />
+                </div>
               )}
 
               {b.type === 'quote' && (
@@ -1236,7 +1265,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
   const featuredList = filtered.filter(n => n.featured === 1);
   const featuredItems = featuredList.length > 0 ? featuredList : filtered.slice(0, 1);
   const featured = featuredItems[featuredIndex % Math.max(featuredItems.length, 1)] ?? null;
-  const grid = filtered.filter(n => !featuredItems.includes(n));
+  const grid = filtered;
   const isMobileNoticies = useIsMobile();
   const NEWS_CAT_LABELS: Record<string, string> = {
     'Totes': t('news.cat.all'),
@@ -1278,13 +1307,13 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
             {!(isTileArrayContent(selectedNews.content) && contentHasHeadline(selectedNews.content)) && (
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, lineHeight: 1.15, margin: '0 0 12px', letterSpacing: '0em', color: 'var(--tavil-text)' }}>{selectedNews.title}</h1>
             )}
-            {selectedNews.summary && <p style={{ fontSize: 14, color: 'var(--tavil-muted)', lineHeight: 1.5, margin: '0 0 16px' }}>{selectedNews.summary}</p>}
+            {selectedNews.summary && <p style={{ fontSize: 15, color: 'var(--tavil-text)', fontWeight: 500, lineHeight: 1.55, margin: '0 0 16px' }}>{selectedNews.summary}</p>}
             {selectedNews.content && (
               isTileArrayContent(selectedNews.content)
                 ? <NewsTilesViewer content={selectedNews.content} lang={lang} />
                 : isRichContent(selectedNews.content)
                   ? <RichBlockViewer blocks={parseBlocks(selectedNews.content)} />
-                  : <div style={{ fontSize: 19, fontWeight: 400, color: 'var(--tavil-muted)', lineHeight: 1.65 }}>{renderMarkdownLite(selectedNews.content)}</div>
+                  : <div className="text-gray-600 dark:text-zinc-300 text-base leading-relaxed font-normal">{renderMarkdownLite(selectedNews.content)}</div>
             )}
           </div>
         </div>
@@ -1432,7 +1461,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
                 ? <NewsTilesViewer content={selectedNews.content} lang={lang} />
                 : isRichContent(selectedNews.content)
                   ? <RichBlockViewer blocks={parseBlocks(selectedNews.content)} />
-                  : <div className="text-gray-600 dark:text-zinc-300 text-[19px] leading-relaxed font-normal">{renderMarkdownLite(selectedNews.content)}</div>
+                  : <div className="text-gray-600 dark:text-zinc-300 text-base leading-relaxed font-normal">{renderMarkdownLite(selectedNews.content)}</div>
             )}
           </div>
         </div>
@@ -1544,7 +1573,10 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
               )}
             </div>
             <div className="p-4 md:p-5">
-              <p className="text-[9px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2">{item.category}</p>
+              <div className="flex items-center gap-1.5 mb-2">
+                <p className="text-[9px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">{item.category}</p>
+                {item.featured === 1 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-400/90 text-amber-900 uppercase flex items-center gap-0.5"><Star size={8} /> {t('news.badge.featured')}</span>}
+              </div>
               <h3 className="text-sm md:text-base font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 transition-colors cursor-pointer" onClick={() => setSelectedNews(item, 'Notícies')}>{item.title}</h3>
               <p className="text-[13px] md:text-xs text-gray-500 dark:text-zinc-400 mb-4 line-clamp-2 leading-relaxed">{item.summary}</p>
               <div className="flex items-center justify-between text-[10px] text-gray-400">
@@ -1570,8 +1602,13 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
   const [actClosing, setActClosing] = useState(false);
   const closeAct = () => { setActClosing(true); setTimeout(() => { setSelectedAct(null); setActClosing(false); }, 220); };
   useEffect(() => { scrollPageToTop(); }, [selectedAct]);
-  const [enrolledId, setEnrolledId] = useState<number | null>(null);
+  const [myEnrollments, setMyEnrollments] = useState<Map<number, string>>(new Map());
   const [enrollError, setEnrollError] = useState('');
+  useEffect(() => {
+    apiGetMyActivityEnrollments()
+      .then(list => setMyEnrollments(new Map(list.map(e => [e.activity_id, e.status]))))
+      .catch(() => {/* silently ignore — backend may not be deployed yet */});
+  }, []);
   useEffect(() => { setGlobalNavHidden(!!selectedAct); }, [selectedAct]);
   const isAdmin = (() => {
     const r = currentUser?.role ?? '';
@@ -1590,6 +1627,9 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
   const [aCapacity, setACapacity] = useState('20');
   const [aUnlimited, setAUnlimited] = useState(false);
   const [aLink, setALink] = useState('');
+  const [aImage, setAImage] = useState('');
+  const [aImageFile, setAImageFile] = useState<File | null>(null);
+  const aImageInputRef = React.useRef<HTMLInputElement>(null);
   const [aSaving, setASaving] = useState(false);
   const [aTitleTouched, setATitleTouched] = useState(false);
   const [aActError, setAActError] = useState<string | null>(null);
@@ -1597,6 +1637,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
   const resetActForm = () => {
     setATitle(''); setADesc(''); setADate(''); setATime(''); setALocation('');
     setACapacity('20'); setAUnlimited(false); setALink('');
+    setAImage(''); setAImageFile(null);
     setATitleTouched(false); setAActError(null);
   };
 
@@ -1606,10 +1647,12 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
     setAActError(null);
     setASaving(true);
     try {
+      let aImageUrl = aImage;
+      if (aImageFile) aImageUrl = await apiUploadImage(aImageFile);
       await apiCreateActivity({ title: aTitle.trim(), category: aCategory, description: aDesc.trim(),
         date: aDate.trim(), time: aTime.trim(), location: aLocation.trim(),
         capacity: aUnlimited ? 0 : (parseInt(aCapacity) || 0),
-        link: aLink.trim() });
+        link: aLink.trim(), image: aImageUrl || undefined });
       tabPrefetch.agendaEvents = undefined;
       setActivities(await apiGetActivities());
       setShowActForm(false);
@@ -1629,6 +1672,9 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
   const [aeCapacity, setAeCapacity] = useState('');
   const [aeUnlimited, setAeUnlimited] = useState(false);
   const [aeLink, setAeLink] = useState('');
+  const [aeImage, setAeImage] = useState('');
+  const [aeImageFile, setAeImageFile] = useState<File | null>(null);
+  const aeImageInputRef = React.useRef<HTMLInputElement>(null);
   const [aeSaving, setAeSaving] = useState(false);
 
   const openActEdit = (act: Activity) => {
@@ -1638,17 +1684,20 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
     setAeUnlimited(act.capacity === 0);
     setAeCapacity(act.capacity > 0 ? String(act.capacity) : '20');
     setAeLink(act.link ?? '');
+    setAeImage(act.image ?? ''); setAeImageFile(null);
   };
 
   const handleSaveActEdit = async () => {
     if (!actEditId || !aeTitle.trim()) return;
     setAeSaving(true);
     try {
+      let aeImageUrl = aeImage;
+      if (aeImageFile) aeImageUrl = await apiUploadImage(aeImageFile);
       await apiUpdateActivity(actEditId, { title: aeTitle.trim(), category: aeCategory,
         description: aeDesc.trim(), date: aeDate.trim(), time: aeTime.trim(),
         location: aeLocation.trim(),
         capacity: aeUnlimited ? 0 : (parseInt(aeCapacity) || 0),
-        link: aeLink.trim() });
+        link: aeLink.trim(), image: aeImageUrl || undefined });
       tabPrefetch.agendaEvents = undefined;
       setActivities(await apiGetActivities());
       setActEditId(null);
@@ -1689,8 +1738,8 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
     'RSC': t('activities.cat.rsc'),
     'Benestar': t('activities.cat.wellness'),
   };
-  const upcoming = activities.filter(a => a.past === 0);
-  const past = activities.filter(a => a.past === 1);
+  const upcoming = [...activities.filter(a => a.past === 0)].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const past = [...activities.filter(a => a.past === 1)].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const source = activeTab === 'Properes' ? upcoming : past;
   const filtered = (activeFilter === 'Totes' ? source : source.filter(a => a.category === activeFilter))
     .filter(a => !actSearch || [a.title, a.description, a.location].some(f => f.toLowerCase().includes(actSearch.toLowerCase())));
@@ -1751,10 +1800,12 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
               >
                 <div style={{ display: 'flex' }}>
                   <div
-                    onClick={() => isProperes && (setSelectedAct(act), setEnrolledId(null), setEnrollError(''))}
-                    style={{ width: 96, flexShrink: 0, background: 'rgba(191,33,30,0.06)', borderRight: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isProperes ? 'pointer' : 'default', minHeight: 110 }}
+                    onClick={() => isProperes && (setSelectedAct(act), setEnrollError(''))}
+                    style={{ width: 96, flexShrink: 0, background: 'rgba(191,33,30,0.06)', borderRight: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isProperes ? 'pointer' : 'default', minHeight: 110, overflow: 'hidden' }}
                   >
-                    <ActivityIcon size={28} style={{ color: 'rgba(191,33,30,0.3)' }} />
+                    {act.image
+                      ? <img src={resolveImg(act.image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <ActivityIcon size={28} style={{ color: 'rgba(191,33,30,0.3)' }} />}
                   </div>
                   <div style={{ flex: 1, padding: 14, minWidth: 0 }}>
                     <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -1763,7 +1814,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                       {!full && isProperes && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.1)', padding: '2px 8px', borderRadius: 6 }}>Oberta</span>}
                     </div>
                     <div style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1.25, color: 'var(--tavil-text)', marginBottom: 6, cursor: isProperes ? 'pointer' : 'default' }}
-                      onClick={() => isProperes && (setSelectedAct(act), setEnrolledId(null), setEnrollError(''))}
+                      onClick={() => isProperes && (setSelectedAct(act), setEnrollError(''))}
                     >{act.title}</div>
                     <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
                       <Clock size={11} /><span>{act.date}{act.time ? ` · ${act.time}` : ''}</span>
@@ -1781,23 +1832,44 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                       </div>
                     ) : null}
                     {isProperes && (
-                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            if (enrolledId === act.id) return;
-                            setSelectedAct(act); setEnrolledId(null); setEnrollError('');
-                          }}
-                          disabled={full && enrolledId !== act.id}
-                          style={{
-                            padding: '6px 14px', borderRadius: 8, border: 'none', fontSize: 12.5, fontWeight: 600,
-                            background: enrolledId === act.id ? '#22c55e' : full ? 'var(--tavil-faint)' : 'var(--tavil-accent)',
-                            color: enrolledId === act.id || full ? 'var(--tavil-muted)' : '#fff',
-                            cursor: full && enrolledId !== act.id ? 'default' : 'pointer', fontFamily: 'inherit',
-                          }}
-                        >
-                          {enrolledId === act.id ? '✓ Inscrit/a' : full ? "Llista d'espera" : "M'inscric"}
-                        </button>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+                        {myEnrollments.has(act.id) ? (
+                          <>
+                            <span style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              ✓ Inscrit/a
+                            </span>
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const prev = new Map(myEnrollments);
+                                setMyEnrollments(cur => { const n = new Map(cur); n.delete(act.id); return n; });
+                                try {
+                                  await apiUnenrollActivity(act.id);
+                                  setActivities(await apiGetActivities());
+                                } catch { setMyEnrollments(prev); }
+                              }}
+                              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--tavil-border)', fontSize: 12, fontWeight: 600, background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}
+                            >
+                              Cancel·la
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              setSelectedAct(act); setEnrollError('');
+                            }}
+                            disabled={full}
+                            style={{
+                              padding: '6px 14px', borderRadius: 8, border: 'none', fontSize: 12.5, fontWeight: 600,
+                              background: full ? 'var(--tavil-faint)' : 'var(--tavil-accent)',
+                              color: full ? 'var(--tavil-muted)' : '#fff',
+                              cursor: full ? 'default' : 'pointer', fontFamily: 'inherit',
+                            }}
+                          >
+                            {full ? 'Complet' : "M'inscric"}
+                          </button>
+                        )}
                       </div>
                     )}
                     {isAdmin && (
@@ -1867,6 +1939,21 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
             <AField label="Enllaç extern" optional>
               <AInput value={aLink} onChange={e => setALink(e.target.value)} placeholder="https://…" />
             </AField>
+            <AField label="Foto de portada" optional>
+              <input ref={aImageInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) { setAImageFile(f); setAImage(''); } }} />
+              <div onClick={() => aImageInputRef.current?.click()} style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 10, border: '1.5px dashed var(--tavil-border)', background: 'var(--tavil-bgAlt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', transition: 'border-color 150ms' }}>
+                {aImageFile ? <img src={URL.createObjectURL(aImageFile)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : aImage ? <img src={aImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: 'var(--tavil-faint)' }}><ImageIcon size={24} /><span style={{ fontSize: 12 }}>Afegir foto de portada</span></div>}
+              </div>
+              {(aImageFile || aImage) && (
+                <button type="button" onClick={() => { setAImageFile(null); setAImage(''); if (aImageInputRef.current) aImageInputRef.current.value = ''; }}
+                  style={{ marginTop: 6, fontSize: 12, color: 'var(--tavil-faint)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <X size={12} /> Elimina la foto
+                </button>
+              )}
+            </AField>
           </AdminCreateModalShell>
         )}
 
@@ -1879,7 +1966,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                 <button onClick={closeAct} style={{ background: 'none', border: 'none', color: 'var(--tavil-faint)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
               </div>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 8, lineHeight: 1.1 }}>{selectedAct.title}</h2>
-              <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', lineHeight: 1.55, marginBottom: 16 }}>{selectedAct.description}</p>
+              <p style={{ fontSize: 15, fontFamily: "'Barlow Semi Condensed', var(--font-ui)", color: 'var(--tavil-muted)', lineHeight: 1.65, marginBottom: 16 }}>{selectedAct.description}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--tavil-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)' }}><Calendar size={14} /><span>{selectedAct.date}{selectedAct.time ? ` · ${selectedAct.time}` : ''}</span></div>
                 {selectedAct.location && <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tavil-muted)' }}><MapPin size={14} /><span>{selectedAct.location}</span></div>}
@@ -1904,25 +1991,44 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                 <a href={selectedAct.link} target="_blank" rel="noopener noreferrer" style={{ width: '100%', height: 50, borderRadius: 14, background: 'var(--tavil-accent)', color: '#fff', fontSize: 15, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' }}>
                   Més informació i inscripció
                 </a>
+              ) : myEnrollments.has(selectedAct.id) ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ width: '100%', height: 50, borderRadius: 14, background: '#dcfce7', color: '#15803d', fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    ✓ Inscrit/a
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setEnrollError('');
+                      const prev = new Map(myEnrollments);
+                      setMyEnrollments(cur => { const n = new Map(cur); n.delete(selectedAct.id); return n; });
+                      try {
+                        await apiUnenrollActivity(selectedAct.id);
+                        setActivities(await apiGetActivities());
+                      } catch (e: any) { setMyEnrollments(prev); setEnrollError(e.message ?? 'Error en cancel·lar'); }
+                    }}
+                    style={{ width: '100%', height: 44, borderRadius: 14, border: '1.5px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    Cancel·la la inscripció
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={async () => {
-                    if (enrolledId === selectedAct.id) return;
+                    setEnrollError('');
                     try {
-                      await apiEnrollActivity(selectedAct.id);
-                      setEnrolledId(selectedAct.id);
+                      const result = await apiEnrollActivity(selectedAct.id);
+                      setMyEnrollments(prev => new Map(prev).set(selectedAct.id, result.status ?? 'confirmed'));
                       setActivities(await apiGetActivities());
                     } catch (e: any) { setEnrollError(e.message ?? 'Error'); }
                   }}
-                  disabled={enrolledId === selectedAct.id}
                   style={{
                     width: '100%', height: 50, borderRadius: 14, border: 'none',
-                    background: enrolledId === selectedAct.id ? '#22c55e' : 'var(--tavil-accent)',
-                    color: '#fff', fontSize: 15, fontWeight: 600, cursor: enrolledId === selectedAct.id ? 'default' : 'pointer',
+                    background: 'var(--tavil-accent)',
+                    color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer',
                     fontFamily: 'inherit',
                   }}
                 >
-                  {enrolledId === selectedAct.id ? '✓ Inscrit/a' : "Inscriure's"}
+                  Inscriure's
                 </button>
               )}
             </div>
@@ -1948,7 +2054,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-gray-500 dark:text-zinc-400 text-sm">Esdeveniments socials, esportius i culturals per als treballadors de TAVIL</p>
+        <p className="text-gray-500 dark:text-zinc-400 text-sm">{t('activities.connectSubtitle')}</p>
         {isAdmin && <button onClick={() => setShowActForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">+ Nova activitat</button>}
       </div>
       {isAdmin && (
@@ -1989,13 +2095,30 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
           <AField label="Enllaç extern" optional>
             <AInput value={aLink} onChange={e => setALink(e.target.value)} placeholder="https://…" />
           </AField>
+          <AField label="Foto de portada" optional>
+            <input ref={aImageInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) { setAImageFile(f); setAImage(''); } }} />
+            <div onClick={() => aImageInputRef.current?.click()} style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 10, border: '1.5px dashed var(--tavil-border)', background: 'var(--tavil-bgAlt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', transition: 'border-color 150ms' }}>
+              {aImageFile ? <img src={URL.createObjectURL(aImageFile)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : aImage ? <img src={aImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: 'var(--tavil-faint)' }}><ImageIcon size={24} /><span style={{ fontSize: 12 }}>Afegir foto de portada</span></div>}
+            </div>
+            {(aImageFile || aImage) && (
+              <button type="button" onClick={() => { setAImageFile(null); setAImage(''); if (aImageInputRef.current) aImageInputRef.current.value = ''; }}
+                style={{ marginTop: 6, fontSize: 12, color: 'var(--tavil-faint)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <X size={12} /> Elimina la foto
+              </button>
+            )}
+          </AField>
         </AdminCreateModalShell>
       )}
       <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-5">
-        {[`Properes (${upcoming.length})`, `Passades (${past.length})`].map(tab => {
-          const key = tab.split(' ')[0];
-          return <UnderlineTab key={tab} label={tab} active={activeTab === key} onClick={() => { setActiveTab(key); setActiveFilter('Totes'); setActSearch(''); }} />;
-        })}
+        {([
+          { key: 'Properes', label: t('activities.upcomingCount', { count: upcoming.length }) },
+          { key: 'Passades', label: t('activities.pastCount', { count: past.length }) },
+        ]).map(tab => (
+          <UnderlineTab key={tab.key} label={tab.label} active={activeTab === tab.key} onClick={() => { setActiveTab(tab.key); setActiveFilter('Totes'); setActSearch(''); }} />
+        ))}
       </div>
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <div className="relative">
@@ -2017,7 +2140,30 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         {filtered.map((act, i) => {
           const available = act.capacity > 0 ? act.capacity - act.enrolled : 0;
           return (
-          <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
+          <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
+            <div className="hidden md:flex h-24 items-center justify-center overflow-hidden" style={{
+              background: ({
+                'Esport':   'rgba(34,197,94,0.08)',
+                'Cultura':  'rgba(139,92,246,0.08)',
+                'Social':   'rgba(59,130,246,0.08)',
+                'RSC':      'rgba(245,158,11,0.08)',
+                'Benestar': 'rgba(20,184,166,0.08)',
+              } as Record<string,string>)[act.category] ?? 'rgba(191,33,30,0.06)'
+            }}>
+              {act.image
+                ? <img src={resolveImg(act.image)} alt="" className="w-full h-full object-cover" />
+                : <ActivityIcon size={36} style={{
+                    opacity: 0.25,
+                    color: ({
+                      'Esport':   '#16a34a',
+                      'Cultura':  '#7c3aed',
+                      'Social':   '#2563eb',
+                      'RSC':      '#d97706',
+                      'Benestar': '#0f766e',
+                    } as Record<string,string>)[act.category] ?? '#bf211e'
+                  }} />}
+            </div>
+            <div className="p-5">
             <div className="flex items-start justify-between mb-3">
               <span className="text-[11px] font-bold text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{act.category}</span>
               {isProperes
@@ -2025,7 +2171,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                 : <span className="text-[11px] font-bold text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 px-2.5 py-0.5 rounded">Finalitzada</span>}
             </div>
             <h3 className="font-bold text-gray-900 dark:text-white mb-2">{act.title}</h3>
-            <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4 leading-relaxed">{act.description}</p>
+            <p className="mb-4" style={{ fontSize: 15, fontFamily: "'Barlow Semi Condensed', var(--font-ui)", color: 'var(--tavil-muted)', lineHeight: 1.65 }}>{act.description}</p>
             <div className="space-y-1.5 mb-4">
               <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><Calendar size={13} /><span>{act.date}</span></div>
               <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><Clock size={13} /><span>{act.time}</span></div>
@@ -2052,7 +2198,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                   Veure detalls i inscriure's <ArrowRight size={14} />
                 </a>
               ) : (
-                <button onClick={() => { setSelectedAct(act); setEnrolledId(null); setEnrollError(''); }} className="text-red-600 text-sm font-medium flex items-center gap-1 hover:underline mt-4">
+                <button onClick={() => { setSelectedAct(act); setEnrollError(''); }} className="text-red-600 text-sm font-medium flex items-center gap-1 hover:underline mt-4">
                   Veure detalls i inscriure's <ArrowRight size={14} />
                 </button>
               )
@@ -2063,6 +2209,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                 <button onClick={() => handleDeleteActivity(act.id)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-600 transition-colors"><Trash2 size={12} /> Eliminar</button>
               </div>
             )}
+            </div>
           </div>
           );
         })}
@@ -2075,7 +2222,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
               <button onClick={closeAct} className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300 text-sm px-1">✕</button>
             </div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{selectedAct.title}</h2>
-            <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4 leading-relaxed">{selectedAct.description}</p>
+            <p className="mb-4" style={{ fontSize: 15, fontFamily: "'Barlow Semi Condensed', var(--font-ui)", color: 'var(--tavil-muted)', lineHeight: 1.65 }}>{selectedAct.description}</p>
             <div className="space-y-2 mb-4 border-t border-gray-100 dark:border-zinc-800 pt-4">
               <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><Calendar size={13} /><span>{selectedAct.date}</span></div>
               <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><Clock size={13} /><span>{selectedAct.time}</span></div>
@@ -2101,22 +2248,42 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
               <a href={selectedAct.link} target="_blank" rel="noopener noreferrer" className="press w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-lg transition-colors text-sm flex items-center justify-center gap-1.5">
                 Més informació i inscripció <ArrowRight size={14} />
               </a>
+            ) : myEnrollments.has(selectedAct.id) ? (
+              <div className="space-y-2">
+                <div className="w-full py-2.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-sm font-bold text-center">
+                  ✓ {myEnrollments.get(selectedAct.id) === 'waitlist' ? "A la llista d'espera" : 'Inscrit/a'}
+                </div>
+                <button
+                  onClick={async () => {
+                    setEnrollError('');
+                    const prev = new Map(myEnrollments);
+                    setMyEnrollments(cur => { const n = new Map(cur); n.delete(selectedAct.id); return n; });
+                    try {
+                      await apiUnenrollActivity(selectedAct.id);
+                      setActivities(await apiGetActivities());
+                    } catch (e: any) { setMyEnrollments(prev); setEnrollError(e.message ?? 'Error en cancel·lar'); }
+                  }}
+                  className="press w-full border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 font-semibold py-2 rounded-lg transition-colors text-sm"
+                >
+                  Cancel·la la inscripció
+                </button>
+              </div>
             ) : (
               <button
                 onClick={async () => {
                   setEnrollError('');
                   try {
-                    await apiEnrollActivity(selectedAct.id);
-                    setEnrolledId(selectedAct.id);
+                    const result = await apiEnrollActivity(selectedAct.id);
+                    setMyEnrollments(prev => new Map(prev).set(selectedAct.id, result.status ?? 'confirmed'));
                     setActivities(await apiGetActivities());
                   } catch (e: any) {
                     setEnrollError(e.message ?? 'Error en la inscripció');
                   }
                 }}
-                disabled={enrolledId === selectedAct.id || (selectedAct.capacity > 0 && selectedAct.enrolled >= selectedAct.capacity)}
+                disabled={selectedAct.capacity > 0 && selectedAct.enrolled >= selectedAct.capacity}
                 className="press w-full bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold py-2.5 rounded-lg transition-colors text-sm"
               >
-                {enrolledId === selectedAct.id ? '✓ Inscrit!' : selectedAct.capacity > 0 && selectedAct.enrolled >= selectedAct.capacity ? 'Activitat completa' : "Inscriure's"}
+                {selectedAct.capacity > 0 && selectedAct.enrolled >= selectedAct.capacity ? 'Activitat completa' : "Inscriure's"}
               </button>
             )}
           </div>
@@ -2183,6 +2350,23 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                 <label className={lCls}>Enllaç extern <span className="font-normal normal-case tracking-normal opacity-60">(opcional)</span></label>
                 <input value={aeLink} onChange={e => setAeLink(e.target.value)} className={iCls} placeholder="https://…" />
               </div>
+              <div>
+                <label className={lCls}>Foto de portada <span className="font-normal normal-case tracking-normal opacity-60">(opcional)</span></label>
+                <input ref={aeImageInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) { setAeImageFile(f); setAeImage(''); } }} />
+                <div onClick={() => aeImageInputRef.current?.click()}
+                  style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 10, border: '1.5px dashed var(--tavil-border)', background: 'var(--tavil-bgAlt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  {aeImageFile ? <img src={URL.createObjectURL(aeImageFile)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : aeImage ? <img src={aeImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: 'var(--tavil-faint)' }}><ImageIcon size={24} /><span style={{ fontSize: 12 }}>Afegir foto de portada</span></div>}
+                </div>
+                {(aeImageFile || aeImage) && (
+                  <button type="button" onClick={() => { setAeImageFile(null); setAeImage(''); if (aeImageInputRef.current) aeImageInputRef.current.value = ''; }}
+                    style={{ marginTop: 6, fontSize: 12, color: 'var(--tavil-faint)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <X size={12} /> Elimina la foto
+                  </button>
+                )}
+              </div>
               <div className="flex gap-2 pt-1">
                 <button onClick={() => setActEditId(null)} className="press flex-1 py-2.5 rounded-xl border border-[var(--tavil-border)] text-sm text-[var(--tavil-muted)] hover:bg-[var(--tavil-bgAlt)] transition-colors">Cancel·la</button>
                 <button onClick={handleSaveActEdit} disabled={!aeTitle.trim() || aeSaving}
@@ -2216,74 +2400,88 @@ const EVENT_COLORS: Record<string, string> = {
 
 // ── Espai Corporatiu Tab ──────────────────────────────────────────────────────
 
-const SP_BASE = 'https://tavil.sharepoint.com/teams/provespermisos/Documentos%20compartidos/Forms/AllItems.aspx?id=%2Fteams%2Fprovespermisos%2FDocumentos%20compartidos%2FTavilpedia';
+const SP_BASE = 'https://tavil.sharepoint.com/teams/PortalWeb/Documents%20compartits/Forms/AllItems.aspx?id=%2Fteams%2FPortalWeb%2FDocuments%20compartits%2FTavipedia';
+const spFileUrl = (folderPath: string, file: string) =>
+  'https://tavil.sharepoint.com/:b:/r/teams/PortalWeb/Documents%20compartits/' +
+  folderPath.split('/').map(encodeURIComponent).join('/') + '/' +
+  file.split('/').map(encodeURIComponent).join('/') +
+  '?csf=1&web=1';
 
 const ESPAI_CATS = [
   {
     icon: FileText, iconColor: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/20",
-    title: "Manual del treballador", desc: "Guia d'acollida i informació pràctica per al dia a dia", docs: 3,
+    title: "Manual del treballador", desc: "Guia d'acollida i informació pràctica per al dia a dia", docs: 5,
     sharepointUrl: SP_BASE + '%2FManual%20del%20treballador',
-    spFolderPath: 'Tavilpedia/Manual del treballador',
-    filters: ['Tots', 'Acollida', 'Espais'],
+    spFolderPath: 'Tavipedia/Manual del treballador',
+    filters: ['Tots', 'Acollida', 'Calendari', 'Permisos'],
     documents: [
-      { title: "Protocol d'acollida (onboarding)", desc: "Guia completa per als nous treballadors amb tota la informació necessària.", tag: "Acollida", meta: "PDF · 2.4 MB", views: 342 },
-      { title: "Guia d'ús dels espais comuns", desc: "Normes per a la utilització de les sales de reunions i zones comunes.", tag: "Espais", meta: "PDF · 0.6 MB", views: 143 },
-      { title: "Horaris, calendari i permisos", desc: "Horaris habituals, calendari laboral anual i procediment de permisos.", tag: "Acollida", meta: "PDF · 0.8 MB", views: 421 },
+      { title: "Manual Acollida TAVIL (CAT)", desc: "Guia per als nous treballadors amb informació pràctica per al dia a dia.", tag: "Acollida", meta: "PDF", views: 342, file: "Manual Acollida TAVIL.pdf" },
+      { title: "Manual Acogida TAVIL (ESP)", desc: "Guía para los nuevos trabajadores con información práctica para el día a día.", tag: "Acollida", meta: "PDF", views: 289, file: "Manual Acogida TAVIL.pdf" },
+      { title: "TAVIL Handbook (ENG)", desc: "Employee handbook with practical information for day-to-day work.", tag: "Acollida", meta: "PDF", views: 156, file: "TAVIL Handbook.pdf" },
+      { title: "Calendari Laboral 2026", desc: "Calendari oficial de dies laborals, festius i períodes vacacionals 2026.", tag: "Calendari", meta: "PDF", views: 421, file: "Calendari Laboral 2026.pdf" },
+      { title: "Protocol Gestió Vacances 2026", desc: "Procediment i criteris per a la planificació i sol·licitud de vacances.", tag: "Permisos", meta: "PDF", views: 198, file: "Protocol Gestió Vacances 2026.pdf" },
     ],
   },
   {
     icon: Shield, iconColor: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-950/20",
-    title: "Polítiques internes i protocols", desc: "Reglament, codi de conducta, prevenció de riscos i compliance", docs: 6,
+    title: "Polítiques internes i protocols", desc: "Protocols d'actuació i plans d'igualtat i no-discriminació", docs: 7,
     sharepointUrl: SP_BASE + '%2FPol%C3%ADtiques%20internes%20i%20protocols',
-    spFolderPath: 'Tavilpedia/Politiques internes i protocols',
-    filters: ['Tots', 'Normativa', 'Conducta', 'RRHH', 'Viatges'],
+    spFolderPath: 'Tavipedia/Politiques internes i protocols',
+    filters: ['Tots', 'Igualtat', 'Assetjament', 'LGTBI'],
     documents: [
-      { title: "Reglament de règim intern", desc: "Normativa interna que regula la convivència, els horaris i els permisos.", tag: "Normativa", meta: "PDF · 1.8 MB", views: 518 },
-      { title: "Guia de seguretat i prevenció de riscos", desc: "Manual de prevenció de riscos laborals per a les instal·lacions de TAVIL.", tag: "Normativa", meta: "PDF · 3.1 MB", views: 287 },
-      { title: "Codi de conducta TAVIL", desc: "Valors, comportaments esperats i límits ètics de l'empresa.", tag: "Conducta", meta: "PDF · 1.1 MB", views: 320 },
-      { title: "Política de protecció de dades", desc: "Tractament de dades personals d'empleats i clients.", tag: "Conducta", meta: "PDF · 0.7 MB", views: 210 },
-      { title: "Pla d'igualtat", desc: "Mesures per garantir la igualtat de tracte i oportunitats.", tag: "RRHH", meta: "PDF · 2.0 MB", views: 178 },
-      { title: "Política de viatges i despeses", desc: "Normes per a viatges, allotjaments, dietes i justificació de despeses.", tag: "Viatges", meta: "PDF · 1.0 MB", views: 244 },
+      { title: "Pla d'Igualtat TAVIL 2022", desc: "Mesures per garantir la igualtat de tracte i oportunitats a l'empresa.", tag: "Igualtat", meta: "PDF", views: 318, file: "PLA D'IGUALTAT TAVIL 2022_V2 (1).pdf" },
+      { title: "Protocol Assetjament Sexual (CAT)", desc: "Protocol d'actuació davant situacions d'assetjament sexual.", tag: "Assetjament", meta: "PDF", views: 204, file: "Protocol assetjament sexual_Tavil_V2024CAT (1).pdf" },
+      { title: "Protocolo Acoso Sexual (ESP)", desc: "Protocolo de actuación ante situaciones de acoso sexual.", tag: "Assetjament", meta: "PDF", views: 187, file: "Protocol assetjament sexual_Tavil_V2024ESP.pdf" },
+      { title: "Protocol Assetjament Laboral (CAT)", desc: "Protocol d'actuació davant situacions d'assetjament laboral.", tag: "Assetjament", meta: "PDF", views: 231, file: "Protocol_AssatjamentLaboral_V2024CAT.pdf" },
+      { title: "Protocolo Acoso Laboral (ESP)", desc: "Protocolo de actuación ante situaciones de acoso laboral.", tag: "Assetjament", meta: "PDF", views: 178, file: "Protocolo_AcosoLaboral_TAVIL_V2024ESP.pdf" },
+      { title: "Protocol LGTBI TAVIL (CAT)", desc: "Protocol per a la protecció i inclusió de les persones LGTBI a l'empresa.", tag: "LGTBI", meta: "PDF", views: 265, file: "ProtocolAssetjamentLGTBI_TAVIL_CAT_V05032024.pdf" },
+      { title: "Protocolo LGTBI TAVIL (ESP)", desc: "Protocolo para la protección e inclusión de las personas LGTBI en la empresa.", tag: "LGTBI", meta: "PDF", views: 241, file: "ProtocolAssetjamentLGTBI_TAVIL_ESP_V05032024.pdf" },
     ],
   },
   {
     icon: BookOpen, iconColor: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-950/20",
-    title: "Manuals i procediments", desc: "Sistemes interns, producte i procediments tècnics", docs: 3,
+    title: "Manuals i procediments", desc: "Connexions remotes i seguretat vial per a desplaçaments", docs: 15,
     sharepointUrl: SP_BASE + '%2FManuals%20i%20procediments',
-    spFolderPath: 'Tavilpedia/Manuals i procediments',
-    filters: ['Tots', 'Sistemes', 'Producte'],
+    spFolderPath: 'Tavipedia/Manuals i procediments',
+    filters: ['Tots', 'Sistemes', 'Seguretat Vial'],
     documents: [
-      { title: "Manual de connexió a la xarxa interna", desc: "Guia pas a pas per connectar-se a la VPN, el correu corporatiu i les eines internes.", tag: "Sistemes", meta: "PDF · 1.3 MB", views: 467 },
-      { title: "Manual d'ús de l'ERP", desc: "Guia d'usuari del sistema ERP per a la gestió de comandes, inventari i facturació.", tag: "Sistemes", meta: "PDF · 4.2 MB", views: 234 },
-      { title: "Guia tècnica de producte: ancoratges", desc: "Especificacions tècniques, aplicacions i normativa dels ancoratges TAVIL.", tag: "Producte", meta: "PDF · 5.8 MB", views: 178 },
+      { title: "Connexions Remotes (CAT)", desc: "Guia per connectar-se de forma remota als sistemes de TAVIL.", tag: "Sistemes", meta: "PDF", views: 467, file: "Connexions_Remotes_CAT.pdf" },
+      { title: "Conexiones Remotas (ESP)", desc: "Guía para conectarse de forma remota a los sistemas de TAVIL.", tag: "Sistemes", meta: "PDF", views: 389, file: "Conexiones_Remotas_ESP.pdf" },
+      { title: "Remote Connections (ENG)", desc: "Guide to connect remotely to TAVIL systems.", tag: "Sistemes", meta: "PDF", views: 201, file: "Remote_connections_ENG.pdf" },
+      { title: "Seguretat Vial — Espanya (CAT)", desc: "Tríptic de seguretat vial per a desplaçaments a Espanya.", tag: "Seguretat Vial", meta: "PDF", views: 134, file: "Triptics Seguretat Vial/SEGURETAT VIAL/ESPANYA/Seguretat_Vial_ESPANYA_Català.pdf" },
+      { title: "Seguridad Vial — España (ESP)", desc: "Tríptico de seguridad vial para desplazamientos en España.", tag: "Seguretat Vial", meta: "PDF", views: 128, file: "Triptics Seguretat Vial/SEGURETAT VIAL/ESPANYA/Seguretat_Vial_ESPANYA_Español.pdf" },
+      { title: "Road Safety — Spain (ENG)", desc: "Road safety guide for travel in Spain.", tag: "Seguretat Vial", meta: "PDF", views: 87, file: "Triptics Seguretat Vial/SEGURETAT VIAL/ESPANYA/Seguretat_Vial_ESPANYA_Ingles.pdf" },
+      { title: "Seguretat Vial — Europa (CAT)", desc: "Tríptic de seguretat vial per a desplaçaments per Europa.", tag: "Seguretat Vial", meta: "PDF", views: 112, file: "Triptics Seguretat Vial/SEGURETAT VIAL/EUROPA/Seguretat_Vial_EUROPA_Catala.pdf" },
+      { title: "Road Safety — Europe (ENG)", desc: "Road safety guide for travel in Europe.", tag: "Seguretat Vial", meta: "PDF", views: 98, file: "Triptics Seguretat Vial/SEGURETAT VIAL/EUROPA/Seguretat_Vial_EUROPA_English.pdf" },
+      { title: "Seguridad Vial — Europa (ESP)", desc: "Tríptico de seguridad vial para desplazamientos por Europa.", tag: "Seguretat Vial", meta: "PDF", views: 103, file: "Triptics Seguretat Vial/SEGURETAT VIAL/EUROPA/Seguretat_Vial_EUROPA_Español.pdf" },
+      { title: "Seguretat Vial — Estats Units (CAT)", desc: "Tríptic de seguretat vial per a desplaçaments als EUA.", tag: "Seguretat Vial", meta: "PDF", views: 76, file: "Triptics Seguretat Vial/SEGURETAT VIAL/EEUU/Seguretat_vial_EstatsUnits_Català.pdf" },
+      { title: "Road Safety — USA (ENG)", desc: "Road safety guide for travel in the United States.", tag: "Seguretat Vial", meta: "PDF", views: 82, file: "Triptics Seguretat Vial/SEGURETAT VIAL/EEUU/Seguretat_vial_EstatsUnits_Angles.pdf" },
+      { title: "Seguridad Vial — EEUU (ESP)", desc: "Tríptico de seguridad vial para desplazamientos a EE. UU.", tag: "Seguretat Vial", meta: "PDF", views: 71, file: "Triptics Seguretat Vial/SEGURETAT VIAL/EEUU/Seguretat_vial_EstatsUnits_Español.pdf" },
+      { title: "Seguretat Vial — Regne Unit (CAT)", desc: "Tríptic de seguretat vial per a desplaçaments al Regne Unit.", tag: "Seguretat Vial", meta: "PDF", views: 65, file: "Triptics Seguretat Vial/SEGURETAT VIAL/REGNE UNIT/Seguretat_Vial_Regne_Unit_Català.pdf" },
+      { title: "Road Safety — United Kingdom (ENG)", desc: "Road safety guide for travel in the United Kingdom.", tag: "Seguretat Vial", meta: "PDF", views: 89, file: "Triptics Seguretat Vial/SEGURETAT VIAL/REGNE UNIT/Seguretat_Vial_Regne_Unit_Anglès.pdf" },
+      { title: "Seguridad Vial — Reino Unido (ESP)", desc: "Tríptico de seguridad vial para desplazamientos al Reino Unido.", tag: "Seguretat Vial", meta: "PDF", views: 61, file: "Triptics Seguretat Vial/SEGURETAT VIAL/REGNE UNIT/Seguretat_Vial_Regne_Unit_Español.pdf" },
     ],
   },
   {
     icon: Gift, iconColor: "text-rose-500", bg: "bg-rose-50 dark:bg-rose-950/20",
-    title: "Beneficis socials", desc: "Retribució flexible, ajudes i avantatges per al treballador", docs: 4,
+    title: "Beneficis socials", desc: "Retribució flexible i assegurança de salut", docs: 4,
     sharepointUrl: SP_BASE + '%2FBeneficis%20socials',
-    spFolderPath: 'Tavilpedia/Beneficis socials',
-    filters: ['Tots', 'Retribució', 'Salut', 'Formació'],
+    spFolderPath: 'Tavipedia/Beneficis socials',
+    filters: ['Tots', 'Retribució Flexible', 'Salut'],
     documents: [
-      { title: "Guia de retribució flexible", desc: "Tickets restaurant, transport, guarderia i altres opcions disponibles.", tag: "Retribució", meta: "PDF · 0.9 MB", views: 312 },
-      { title: "Assegurança mèdica corporativa", desc: "Cobertura, accés a la sala mèdica i procediment per a les consultes.", tag: "Salut", meta: "PDF · 0.7 MB", views: 256 },
-      { title: "Pla de formació i ajudes", desc: "Programa intern de formació, beques i suport al desenvolupament professional.", tag: "Formació", meta: "PDF · 1.1 MB", views: 198 },
-      { title: "Conveni i complements salarials", desc: "Resum del conveni vigent, plusos i complements aplicables.", tag: "Retribució", meta: "PDF · 1.4 MB", views: 489 },
+      { title: "Retribució Flexible Alan (CAT)", desc: "Guia de retribució flexible: menjar, transport, guarderia i altres beneficis.", tag: "Retribució Flexible", meta: "PDF", views: 312, file: "Alan Flex (CAT).pdf" },
+      { title: "Retribución Flexible Alan (ESP)", desc: "Guía de retribución flexible: comida, transporte, guardería y otros beneficios.", tag: "Retribució Flexible", meta: "PDF", views: 278, file: "Alan Flex (ESP).pdf" },
+      { title: "Assegurança de Salut (CAT)", desc: "Informació sobre la cobertura d'assegurança mèdica corporativa.", tag: "Salut", meta: "PDF", views: 256, file: "AssegurançaSalut.pdf" },
+      { title: "Seguro de Salud (ESP)", desc: "Información sobre la cobertura de seguro médico corporativo.", tag: "Salut", meta: "PDF", views: 231, file: "SeguroSalud.pdf" },
     ],
   },
   {
     icon: Building2, iconColor: "text-green-500", bg: "bg-green-50 dark:bg-green-950/20",
-    title: "Identitat", desc: "Recursos de marca, plantilles i materials corporatius", docs: 5,
+    title: "Identitat", desc: "Recursos de marca, plantilles i materials corporatius", docs: 0,
     sharepointUrl: SP_BASE + '%2FIdentitat',
-    spFolderPath: 'Tavilpedia/Identitat',
-    filters: ['Tots', 'Plantilles', 'Marca'],
-    documents: [
-      { title: "Plantilla de presentació corporativa", desc: "Plantilla PowerPoint amb la identitat visual de TAVIL per a presentacions.", tag: "Plantilles", meta: "PPTX · 3.5 MB", views: 534 },
-      { title: "Plantilla de dossier comercial", desc: "Plantilla Word per a la creació de dossiers i propostes comercials.", tag: "Plantilles", meta: "DOCX · 2.1 MB", views: 298 },
-      { title: "Manual d'identitat visual", desc: "Guia d'ús del logotip, colors, tipografia i aplicacions de la marca TAVIL.", tag: "Marca", meta: "PDF · 6.2 MB", views: 412 },
-      { title: "Pack de recursos gràfics", desc: "Logotips en diversos formats, icones, fotografies corporatives i elements gràfics.", tag: "Marca", meta: "ZIP · 45 MB", views: 189 },
-      { title: "Signatura i plantilla de correu", desc: "Signatura oficial electrònica i plantilla per a comunicats interns.", tag: "Plantilles", meta: "HTML · 0.2 MB", views: 378 },
-    ],
+    spFolderPath: 'Tavipedia/Identitat',
+    filters: ['Tots'],
+    documents: [],
   },
 ];
 
@@ -2458,7 +2656,7 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
                       const size = parts[1] ?? '';
                       const { bg, fg } = ftStyle(doc.meta);
                       return (
-                        <div key={di} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: di < c.documents.length - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
+                        <a key={di} href={doc.file ? spFileUrl(c.spFolderPath, doc.file) : c.sharepointUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: di < c.documents.length - 1 ? '1px solid var(--tavil-border)' : 'none', textDecoration: 'none' }}>
                           <div style={{ width: 38, height: 44, background: bg, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, flexShrink: 0 }}>
                             <FileText size={14} style={{ color: fg }} />
                             <span style={{ fontSize: 7.5, fontWeight: 800, color: fg, fontFamily: '"JetBrains Mono",monospace' }}>{type}</span>
@@ -2468,7 +2666,7 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
                             <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)' }}>{size} · {doc.views} visualitzacions</div>
                           </div>
                           <ChevronRight size={16} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
-                        </div>
+                        </a>
                       );
                     })}
                   </div>
@@ -2487,7 +2685,7 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <p className="text-gray-500 dark:text-zinc-400 text-sm">Base de coneixement intern, documentació i recursos corporatius</p>
+        <p className="text-gray-500 dark:text-zinc-400 text-sm">{t('corporate.knowledgeBase')}</p>
         {graphAccount ? (
           <div className="flex items-center gap-2">
             <span className="text-xs text-green-600 dark:text-green-400 font-semibold flex items-center gap-1.5">
@@ -2504,7 +2702,7 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
 
       <div className="relative mb-6">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-        <input type="text" value={espaiSearch} onChange={e => setEspaiSearch(e.target.value)} placeholder="Cercar documents, polítiques, plantilles..." className="w-full max-w-lg bg-gray-100 dark:bg-zinc-800 rounded-xl py-3 pl-11 pr-4 text-sm outline-none dark:text-white" />
+        <input type="text" value={espaiSearch} onChange={e => setEspaiSearch(e.target.value)} placeholder={t('corporate.searchPlaceholderFull')} className="w-full max-w-lg bg-gray-100 dark:bg-zinc-800 rounded-xl py-3 pl-11 pr-4 text-sm outline-none dark:text-white" />
       </div>
 
       {espaiSearchResults.length > 0 && (
@@ -2595,7 +2793,7 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
               {visibleDocs.map((doc, i) => {
                 const { bg, fg } = ftStyle(doc.meta);
                 return (
-                  <div key={i} className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors anim-item" style={{ '--i': i } as React.CSSProperties}>
+                  <a key={i} href={doc.file ? spFileUrl(cat.spFolderPath, doc.file) : cat.sharepointUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 cursor-pointer group transition-colors anim-item no-underline" style={{ '--i': i } as React.CSSProperties}>
                     <div className="w-9 h-10 rounded-lg flex flex-col items-center justify-center gap-0.5 flex-shrink-0" style={{ background: bg }}>
                       <FileText size={15} style={{ color: fg }} />
                       <span style={{ fontSize: 7.5, fontWeight: 800, color: fg, fontFamily: '"JetBrains Mono",monospace' }}>{doc.meta.split('·')[0].trim()}</span>
@@ -2606,8 +2804,8 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
                       <p className="text-[10px] text-gray-400 mt-0.5">{doc.meta} · {doc.views} visualitzacions</p>
                     </div>
                     <span className="text-[10px] font-bold bg-gray-100 dark:bg-zinc-700 text-gray-500 px-2 py-0.5 rounded">{doc.tag}</span>
-                    <Download size={14} className="text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0" />
-                  </div>
+                    <ExternalLink size={14} className="text-gray-300 group-hover:text-red-500 transition-colors flex-shrink-0" />
+                  </a>
                 );
               })}
             </div>
@@ -2617,9 +2815,9 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
           <div className="flex items-center gap-2 mb-4">
             <Star size={15} className="text-amber-500" />
-            <h3 className="font-bold text-gray-900 dark:text-white text-sm">Documents destacats</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm">{t('corporate.featuredDocuments')}</h3>
             <a href={SP_BASE} target="_blank" rel="noopener noreferrer" className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors">
-              <ExternalLink size={13} /> Obrir Tavipedia
+              <ExternalLink size={13} /> {t('corporate.openTavipedia')}
             </a>
           </div>
           <div className="space-y-1">
@@ -3490,6 +3688,9 @@ function VacRangePicker({
   minIso: string;
   maxIso: string;
 }) {
+  const { t: tVac } = useTranslation();
+  const _vacDaysAbbr = tVac('common.daysAbbr', { returnObjects: true }) as string[];
+  const daysMonFirst = [..._vacDaysAbbr.slice(1), _vacDaysAbbr[0]];
   const [open, setOpen] = useState(true);
   const [draftFrom, setDraftFrom] = useState<string | null>(null);
   const [draftTo, setDraftTo] = useState<string | null>(null);
@@ -3620,7 +3821,7 @@ function VacRangePicker({
                 return (
                   <div key={mi}>
                     <div className="grid grid-cols-7 text-center text-[10px] font-semibold text-gray-400 dark:text-zinc-500 mb-1">
-                      {['Dl','Dt','Dc','Dj','Dv','Ds','Dg'].map(d => <span key={d}>{d}</span>)}
+                      {daysMonFirst.map(d => <span key={d}>{d}</span>)}
                     </div>
                     <div className="grid grid-cols-7 gap-0.5">
                       {cells.map((d, i) => {
@@ -3694,6 +3895,8 @@ const SOL_TAB_LABEL: Record<string, string> = { 'Dies no ordinaris': 'Dissabtes'
 
 function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabConsumed, onBack }: { currentUser: User | null; onNotifChange?: () => void; initialSubTab?: string | null; onSubTabConsumed?: () => void; onBack?: () => void }) {
   const { t } = useTranslation();
+  const _solDaysAbbr = t('common.daysAbbr', { returnObjects: true }) as string[];
+  const daysMonFirst = [..._solDaysAbbr.slice(1), _solDaysAbbr[0]];
   const [activeTab, setActiveTab] = usePersistedSubTab<string>('solicituds', initialSubTab ?? 'Dies no ordinaris', ['Dies no ordinaris', 'Vacances'] as const);
 
   useEffect(() => {
@@ -3898,7 +4101,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
         {activeTab === 'Dies no ordinaris' && (
           <div style={{ padding: '0 20px 14px' }}>
             <p style={{ fontSize: 12.5, color: 'var(--tavil-muted)', lineHeight: 1.45, margin: 0 }}>
-              Podràs fer una sol·licitud per a treballar un dissabte. L'equip de RRHH la revisarà.
+              {t('solicituds.description')}
             </p>
           </div>
         )}
@@ -4216,7 +4419,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
       )}
       {activeTab === 'Dies no ordinaris' && (
         <p className="text-xs text-gray-500 dark:text-zinc-400 mb-5">
-          Podràs fer una sol·licitud per a treballar un dissabte. L'equip de RRHH la revisarà.
+          Si vols treballar un dissabte no laborable has de fer la sol·licitud a través d'aquest portal. Abans d'assignar-te'l te l'haurà de validar Depplan/RRHH.
         </p>
       )}
 
@@ -4997,9 +5200,9 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
             ))}
           </MesSettingsGroup>
 
-          <MesSettingsGroup label="COMPTE">
+          <MesSettingsGroup label={t('perfil.account').toUpperCase()}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 14, color: 'var(--tavil-muted)', flex: 1 }}>Correu</span>
+              <span style={{ fontSize: 14, color: 'var(--tavil-muted)', flex: 1 }}>{t('perfil.corporateEmail')}</span>
               <span style={{ fontSize: 13.5, color: 'var(--tavil-text)' }}>{currentUser?.email ?? '—'}</span>
             </div>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -5032,19 +5235,19 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
               }}
             >
               <ChevronLeft size={20} strokeWidth={2} />
-              Perfil
+              {t('perfil.backToProfile')}
             </button>
           </div>
           <div style={{
             fontSize: 28, fontFamily: 'var(--font-display)',
             fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--tavil-text)',
             padding: '4px 24px 18px',
-          }}>Notificacions</div>
+          }}>{t('perfil.notifications')}</div>
 
           <MesSettingsGroup label={notifList.length > 0 ? `${notifList.filter(n => !n.read).length} sense llegir` : 'RECENTS'}>
             {notifList.length === 0 ? (
               <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--tavil-faint)', fontSize: 13 }}>
-                Sense notificacions
+                {t('perfil.noNotifications')}
               </div>
             ) : (
               notifList.map((n, i) => (
@@ -5098,7 +5301,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                   color: 'var(--tavil-accent)', fontWeight: 500,
                 }}
               >
-                Marcar totes com a llegides
+                {t('perfil.markAllRead')}
               </button>
             </div>
           )}
@@ -5218,11 +5421,11 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
         </div>
 
         {/* Aparença */}
-        <MesSettingsGroup label="APARENÇA">
+        <MesSettingsGroup label={t('perfil.theme').toUpperCase()}>
           <div style={{ padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {[
-              { dark: false, label: 'Light', Icon: Sun },
-              { dark: true,  label: 'Fosc',  Icon: Moon },
+              { dark: false, label: t('perfil.light'), Icon: Sun },
+              { dark: true,  label: t('perfil.dark'),  Icon: Moon },
             ].map(o => {
               const active = (isDarkMode ?? false) === o.dark;
               return (
@@ -5247,7 +5450,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
         </MesSettingsGroup>
 
         {/* Idioma */}
-        <MesSettingsGroup label="IDIOMA">
+        <MesSettingsGroup label={t('perfil.language').toUpperCase()}>
           {[
             { code: 'ca', label: 'Català' },
             { code: 'es', label: 'Castellano' },
@@ -5274,7 +5477,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
         </MesSettingsGroup>
 
         {/* Compte */}
-        <MesSettingsGroup label="COMPTE">
+        <MesSettingsGroup label={t('perfil.account').toUpperCase()}>
           <button
             onClick={() => setShowNotifs(true)}
             style={{
@@ -5286,7 +5489,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
             }}
           >
             <Bell size={18} style={{ color: 'var(--tavil-muted)' }} />
-            <span style={{ flex: 1, textAlign: 'left' }}>Notificacions</span>
+            <span style={{ flex: 1, textAlign: 'left' }}>{t('perfil.notifications')}</span>
             <ChevronRight size={16} style={{ color: 'var(--tavil-faint)' }} />
           </button>
           <button
@@ -5300,7 +5503,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
             }}
           >
             <Settings size={18} style={{ color: 'var(--tavil-muted)' }} />
-            <span style={{ flex: 1, textAlign: 'left' }}>Configuració</span>
+            <span style={{ flex: 1, textAlign: 'left' }}>{t('perfil.settings')}</span>
             <ChevronRight size={16} style={{ color: 'var(--tavil-faint)' }} />
           </button>
           <button
@@ -5313,7 +5516,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
             }}
           >
             <LogOut size={18} style={{ color: 'var(--tavil-accent)' }} />
-            <span style={{ flex: 1, textAlign: 'left' }}>Tanca sessió</span>
+            <span style={{ flex: 1, textAlign: 'left' }}>{t('perfil.logout')}</span>
           </button>
         </MesSettingsGroup>
 
@@ -5387,7 +5590,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--tavil-bgAlt)'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--tavil-card)'; }}
               >
-                <Pencil size={14} /> Editar perfil
+                <Pencil size={14} /> {t('perfil.editProfile')}
               </button>
             </div>
           </div>
@@ -5397,16 +5600,16 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
             {/* Left: Dades personals */}
             <div className="perfil-stag" style={{ ['--i' as any]: 1 }}>
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--tavil-faint)' }}>Compte</div>
-                <h2 style={{ fontSize: 24, fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--tavil-text)', marginTop: 4 }}>Dades personals</h2>
+                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--tavil-faint)' }}>{t('perfil.account')}</div>
+                <h2 style={{ fontSize: 24, fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--tavil-text)', marginTop: 4 }}>{t('perfil.personalData')}</h2>
               </div>
               <div style={{ background: 'var(--tavil-card)', borderRadius: 14, border: '1px solid var(--tavil-border)' }}>
                 {([
-                  { I: Mail,     label: 'Correu corporatiu', value: currentUser?.email ?? '—' },
-                  { I: Phone,    label: 'Telèfon',           value: currentUser?.phone || '—' },
-                  { I: Phone,    label: 'Codi treballador',   value: currentUser?.ext || '—' },
-                  { I: MapPin,   label: 'Oficina',           value: currentUser?.location || '—' },
-                  { I: Calendar, label: 'Incorporació',      value: '12 setembre 2022' },
+                  { I: Mail,     label: t('perfil.corporateEmail'), value: currentUser?.email ?? '—' },
+                  { I: Phone,    label: t('perfil.phone'),           value: currentUser?.phone || '—' },
+                  { I: Phone,    label: t('perfil.workerCode'),      value: currentUser?.ext || '—' },
+                  { I: MapPin,   label: t('perfil.office'),          value: currentUser?.location || '—' },
+                  { I: Calendar, label: t('perfil.joinDate'),        value: '12 setembre 2022' },
                 ] as { I: React.ElementType; label: string; value: string }[]).map((r, i, arr) => (
                   <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: i < arr.length - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
                     <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--tavil-bgAlt)', color: 'var(--tavil-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -5422,7 +5625,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
 
               {/* Accés ràpid */}
               <div style={{ marginTop: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--tavil-faint)', marginBottom: 10 }}>Accés ràpid</div>
+                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--tavil-faint)', marginBottom: 10 }}>{t('perfil.quickAccess')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <button
                     onClick={() => onNavigate?.('Solicituds')}
@@ -5434,7 +5637,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                       <FileText size={15} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)' }}>Les meves sol·licituds</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)' }}>Solicita un dissabte laborable</div>
                       <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 1 }}>Dies no ordinaris</div>
                     </div>
                     <ArrowRight size={14} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
@@ -5462,13 +5665,13 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
             {/* Right: Preferències */}
             <div className="perfil-stag" style={{ ['--i' as any]: 2 }}>
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--tavil-faint)' }}>Preferències</div>
-                <h2 style={{ fontSize: 24, fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--tavil-text)', marginTop: 4 }}>Configuració ràpida</h2>
+                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--tavil-faint)' }}>{t('perfil.preferences')}</div>
+                <h2 style={{ fontSize: 24, fontWeight: 400, letterSpacing: '-0.01em', color: 'var(--tavil-text)', marginTop: 4 }}>{t('perfil.quickSettings')}</h2>
               </div>
 
               {/* Idioma */}
               <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 20, marginBottom: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--tavil-faint)', marginBottom: 14 }}>Idioma</div>
+                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--tavil-faint)', marginBottom: 14 }}>{t('perfil.language')}</div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {([{ code: 'ca', label: 'Català' }, { code: 'es', label: 'Español' }, { code: 'en', label: 'English' }] as const).map(l => {
                     const a = i18n.language === l.code;
@@ -5490,9 +5693,9 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
 
               {/* Tema */}
               <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 20, marginBottom: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--tavil-faint)', marginBottom: 14 }}>Tema</div>
+                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--tavil-faint)', marginBottom: 14 }}>{t('perfil.theme')}</div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  {([{ dark: false, label: 'Clar', I: Sun }, { dark: true, label: 'Fosc', I: Moon }] as const).map(o => {
+                  {([{ dark: false, label: t('perfil.light'), I: Sun }, { dark: true, label: t('perfil.dark'), I: Moon }] as const).map(o => {
                     const a = (isDarkMode ?? false) === o.dark;
                     return (
                       <button key={String(o.dark)} onClick={() => { if ((isDarkMode ?? false) !== o.dark) toggleDarkMode?.(); }}
@@ -5514,9 +5717,9 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
               {/* Notificacions · Privacitat · Suport — accordion */}
               <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, marginBottom: 14, overflow: 'hidden' }}>
                 {([
-                  { id: 'notifs',  I: Bell,     label: 'Notificacions' },
-                  { id: 'privacy', I: Eye,      label: 'Privacitat i accessos' },
-                  { id: 'support', I: Settings, label: 'Ajuda i suport' },
+                  { id: 'notifs',  I: Bell,     label: t('perfil.notifications') },
+                  { id: 'privacy', I: Eye,      label: t('perfil.privacyAccess') },
+                  { id: 'support', I: Settings, label: t('perfil.helpSupport') },
                 ] as { id: 'notifs' | 'privacy' | 'support'; I: React.ElementType; label: string }[]).map((r, i, arr) => {
                   const open = expandedRow === r.id;
                   return (
@@ -5638,7 +5841,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--tavil-accent-light)'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
               >
-                <LogOut size={16} /> Tanca sessió
+                <LogOut size={16} /> {t('perfil.logout')}
               </button>
             </div>
           </div>
@@ -5665,7 +5868,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
               >
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)', margin: 0 }}>Editar perfil</h3>
+                  <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)', margin: 0 }}>{t('perfil.editProfile')}</h3>
                   <button onClick={() => { discardAvatarPending(); setShowEdit(false); }} style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--tavil-muted)' }}>
                     <X size={16} />
                   </button>
@@ -5722,14 +5925,14 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                 <div style={{ background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', borderRadius: 10, padding: 14 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
                     {([
-                      ['Nom complet',        currentUser?.name ?? '—'],
-                      ['Correu corporatiu',  currentUser?.email ?? '—'],
-                      ['Rol',                currentUser?.role ?? '—'],
-                      ['Departament',        currentUser?.dept ?? '—'],
-                      ['Telèfon',            currentUser?.phone || '—'],
-                      ['Codi treballador',    currentUser?.ext || '—'],
-                      ['Oficina',            currentUser?.location || '—'],
-                      ['Incorporació',       '12 setembre 2022'],
+                      [t('perfil.personalData'),     currentUser?.name ?? '—'],
+                      [t('perfil.corporateEmail'),   currentUser?.email ?? '—'],
+                      ['Rol',                        currentUser?.role ?? '—'],
+                      ['Departament',                currentUser?.dept ?? '—'],
+                      [t('perfil.phone'),            currentUser?.phone || '—'],
+                      [t('perfil.workerCode'),       currentUser?.ext || '—'],
+                      [t('perfil.office'),           currentUser?.location || '—'],
+                      [t('perfil.joinDate'),         '12 setembre 2022'],
                     ] as [string, string][]).map(([k, v]) => (
                       <div key={k}>
                         <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--tavil-faint)', marginBottom: 4 }}>{k}</div>
@@ -9106,31 +9309,8 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                   </div>
 
                   <div>
-                    <div className="flex items-baseline justify-between mb-2">
-                      <label className="text-xs" style={{ color: 'var(--q-text-70)' }}>Departaments destinataris</label>
-                      <span className="text-[11px]" style={{ color: 'var(--q-text-55)' }}>{targetDepts.length === 0 ? 'Tothom' : `${targetDepts.length} dept.`}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 p-3 rounded-lg" style={{ background: 'var(--q-surface-08)', border: '1px solid var(--q-border)' }}>
-                      {DEPT_ORDER.map(d => {
-                        const on = targetDepts.includes(d);
-                        return (
-                          <button
-                            key={d}
-                            onClick={() => setTargetDepts(prev => on ? prev.filter(x => x !== d) : [...prev, d])}
-                            className="text-[11px] px-2.5 py-1 rounded-md border transition-colors"
-                            style={on
-                              ? { background: '#bf211e', borderColor: '#bf211e', color: '#fff' }
-                              : { background: 'transparent', borderColor: 'var(--q-border-20)', color: 'var(--q-text-60)' }
-                            }
-                          >
-                            {d}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {targetDepts.length === 0 && targetUsers.length === 0 && (
-                      <p className="text-[11px] mt-1.5" style={{ color: 'var(--q-text-55)' }}>Sense selecció: visible per a tothom.</p>
-                    )}
+                    <label className="text-xs block mb-2" style={{ color: 'var(--q-text-70)' }}>Departaments destinataris</label>
+                    <DeptSearch value={targetDepts} onChange={setTargetDepts} />
                   </div>
 
                   {/* Persones concretes */}
@@ -9422,7 +9602,7 @@ const NT = {
   accentInk: '#ffffff',
   grid: 'var(--nt-grid)',
   headlineFont: 'var(--font-display)',
-  bodyFont: 'var(--font-display)',
+  bodyFont: "'Barlow Semi Condensed', var(--font-ui)",
   uiFont: '"Inter", ui-sans-serif, system-ui, sans-serif',
   radius: 4,
   tileRadius: 10,
@@ -9526,19 +9706,342 @@ const EditableText = React.memo(function EditableText({ initialContent, style, o
       onInput={(e) => onChange(e.currentTarget.innerText)}
       onBlur={(e) => onChange(e.currentTarget.innerText)}
       onPointerDown={(e) => e.stopPropagation()}
+      onPaste={(e) => {
+        e.preventDefault();
+        const text = e.clipboardData.getData('text/plain');
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        const frag = document.createDocumentFragment();
+        text.split('\n').forEach((line, i) => {
+          if (i > 0) frag.appendChild(document.createElement('br'));
+          if (line) frag.appendChild(document.createTextNode(line));
+        });
+        range.insertNode(frag);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        onChange(e.currentTarget.innerText);
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') { e.stopPropagation(); return; }
         if (e.key === 'Enter') {
-          // Browsers vary on Enter inside contentEditable (Chrome → <div>,
-          // Firefox → <br>). Force a single <br> so the line break is
-          // predictable and innerText reads it back as a clean "\n".
           e.preventDefault();
           e.stopPropagation();
-          document.execCommand('insertLineBreak');
+          const sel = window.getSelection();
+          if (sel && sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            range.deleteContents();
+            const br = document.createElement('br');
+            range.insertNode(br);
+            if (!br.nextSibling) {
+              br.parentNode?.insertBefore(document.createElement('br'), null);
+            }
+            range.setStartAfter(br);
+            range.setEndAfter(br);
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
           onChange(e.currentTarget.innerText);
         }
       }}
     />
+  );
+});
+
+// ─── Rich paragraph editor — supports bold, italic, underline, colors ────────
+// Stores HTML in tile content; uses execCommand for formatting.
+// A floating mini-toolbar appears when text is selected.
+function isHtmlContent(s: string) { return /<\/?(b|strong|em|i|u|s|br|span)[\s>\/]/i.test(s); }
+
+function sanitizeParaHtml(html: string): string {
+  // Only allow b/strong/em/i/u/s/span(with style) — strip everything else
+  return html
+    .replace(/<\/div>\s*<div[^>]*>/gi, '<br>')  // transition between divs = line break
+    .replace(/<div[^>]*>/gi, '')                 // opening div (first one)
+    .replace(/<\/div>/gi, '')                    // remaining closing divs
+    .replace(/<(?!\/?(?:b|strong|em|i|u|s|br|span)[\s>])[^>]+>/gi, '')
+    .replace(/(<span(?:\s+style="[^"]*")?)\s+[^>]*/gi, '$1');
+}
+
+const PARA_COLORS = ['#000000','#bf211e','#1a56db','#057a55','#c27803','#6c2bd9','#ffffff'];
+const PARA_BG_COLORS = ['transparent','#fef9c3','#dcfce7','#fee2e2','#dbeafe','#f3e8ff','#ffedd5'];
+const PARA_FONT_SIZES = [
+  { label: 'S', px: '13px' },
+  { label: 'M', px: '16px' },
+  { label: 'L', px: '20px' },
+  { label: 'XL', px: '26px' },
+];
+const PARA_FONT_FAMILIES = [
+  { label: 'Sans', value: 'var(--font-ui), system-ui, sans-serif' },
+  { label: 'Serif', value: 'Georgia, "Times New Roman", serif' },
+  { label: 'Mono', value: '"Courier New", Courier, monospace' },
+];
+
+const RichParaEditor = React.memo(function RichParaEditor({ initialContent, style, onChange }: {
+  initialContent: string;
+  style?: React.CSSProperties;
+  onChange: (v: string) => void;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const onChangeRef = React.useRef(onChange);
+  onChangeRef.current = onChange;
+  const [toolbar, setToolbar] = React.useState<{ x: number; y: number } | null>(null);
+  const [showColorPicker, setShowColorPicker] = React.useState<'text' | 'bg' | null>(null);
+  const savedRange = React.useRef<Range | null>(null);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Use innerHTML so stored HTML renders correctly
+    el.innerHTML = isHtmlContent(initialContent) ? initialContent : (initialContent || '');
+    return () => {
+      if (el) onChangeRef.current(sanitizeParaHtml(el.innerHTML));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const emitChange = () => {
+    const el = ref.current;
+    if (el) onChangeRef.current(sanitizeParaHtml(el.innerHTML));
+  };
+
+  const wrapSelection = (styleKey: 'fontSize' | 'fontFamily', value: string) => {
+    const el = ref.current;
+    if (!el) return;
+    const sel = window.getSelection();
+    if (savedRange.current && (!sel || sel.isCollapsed)) {
+      sel?.removeAllRanges();
+      sel?.addRange(savedRange.current);
+    }
+    const activeSel = window.getSelection();
+    if (!activeSel || activeSel.isCollapsed || activeSel.rangeCount === 0) return;
+    const range = activeSel.getRangeAt(0);
+    const frag = range.extractContents();
+    const span = document.createElement('span');
+    span.style[styleKey] = value;
+    span.appendChild(frag);
+    range.insertNode(span);
+    range.selectNodeContents(span);
+    activeSel.removeAllRanges();
+    activeSel.addRange(range);
+    emitChange();
+    setShowColorPicker(null);
+  };
+
+  const checkSelection = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+      setToolbar(null);
+      setShowColorPicker(null);
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    if (!ref.current?.contains(range.commonAncestorContainer)) {
+      setToolbar(null);
+      return;
+    }
+    const rect = range.getBoundingClientRect();
+    setToolbar({ x: rect.left + rect.width / 2, y: rect.top - 6 });
+  };
+
+  const fmt = (cmd: string, value?: string) => {
+    const el = ref.current;
+    if (!el) return;
+    // Restore saved range if selection was lost when clicking toolbar
+    const sel = window.getSelection();
+    if (savedRange.current && (!sel || sel.isCollapsed)) {
+      sel?.removeAllRanges();
+      sel?.addRange(savedRange.current);
+    }
+    document.execCommand(cmd, false, value);
+    emitChange();
+    setShowColorPicker(null);
+    // Recheck toolbar position
+    setTimeout(checkSelection, 0);
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <div
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        style={{ outline: 'none', cursor: 'text', background: 'rgba(191,33,30,0.06)', borderRadius: 4, whiteSpace: 'pre-wrap', ...style }}
+        onInput={emitChange}
+        onBlur={() => { emitChange(); setToolbar(null); setShowColorPicker(null); }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onPaste={(e) => {
+          e.preventDefault();
+          const text = e.clipboardData.getData('text/plain');
+          const sel = window.getSelection();
+          if (!sel || sel.rangeCount === 0) return;
+          const range = sel.getRangeAt(0);
+          range.deleteContents();
+          const frag = document.createDocumentFragment();
+          text.split('\n').forEach((line, i) => {
+            if (i > 0) frag.appendChild(document.createElement('br'));
+            if (line) frag.appendChild(document.createTextNode(line));
+          });
+          range.insertNode(frag);
+          range.collapse(false);
+          sel.removeAllRanges();
+          sel.addRange(range);
+          emitChange();
+        }}
+        onMouseUp={checkSelection}
+        onKeyUp={checkSelection}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') { e.stopPropagation(); setToolbar(null); return; }
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount > 0) {
+              const range = sel.getRangeAt(0);
+              range.deleteContents();
+              const br = document.createElement('br');
+              range.insertNode(br);
+              if (!br.nextSibling) {
+                br.parentNode?.insertBefore(document.createElement('br'), null);
+              }
+              range.setStartAfter(br);
+              range.setEndAfter(br);
+              sel.removeAllRanges();
+              sel.addRange(range);
+            }
+            emitChange();
+          }
+          // Save selection before keyboard shortcut
+          const sel = window.getSelection();
+          if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
+            savedRange.current = sel.getRangeAt(0).cloneRange();
+          }
+          // Keyboard shortcuts
+          if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+            if (e.key === 'b') { e.preventDefault(); fmt('bold'); }
+            if (e.key === 'i') { e.preventDefault(); fmt('italic'); }
+            if (e.key === 'u') { e.preventDefault(); fmt('underline'); }
+          }
+        }}
+        onMouseDown={() => {
+          const sel = window.getSelection();
+          if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
+            savedRange.current = sel.getRangeAt(0).cloneRange();
+          }
+        }}
+      />
+      {toolbar && (
+        <div
+          style={{
+            position: 'fixed',
+            left: toolbar.x, top: toolbar.y,
+            transform: 'translate(-50%, -100%)',
+            zIndex: 9999,
+            display: 'flex', alignItems: 'center', gap: 2,
+            background: '#1a1a1a', border: '1px solid #333',
+            borderRadius: 8, padding: '4px 6px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+            userSelect: 'none',
+          }}
+          onMouseDown={(e) => {
+            // Save selection before toolbar click steals focus
+            const sel = window.getSelection();
+            if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
+              savedRange.current = sel.getRangeAt(0).cloneRange();
+            }
+            e.preventDefault();
+          }}
+        >
+          {/* Bold */}
+          <button
+            title="Negreta (Ctrl+B)"
+            onClick={() => fmt('bold')}
+            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13, padding: '2px 6px', borderRadius: 4, lineHeight: 1 }}
+          >B</button>
+          {/* Italic */}
+          <button
+            title="Cursiva (Ctrl+I)"
+            onClick={() => fmt('italic')}
+            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontStyle: 'italic', fontSize: 13, padding: '2px 6px', borderRadius: 4, lineHeight: 1 }}
+          >I</button>
+          {/* Underline */}
+          <button
+            title="Subratllat (Ctrl+U)"
+            onClick={() => fmt('underline')}
+            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', textDecoration: 'underline', fontSize: 13, padding: '2px 6px', borderRadius: 4, lineHeight: 1 }}
+          >U</button>
+          <div style={{ width: 1, height: 16, background: '#444', margin: '0 2px' }} />
+          {/* Text color */}
+          <button
+            title="Color de text"
+            onClick={() => setShowColorPicker(v => v === 'text' ? null : 'text')}
+            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13, padding: '2px 6px', borderRadius: 4, lineHeight: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}
+          >
+            <span style={{ fontSize: 12 }}>A</span>
+            <span style={{ width: 14, height: 3, background: '#bf211e', borderRadius: 2 }} />
+          </button>
+          {/* Background/highlight color */}
+          <button
+            title="Color de fons / ressaltat"
+            onClick={() => setShowColorPicker(v => v === 'bg' ? null : 'bg')}
+            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13, padding: '2px 6px', borderRadius: 4, lineHeight: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}
+          >
+            <span style={{ fontSize: 12 }}>✏</span>
+            <span style={{ width: 14, height: 3, background: '#fef9c3', borderRadius: 2, border: '1px solid #999' }} />
+          </button>
+          <div style={{ width: 1, height: 16, background: '#444', margin: '0 2px' }} />
+          {/* Font sizes */}
+          {PARA_FONT_SIZES.map(({ label, px }) => (
+            <button
+              key={label}
+              title={`Mida ${label} (${px})`}
+              onMouseDown={(e) => { e.preventDefault(); const sel = window.getSelection(); if (sel && !sel.isCollapsed && sel.rangeCount > 0) savedRange.current = sel.getRangeAt(0).cloneRange(); }}
+              onClick={() => wrapSelection('fontSize', px)}
+              style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: label === 'XL' ? 13 : label === 'L' ? 11 : 9, fontWeight: 600, padding: '2px 4px', borderRadius: 4, lineHeight: 1 }}
+            >{label}</button>
+          ))}
+          <div style={{ width: 1, height: 16, background: '#444', margin: '0 2px' }} />
+          {/* Font families */}
+          {PARA_FONT_FAMILIES.map(({ label, value }) => (
+            <button
+              key={label}
+              title={`Tipografia ${label}`}
+              onMouseDown={(e) => { e.preventDefault(); const sel = window.getSelection(); if (sel && !sel.isCollapsed && sel.rangeCount > 0) savedRange.current = sel.getRangeAt(0).cloneRange(); }}
+              onClick={() => wrapSelection('fontFamily', value)}
+              style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: 10, fontWeight: label === 'Serif' ? undefined : 600, fontStyle: label === 'Serif' ? 'italic' : undefined, fontFamily: label === 'Mono' ? 'monospace' : undefined, padding: '2px 5px', borderRadius: 4, lineHeight: 1 }}
+            >{label}</button>
+          ))}
+          {/* Color swatches dropdown */}
+          {showColorPicker && (
+            <div style={{
+              position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+              marginTop: 6, background: '#1a1a1a', border: '1px solid #333',
+              borderRadius: 8, padding: 8, display: 'flex', gap: 6, zIndex: 10000,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+            }}>
+              {(showColorPicker === 'text' ? PARA_COLORS : PARA_BG_COLORS).map(c => (
+                <button
+                  key={c}
+                  title={c}
+                  onClick={() => fmt(showColorPicker === 'text' ? 'foreColor' : 'hiliteColor', c)}
+                  style={{
+                    width: 20, height: 20, borderRadius: 4,
+                    background: c === 'transparent' ? 'none' : c,
+                    border: c === 'transparent' ? '1.5px dashed #666' : c === '#ffffff' ? '1px solid #666' : 'none',
+                    cursor: 'pointer',
+                    position: 'relative',
+                  }}
+                >
+                  {c === 'transparent' && <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: 10 }}>×</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 });
 
@@ -9626,8 +10129,10 @@ function NewsTileContent({ tile, editable, activeLang, onChange, onRequestImage,
         : <div style={{ fontFamily: NT.uiFont, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: NT.mute }}>{renderInlineLinks(tc)}</div>;
     case 'paragraph':
       return editable
-        ? <EditableText key={edKey} initialContent={tc} onChange={onChange} style={{ fontFamily: NT.bodyFont, fontSize: 19, lineHeight: 1.65, color: NT.ink, fontWeight: 400 }} />
-        : <div style={{ fontFamily: NT.bodyFont, fontSize: 19, lineHeight: 1.65, color: NT.ink, whiteSpace: 'pre-wrap', fontWeight: 400 }}>{renderInlineLinks(tc)}</div>;
+        ? <RichParaEditor key={edKey} initialContent={tc} onChange={onChange} style={{ fontFamily: 'var(--font-ui)', fontSize: 16, lineHeight: 1.625, color: '#4E524F', fontWeight: 500 }} />
+        : isHtmlContent(tc)
+          ? <div className="text-gray-600 dark:text-zinc-300 text-base leading-relaxed font-medium" style={{ fontFamily: 'var(--font-ui)', whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: sanitizeParaHtml(tc) }} />
+          : <div className="text-gray-600 dark:text-zinc-300 text-base leading-relaxed font-medium" style={{ fontFamily: 'var(--font-ui)', whiteSpace: 'pre-wrap' }}>{renderInlineLinks(tc)}</div>;
     case 'pullquote':
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%' }}>
@@ -9858,11 +10363,12 @@ function NewsTilesViewer({ content, lang = 'ca' }: { content: string; lang?: str
 }
 
 // ─── Tile chrome ─────────────────────────────────────────────────────────────
-function NewsTileEl({ tile, selected, editing, gridLines, activeLang, onSelect, onEdit, onChange, onDelete, onPointerDown, onResizePointerDown, onRequestImage, onRequestVideo }: {
+function NewsTileEl({ tile, selected, editing, gridLines, activeLang, onSelect, onEdit, onStopEdit, onChange, onDelete, onPointerDown, onResizePointerDown, onRequestImage, onRequestVideo }: {
   tile: NewsTile; selected: boolean; editing: string | null; gridLines: boolean;
   activeLang: 'ca'|'es'|'en';
   onSelect: (id: string) => void;
   onEdit: (id: string) => void;
+  onStopEdit: () => void;
   onChange: (id: string, content: string) => void;
   onDelete: (id: string) => void;
   onPointerDown: (e: React.PointerEvent, t: NewsTile) => void;
@@ -9925,14 +10431,55 @@ function NewsTileEl({ tile, selected, editing, gridLines, activeLang, onSelect, 
               }}
             >✕</button>
           </div>
+          {/* Edit / Save buttons for text tiles */}
+          {['headline','subhead','byline','paragraph','pullquote','list','caption'].includes(tile.type) && (
+            editing === tile.id ? (
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onStopEdit(); }}
+                style={{
+                  position: 'absolute', bottom: 8, right: 8,
+                  background: '#057a55', color: '#fff',
+                  border: 0, padding: '5px 12px',
+                  borderRadius: 999, fontFamily: NT.uiFont,
+                  fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  boxShadow: '0 2px 8px rgba(5,122,85,0.3)',
+                  zIndex: 10,
+                }}
+              >✓ Desa</button>
+            ) : (
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onEdit(tile.id); }}
+                style={{
+                  position: 'absolute', bottom: 8, right: 8,
+                  background: NT.accent, color: NT.accentInk,
+                  border: 0, padding: '5px 12px',
+                  borderRadius: 999, fontFamily: NT.uiFont,
+                  fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  zIndex: 10,
+                }}
+              >✏ Edita</button>
+            )
+          )}
           <div onPointerDown={(e) => onResizePointerDown(e, tile, 'se')}
-            style={{ position: 'absolute', right: -4, bottom: -4, width: 14, height: 14, background: NT.accent, borderRadius: '50%', cursor: 'nwse-resize', boxShadow: '0 0 0 2px white' }} />
+            style={{ position: 'absolute', right: -12, bottom: -12, width: 28, height: 28, cursor: 'nwse-resize', display: 'grid', placeItems: 'center' }}>
+            <div style={{ width: 14, height: 14, background: NT.accent, borderRadius: '50%', boxShadow: '0 0 0 2px white', pointerEvents: 'none' }} />
+          </div>
           <div onPointerDown={(e) => onResizePointerDown(e, tile, 'sw')}
-            style={{ position: 'absolute', left: -4, bottom: -4, width: 14, height: 14, background: NT.accent, borderRadius: '50%', cursor: 'nesw-resize', boxShadow: '0 0 0 2px white' }} />
+            style={{ position: 'absolute', left: -12, bottom: -12, width: 28, height: 28, cursor: 'nesw-resize', display: 'grid', placeItems: 'center' }}>
+            <div style={{ width: 14, height: 14, background: NT.accent, borderRadius: '50%', boxShadow: '0 0 0 2px white', pointerEvents: 'none' }} />
+          </div>
           <div onPointerDown={(e) => onResizePointerDown(e, tile, 'e')}
-            style={{ position: 'absolute', right: -3, top: '50%', width: 6, height: 28, background: NT.accent, transform: 'translateY(-50%)', borderRadius: 3, cursor: 'ew-resize' }} />
+            style={{ position: 'absolute', right: -10, top: '50%', width: 20, height: 44, transform: 'translateY(-50%)', cursor: 'ew-resize', display: 'grid', placeItems: 'center' }}>
+            <div style={{ width: 6, height: 28, background: NT.accent, borderRadius: 3, pointerEvents: 'none' }} />
+          </div>
           <div onPointerDown={(e) => onResizePointerDown(e, tile, 's')}
-            style={{ position: 'absolute', bottom: -3, left: '50%', width: 28, height: 6, background: NT.accent, transform: 'translateX(-50%)', borderRadius: 3, cursor: 'ns-resize' }} />
+            style={{ position: 'absolute', bottom: -10, left: '50%', width: 44, height: 20, transform: 'translateX(-50%)', cursor: 'ns-resize', display: 'grid', placeItems: 'center' }}>
+            <div style={{ width: 28, height: 6, background: NT.accent, borderRadius: 3, pointerEvents: 'none' }} />
+          </div>
         </>
       )}
     </div>
@@ -10540,6 +11087,7 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
                     gridLines={gridLines}
                     onSelect={preview ? () => {} : setSelectedId}
                     onEdit={preview ? () => {} : setEditingId}
+                    onStopEdit={preview ? () => {} : () => setEditingId(null)}
                     onChange={updateTileContent}
                     onDelete={deleteTile}
                     onPointerDown={preview ? () => {} : startTileDrag}
@@ -10761,6 +11309,973 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
   );
 }
 
+// ── CourseTileCanvas ──────────────────────────────────────────────────────────
+
+function CourseTileCanvas({
+  tiles,
+  onTilesChange,
+  editable,
+  activeLang = 'ca',
+}: {
+  tiles: NewsTile[];
+  onTilesChange: (tiles: NewsTile[]) => void;
+  editable: boolean;
+  activeLang?: 'ca' | 'es' | 'en';
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [drag, setDrag] = useState<any>(null);
+  const [hoverGrid, setHoverGrid] = useState<{x:number;y:number;w:number;h:number} | null>(null);
+  const [metrics, setMetrics] = useState({ cw: 80, rh: NG_ROW_H });
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const pendingImageId = useRef<string | null>(null);
+  const pendingVideoId = useRef<string | null>(null);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = canvasRef.current;
+      if (!el) return;
+      const w = el.clientWidth;
+      const cw = (w - NG_GAP * (NG_COLS - 1)) / NG_COLS;
+      setMetrics({ cw, rh: NG_ROW_H });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (canvasRef.current) ro.observe(canvasRef.current);
+    window.addEventListener('resize', measure);
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
+  }, []);
+
+  const minRows = useMemo(
+    () => Math.max(10, ...tiles.map(t => t.y + t.h + 2)),
+    [tiles],
+  );
+
+  const projectedTiles = useMemo<NewsTile[] | null>(() => {
+    if (!drag) return null;
+    if (drag.kind === 'move' && hoverGrid) {
+      const moved = tiles.map(tt => tt.id === drag.id
+        ? newsClamp({ ...tt, x: hoverGrid.x, y: hoverGrid.y })
+        : tt);
+      return newsResolveOverlaps(moved, drag.id);
+    }
+    if (drag.kind === 'resize') return newsResolveOverlaps(tiles, drag.id);
+    return null;
+  }, [drag, hoverGrid, tiles]);
+
+  const startPaletteDrag = useCallback((e: React.PointerEvent, type: NewsTileType) => {
+    e.preventDefault();
+    const def = NEWS_TYPES[type];
+    setDrag({ kind: 'palette', type, w: def.w, h: def.h, x: e.clientX, y: e.clientY });
+  }, []);
+
+  const startTileDrag = useCallback((e: React.PointerEvent, tile: NewsTile) => {
+    if (editingId === tile.id) return;
+    e.preventDefault();
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setDrag({
+      kind: 'move', id: tile.id,
+      offX: e.clientX - r.left, offY: e.clientY - r.top,
+      x: e.clientX, y: e.clientY, w: tile.w, h: tile.h,
+    });
+    setSelectedId(tile.id);
+  }, [editingId]);
+
+  const startResize = useCallback((e: React.PointerEvent, tile: NewsTile, dir: 'se'|'sw'|'e'|'s') => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDrag({
+      kind: 'resize', id: tile.id, dir,
+      x: e.clientX, y: e.clientY,
+      origin: { x: tile.x, y: tile.y, w: tile.w, h: tile.h },
+    });
+    setSelectedId(tile.id);
+  }, []);
+
+  useEffect(() => {
+    if (!drag) return;
+    const move = (e: PointerEvent) => {
+      const c = canvasRef.current;
+      if (drag.kind === 'palette') {
+        setDrag((d: any) => ({ ...d, x: e.clientX, y: e.clientY }));
+        if (!c) return;
+        const r = c.getBoundingClientRect();
+        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+          const localX = e.clientX - r.left - (drag.w * metrics.cw) / 2;
+          const localY = e.clientY - r.top;
+          const gx = Math.round(localX / (metrics.cw + NG_GAP));
+          const gy = Math.round(localY / (metrics.rh + NG_GAP));
+          setHoverGrid({ x: Math.max(0, Math.min(NG_COLS - drag.w, gx)), y: Math.max(0, gy), w: drag.w, h: drag.h });
+        } else setHoverGrid(null);
+      } else if (drag.kind === 'move') {
+        if (!c) return;
+        const r = c.getBoundingClientRect();
+        const localX = e.clientX - r.left - drag.offX;
+        const localY = e.clientY - r.top - drag.offY;
+        const gx = Math.round(localX / (metrics.cw + NG_GAP));
+        const gy = Math.round(localY / (metrics.rh + NG_GAP));
+        const tile = tiles.find(t => t.id === drag.id);
+        if (!tile) return;
+        const nx = Math.max(0, Math.min(NG_COLS - tile.w, gx));
+        const ny = Math.max(0, gy);
+        setHoverGrid({ x: nx, y: ny, w: tile.w, h: tile.h });
+      } else if (drag.kind === 'resize') {
+        const dx = (e.clientX - drag.x) / (metrics.cw + NG_GAP);
+        const dy = (e.clientY - drag.y) / (metrics.rh + NG_GAP);
+        const o = drag.origin;
+        let nx = o.x, nw = o.w, nh = o.h;
+        if (drag.dir === 'sw') {
+          nx = Math.max(0, Math.min(o.x + o.w - 1, Math.round(o.x + dx)));
+          nw = Math.max(1, o.x + o.w - nx);
+          nh = Math.max(1, Math.round(o.h + dy));
+        } else {
+          if (drag.dir.includes('e')) nw = Math.round(o.w + dx);
+          if (drag.dir.includes('s')) nh = Math.round(o.h + dy);
+          nw = Math.max(1, Math.min(NG_COLS - o.x, nw));
+          nh = Math.max(1, nh);
+        }
+        onTilesChange(tiles.map(t => t.id === drag.id ? { ...t, x: nx, w: nw, h: nh } : t));
+      }
+    };
+    const up = () => {
+      if (drag.kind === 'palette') {
+        if (hoverGrid) {
+          const def = NEWS_TYPES[drag.type as NewsTileType];
+          const newTile = newsClamp({
+            id: newsUid(), type: drag.type, x: hoverGrid.x, y: hoverGrid.y,
+            w: drag.w, h: drag.h, content: def.content,
+          });
+          onTilesChange(newsResolveOverlaps([...tiles, newTile], newTile.id));
+        }
+      } else if (drag.kind === 'move') {
+        if (hoverGrid) {
+          const tile = tiles.find(t => t.id === drag.id);
+          if (tile) {
+            onTilesChange(newsResolveOverlaps(
+              tiles.map(tt => tt.id === drag.id
+                ? newsClamp({ ...tt, x: hoverGrid.x, y: hoverGrid.y })
+                : tt),
+              drag.id,
+            ));
+          }
+        }
+      } else if (drag.kind === 'resize') {
+        onTilesChange(newsResolveOverlaps(tiles, drag.id));
+      }
+      setDrag(null); setHoverGrid(null);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+  }, [drag, hoverGrid, tiles, metrics, onTilesChange]);
+
+  useEffect(() => {
+    if (!editingId) return;
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest(`[data-tile="${editingId}"]`)) setEditingId(null);
+    };
+    window.addEventListener('pointerdown', onDown);
+    return () => window.removeEventListener('pointerdown', onDown);
+  }, [editingId]);
+
+  useEffect(() => {
+    if (!editable) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (editingId) return;
+      if ((e.key === 'Backspace' || e.key === 'Delete') && selectedId) {
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+        e.preventDefault();
+        onTilesChange(tiles.filter(t => t.id !== selectedId));
+        setSelectedId(null);
+      }
+      if (e.key === 'Escape') { setSelectedId(null); setEditingId(null); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedId, editingId, editable, tiles, onTilesChange]);
+
+  const updateTileContent = (id: string, content: string) => {
+    onTilesChange(tiles.map(t => t.id === id ? { ...t, content } : t));
+  };
+  const deleteTile = (id: string) => {
+    onTilesChange(tiles.filter(t => t.id !== id));
+    setSelectedId(null);
+  };
+  const requestImageUpload = (id: string) => {
+    pendingImageId.current = id;
+    fileInputRef.current?.click();
+  };
+  const handleImageFile = async (file: File) => {
+    const id = pendingImageId.current;
+    pendingImageId.current = null;
+    if (!id || !file) return;
+    try {
+      const full = await apiUploadImage(file);
+      const m = full.match(/(\/uploads\/[^?#]+)/);
+      const url = m ? m[1] : full;
+      onTilesChange(tiles.map(t => t.id === id ? { ...t, url } : t));
+    } catch { /* silently ignore */ }
+  };
+  const requestVideoUpload = (id: string) => {
+    pendingVideoId.current = id;
+    videoInputRef.current?.click();
+  };
+  const handleVideoFile = async (file: File) => {
+    const id = pendingVideoId.current;
+    pendingVideoId.current = null;
+    if (!id || !file) return;
+    try {
+      const { url } = await apiUploadMedia(file);
+      const m = url.match(/(\/uploads\/[^?#]+)/);
+      const rel = m ? m[1] : url;
+      onTilesChange(tiles.map(t => t.id === id ? { ...t, url: rel } : t));
+    } catch { /* silently ignore */ }
+  };
+
+  const totalH = minRows * metrics.rh + (minRows - 1) * NG_GAP;
+  const gridLines = editable;
+
+  const canvas = (
+    <div
+      onClick={() => { if (editable) { setSelectedId(null); setEditingId(null); } }}
+      style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: editable ? 16 : 0, position: 'relative' }}
+    >
+      {editable && (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.currentTarget.value = ''; }}
+          />
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/mp4,video/webm,video/quicktime"
+            style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleVideoFile(f); e.currentTarget.value = ''; }}
+          />
+        </>
+      )}
+      <div
+        ref={canvasRef}
+        style={{
+          position: 'relative',
+          width: '100%', height: totalH, minHeight: 160,
+          backgroundImage: gridLines ? `
+            linear-gradient(to right, ${NT.grid} 1px, transparent 1px),
+            linear-gradient(to bottom, ${NT.grid} 1px, transparent 1px)
+          ` : 'none',
+          backgroundSize: gridLines ? `${metrics.cw + NG_GAP}px 100%, 100% ${metrics.rh + NG_GAP}px` : 'auto',
+        }}
+      >
+        {editable && hoverGrid && drag && (drag.kind === 'palette' || drag.kind === 'move') && (
+          <div style={{
+            position: 'absolute',
+            ...newsTileBox(hoverGrid, metrics.cw, metrics.rh),
+            background: 'rgba(191,33,30,0.14)',
+            border: `1.5px dashed ${NT.accent}`,
+            borderRadius: NT.tileRadius,
+            pointerEvents: 'none',
+            transition: 'left .08s, top .08s, width .08s, height .08s',
+          }} />
+        )}
+        {tiles.map(tt => {
+          const isDragged = drag?.kind === 'move' && drag.id === tt.id;
+          const isResizing = drag?.kind === 'resize' && drag.id === tt.id;
+          const renderTile = projectedTiles?.find(p => p.id === tt.id) ?? tt;
+          return (
+            <div key={tt.id} style={{
+              position: 'absolute',
+              ...newsTileBox(isDragged || isResizing ? tt : renderTile, metrics.cw, metrics.rh),
+              opacity: isDragged && hoverGrid ? 0.35 : 1,
+              transition: (isDragged || isResizing) ? 'none' : 'left .18s cubic-bezier(0.4,0,0.2,1), top .18s cubic-bezier(0.4,0,0.2,1), width .18s cubic-bezier(0.4,0,0.2,1), height .18s cubic-bezier(0.4,0,0.2,1)',
+            }}>
+              <NewsTileEl
+                tile={tt}
+                selected={editable ? selectedId === tt.id : false}
+                editing={editable ? editingId : null}
+                activeLang={activeLang}
+                gridLines={gridLines}
+                onSelect={editable ? setSelectedId : () => {}}
+                onEdit={editable ? setEditingId : () => {}}
+                onStopEdit={editable ? () => setEditingId(null) : () => {}}
+                onChange={updateTileContent}
+                onDelete={deleteTile}
+                onPointerDown={editable ? startTileDrag : () => {}}
+                onResizePointerDown={startResize}
+                onRequestImage={requestImageUpload}
+                onRequestVideo={requestVideoUpload}
+              />
+            </div>
+          );
+        })}
+        {tiles.length === 0 && editable && (
+          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
+            <div style={{ textAlign: 'center', color: NT.mute, fontFamily: NT.uiFont, fontSize: 12 }}>
+              Arrossega blocs del panell cap aquí
+            </div>
+          </div>
+        )}
+      </div>
+      {editable && drag?.kind === 'palette' && (
+        <div style={{
+          position: 'fixed', left: drag.x, top: drag.y,
+          transform: 'translate(-50%, -50%)',
+          padding: '8px 14px', background: NT.accent, color: NT.accentInk,
+          borderRadius: 999, fontFamily: NT.uiFont, fontSize: 12, fontWeight: 600,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+          pointerEvents: 'none', zIndex: 10000,
+        }}>{NEWS_TYPES[drag.type as NewsTileType].label} · {drag.w}×{drag.h}</div>
+      )}
+    </div>
+  );
+
+  if (!editable) return canvas;
+
+  return (
+    <div style={{ display: 'flex', minHeight: 0, flex: 1 }}>
+      <NewsPalette onPointerDownItem={startPaletteDrag} />
+      {canvas}
+    </div>
+  );
+}
+
+// ── Course editor page — route: /?course=ID ──────────────────────────────────
+function CourseEditorPage({ courseId, kind = 'external' }: { courseId: number; kind?: 'external' | 'quiz' }) {
+  useEffect(() => {
+    try {
+      const have = localStorage.getItem('tavil_token') || sessionStorage.getItem('tavil_token');
+      if (!have && window.opener) {
+        const op = window.opener as Window | null;
+        const tok = op?.localStorage?.getItem('tavil_token') ?? op?.sessionStorage?.getItem('tavil_token') ?? null;
+        if (tok) sessionStorage.setItem('tavil_token', tok);
+      }
+    } catch { /* cross-origin */ }
+    document.title = 'Editor formació · TAVIL';
+  }, []);
+
+  const [courseRaw, setCourseRaw] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [savedToast, setSavedToast] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [preview, setPreview] = useState(false);
+
+  // Course metadata (settings modal)
+  const [title, setTitle] = useState('Esborrany sense títol');
+  const [summary, setSummary] = useState('');
+
+  // Composer state
+  const [tiles, setTiles] = useState<NewsTile[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [drag, setDrag] = useState<any>(null);
+  const [hoverGrid, setHoverGrid] = useState<{x:number;y:number;w:number;h:number} | null>(null);
+  const [metrics, setMetrics] = useState({ cw: 80, rh: NG_ROW_H });
+
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingImageId = useRef<string | null>(null);
+  const pendingVideoId = useRef<string | null>(null);
+
+  // Load course
+  useEffect(() => {
+    const tok = localStorage.getItem('tavil_token') || sessionStorage.getItem('tavil_token') || '';
+    const url = kind === 'quiz'
+      ? `${API_BASE}/quizzes/${courseId}`
+      : `${API_BASE}/courses/${courseId}`;
+    fetch(url, { headers: { Authorization: `Bearer ${tok}` } })
+      .then(r => r.json())
+      .then(c => {
+        if (!c || c.error) { setError('No s\'ha pogut carregar la formació.'); return; }
+        setCourseRaw(c);
+        setTitle(c.title || 'Esborrany sense títol');
+        setSummary(c.description || '');
+        document.title = `${c.title} · Editor · TAVIL`;
+        const raw = kind === 'quiz' ? (c.page_content || '') : (c.content || '');
+        const trimmed = (raw || '').trim();
+        if (!trimmed) { setTiles([]); return; }
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed) && parsed.length && parsed[0] && typeof parsed[0].x === 'number' && typeof parsed[0].type === 'string') {
+            setTiles(parsed.map((t: any) => newsClamp({ ...t, id: t.id || newsUid() })));
+            return;
+          }
+        } catch { /* not tile JSON — fall through */ }
+        setTiles([{ id: newsUid(), type: 'paragraph', x: 0, y: 0, w: 12, h: 4, content: trimmed.replace(/<[^>]+>/g, '') }]);
+      })
+      .catch(e => setError(e.message ?? 'Error carregant formació'))
+      .finally(() => setLoading(false));
+  }, [courseId, kind]);
+
+  // Recompute cell width on resize
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = canvasRef.current;
+      if (!el) return;
+      const w = el.clientWidth;
+      const cw = (w - NG_GAP * (NG_COLS - 1)) / NG_COLS;
+      setMetrics({ cw, rh: NG_ROW_H });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (canvasRef.current) ro.observe(canvasRef.current);
+    window.addEventListener('resize', measure);
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
+  }, []);
+
+  const minRows = useMemo(
+    () => Math.max(20, ...tiles.map(t => t.y + t.h + 4)),
+    [tiles],
+  );
+
+  // Live projected positions while dragging/resizing
+  const projectedTiles = useMemo<NewsTile[] | null>(() => {
+    if (!drag) return null;
+    if (drag.kind === 'move' && hoverGrid) {
+      const moved = tiles.map(tt => tt.id === drag.id
+        ? newsClamp({ ...tt, x: hoverGrid.x, y: hoverGrid.y })
+        : tt);
+      return newsResolveOverlaps(moved, drag.id);
+    }
+    if (drag.kind === 'resize') {
+      return newsResolveOverlaps(tiles, drag.id);
+    }
+    return null;
+  }, [drag, hoverGrid, tiles]);
+
+  // ── Drag handlers ──────────────────────────────────────────────────────────
+  const startPaletteDrag = useCallback((e: React.PointerEvent, type: NewsTileType) => {
+    e.preventDefault();
+    const def = NEWS_TYPES[type];
+    setDrag({ kind: 'palette', type, w: def.w, h: def.h, x: e.clientX, y: e.clientY });
+  }, []);
+
+  const startTileDrag = useCallback((e: React.PointerEvent, tile: NewsTile) => {
+    if (editingId === tile.id) return;
+    e.preventDefault();
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setDrag({
+      kind: 'move', id: tile.id,
+      offX: e.clientX - r.left, offY: e.clientY - r.top,
+      x: e.clientX, y: e.clientY, w: tile.w, h: tile.h,
+    });
+    setSelectedId(tile.id);
+  }, [editingId]);
+
+  const startResize = useCallback((e: React.PointerEvent, tile: NewsTile, dir: 'se'|'sw'|'e'|'s') => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDrag({
+      kind: 'resize', id: tile.id, dir,
+      x: e.clientX, y: e.clientY,
+      origin: { x: tile.x, y: tile.y, w: tile.w, h: tile.h },
+    });
+    setSelectedId(tile.id);
+  }, []);
+
+  // ── Pointer move/up while drag is active ──────────────────────────────────
+  useEffect(() => {
+    if (!drag) return;
+    const move = (e: PointerEvent) => {
+      const c = canvasRef.current;
+      if (drag.kind === 'palette') {
+        setDrag((d: any) => ({ ...d, x: e.clientX, y: e.clientY }));
+        if (!c) return;
+        const r = c.getBoundingClientRect();
+        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+          const localX = e.clientX - r.left - (drag.w * metrics.cw) / 2;
+          const localY = e.clientY - r.top;
+          const gx = Math.round(localX / (metrics.cw + NG_GAP));
+          const gy = Math.round(localY / (metrics.rh + NG_GAP));
+          setHoverGrid({ x: Math.max(0, Math.min(NG_COLS - drag.w, gx)), y: Math.max(0, gy), w: drag.w, h: drag.h });
+        } else setHoverGrid(null);
+      } else if (drag.kind === 'move') {
+        if (!c) return;
+        const r = c.getBoundingClientRect();
+        const localX = e.clientX - r.left - drag.offX;
+        const localY = e.clientY - r.top - drag.offY;
+        const gx = Math.round(localX / (metrics.cw + NG_GAP));
+        const gy = Math.round(localY / (metrics.rh + NG_GAP));
+        const tile = tiles.find(t => t.id === drag.id);
+        if (!tile) return;
+        const nx = Math.max(0, Math.min(NG_COLS - tile.w, gx));
+        const ny = Math.max(0, gy);
+        setHoverGrid({ x: nx, y: ny, w: tile.w, h: tile.h });
+      } else if (drag.kind === 'resize') {
+        const dx = (e.clientX - drag.x) / (metrics.cw + NG_GAP);
+        const dy = (e.clientY - drag.y) / (metrics.rh + NG_GAP);
+        const o = drag.origin;
+        let nx = o.x, nw = o.w, nh = o.h;
+        if (drag.dir === 'sw') {
+          nx = Math.max(0, Math.min(o.x + o.w - 1, Math.round(o.x + dx)));
+          nw = Math.max(1, o.x + o.w - nx);
+          nh = Math.max(1, Math.round(o.h + dy));
+        } else {
+          if (drag.dir.includes('e')) nw = Math.round(o.w + dx);
+          if (drag.dir.includes('s')) nh = Math.round(o.h + dy);
+          nw = Math.max(1, Math.min(NG_COLS - o.x, nw));
+          nh = Math.max(1, nh);
+        }
+        setTiles(prev => prev.map(t => t.id === drag.id ? { ...t, x: nx, w: nw, h: nh } : t));
+      }
+    };
+    const up = () => {
+      if (drag.kind === 'palette') {
+        if (hoverGrid) {
+          const def = NEWS_TYPES[drag.type as NewsTileType];
+          const newTile = newsClamp({
+            id: newsUid(), type: drag.type, x: hoverGrid.x, y: hoverGrid.y,
+            w: drag.w, h: drag.h, content: def.content,
+          });
+          setTiles(prev => newsResolveOverlaps([...prev, newTile], newTile.id));
+        }
+      } else if (drag.kind === 'move') {
+        if (hoverGrid) {
+          const tile = tiles.find(t => t.id === drag.id);
+          if (tile) {
+            setTiles(prev => newsResolveOverlaps(
+              prev.map(tt => tt.id === drag.id
+                ? newsClamp({ ...tt, x: hoverGrid.x, y: hoverGrid.y })
+                : tt),
+              drag.id,
+            ));
+          }
+        }
+      } else if (drag.kind === 'resize') {
+        setTiles(prev => newsResolveOverlaps(prev, drag.id));
+      }
+      setDrag(null); setHoverGrid(null);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+  }, [drag, hoverGrid, tiles, metrics]);
+
+  // Exit edit on click outside the editing tile
+  useEffect(() => {
+    if (!editingId) return;
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest(`[data-tile="${editingId}"]`)) setEditingId(null);
+    };
+    window.addEventListener('pointerdown', onDown);
+    return () => window.removeEventListener('pointerdown', onDown);
+  }, [editingId]);
+
+  // Keyboard: delete selected, escape clears
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (editingId) return;
+      if ((e.key === 'Backspace' || e.key === 'Delete') && selectedId) {
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+        e.preventDefault();
+        setTiles(prev => prev.filter(t => t.id !== selectedId));
+        setSelectedId(null);
+      }
+      if (e.key === 'Escape') { setSelectedId(null); setEditingId(null); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedId, editingId]);
+
+  const updateTileContent = (id: string, content: string) => {
+    setTiles(prev => prev.map(t => t.id === id ? { ...t, content } : t));
+  };
+  const deleteTile = (id: string) => {
+    setTiles(prev => prev.filter(t => t.id !== id));
+    setSelectedId(null);
+  };
+  const requestImageUpload = (id: string) => {
+    pendingImageId.current = id;
+    fileInputRef.current?.click();
+  };
+  const handleImageFile = async (file: File) => {
+    const id = pendingImageId.current;
+    pendingImageId.current = null;
+    if (!id || !file) return;
+    try {
+      const full = await apiUploadImage(file);
+      const m = full.match(/(\/uploads\/[^?#]+)/);
+      const url = m ? m[1] : full;
+      setTiles(prev => prev.map(t => t.id === id ? { ...t, url } : t));
+    } catch (e: any) {
+      setError(e.message ?? 'Error pujant imatge');
+    }
+  };
+  const requestVideoUpload = (id: string) => {
+    pendingVideoId.current = id;
+    videoInputRef.current?.click();
+  };
+  const handleVideoFile = async (file: File) => {
+    const id = pendingVideoId.current;
+    pendingVideoId.current = null;
+    if (!id || !file) return;
+    try {
+      const { url } = await apiUploadMedia(file);
+      const m = url.match(/(\/uploads\/[^?#]+)/);
+      const rel = m ? m[1] : url;
+      setTiles(prev => prev.map(t => t.id === id ? { ...t, url: rel } : t));
+    } catch (e: any) {
+      setError(e.message ?? 'Error pujant vídeo');
+    }
+  };
+
+  const handleSave = async () => {
+    if (!title.trim()) { setError('El títol és obligatori'); return; }
+    setSaving(true); setError('');
+    try {
+      const tok = localStorage.getItem('tavil_token') || sessionStorage.getItem('tavil_token') || '';
+      const url = kind === 'quiz'
+        ? `${API_BASE}/quizzes/${courseId}`
+        : `${API_BASE}/courses/${courseId}`;
+      const body = kind === 'quiz'
+        ? { ...courseRaw, title: title.trim(), description: summary.trim(), page_content: JSON.stringify(tiles) }
+        : { ...courseRaw, title: title.trim(), description: summary.trim(), content: JSON.stringify(tiles) };
+      await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+        body: JSON.stringify(body),
+      });
+      setCourseRaw((prev: any) => ({ ...prev, title: title.trim(), description: summary.trim() }));
+      setSavedToast(true);
+      setTimeout(() => setSavedToast(false), 1800);
+    } catch (e: any) {
+      setError(e.message ?? 'Error guardant');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, background: NT.bg, color: NT.mute,
+        display: 'grid', placeItems: 'center', fontFamily: NT.uiFont, fontSize: 13,
+      }}>Carregant formació…</div>
+    );
+  }
+
+  const totalH = minRows * metrics.rh + (minRows - 1) * NG_GAP;
+  const gridLines = !preview;
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: NT.bg, color: NT.ink,
+      fontFamily: NT.uiFont, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    }}>
+      {/* Saved toast */}
+      {savedToast && (
+        <div style={{
+          position: 'fixed', top: 18, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 60, padding: '8px 14px', borderRadius: 999,
+          background: '#3a7448', color: '#fff', fontFamily: NT.uiFont, fontSize: 12, fontWeight: 600,
+          boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+        }}>✓ Formació desada</div>
+      )}
+
+      {/* Hidden file inputs for image + video tile upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); e.currentTarget.value = ''; }}
+      />
+      <input
+        ref={videoInputRef}
+        type="file"
+        accept="video/mp4,video/webm,video/quicktime"
+        style={{ display: 'none' }}
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleVideoFile(f); e.currentTarget.value = ''; }}
+      />
+
+      {/* Top bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px',
+        background: NT.panel, borderBottom: `1px solid ${NT.soft}`, flexShrink: 0,
+      }}>
+        <button
+          onClick={() => window.close()}
+          style={{
+            background: 'transparent', border: `1px solid ${NT.soft}`,
+            color: NT.ink, padding: '6px 10px', borderRadius: NT.radius,
+            fontFamily: NT.uiFont, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+          }}
+        >← Tancar</button>
+        <div style={{
+          width: 24, height: 24, borderRadius: 4, background: NT.ink,
+          display: 'grid', placeItems: 'center', color: NT.bg,
+          fontFamily: NT.headlineFont, fontWeight: 700, fontSize: 14,
+        }}>T</div>
+        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <div style={{ fontSize: 10, color: NT.mute, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>
+            Portal · Formació
+          </div>
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Títol de la formació…"
+            style={{
+              fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 14,
+              color: NT.ink, lineHeight: 1.2, background: 'transparent',
+              border: 'none', outline: 'none', padding: 0, minWidth: 200, maxWidth: 360,
+            }}
+          />
+        </div>
+        <div style={{ flex: 1 }} />
+        {error && (
+          <span style={{
+            fontFamily: NT.uiFont, fontSize: 11, color: NT.accent,
+            background: 'rgba(191,33,30,0.08)', padding: '4px 10px', borderRadius: 999,
+            border: `1px solid ${NT.accent}33`,
+          }}>{error}</span>
+        )}
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={() => setPreview(p => !p)} style={{
+            background: 'transparent', border: `1px solid ${NT.soft}`,
+            color: NT.ink, padding: '6px 12px', borderRadius: NT.radius,
+            fontFamily: NT.uiFont, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+          }}>{preview ? '◐ Edició' : '◑ Vista prèvia'}</button>
+          <button onClick={() => setShowSettings(true)} style={{
+            background: 'transparent', border: `1px solid ${NT.soft}`,
+            color: NT.ink, padding: '6px 12px', borderRadius: NT.radius,
+            fontFamily: NT.uiFont, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+          }}>⚙ Configuració</button>
+          <button onClick={handleSave} disabled={saving || !title.trim()} style={{
+            background: NT.accent, color: NT.accentInk, border: 0,
+            padding: '6px 14px', borderRadius: NT.radius,
+            fontFamily: NT.uiFont, fontSize: 12, fontWeight: 600,
+            cursor: (saving || !title.trim()) ? 'not-allowed' : 'pointer',
+            opacity: (saving || !title.trim()) ? 0.5 : 1,
+          }}>{saving ? 'Guardant…' : 'Guardar'}</button>
+        </div>
+      </div>
+
+      {/* Body: sidebar palette + canvas */}
+      <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative' }}>
+        {!preview && <NewsPalette onPointerDownItem={startPaletteDrag} />}
+
+        <div
+          onClick={() => { setSelectedId(null); setEditingId(null); }}
+          style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 32, position: 'relative' }}
+        >
+          <div style={{
+            maxWidth: 1200, margin: '0 auto',
+            background: NT.surface, borderRadius: NT.radius,
+            border: preview ? 'none' : `1px solid ${NT.soft}`,
+            padding: preview ? 'clamp(20px, 4vw, 64px)' : 20,
+            boxShadow: preview ? 'none' : '0 1px 0 rgba(0,0,0,0.02)',
+            position: 'relative',
+          }}>
+            <div
+              ref={canvasRef}
+              style={{
+                position: 'relative',
+                width: '100%', height: totalH, minHeight: 600,
+                backgroundImage: gridLines ? `
+                  linear-gradient(to right, ${NT.grid} 1px, transparent 1px),
+                  linear-gradient(to bottom, ${NT.grid} 1px, transparent 1px)
+                ` : 'none',
+                backgroundSize: gridLines ? `${metrics.cw + NG_GAP}px 100%, 100% ${metrics.rh + NG_GAP}px` : 'auto',
+              }}
+            >
+              {/* Drop indicator */}
+              {hoverGrid && drag && (drag.kind === 'palette' || drag.kind === 'move') && (
+                <div style={{
+                  position: 'absolute',
+                  ...newsTileBox(hoverGrid, metrics.cw, metrics.rh),
+                  background: 'rgba(191,33,30,0.14)',
+                  border: `1.5px dashed ${NT.accent}`,
+                  borderRadius: NT.tileRadius,
+                  pointerEvents: 'none',
+                  transition: 'left .08s, top .08s, width .08s, height .08s',
+                }} />
+              )}
+
+              {/* Tiles */}
+              {tiles.map(tt => {
+                const isDragged = drag?.kind === 'move' && drag.id === tt.id;
+                const isResizing = drag?.kind === 'resize' && drag.id === tt.id;
+                const renderTile = projectedTiles?.find(p => p.id === tt.id) ?? tt;
+                return (
+                <div key={tt.id} style={{
+                  position: 'absolute',
+                  ...newsTileBox(isDragged || isResizing ? tt : renderTile, metrics.cw, metrics.rh),
+                  opacity: isDragged && hoverGrid ? 0.35 : 1,
+                  transition: (isDragged || isResizing) ? 'none' : 'left .18s cubic-bezier(0.4,0,0.2,1), top .18s cubic-bezier(0.4,0,0.2,1), width .18s cubic-bezier(0.4,0,0.2,1), height .18s cubic-bezier(0.4,0,0.2,1)',
+                }}>
+                  <NewsTileEl
+                    tile={tt}
+                    selected={!preview && selectedId === tt.id}
+                    editing={preview ? null : editingId}
+                    activeLang="ca"
+                    gridLines={gridLines}
+                    onSelect={preview ? () => {} : setSelectedId}
+                    onEdit={preview ? () => {} : setEditingId}
+                    onStopEdit={preview ? () => {} : () => setEditingId(null)}
+                    onChange={updateTileContent}
+                    onDelete={deleteTile}
+                    onPointerDown={preview ? () => {} : startTileDrag}
+                    onResizePointerDown={startResize}
+                    onRequestImage={requestImageUpload}
+                    onRequestVideo={requestVideoUpload}
+                  />
+                </div>
+              );
+              })}
+
+              {/* Empty state */}
+              {tiles.length === 0 && (
+                <div style={{
+                  position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
+                  pointerEvents: 'none',
+                }}>
+                  <div style={{ textAlign: 'center', color: NT.mute }}>
+                    <div style={{
+                      fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight,
+                      fontSize: 28, color: NT.ink, marginBottom: 6,
+                    }}>Contingut buit</div>
+                    <div style={{ fontFamily: NT.uiFont, fontSize: 13 }}>
+                      Arrossega qualsevol bloc del panell esquerre cap a aquesta pàgina.
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Status bar */}
+          {!preview && (
+            <div style={{
+              position: 'sticky', bottom: 0,
+              display: 'flex', gap: 16, alignItems: 'center',
+              padding: '8px 14px', maxWidth: 1200, margin: '16px auto 0',
+              background: NT.panel, border: `1px solid ${NT.soft}`,
+              borderRadius: NT.radius,
+              fontFamily: NT.uiFont, fontSize: 11, color: NT.mute,
+            }}>
+              <span><b style={{ color: NT.ink }}>{tiles.length}</b> blocs</span>
+              <span style={{ width: 1, height: 12, background: NT.soft }} />
+              <span>{minRows} files × 12 cols</span>
+              <span style={{ width: 1, height: 12, background: NT.soft }} />
+              <span style={{ color: NT.ink }}>⌫ esborrar · Esc desseleccionar</span>
+              <span style={{ flex: 1 }} />
+              <span>#{courseId}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Floating drag ghost */}
+      {drag?.kind === 'palette' && (
+        <div style={{
+          position: 'fixed', left: drag.x, top: drag.y,
+          transform: 'translate(-50%, -50%)',
+          padding: '8px 14px', background: NT.accent, color: NT.accentInk,
+          borderRadius: 999, fontFamily: NT.uiFont, fontSize: 12, fontWeight: 600,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+          pointerEvents: 'none', zIndex: 1000,
+        }}>{NEWS_TYPES[drag.type as NewsTileType].label} · {drag.w}×{drag.h}</div>
+      )}
+
+      {/* Settings modal */}
+      {showSettings && (
+        <div
+          onClick={() => setShowSettings(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 50,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(26,23,20,0.45)', backdropFilter: 'blur(4px)',
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 480,
+              background: NT.surface, borderRadius: 8,
+              border: `1px solid ${NT.soft}`,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+              padding: 24, fontFamily: NT.uiFont, color: NT.ink,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div>
+                <div style={{ fontSize: 10, color: NT.mute, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>Formació</div>
+                <div style={{ fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 22 }}>Configuració</div>
+              </div>
+              <button onClick={() => setShowSettings(false)} style={{
+                background: 'transparent', border: 'none', color: NT.mute,
+                fontSize: 18, cursor: 'pointer', padding: 4,
+              }}>✕</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>Títol</label>
+                <input
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder="Títol de la formació"
+                  style={{
+                    width: '100%', padding: '8px 10px', fontFamily: NT.uiFont, fontSize: 13,
+                    background: NT.surface, color: NT.ink,
+                    border: `1px solid ${NT.soft}`, borderRadius: NT.radius, outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>Descripció</label>
+                <textarea
+                  value={summary}
+                  onChange={e => setSummary(e.target.value)}
+                  rows={3}
+                  placeholder="Descripció breu de la formació"
+                  style={{
+                    width: '100%', padding: '8px 10px', fontFamily: NT.bodyFont, fontSize: 13, lineHeight: 1.4,
+                    background: NT.surface, color: NT.ink,
+                    border: `1px solid ${NT.soft}`, borderRadius: NT.radius, outline: 'none', resize: 'vertical',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}>
+              <button onClick={() => setShowSettings(false)} style={{
+                background: NT.accent, color: NT.accentInk, border: 0,
+                padding: '8px 16px', borderRadius: NT.radius,
+                fontFamily: NT.uiFont, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}>Fet</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 
 function App() {
@@ -10790,6 +12305,19 @@ function App() {
       if (v === 'new') return { id: null };
       const n = parseInt(v, 10);
       return Number.isFinite(n) && n > 0 ? { id: n } : null;
+    } catch { return null; }
+  }, []);
+  // Course detail/editor page: /?course=ID (external) or /?course=q-ID (quiz)
+  const courseRoute = useMemo<{ id: number; kind: 'external' | 'quiz' } | null>(() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get('course');
+      if (v === null) return null;
+      if (v.startsWith('q-')) {
+        const n = parseInt(v.slice(2), 10);
+        return Number.isFinite(n) && n > 0 ? { id: n, kind: 'quiz' } : null;
+      }
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) && n > 0 ? { id: n, kind: 'external' } : null;
     } catch { return null; }
   }, []);
 
@@ -11279,6 +12807,12 @@ function App() {
   // Standalone news article editor route.
   if (articleRoute !== null) {
     return <NewsEditorPage initialId={articleRoute.id} />;
+  }
+  // Course editor page — only for admin/formacions with explicit cedit=1 flag.
+  const _courseEditorRoles = new Set([currentUser?.role ?? '', ...(currentUser?.roles ?? [])]);
+  const _canEditCourse = _courseEditorRoles.has('Administrador') || _courseEditorRoles.has('Administrador/a') || _courseEditorRoles.has('Formacions') || _courseEditorRoles.has('Recursos humans');
+  if (courseRoute !== null && new URLSearchParams(window.location.search).get('cedit') === '1' && _canEditCourse) {
+    return <CourseEditorPage courseId={courseRoute.id} kind={courseRoute.kind} />;
   }
 
   if (!isLoggedIn) {

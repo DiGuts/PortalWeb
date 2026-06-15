@@ -48,10 +48,68 @@
     "goodAfternoon": "Buenas tardes",
     "goodEvening": "Buenas noches",
     "seeAll": "Ver todo",
-    "months": ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"],
-    "monthsAbbr": ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"],
-    "monthsGenitive": ["","de enero","de febrero","de marzo","de abril","de mayo","de junio","de julio","de agosto","de septiembre","de octubre","de noviembre","de diciembre"],
-    "days": ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"]
+    "months": [
+      "Enero",
+      "Febrero",
+      "Marzo",
+      "Abril",
+      "Mayo",
+      "Junio",
+      "Julio",
+      "Agosto",
+      "Septiembre",
+      "Octubre",
+      "Noviembre",
+      "Diciembre"
+    ],
+    "monthsAbbr": [
+      "ENE",
+      "FEB",
+      "MAR",
+      "ABR",
+      "MAY",
+      "JUN",
+      "JUL",
+      "AGO",
+      "SEP",
+      "OCT",
+      "NOV",
+      "DIC"
+    ],
+    "monthsGenitive": [
+      "",
+      "de enero",
+      "de febrero",
+      "de marzo",
+      "de abril",
+      "de mayo",
+      "de junio",
+      "de julio",
+      "de agosto",
+      "de septiembre",
+      "de octubre",
+      "de noviembre",
+      "de diciembre"
+    ],
+    "days": [
+      "Domingo",
+      "Lunes",
+      "Martes",
+      "Miércoles",
+      "Jueves",
+      "Viernes",
+      "Sábado"
+    ],
+    "daysAbbr": [
+      "Do",
+      "Lu",
+      "Ma",
+      "Mi",
+      "Ju",
+      "Vi",
+      "Sá"
+    ],
+    "required": "Campo obligatorio"
   },
   "auth": {
     "login": "Inicia sesión",
@@ -100,6 +158,7 @@
     "urgentNotice": "AVISO URGENTE",
     "upcomingAgenda": "Próximos en agenda",
     "quickAccess": "Acceso rápido",
+    "solicitudsQuick": "Solicita un sábado laborable",
     "latestNews": "Últimas noticias",
     "allNews": "Todas las noticias",
     "seeAll": "Ver",
@@ -112,7 +171,10 @@
     "novetats": "Novedades",
     "moreNews": "Más noticias",
     "noNovetats": "Todavía no hay novedades",
-    "seeAll2": "Ver todos"
+    "seeAll2": "Ver todos",
+    "upcomingActivities": "Próximas actividades",
+    "noEventsThisWeek": "Ningún evento esta semana. Consulta la agenda completa.",
+    "shortcuts": "Accesos directos"
   },
   "news": {
     "subtitle": "Información, comunicados y novedades de la empresa",
@@ -169,16 +231,47 @@
       "social": "Social",
       "rsc": "RSC",
       "wellness": "Bienestar"
-    }
+    },
+    "unlimited": "Ilimitado",
+    "limited": "Limitado",
+    "openEnrollment": "Inscripción abierta",
+    "finished": "Finalizada",
+    "availablePlaces": "{{n}} disponibles",
+    "enrolledPlaces": "{{enrolled}} inscritos · Plazas libres",
+    "moreInfoAndEnroll": "Más información e inscripción",
+    "enrolledSuccess": "✓ Inscrito/a",
+    "enrollAction": "Inscribirme",
+    "connectSubtitle": "Eventos sociales, deportivos y culturales para los trabajadores de TAVIL",
+    "upcomingCount": "Próximas ({{count}})",
+    "pastCount": "Pasadas ({{count}})"
   },
   "agenda": {
     "subtitle": "Calendario interno de reuniones y eventos",
-    "newEvent": "Nou evento",
+    "newEvent": "Nuevo evento",
     "today": "Hoy",
     "confirmDelete": "¿Seguro que quieres eliminar este evento? Esta acción no se puede deshacer.",
     "event": "{{count}} evento",
     "events": "{{count}} eventos",
-    "noEvents": "Ningún evento este día"
+    "noEvents": "Ningún evento este día",
+    "freeDayNote": "Este día está libre.",
+    "viewInConnect": "Ver en Connect",
+    "viewInCampus": "Ver en Campus",
+    "allTypes": "Todos los tipos",
+    "allDepartments": "Todos los departamentos",
+    "timePicker": {
+      "hour": "Hora",
+      "minutes": "Minutos",
+      "add": "Añadir"
+    },
+    "types": {
+      "all": "Todos",
+      "festiu": "Festivo",
+      "fira": "Feria",
+      "visitaComercial": "Visita comercial",
+      "sessioInterna": "Sesión interna",
+      "activitatEmpresa": "Actividad empresa",
+      "formacio": "Formación"
+    }
   },
   "directory": {
     "subtitle": "Busca trabajadores por nombre, departamento, cargo o extensión",
@@ -195,7 +288,11 @@
     "subtitle": "Documentos, procedimientos y recursos corporativos",
     "kicker": "Empresa",
     "mobileSubtitle": "Manual del trabajador, políticas, beneficios e identidad.",
-    "searchPlaceholder": "Buscar documentos, procedimientos…"
+    "searchPlaceholder": "Buscar documentos, procedimientos…",
+    "searchPlaceholderFull": "Buscar documentos, políticas, plantillas...",
+    "openTavipedia": "Abrir Tavipedia",
+    "featuredDocuments": "Documentos destacados",
+    "knowledgeBase": "Base de conocimiento interno, documentación y recursos corporativos"
   },
   "campus": {
     "subtitle": "Formación y cursos internos de TAVIL",
@@ -225,7 +322,35 @@
       "pending": "Pendiente",
       "lowProgress": "Poco avanzados",
       "completed": "Completado"
-    }
+    },
+    "uploadCertificate": "Subir certificado",
+    "reuploadCertificate": "Volver a subir",
+    "uploadHint": "PDF o imagen · arrastra o Ctrl+V",
+    "platformSubtitle": "Plataforma de formación interna y desarrollo profesional",
+    "tabCatalog": "Catálogo",
+    "tabMyProgress": "Mi progreso",
+    "searchCourses": "Buscar cursos...",
+    "progressSummary": "Resumen de mi progreso",
+    "completedStat": "Completadas",
+    "hours": "Horas",
+    "pendingGroup": "Pendientes",
+    "openCourse": "Abrir curso",
+    "start": "Empieza",
+    "attendanceByAdmin": "Asistencia validada por el administrador",
+    "questionsCount": "{{n}} preguntas",
+    "presential": "Presencial",
+    "progress": "Progreso",
+    "noCoursesInCat": "No hay formación disponible en esta categoría.",
+    "certPendingValidation": "Certificado pendiente de validación",
+    "certRejected": "Certificado rechazado",
+    "uploadThisCert": "Subir este certificado",
+    "doTraining": "Hacer la formación",
+    "noProgressGroup": "Ninguna formación en curso.",
+    "noCompletedGroup": "Ninguna formación completada.",
+    "noPendingGroup": "Ninguna formación pendiente.",
+    "allDepartments": "Todos los departamentos",
+    "deadlineWarning": "Plazo próximo — completa pronto:",
+    "backToCampus": "Volver al Campus"
   },
   "veu": {
     "subtitle": "Sugerencias, incidencias y encuestas internas",
@@ -263,6 +388,7 @@
   },
   "solicituds": {
     "subtitle": "Gestión de solicitudes y peticiones personales",
+    "description": "Si quieres trabajar un sábado no laborable, debes hacer la solicitud a través de este portal. Antes de asignártelo, deberá validarlo Depplan/RRHH.",
     "nonWorkingDays": "Días no ordinarios",
     "sentRequests": "Solicitudes enviadas ({{count}})",
     "noRequests": "No hay solicitudes todavía.",
@@ -288,5 +414,47 @@
   },
   "breadcrumb": {
     "home": "Inicio"
+  },
+  "admin": {
+    "noCover": "Sin portada",
+    "pickFromGallery": "Elegir de la galería",
+    "removeCover": "Quitar portada",
+    "searchTraining": "Buscar formación…",
+    "searchFormationHint": "Selecciona una formación para ver el seguimiento de usuarios"
+  },
+  "perfil": {
+    "account": "Cuenta",
+    "personalData": "Datos personales",
+    "corporateEmail": "Correo corporativo",
+    "phone": "Teléfono",
+    "workerCode": "Código trabajador",
+    "office": "Oficina",
+    "joinDate": "Incorporación",
+    "quickAccess": "Acceso rápido",
+    "preferences": "Preferencias",
+    "quickSettings": "Configuración rápida",
+    "language": "Idioma",
+    "theme": "Tema",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "notifications": "Notificaciones",
+    "privacyAccess": "Privacidad y accesos",
+    "helpSupport": "Ayuda y soporte",
+    "logout": "Cerrar sesión",
+    "editProfile": "Editar perfil",
+    "worker": "Trabajador/a",
+    "settings": "Configuración",
+    "backToProfile": "Perfil",
+    "noNotifications": "Sin notificaciones",
+    "markAllRead": "Marcar todas como leídas"
+  },
+  "shortcuts": {
+    "company": "Empresa",
+    "corporateEmail": "Correo corporativo",
+    "erp": "ERP / Gestión",
+    "documentManager": "Gestor documental",
+    "campus": "Campus TAVIL",
+    "directory": "Directorio",
+    "connect": "Connect"
   }
 }

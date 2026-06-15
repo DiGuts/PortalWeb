@@ -3,17 +3,20 @@ import { scrollPageToTop } from '../../lib/scroll';
 import { cn } from '../../lib/cn';
 import { useIsMobile } from '../../lib/useIsMobile';
 import { usePersistedSubTab } from '../../lib/usePersistedSubTab';
-import { ChevronLeft, Clock, ExternalLink, Search, PlayCircle, GraduationCap, UploadCloud } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, Clock, ExternalLink, Search, PlayCircle, GraduationCap, UploadCloud, CalendarDays } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Course, Quiz, apiGetCourses, apiGetQuizzes, apiUpdateCourseProgress, apiUploadCertificate, openCertificateFile, User } from '../../api';
 import { FilterChip } from '../shared/FilterChip';
 import { UnderlineTab } from '../shared/UnderlineTab';
+import { DEPT_ORDER, deptLabel } from '../../lib/depts';
+import { DropdownMultiselect } from '../shared/DropdownMultiselect';
 
 
 // ── Certificate uploader: paste (Ctrl+V) · drag-drop · file picker ──────────
 function CertUploader({ onUpload, reupload = false }: { onUpload: (f: File) => void; reupload?: boolean }) {
+  const { t } = useTranslation();
   const [clip, setClip] = useState<{ file: File; preview: string } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -51,7 +54,7 @@ function CertUploader({ onUpload, reupload = false }: { onUpload: (f: File) => v
             onClick={() => { onUpload(clip.file); setClip(null); }}
             className="flex-1 text-xs font-semibold py-1.5 rounded-md bg-[#222725] text-white hover:bg-[#2e3530] dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-white transition-colors"
           >
-            Puja aquest certificat
+            {t('campus.uploadThisCert')}
           </button>
           <button
             onClick={() => { URL.revokeObjectURL(clip.preview); setClip(null); }}
@@ -85,9 +88,9 @@ function CertUploader({ onUpload, reupload = false }: { onUpload: (f: File) => v
         onChange={e => { const f = e.target.files?.[0]; if (f) acceptFile(f); }} />
       <span className="flex items-center gap-1.5 font-medium">
         <UploadCloud size={13} />
-        {reupload ? 'Torna a pujar' : 'Puja el certificat'}
+        {reupload ? t('campus.reuploadCertificate') : t('campus.uploadCertificate')}
       </span>
-      <span className="text-[10px] opacity-50">PDF o imatge · arrossega o Ctrl+V</span>
+      <span className="text-[10px] opacity-50">{t('campus.uploadHint')}</span>
     </label>
   );
 }
@@ -96,7 +99,6 @@ interface Props {
   currentUser: User | null;
   onBack?: () => void;
   pageActive?: boolean;   // true only when Campus is the active page (not exiting)
-  // add whatever props the function needs from App
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -126,16 +128,26 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
     isPresential?: boolean;
     certificateStatus?: 'pending' | 'approved' | 'rejected' | null;
     certificateId?: number | null;
+    requiresCert?: boolean;
+    departments?: string[];
+    startAt?: string | null;
+    endAt?: string | null;
   };
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [courses, setCourses] = useState<Course[]>(() => tabPrefetch.courses ?? []);
   const [activeTab, setActiveTab] = usePersistedSubTab<string>('campus', 'Catàleg', ['Catàleg', 'El meu progrés', 'Proves', ] as const);
-  const [kindFilter, setKindFilter] = useState('Totes');
+  const [campusDeptFilter, setCampusDeptFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState('Tots els estats');
   const [campusSearch, setCampusSearch] = useState('');
   const isMobileCampus = useIsMobile();
   const [mobileCat, setMobileCat] = useState('Tot');
   const [quizList, setQuizList] = useState<Quiz[]>([]);
+  const [selectedCourse, setSelectedCourse] = useState<CatalogItem | null>(null);
+  const canManageFormacions = useMemo(() => {
+    const allRoles = new Set([currentUser?.role ?? '', ...(currentUser?.roles ?? [])]);
+    const isAdmin = allRoles.has('Administrador') || allRoles.has('Administrador/a');
+    return isAdmin || allRoles.has('Formacions') || allRoles.has('Recursos humans');
+  }, [currentUser]);
 
   useEffect(() => {
     if (isTabCacheFresh('courses')) return;
@@ -179,7 +191,6 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
   const completed = courses.filter(c => c.user_status === 'Completat');
   const completedHours = completed.reduce((s, c) => s + (parseInt(c.hours) || 0), 0);
 
-  const kinds = ['Totes', 'Externes', 'Internes'];
   const statuses = ['Tots els estats', 'Pendent', 'En curs'];
 
   const externes: CatalogItem[] = courses
@@ -198,6 +209,10 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
       courseId: c.id,
       certificateStatus: c.certificate_status ?? null,
       certificateId: c.certificate_id ?? null,
+      requiresCert: c.cert === 1,
+      departments: (() => { try { return JSON.parse(c.departments || '[]'); } catch { return []; } })(),
+      startAt: c.start_at ?? null,
+      endAt: c.end_at ?? null,
     }));
 
   const internes: CatalogItem[] = quizList
@@ -214,17 +229,20 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
       quizAttempted: !!q.user_attempt,
       quizQuestions: q.question_count ?? 0,
       isPresential: q.is_presential === 1,
+      departments: q.target_departments ?? [],
+      startAt: q.start_at ?? null,
+      endAt: q.end_at ?? null,
     })) as CatalogItem[];
 
   const catalog: CatalogItem[] = [...externes, ...internes].filter(
     item => item.status !== 'Completat' && item.status !== 'No aprovat'
   );
   const filteredCatalog = catalog.filter(item => {
-    const matchKind = kindFilter === 'Totes' || item.type === kindFilter;
+    const matchDept = campusDeptFilter.length === 0 || (item.departments ?? []).some(d => campusDeptFilter.includes(d));
     const matchStatus = statusFilter === 'Tots els estats' || item.status === statusFilter;
     const q = campusSearch.trim().toLowerCase();
     const matchSearch = !q || [item.title, item.description, item.category ?? '', item.type].some(f => f.toLowerCase().includes(q));
-    return matchKind && matchStatus && matchSearch;
+    return matchDept && matchStatus && matchSearch;
   });
 
   // Sticky bar rotates only through catalog items already shown with the mandatory
@@ -238,7 +256,7 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
       title: item.title,
       subtitle: item.type === 'Externes'
         ? `${item.hours || ''}${item.hours && item.category ? ' · ' : ''}${item.category || ''}`
-        : `${item.quizQuestions ?? 0} preguntes${item.category ? ' · ' + item.category : ''}`,
+        : `${item.category || ''}`,
       action: item.type === 'Externes'
         ? (item.url ? () => window.open(item.url!, '_blank', 'noopener,noreferrer') : null)
         : (item.quizId ? () => window.open(`${window.location.pathname}?quiz=${item.quizId}${item.quizInProgress ? '&resume=1' : ''}`, '_blank') : null),
@@ -252,6 +270,14 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
   }, [pageActive, mandatoryItems.length]);
   const mandSafeIdx = mandatoryItems.length ? mandIdx % mandatoryItems.length : 0;
   const mandatoryPending = mandatoryItems[mandSafeIdx] ?? null;
+
+  const nowMs = Date.now();
+  const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+  const deadlineItems = [...externes, ...internes].filter(item => {
+    if (!item.endAt || item.status === 'Completat') return false;
+    const endMs = new Date(item.endAt).getTime();
+    return endMs > nowMs && endMs <= nowMs + twoDaysMs;
+  });
 
   const mandBarRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -275,6 +301,101 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
     return () => { window.removeEventListener('scroll', onScroll); if (settle) window.clearTimeout(settle); };
   }, [mandatoryPending, pageActive]);
 
+
+  if (selectedCourse) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <button
+          onClick={() => setSelectedCourse(null)}
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors mb-6"
+        >
+          <ChevronLeft size={16} /> {t('campus.backToCampus')}
+        </button>
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
+          <div className="p-8">
+            <div className="flex items-center gap-2 flex-wrap mb-4">
+              {selectedCourse.category && (
+                <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400">
+                  {selectedCourse.category}
+                </span>
+              )}
+              {selectedCourse.isPresential && (
+                <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-[#d1fae5] text-[#065f46] dark:bg-[#14532d] dark:text-[#86efac]">
+                  {t('campus.presential')}
+                </span>
+              )}
+              {!!selectedCourse.mandatory && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400">
+                  {t('campus.mandatory')}
+                </span>
+              )}
+              <span className={cn("text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded ml-auto flex-shrink-0", STATUS_COLORS[selectedCourse.status])}>
+                {selectedCourse.status}
+              </span>
+            </div>
+            <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-4 leading-tight">
+              {selectedCourse.title}
+            </h1>
+            <div className="flex items-center gap-4 text-xs text-gray-400 mb-6 pb-6 border-b border-gray-100 dark:border-zinc-800 flex-wrap">
+              {selectedCourse.hours && (
+                <span className="flex items-center gap-1.5"><Clock size={13} />{selectedCourse.hours}</span>
+              )}
+              {(selectedCourse.startAt || selectedCourse.endAt) && (
+                <span className="flex items-center gap-1.5">
+                  <CalendarDays size={13} />
+                  {selectedCourse.startAt ? selectedCourse.startAt.slice(0,10).split('-').reverse().join('/') : ''}
+                  {selectedCourse.startAt && selectedCourse.endAt ? ' – ' : ''}
+                  {selectedCourse.endAt ? selectedCourse.endAt.slice(0,10).split('-').reverse().join('/') : ''}
+                </span>
+              )}
+            </div>
+            {selectedCourse.description && (
+              <p className="text-gray-600 dark:text-zinc-300 text-base leading-relaxed mb-6">
+                {selectedCourse.description}
+              </p>
+            )}
+            <div className="flex flex-col gap-3">
+              {selectedCourse.type === 'Externes' && selectedCourse.url && (
+                <button
+                  onClick={() => openExternalCourse(selectedCourse)}
+                  className="flex items-center justify-center gap-2 text-sm font-semibold py-3 px-6 rounded-xl bg-[#222725] text-white hover:bg-[#2e3530] dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-white transition-colors"
+                >
+                  <ExternalLink size={15} /> {t('campus.openCourse')}
+                </button>
+              )}
+              {selectedCourse.type === 'Internes' && selectedCourse.quizId && !selectedCourse.isPresential && selectedCourse.status !== 'Completat' && (
+                <button
+                  onClick={() => window.open(`${window.location.pathname}?quiz=${selectedCourse.quizId}${selectedCourse.quizInProgress ? '&resume=1' : ''}`, '_blank')}
+                  className={`flex items-center justify-center gap-2 text-sm font-semibold py-3 px-6 rounded-xl text-white transition-colors ${selectedCourse.quizInProgress ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#222725] hover:bg-[#2e3530]'}`}
+                >
+                  <PlayCircle size={15} /> {selectedCourse.quizInProgress ? t('campus.continue') : t('campus.start')}
+                </button>
+              )}
+              {selectedCourse.type === 'Internes' && selectedCourse.isPresential && (
+                <p className="text-sm text-center text-gray-400 dark:text-zinc-500">{t('campus.attendanceByAdmin')}</p>
+              )}
+              {selectedCourse.type === 'Externes' && selectedCourse.requiresCert && selectedCourse.certificateStatus === null && (
+                <div onClick={e => e.stopPropagation()}>
+                  <CertUploader onUpload={f => handleCertUpload(selectedCourse, f)} />
+                </div>
+              )}
+              {selectedCourse.type === 'Externes' && selectedCourse.requiresCert && selectedCourse.certificateStatus === 'pending' && (
+                <div className="flex items-center justify-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/20">
+                  <Clock size={11} /> {t('campus.certPendingValidation')}
+                </div>
+              )}
+              {selectedCourse.type === 'Externes' && selectedCourse.requiresCert && selectedCourse.certificateStatus === 'rejected' && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="text-[11px] text-red-500 dark:text-red-400 text-center">{t('campus.certRejected')}</div>
+                  <CertUploader onUpload={f => handleCertUpload(selectedCourse, f)} reupload />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isMobileCampus) {
     const inProgress = courses.filter(c => c.user_progress > 0 && c.user_progress < 100);
@@ -359,25 +480,33 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
               <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 6, lineHeight: 1.3 }}>{course.title}</div>
               <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--tavil-muted)', alignItems: 'center' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={11} />{course.hours}</span>
-                {Number(course.mandatory) === 1 && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#dc2626', background: '#fef2f2', borderRadius: 6, padding: '1px 7px' }}>Obligatòria</span>}
+                {(course.start_at || course.end_at) && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CalendarDays size={11} />
+                    {course.start_at ? course.start_at.slice(0, 10).split('-').reverse().join('/') : ''}
+                    {course.start_at && course.end_at ? ' – ' : ''}
+                    {course.end_at ? course.end_at.slice(0, 10).split('-').reverse().join('/') : ''}
+                  </span>
+                )}
+                {Number(course.mandatory) === 1 && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#dc2626', background: '#fef2f2', borderRadius: 6, padding: '1px 7px' }}>{t('campus.mandatory')}</span>}
               </div>
               {course.user_progress > 0 && course.user_progress < 100 && (
                 <div style={{ marginTop: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--tavil-muted)', marginBottom: 5 }}><span>Progrés</span><span>{course.user_progress}%</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--tavil-muted)', marginBottom: 5 }}><span>{t('campus.progress')}</span><span>{course.user_progress}%</span></div>
                   <div style={{ height: 4, background: 'var(--tavil-border)', borderRadius: 2 }}>
                     <div style={{ height: 4, width: '100%', background: 'var(--tavil-text)', borderRadius: 2, transform: `scaleX(${course.user_progress / 100})`, transformOrigin: 'left', transition: 'transform 400ms var(--ease-out-quint)' }} />
                   </div>
                 </div>
               )}
               {course.url && (
-                <button onClick={() => window.open(course.url, '_blank', 'noopener,noreferrer')} style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', height: 38, borderRadius: 10, border: '1px solid var(--tavil-border)', background: 'transparent', color: 'var(--tavil-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  <ExternalLink size={13} /> Obrir curs
+                <button onClick={(e) => { e.stopPropagation(); window.open(course.url, '_blank', 'noopener,noreferrer'); }} style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', height: 38, borderRadius: 10, border: '1px solid var(--tavil-border)', background: 'transparent', color: 'var(--tavil-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <ExternalLink size={13} /> {t('campus.openCourse')}
                 </button>
               )}
             </div>
           ))}
           {mobileFiltered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 32, color: 'var(--tavil-faint)', fontSize: 13 }}>Cap formació disponible en aquesta categoria.</div>
+            <div style={{ textAlign: 'center', padding: 32, color: 'var(--tavil-faint)', fontSize: 13 }}>{t('campus.noCoursesInCat')}</div>
           )}
         </div>
       </div>
@@ -386,10 +515,10 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
 
   return (
     <div>
-      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">Plataforma de formació interna i desenvolupament professional</p>
+      <p className="text-gray-500 dark:text-zinc-400 text-sm mb-5">{t('campus.platformSubtitle')}</p>
       <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
-        {['Catàleg', 'El meu progrés'].map(tab => (
-          <UnderlineTab key={tab} label={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)} />
+        {([{ key: 'Catàleg', label: t('campus.tabCatalog') }, { key: 'El meu progrés', label: t('campus.tabMyProgress') }].map(({ key, label }) =>
+          <UnderlineTab key={key} label={label} active={activeTab === key} onClick={() => setActiveTab(key)} />
         ))}
       </div>
 
@@ -399,28 +528,44 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
           <div className="flex flex-wrap items-center gap-3 mb-6">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input type="text" value={campusSearch} onChange={e => setCampusSearch(e.target.value)} placeholder="Cercar cursos..." aria-label="Cercar cursos" className="w-full bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white" />
+              <input type="text" value={campusSearch} onChange={e => setCampusSearch(e.target.value)} placeholder={t('campus.searchCourses')} aria-label={t('campus.searchCourses')} className="w-full bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white" />
             </div>
-            <div className="flex flex-wrap gap-2">
-              {kinds.map(k => <FilterChip key={k} label={k} active={kindFilter === k} onClick={() => setKindFilter(k)} />)}
-            </div>
+            <DropdownMultiselect
+              options={DEPT_ORDER}
+              value={campusDeptFilter}
+              onChange={setCampusDeptFilter}
+              getLabel={(d) => deptLabel(d, i18n.language)}
+              placeholder={t('campus.allDepartments')}
+            />
             <div className="flex flex-wrap gap-2">
               {statuses.map(s => <FilterChip key={s} label={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />)}
             </div>
           </div>
+          {deadlineItems.length > 0 && (
+            <div className="mb-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3.5 flex items-start gap-2.5">
+              <span className="text-amber-600 dark:text-amber-400 text-sm font-bold flex-shrink-0 mt-0.5">⚑</span>
+              <div>
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 mb-1">{t('campus.deadlineWarning')}</p>
+                <ul className="space-y-0.5">
+                  {deadlineItems.map(item => (
+                    <li key={item.id} className="text-xs text-amber-600 dark:text-amber-400">
+                      {item.title} — {new Date(item.endAt!).toLocaleDateString(i18n.language === 'en' ? 'en-GB' : i18n.language === 'es' ? 'es-ES' : 'ca-ES', { day: 'numeric', month: 'long' })}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
           <div className={cn("grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4", mandatoryPending && "pb-28")}>
             {filteredCatalog.map((item, i) => (
-              <div key={item.id} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 anim-item flex flex-col" style={{ '--i': i } as React.CSSProperties}>
+              <div key={item.id} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 anim-item flex flex-col" onClick={() => setSelectedCourse(item)} style={{ '--i': i, cursor: 'pointer' } as React.CSSProperties}>
                 <div className="flex items-start justify-between mb-3 gap-2">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={cn(
-                      "text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded",
-                      item.type === 'Internes'
-                        ? "bg-[#fed7aa] text-[#9a3412] dark:bg-[#5a2a0d] dark:text-[#fdba74]"
-                        : "bg-[#c7d2fe] text-[#3730a3] dark:bg-[#1e1b4b] dark:text-[#a5b4fc]"
-                    )}>{item.type}{item.category ? ` · ${item.category}` : ''}</span>
+                    {item.category && (
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400">{item.category}</span>
+                    )}
                     {item.isPresential && (
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-[#d1fae5] text-[#065f46] dark:bg-[#14532d] dark:text-[#86efac]">Presencial</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-[#d1fae5] text-[#065f46] dark:bg-[#14532d] dark:text-[#86efac]">{t("campus.presential")}</span>
                     )}
                   </div>
                   <span className={cn("text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded flex-shrink-0", STATUS_COLORS[item.status])}>{item.status}</span>
@@ -430,41 +575,54 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
                 <div className="mt-auto flex flex-col gap-2">
                   <div className="flex items-center gap-2 text-xs text-gray-500">
                     {item.hours && <><Clock size={12} /><span>{item.hours}</span></>}
-                    {!!item.mandatory && <span className="text-[10px] bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400 px-1.5 py-0.5 rounded font-semibold">Obligatòria</span>}
-                    {item.type === 'Internes' && <span className="text-[10px] bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 px-1.5 py-0.5 rounded font-semibold">{item.quizQuestions ?? 0} preguntes</span>}
+                    {!!item.mandatory && <span className="text-[10px] bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400 px-1.5 py-0.5 rounded font-semibold">{t('campus.mandatory')}</span>}
                   </div>
-                  {typeof item.progress === 'number' && item.progress > 0 && item.progress < 100 && (
-                    <><div className="flex justify-between text-xs text-gray-500 mb-1"><span>Progrés</span><span>{item.progress}%</span></div><div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5"><div className="h-1.5 rounded-full" style={{ width: `${item.progress}%`, background: 'var(--tavil-text)' }} /></div></>
-                  )}
-                  {item.type === 'Externes' && item.url && (
-                    <button onClick={() => openExternalCourse(item)} className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800 py-1.5 rounded-lg transition-colors">
-                      <ExternalLink size={12} /> Obrir curs
-                    </button>
-                  )}
-                  {item.type === 'Externes' && item.certificateStatus === null && (
-                    <CertUploader onUpload={f => handleCertUpload(item, f)} />
-                  )}
-                  {item.type === 'Externes' && item.certificateStatus === 'pending' && (
-                    <div className="w-full flex items-center justify-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/20">
-                      <Clock size={11} /> Certificat pendent de validació
+                  {(item.startAt || item.endAt) && (
+                    <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-zinc-500">
+                      <CalendarDays size={11} />
+                      <span>
+                        {item.startAt ? item.startAt.slice(0, 10).split('-').reverse().join('/') : ''}
+                        {item.startAt && item.endAt ? ' – ' : ''}
+                        {item.endAt ? item.endAt.slice(0, 10).split('-').reverse().join('/') : ''}
+                      </span>
                     </div>
                   )}
-                  {item.type === 'Externes' && item.certificateStatus === 'rejected' && (
-                    <div className="flex flex-col gap-1.5">
-                      <div className="text-[11px] text-red-500 dark:text-red-400 text-center">Certificat rebutjat</div>
+                  {item.type === 'Internes' && item.quizInProgress && (
+                    <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1 overflow-hidden">
+                      <div className="h-1 rounded-full bg-amber-500 animate-pulse" style={{ width: '55%' }} />
+                    </div>
+                  )}
+                  {item.type === 'Externes' && item.url && (
+                    <button onClick={(e) => { e.stopPropagation(); openExternalCourse(item); }} className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800 py-1.5 rounded-lg transition-colors">
+                      <ExternalLink size={12} /> {t('campus.openCourse')}
+                    </button>
+                  )}
+                  {item.type === 'Externes' && item.requiresCert && item.certificateStatus === null && (
+                    <div onClick={e => e.stopPropagation()}>
+                      <CertUploader onUpload={f => handleCertUpload(item, f)} />
+                    </div>
+                  )}
+                  {item.type === 'Externes' && item.requiresCert && item.certificateStatus === 'pending' && (
+                    <div className="w-full flex items-center justify-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/20">
+                      <Clock size={11} /> {t('campus.certPendingValidation')}
+                    </div>
+                  )}
+                  {item.type === 'Externes' && item.requiresCert && item.certificateStatus === 'rejected' && (
+                    <div className="flex flex-col gap-1.5" onClick={e => e.stopPropagation()}>
+                      <div className="text-[11px] text-red-500 dark:text-red-400 text-center">{t('campus.certRejected')}</div>
                       <CertUploader onUpload={f => handleCertUpload(item, f)} reupload />
                     </div>
                   )}
                   {item.type === 'Internes' && item.quizId && !item.isPresential && item.status !== 'Completat' && (
                     <button
-                      onClick={() => window.open(`${window.location.pathname}?quiz=${item.quizId}${item.quizInProgress ? '&resume=1' : ''}`, '_blank')}
+                      onClick={(e) => { e.stopPropagation(); window.open(`${window.location.pathname}?quiz=${item.quizId}${item.quizInProgress ? '&resume=1' : ''}`, '_blank'); }}
                       className={`w-full flex items-center justify-center gap-1.5 text-xs font-medium text-white py-1.5 rounded-lg transition-colors ${item.quizInProgress ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#8b8c89] hover:bg-[#222725]'}`}
                     >
-                      <PlayCircle size={12} /> {item.quizInProgress ? 'Continuar' : 'Comença'}
+                      <PlayCircle size={12} /> {item.quizInProgress ? t('campus.continue') : t('campus.start')}
                     </button>
                   )}
                   {item.type === 'Internes' && item.isPresential && item.status !== 'Completat' && (
-                    <p className="text-[11px] text-[var(--tavil-muted)] text-center py-1">Assistència validada per l'administrador</p>
+                    <p className="text-[11px] text-[var(--tavil-muted)] text-center py-1">{t('campus.attendanceByAdmin')}</p>
                   )}
                 </div>
               </div>
@@ -480,7 +638,7 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
                 className="pointer-events-auto w-full max-w-[520px] flex items-center gap-3 rounded-xl border border-[var(--tavil-border)] bg-[var(--tavil-card)] px-4 py-3 shadow-[0_8px_32px_rgba(34,39,37,0.14)]"
                 style={{ transition: 'transform 420ms cubic-bezier(0.22,1,0.36,1)', willChange: 'transform' }}
               >
-                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 px-2 py-1 rounded flex-shrink-0">Obligatòria</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 px-2 py-1 rounded flex-shrink-0">{t('campus.mandatory')}</span>
                 <div className="flex-1 min-w-0">
                   {/* keyed → fades on each carousel rotation */}
                   <div key={mandSafeIdx} className="anim-fade-in min-w-0">
@@ -509,7 +667,7 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
                   disabled={!mandatoryPending.action}
                   className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[var(--tavil-accent)] text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity flex-shrink-0 flex items-center gap-1.5"
                 >
-                  <PlayCircle size={13} /> Fer la formació
+                  <PlayCircle size={13} /> {t('campus.doTraining')}
                 </button>
               </div>
             </div>,
@@ -526,22 +684,22 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
         const totalHours = allCompleted.filter(item => item.hours).reduce((s, item) => s + (parseInt(item.hours ?? '0') || 0), 0);
 
         const groups: { label: string; items: typeof catalog; emptyText: string }[] = [
-          { label: 'En curs', items: allInProgress, emptyText: 'Cap formació en curs.' },
-          { label: 'Completats', items: allCompleted, emptyText: 'Cap formació completada.' },
+          { label: t('campus.inProgress'), items: allInProgress, emptyText: t('campus.noProgressGroup') },
+          { label: t('campus.completedStat') + 's', items: allCompleted, emptyText: t('campus.noCompletedGroup') },
           { label: 'No aprovats', items: allFailed, emptyText: '' },
-          { label: 'Pendents', items: allPending, emptyText: 'Cap formació per fer.' },
+          { label: t('campus.pendingGroup'), items: allPending, emptyText: t('campus.noPendingGroup') },
         ].filter(g => g.items.length > 0 || g.label === 'Pendents');
 
         return (
           <>
             {/* Summary */}
             <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 mb-6">
-              <h3 className="font-semibold text-[var(--tavil-text)] text-sm mb-4">Resum del meu progrés</h3>
+              <h3 className="font-semibold text-[var(--tavil-text)] text-sm mb-4">{t('campus.progressSummary')}</h3>
               <div className="grid grid-cols-3 gap-4 text-center">
                 {[
-                  { label: 'Completades', value: String(allCompleted.length) },
-                  { label: 'En curs', value: String(allInProgress.length) },
-                  { label: 'Hores', value: totalHours > 0 ? `${totalHours}h` : '—' },
+                  { label: t('campus.completedStat'), value: String(allCompleted.length) },
+                  { label: t('campus.inProgress'), value: String(allInProgress.length) },
+                  { label: t('campus.hours'), value: totalHours > 0 ? `${totalHours}h` : '—' },
                 ].map((s, i) => (
                   <div key={i}>
                     <p className="text-3xl font-bold text-[var(--tavil-text)]">{s.value}</p>
@@ -566,9 +724,9 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-[var(--tavil-text)] text-sm truncate">{item.title}</p>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            {item.type === 'Externes' ? (item.hours ? `${item.hours}` : '') : `${item.quizQuestions ?? 0} preguntes`}
+                            {item.type === 'Externes' ? (item.hours ? `${item.hours}` : '') : ''}
                             {item.category ? ` · ${item.category}` : ''}
-                            {item.mandatory ? <span className="text-red-600 dark:text-red-400 font-medium"> · Obligatòria</span> : null}
+                            {item.mandatory ? <span className="text-red-600 dark:text-red-400 font-medium"> · {t('campus.mandatory')}</span> : null}
                           </p>
                           {typeof item.progress === 'number' && item.progress > 0 && item.progress < 100 && (
                             <div className="flex items-center gap-2 mt-1.5">

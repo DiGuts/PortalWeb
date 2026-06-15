@@ -48,10 +48,68 @@
     "goodAfternoon": "Bona tarda",
     "goodEvening": "Bona nit",
     "seeAll": "Veure-ho tot",
-    "months": ["Gener","Febrer","Març","Abril","Maig","Juny","Juliol","Agost","Setembre","Octubre","Novembre","Desembre"],
-    "monthsAbbr": ["GEN","FEB","MAR","ABR","MAI","JUN","JUL","AGO","SET","OCT","NOV","DES"],
-    "monthsGenitive": ["","de gener","de febrer","de març","d'abril","de maig","de juny","de juliol","d'agost","de setembre","d'octubre","de novembre","de desembre"],
-    "days": ["Diumenge","Dilluns","Dimarts","Dimecres","Dijous","Divendres","Dissabte"]
+    "months": [
+      "Gener",
+      "Febrer",
+      "Març",
+      "Abril",
+      "Maig",
+      "Juny",
+      "Juliol",
+      "Agost",
+      "Setembre",
+      "Octubre",
+      "Novembre",
+      "Desembre"
+    ],
+    "monthsAbbr": [
+      "GEN",
+      "FEB",
+      "MAR",
+      "ABR",
+      "MAI",
+      "JUN",
+      "JUL",
+      "AGO",
+      "SET",
+      "OCT",
+      "NOV",
+      "DES"
+    ],
+    "monthsGenitive": [
+      "",
+      "de gener",
+      "de febrer",
+      "de març",
+      "d'abril",
+      "de maig",
+      "de juny",
+      "de juliol",
+      "d'agost",
+      "de setembre",
+      "d'octubre",
+      "de novembre",
+      "de desembre"
+    ],
+    "days": [
+      "Diumenge",
+      "Dilluns",
+      "Dimarts",
+      "Dimecres",
+      "Dijous",
+      "Divendres",
+      "Dissabte"
+    ],
+    "daysAbbr": [
+      "Dg",
+      "Dl",
+      "Dt",
+      "Dc",
+      "Dj",
+      "Dv",
+      "Ds"
+    ],
+    "required": "Camp obligatori"
   },
   "auth": {
     "login": "Inicia sessió",
@@ -100,6 +158,7 @@
     "urgentNotice": "AVÍS URGENT",
     "upcomingAgenda": "Pròxims a l'agenda",
     "quickAccess": "Accés ràpid",
+    "solicitudsQuick": "Solicita un dissabte laborable",
     "latestNews": "Últimes notícies",
     "allNews": "Totes les notícies",
     "seeAll": "Veure",
@@ -112,7 +171,10 @@
     "novetats": "Novetats",
     "moreNews": "Més notícies",
     "noNovetats": "Encara no hi ha novetats",
-    "seeAll2": "Veure tots"
+    "seeAll2": "Veure tots",
+    "upcomingActivities": "Properes activitats",
+    "noEventsThisWeek": "Cap event aquesta setmana. Comprova l’agenda completa.",
+    "shortcuts": "Dreceres"
   },
   "news": {
     "subtitle": "Informació, comunicats i novetats de l'empresa",
@@ -169,7 +231,19 @@
       "social": "Social",
       "rsc": "RSC",
       "wellness": "Benestar"
-    }
+    },
+    "unlimited": "Il·limitat",
+    "limited": "Limitat",
+    "openEnrollment": "Inscripció oberta",
+    "finished": "Finalitzada",
+    "availablePlaces": "{{n}} disponibles",
+    "enrolledPlaces": "{{enrolled}} inscrits · Places lliures",
+    "moreInfoAndEnroll": "Més informació i inscripció",
+    "enrolledSuccess": "✓ Inscrit/a",
+    "enrollAction": "Inscriure’s",
+    "connectSubtitle": "Esdeveniments socials, esportius i culturals per als treballadors de TAVIL",
+    "upcomingCount": "Properes ({{count}})",
+    "pastCount": "Passades ({{count}})"
   },
   "agenda": {
     "confirmDelete": "Segur que vols eliminar aquest event? Aquesta acció no es pot desfer.",
@@ -178,7 +252,26 @@
     "today": "Avui",
     "event": "{{count}} esdeveniment",
     "events": "{{count}} esdeveniments",
-    "noEvents": "Cap esdeveniment aquest dia"
+    "noEvents": "Cap esdeveniment aquest dia",
+    "freeDayNote": "Aquest dia està lliure.",
+    "viewInConnect": "Veure a Connect",
+    "viewInCampus": "Veure a Campus",
+    "allTypes": "Tots els tipus",
+    "allDepartments": "Tots els departaments",
+    "timePicker": {
+      "hour": "Hora",
+      "minutes": "Minuts",
+      "add": "Afegir"
+    },
+    "types": {
+      "all": "Tots",
+      "festiu": "Festiu",
+      "fira": "Fira",
+      "visitaComercial": "Visita comercial",
+      "sessioInterna": "Sessió interna",
+      "activitatEmpresa": "Activitat empresa",
+      "formacio": "Formació"
+    }
   },
   "directory": {
     "subtitle": "Cerca treballadors per nom, departament, càrrec o extensió",
@@ -195,7 +288,11 @@
     "subtitle": "Documents, procediments i recursos corporatius",
     "kicker": "Empresa",
     "mobileSubtitle": "Manual del treballador, polítiques, beneficis i identitat.",
-    "searchPlaceholder": "Cercar documents, procediments…"
+    "searchPlaceholder": "Cercar documents, procediments…",
+    "searchPlaceholderFull": "Cercar documents, polítiques, plantilles...",
+    "openTavipedia": "Obrir Tavipedia",
+    "featuredDocuments": "Documents destacats",
+    "knowledgeBase": "Base de coneixement intern, documentació i recursos corporatius"
   },
   "campus": {
     "subtitle": "Formació i cursos interns de TAVIL",
@@ -225,7 +322,35 @@
       "pending": "Pendent",
       "lowProgress": "Poc avançats",
       "completed": "Completat"
-    }
+    },
+    "uploadCertificate": "Puja el certificat",
+    "reuploadCertificate": "Torna a pujar",
+    "uploadHint": "PDF o imatge · arrossega o Ctrl+V",
+    "platformSubtitle": "Plataforma de formació interna i desenvolupament professional",
+    "tabCatalog": "Catàleg",
+    "tabMyProgress": "El meu progrés",
+    "searchCourses": "Cercar cursos...",
+    "progressSummary": "Resum del meu progrés",
+    "completedStat": "Completades",
+    "hours": "Hores",
+    "pendingGroup": "Pendents",
+    "openCourse": "Obrir curs",
+    "start": "Comença",
+    "attendanceByAdmin": "Assistència validada per l'administrador",
+    "questionsCount": "{{n}} preguntes",
+    "presential": "Presencial",
+    "progress": "Progrés",
+    "noCoursesInCat": "Cap formació disponible en aquesta categoria.",
+    "certPendingValidation": "Certificat pendent de validació",
+    "certRejected": "Certificat rebutjat",
+    "uploadThisCert": "Puja aquest certificat",
+    "doTraining": "Fer la formació",
+    "noProgressGroup": "Cap formació en curs.",
+    "noCompletedGroup": "Cap formació completada.",
+    "noPendingGroup": "Cap formació per fer.",
+    "allDepartments": "Tots els departaments",
+    "deadlineWarning": "Termini proper — cal completar aviat:",
+    "backToCampus": "Tornar al Campus"
   },
   "veu": {
     "subtitle": "Suggeriments, incidències i enquestes internes",
@@ -263,6 +388,7 @@
   },
   "solicituds": {
     "subtitle": "Gestió de sol·licituds i peticions personals",
+    "description": "Si vols treballar un dissabte no laborable has de fer la sol·licitud a través d'aquest portal. Abans d'assignar-te'l te l'haurà de validar Depplan/RRHH.",
     "nonWorkingDays": "Dies no ordinaris",
     "sentRequests": "Sol·licituds enviades ({{count}})",
     "noRequests": "No hi ha sol·licituds encara.",
@@ -288,5 +414,47 @@
   },
   "breadcrumb": {
     "home": "Inici"
+  },
+  "admin": {
+    "noCover": "Sense portada",
+    "pickFromGallery": "Triar de la galeria",
+    "removeCover": "Treure portada",
+    "searchTraining": "Cercar formació…",
+    "searchFormationHint": "Selecciona una formació per veure el seguiment d’usuaris"
+  },
+  "perfil": {
+    "account": "Compte",
+    "personalData": "Dades personals",
+    "corporateEmail": "Correu corporatiu",
+    "phone": "Telèfon",
+    "workerCode": "Codi treballador",
+    "office": "Oficina",
+    "joinDate": "Incorporació",
+    "quickAccess": "Accés ràpid",
+    "preferences": "Preferències",
+    "quickSettings": "Configuració ràpida",
+    "language": "Idioma",
+    "theme": "Tema",
+    "light": "Clar",
+    "dark": "Fosc",
+    "notifications": "Notificacions",
+    "privacyAccess": "Privacitat i accessos",
+    "helpSupport": "Ajuda i suport",
+    "logout": "Tanca sessió",
+    "editProfile": "Editar perfil",
+    "worker": "Treballador/a",
+    "settings": "Configuració",
+    "backToProfile": "Perfil",
+    "noNotifications": "Sense notificacions",
+    "markAllRead": "Marcar totes com a llegides"
+  },
+  "shortcuts": {
+    "company": "Empresa",
+    "corporateEmail": "Correu corporatiu",
+    "erp": "ERP / Gestió",
+    "documentManager": "Gestor documental",
+    "campus": "Campus TAVIL",
+    "directory": "Directori",
+    "connect": "Connect"
   }
 }

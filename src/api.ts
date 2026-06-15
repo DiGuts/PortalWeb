@@ -1,6 +1,8 @@
+const DEV_SERVER_IP = '192.168.10.169';
+
 export const API_BASE: string =
   window.location.hostname === 'localhost'
-    ? 'http://192.168.10.168/public_html/portal_web/api/index.php'
+    ? `http://${DEV_SERVER_IP}/public_html/portal_web/api/index.php`
     : (process.env.PUBLIC_URL || '') + '/api/index.php';
 
 export type AdminRole = 'Treballador/a' | 'Cap de departament' | 'Administrador' | 'Formacions' | 'Comunicacions' | 'SolicitudsDissabtes' | 'SolicitudsVacances';
@@ -511,11 +513,13 @@ export interface Activity {
   link: string;
   enrolled: number;
   past: number;
+  image?: string;
 }
 
 export async function apiCreateActivity(fields: {
   title: string; category: string; description: string;
   date: string; time: string; location: string; capacity: number; link: string;
+  image?: string;
 }): Promise<Activity> {
   return apiFetch<Activity>('/api/activities', { method: 'POST', body: JSON.stringify(fields) });
 }
@@ -523,6 +527,7 @@ export async function apiCreateActivity(fields: {
 export async function apiUpdateActivity(id: number, fields: {
   title: string; category: string; description: string;
   date: string; time: string; location: string; capacity: number; link: string;
+  image?: string;
 }): Promise<void> {
   await apiFetch(`/api/activities/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
 }
@@ -536,8 +541,30 @@ export async function apiGetActivities(past?: 0 | 1): Promise<Activity[]> {
   return apiFetch<Activity[]>(`/api/activities${qs}`);
 }
 
-export async function apiEnrollActivity(id: number): Promise<{ ok: boolean }> {
-  return apiFetch<{ ok: boolean }>(`/api/activities/${id}/enroll`, { method: 'POST' });
+export async function apiEnrollActivity(id: number): Promise<{ ok: boolean; status?: string }> {
+  return apiFetch<{ ok: boolean; status?: string }>(`/api/activities/${id}/enroll`, { method: 'POST' });
+}
+
+export async function apiUnenrollActivity(id: number): Promise<void> {
+  await apiFetch(`/api/activities/${id}/enroll`, { method: 'DELETE' });
+}
+
+export interface ActivityEnrollment {
+  enrollment_id: number;
+  user_id: number;
+  name: string;
+  email: string;
+  dept: string;
+  enrolled_at: string;
+  status: 'confirmed' | 'waitlist' | 'cancelled';
+}
+
+export async function apiGetActivityEnrollments(id: number): Promise<ActivityEnrollment[]> {
+  return apiFetch<ActivityEnrollment[]>(`/api/activities/${id}/enrollments`);
+}
+
+export async function apiGetMyActivityEnrollments(): Promise<{ activity_id: number; status: string }[]> {
+  return apiFetch('/api/activities/my');
 }
 
 // ── Agenda ────────────────────────────────────────────────────────────────────
@@ -753,6 +780,7 @@ export interface ExternalCoursePayload {
   category: string;
   hours: string;
   mandatory: number;
+  cert?: number;
   departments: string[];
   target_users: number[];
   start_at?: string | null;
