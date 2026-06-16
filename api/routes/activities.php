@@ -50,7 +50,8 @@ if ($method === 'POST' && $id === null) {
     require_comunicacions_or_admin();
     $db->prepare('INSERT INTO activities (title,category,description,date,time,location,capacity,link,image,enrolled,past) VALUES (?,?,?,?,?,?,?,?,?,0,0)')
        ->execute([str_val($body,'title'), str_val($body,'category'), str_val($body,'description'), str_val($body,'date'), str_val($body,'time'), str_val($body,'location'), int_val($body,'capacity'), str_val($body,'link'), str_val($body,'image')]);
-    $row = $db->query('SELECT * FROM activities WHERE id=' . $db->lastInsertId())->fetch();
+    $new_id = (int)$db->lastInsertId();
+    $stmt = $db->prepare('SELECT * FROM activities WHERE id=?'); $stmt->execute([$new_id]); $row = $stmt->fetch();
     $row['id'] = (int)$row['id'];
     _upsert_activity_agenda($db, (int)$row['id'], $body);
     respond($row, 201);

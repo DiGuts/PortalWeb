@@ -8,9 +8,10 @@ interface Props {
   onChange: (v: string[]) => void;
   placeholder?: string;
   getLabel?: (opt: string) => string;
+  align?: 'left' | 'right';
 }
 
-export function DropdownMultiselect({ options, value, onChange, placeholder = 'Tots', getLabel }: Props) {
+export function DropdownMultiselect({ options, value, onChange, placeholder = 'Tots', getLabel, align = 'left' }: Props) {
   const labelFor = (opt: string) => (getLabel ? getLabel(opt) : opt);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -81,7 +82,8 @@ export function DropdownMultiselect({ options, value, onChange, placeholder = 'T
 
       {open && (
         <div style={{
-          position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+          position: 'absolute', top: 'calc(100% + 6px)',
+          ...(align === 'right' ? { right: 0 } : { left: 0 }),
           zIndex: 50, minWidth: 260, maxWidth: 340,
           background: 'var(--tavil-card)',
           border: '1px solid var(--tavil-border)',

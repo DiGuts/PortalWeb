@@ -140,7 +140,11 @@ elseif ($method === 'GET' && $seg1 === 'dept-head' && isset($segments[2])) {
 elseif ($method === 'PATCH' && is_numeric($seg1) && $seg2 === 'role') {
     require_admin();
     $user_id = (int)$seg1;
-    $db->prepare('UPDATE users SET role=? WHERE id=?')->execute([str_val($body,'role'), $user_id]);
+    $role = str_val($body, 'role');
+    if (!in_array($role, _ALLOWED_NEW_ROLES, true)) {
+        respond(['detail' => 'Rol no permès'], 400);
+    }
+    $db->prepare('UPDATE users SET role=? WHERE id=?')->execute([$role, $user_id]);
     respond(_fetch_user($db, $user_id));
 }
 

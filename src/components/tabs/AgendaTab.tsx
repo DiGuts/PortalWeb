@@ -18,7 +18,7 @@ import {
   User, AgendaEvent,
   apiGetAgendaEvents, apiCreateAgendaEvent, apiUpdateAgendaEvent, apiDeleteAgendaEvent,
 } from '../../api';
-import { DatePicker } from '../shared/AgendaPickers';
+import { DatePicker, TimePicker } from '../shared/AgendaPickers';
 
 // ── Agenda Tab ────────────────────────────────────────────────────────────────
 
@@ -174,9 +174,6 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
     const [yStr, mStr, dStr] = eeDate.split('-');
     const day = parseInt(dStr); const month = parseInt(mStr); const year = parseInt(yStr);
     if (!day || !month || !year) return;
-    const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
-    if (eeTime.trim() && !timeRe.test(eeTime.trim())) { alert("Hora d'inici no vàlida (HH:MM)."); return; }
-    if (eeTimeEnd.trim() && !timeRe.test(eeTimeEnd.trim())) { alert('Hora final no vàlida (HH:MM).'); return; }
     setEeSaving(true);
     try {
       await apiUpdateAgendaEvent(evEditId, { title: eeTitle.trim(), day,
@@ -401,7 +398,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
           <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>
             {MONTH_NAMES[todayMonth - 1]} {todayYear}
           </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 600, lineHeight: 1, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Agenda</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 600, lineHeight: 1, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>{t('nav.agenda')}</h1>
         </div>
 
         {/* Toggle + type dropdown on same row */}
@@ -420,7 +417,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
                   minHeight: 38,
                 }}
               >
-                {v === 'setmana' ? 'Setmana' : 'Mes'}
+                {v === 'setmana' ? t('common.week') : t('common.month')}
               </button>
             ))}
           </div>
@@ -432,6 +429,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
               onChange={setTypeFilterMulti}
               getLabel={(x) => x}
               placeholder="Tots els tipus"
+              align="right"
             />
           </div>
         </div>
@@ -449,6 +447,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
             {/* Week-snap day strip */}
             <div
               ref={stripRef}
+              data-no-swipe
               className="hide-sb"
               style={{
                 paddingBottom: 20,
@@ -514,8 +513,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
                             fontFamily: 'var(--font-display)',
                             color: todayOnly ? 'var(--tavil-accent)' : undefined,
                           }}>{d.n}</span>
-                          {/* today+selected: no extra indicator needed — accent ring on button handles it */}
-                          {selectedOnly && <div style={{ width: 4, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.35)', marginTop: 4 }} />}
+                          <div style={{ width: 4, height: 4, borderRadius: 2, background: isTod ? 'var(--tavil-accent)' : selectedOnly ? 'rgba(255,255,255,0.35)' : 'transparent', marginTop: 4 }} />
                         </button>
                       );
                     })}
@@ -665,12 +663,12 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
                 <DatePicker value={eDate} onChange={setEDate} />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div>
-                    <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Inici</div>
-                    <input type="time" value={eTime} onChange={e => setETime(e.target.value)} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                    <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Hora inici</div>
+                    <TimePicker value={eTime} onChange={setETime} optional />
                   </div>
                   <div>
                     <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Final <span style={{ textTransform: 'none', fontWeight: 400 }}>(opcional)</span></div>
-                    <input type="time" value={eTimeEnd} onChange={e => setETimeEnd(e.target.value)} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                    <TimePicker value={eTimeEnd} onChange={setETimeEnd} optional />
                   </div>
                 </div>
                 <input type="text" value={eLocation} onChange={e => setELocation(e.target.value)} placeholder="Lloc" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
@@ -717,9 +715,9 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
                       <DatePicker value={eeDate} onChange={setEeDate} /></div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       <div><label style={lCls}>Hora inici</label>
-                        <input type="time" value={eeTime} onChange={e => setEeTime(e.target.value)} style={iStyle} /></div>
+                        <TimePicker value={eeTime} onChange={setEeTime} optional /></div>
                       <div><label style={{ ...lCls }}>Hora final</label>
-                        <input type="time" value={eeTimeEnd} onChange={e => setEeTimeEnd(e.target.value)} style={iStyle} /></div>
+                        <TimePicker value={eeTimeEnd} onChange={setEeTimeEnd} optional /></div>
                     </div>
                     <div><label style={lCls}>Ubicació</label>
                       <div style={{ position: 'relative' }}>
@@ -753,8 +751,8 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6 w-full max-w-xs mx-4 shadow-xl anim-scale-in" onClick={e => e.stopPropagation()}>
               <p className="text-sm text-gray-700 dark:text-zinc-300 mb-4">{confirmModal.message}</p>
               <div className="flex gap-2 justify-end">
-                <button onClick={() => setConfirmModal(null)} className="px-3 py-1.5 text-xs border border-gray-200 dark:border-zinc-700 rounded-lg text-gray-600 dark:text-zinc-400">{t('common.cancel')}</button>
-                <button onClick={confirmModal.onConfirm} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg font-semibold">Eliminar</button>
+                <button onClick={() => setConfirmModal(null)} className="px-3 py-1.5 text-xs border border-gray-200 dark:border-zinc-700 rounded-lg text-gray-600 dark:text-zinc-400">{t('confirm.cancel')}</button>
+                <button onClick={confirmModal.onConfirm} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg font-semibold">{t('confirm.delete')}</button>
               </div>
             </div>
           </div>,
@@ -814,19 +812,25 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
         {/* ── Left: calendar ── */}
         <div>
           {/* Month nav — framed: [<]  Month Year  [>] */}
-          <div className="flex items-center justify-between mb-4 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
+          <div className="flex items-center justify-between mb-4 rounded-xl overflow-hidden" style={{ border: '1px solid var(--tavil-border)', background: 'var(--tavil-card)' }}>
             <button
               onClick={() => navigateMonth(-1)}
               aria-label="Mes anterior"
-              className="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 border-r border-gray-200 dark:border-zinc-700 transition-colors"
+              className="w-10 h-10 flex-shrink-0 flex items-center justify-center transition-colors"
+              style={{ color: 'var(--tavil-muted)', borderRight: '1px solid var(--tavil-border)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--tavil-bgAlt)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             ><ChevronLeft size={15} /></button>
-            <span className="flex-1 text-center font-bold text-gray-900 dark:text-white text-lg" style={{ fontFamily: 'var(--font-display)', letterSpacing: '0.01em' }}>
+            <span className="flex-1 text-center font-bold text-lg" style={{ fontFamily: 'var(--font-display)', letterSpacing: '0.01em', color: 'var(--tavil-text)' }}>
               {MONTH_NAMES[currentMonth - 1]} {currentYear}
             </span>
             <button
               onClick={() => navigateMonth(1)}
               aria-label="Mes següent"
-              className="w-10 h-10 flex-shrink-0 flex items-center justify-center text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 border-l border-gray-200 dark:border-zinc-700 transition-colors"
+              className="w-10 h-10 flex-shrink-0 flex items-center justify-center transition-colors"
+              style={{ color: 'var(--tavil-muted)', borderLeft: '1px solid var(--tavil-border)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--tavil-bgAlt)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             ><ChevronRight size={15} /></button>
           </div>
 
@@ -891,7 +895,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
           </div>
 
           {/* Color legend */}
-          <div className="flex flex-wrap gap-x-3.5 gap-y-1.5 mt-3.5 pt-2.5 border-t border-gray-100 dark:border-zinc-800">
+          <div className="flex flex-wrap gap-x-3.5 gap-y-1.5 mt-3.5 pt-2.5" style={{ borderTop: '1px solid var(--tavil-border)' }}>
             {Object.entries({
               'Festiu': eventRailColor({ type: 'Festiu' } as AgendaEvent),
               'Fira': eventRailColor({ type: 'Fira' } as AgendaEvent),
@@ -902,7 +906,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
             }).map(([label, color]) => (
               <div key={label} className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-sm flex-shrink-0 inline-block" style={{ background: color }} />
-                <span className="text-[10.5px] font-medium text-gray-500 dark:text-zinc-400">{label}</span>
+                <span className="text-[10.5px] font-medium" style={{ color: 'var(--tavil-muted)' }}>{label}</span>
               </div>
             ))}
           </div>
@@ -912,21 +916,21 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
         <div style={{ position: 'sticky', top: 20 }}>
           {/* Day header */}
           <div className="mb-4">
-            <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-zinc-500 mb-1">
+            <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] mb-1" style={{ color: 'var(--tavil-faint)' }}>
               {isToday(selDay) ? t('agenda.today') : `${DAYS_OF_WEEK[new Date(currentYear, currentMonth - 1, selDay).getDay()]} ${selDay} ${monthGenitiu(currentMonth)}`}
             </div>
-            <div className="font-bold text-gray-900 dark:text-white" style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '-0.01em', lineHeight: 1.1 }}>
+            <div className="font-bold" style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '-0.01em', lineHeight: 1.1, color: 'var(--tavil-text)' }}>
               {selEvents.length === 0 ? 'Cap esdeveniment' : `${selEvents.length} ${selEvents.length === 1 ? 'esdeveniment' : 'esdeveniments'}`}
             </div>
-            <div className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
+            <div className="text-xs mt-1" style={{ color: 'var(--tavil-muted)' }}>
               {selDay} {monthGenitiu(currentMonth)} {currentYear} · Barcelona
             </div>
           </div>
 
           {selEvents.length === 0 ? (
-            <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-8 flex flex-col items-center justify-center gap-2 text-center">
-              <Calendar size={26} className="text-gray-300 dark:text-zinc-600" />
-              <span className="text-sm text-gray-400 dark:text-zinc-500">Aquest dia està lliure.</span>
+            <div className="rounded-xl p-8 flex flex-col items-center justify-center gap-2 text-center" style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)' }}>
+              <Calendar size={26} style={{ color: 'var(--tavil-faint)' }} />
+              <span className="text-sm" style={{ color: 'var(--tavil-muted)' }}>Aquest dia està lliure.</span>
             </div>
           ) : (
             <div className="flex flex-col gap-3">

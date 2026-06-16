@@ -83,19 +83,12 @@ export function LoginScreen({ onLoginResult, onRegister, onForgot, isDarkMode }:
     >
       {/* Top row: logo + lang */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 60 }}>
-        {/* 36×36 mahogany "T" logo tile */}
-        <div style={{
-          width: 36, height: 36, borderRadius: 10,
-          background: 'var(--tavil-accent)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#fff', fontWeight: 700, fontSize: 18,
-          fontFamily: '"Instrument Serif", serif',
-          letterSpacing: '-0.02em',
-          flexShrink: 0,
-          transition: THEME_TR,
-        }}>
-          T
-        </div>
+        {/* Collapsed TAVIL logo */}
+        <img
+          src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoCollapsed.png`}
+          alt="TAVIL"
+          style={{ height: 36, width: 'auto', display: 'block', flexShrink: 0 }}
+        />
         <LangSwitch />
       </div>
 

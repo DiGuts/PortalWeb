@@ -26,6 +26,7 @@ function jwt_decode(string $token): ?array {
     if (!hash_equals($expected, $sig)) return null;
     $data = json_decode(base64url_decode($payload), true);
     if (!$data) return null;
-    if (isset($data['exp']) && $data['exp'] < time()) return null;
+    if (!isset($data['exp']) || !is_int($data['exp'])) return null;  // exp mandatory
+    if ($data['exp'] < time()) return null;
     return $data;
 }

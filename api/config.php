@@ -38,3 +38,10 @@ define('EMAIL_VERIFY_ENABLED', getenv('EMAIL_VERIFY_ENABLED') === 'true');
 define('LOGIN_2FA_ENABLED',    getenv('LOGIN_2FA_ENABLED')    === 'true');
 
 define('UPLOADS_DIR', __DIR__ . '/uploads');
+
+$_cron_secret = getenv('CRON_SECRET') ?: '';
+if (!$_cron_secret) {
+    error_log('[SECURITY] CRON_SECRET not configured. Cron endpoint will reject all requests.');
+}
+define('CRON_SECRET', $_cron_secret);
+unset($_cron_secret);

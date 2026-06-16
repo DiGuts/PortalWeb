@@ -79,6 +79,12 @@
   to   { opacity: 1; transform: scale(1)     translateY(0); }
 }
 .anim-page-enter-desk { animation: tavil-page-enter-desk 280ms var(--ease-out-cubic) both; }
+/* Desktop page exit — mirrors the entry: subtle scale-down + fade, so leaving feels intentional */
+@keyframes tavil-page-exit-desk {
+  from { opacity: 1; transform: scale(1)     translateY(0); }
+  to   { opacity: 0; transform: scale(0.985) translateY(-4px); }
+}
+.anim-page-exit-desk { animation: tavil-page-exit-desk 180ms var(--ease-out-cubic) both; }
 @keyframes tavil-slide-down {
   from { opacity: 0; transform: translateY(-10px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0)     scale(1); }
@@ -551,7 +557,7 @@ body.org-view-active .page-stack { overflow: visible; }
 .skeleton {
   position: relative;
   overflow: hidden;
-  background-color: #e5e5e0;
+  background-color: var(--tavil-border, #e5e5e0);
   background-image: linear-gradient(
     90deg,
     rgba(255,255,255,0) 0%,
@@ -601,6 +607,13 @@ html.dark .skeleton {
 /* ── Touch / a11y helpers ────────────────────────────────────────────────────
    WCAG 2.5.5 AAA = 44x44 minimum tap target.
    Use `.tap-target` on any interactive element that is narrow on mobile. */
+/* ── Disabled button global feedback ─────────────────────────────────────── */
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: auto; /* keep cursor:not-allowed visible */
+}
+
 .tap-target {
   min-height: 44px;
   min-width: 44px;
@@ -616,6 +629,16 @@ html.dark .skeleton {
 
 /* Focus-visible ring (keyboard only, not mouse) */
 .focus-ring:focus-visible {
+  outline: 2px solid var(--tavil-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Universal focus-visible for keyboard nav */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
   outline: 2px solid var(--tavil-accent);
   outline-offset: 2px;
   border-radius: 6px;
@@ -658,6 +681,7 @@ html.dark .skeleton {
   .anim-page-exit-v-back,
   .anim-page-exit-h-fwd,
   .anim-page-exit-h-back,
+  .anim-page-exit-desk,
   .anim-bubble-out {
     animation: tavil-fade-out 120ms linear both !important;
   }
@@ -679,9 +703,7 @@ html, body {
   max-width: 100vw;
 }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Instrument Sans', 'Barlow Semi Condensed', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

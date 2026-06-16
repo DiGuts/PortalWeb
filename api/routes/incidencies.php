@@ -53,7 +53,7 @@ elseif ($method === 'POST' && $id === null) {
         }
     }
 
-    $row = $db->query("SELECT * FROM incidencies WHERE id=$new_id")->fetch();
+    $stmt = $db->prepare('SELECT * FROM incidencies WHERE id=?'); $stmt->execute([$new_id]); $row = $stmt->fetch();
     $row['id'] = (int)$row['id'];
     respond($row, 201);
 }

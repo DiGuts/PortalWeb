@@ -766,7 +766,7 @@ export function AAvatar({ name, size = 28, src }: { name: string; size?: number;
   const initials = (name || '').split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
   if (src) {
     const url = src.startsWith('/uploads/') ? `${API_BASE}${src}` : src;
-    return <img src={url} alt="" style={{
+    return <img src={url} alt="" loading="lazy" style={{
       width: size, height: size, borderRadius: size / 2, flexShrink: 0, objectFit: 'cover',
     }} />;
   }

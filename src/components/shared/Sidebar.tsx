@@ -13,12 +13,12 @@ export const SidebarItem = ({ icon: Icon, label, active = false, onClick, collap
             border: active ? '1px solid var(--tavil-border)' : '1px solid transparent',
             color: active ? 'var(--tavil-text)' : 'var(--tavil-muted)',
             fontWeight: active ? 600 : 500,
-            transition: 'background-color 300ms ease-in-out, color 150ms ease-out, border-color 300ms ease-in-out',
+            transition: 'background-color 200ms cubic-bezier(.23,1,.32,1), color 200ms cubic-bezier(.23,1,.32,1), border-color 200ms cubic-bezier(.23,1,.32,1)',
         }}
         onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--tavil-bg)'; (e.currentTarget as HTMLElement).style.color = 'var(--tavil-text)'; }}
         onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--tavil-muted)'; }}}
     >
-        <Icon size={18} aria-hidden="true" style={{ color: active ? 'var(--tavil-accent)' : 'inherit', strokeWidth: 1.8, flexShrink: 0, transition: 'color 150ms ease-out' }} />
+        <Icon size={18} aria-hidden="true" style={{ color: active ? 'var(--tavil-accent)' : 'inherit', strokeWidth: 1.8, flexShrink: 0, transition: 'color 200ms cubic-bezier(.23,1,.32,1)' }} />
         {!collapsed && <span style={{ fontSize: 14 }}>{label}</span>}
     </div>
 );

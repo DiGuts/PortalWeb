@@ -125,7 +125,7 @@ export function ImageGalleryPicker({ open, selected, onPick, onClose, allowManag
                         background: T.bgAlt,
                       }}
                     >
-                      <img src={resolveUploadUrl(img.url)} alt={img.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      <img src={resolveUploadUrl(img.url)} alt={img.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     </button>
                     {allowManage && (
                       <button

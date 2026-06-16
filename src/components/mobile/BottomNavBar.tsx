@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { Home, Newspaper, Calendar, Users, Menu } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/cn';
 
 export function BottomNavBar({ activeTab, onTabChange, onOpenDrawer: _onOpenDrawer, isDarkMode, hidden }: {
@@ -10,12 +11,13 @@ export function BottomNavBar({ activeTab, onTabChange, onOpenDrawer: _onOpenDraw
     isDarkMode: boolean;
     hidden?: boolean;
 }) {
+    const { t } = useTranslation();
     const items = [
-        { id: 'Inici', icon: Home, label: 'Inici' },
-        { id: 'Notícies', icon: Newspaper, label: 'Notícies' },
-        { id: 'Agenda', icon: Calendar, label: 'Agenda' },
-        { id: 'Directori', icon: Users, label: 'Who is who?' },
-        { id: '__more', icon: Menu, label: 'Més' },
+        { id: 'Inici', icon: Home, label: t('nav.inici') },
+        { id: 'Notícies', icon: Newspaper, label: t('nav.noticies') },
+        { id: 'Agenda', icon: Calendar, label: t('nav.agenda') },
+        { id: 'Directori', icon: Users, label: t('nav.directori') },
+        { id: '__more', icon: Menu, label: t('nav.mes') },
     ];
 
     return createPortal(

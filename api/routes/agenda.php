@@ -25,7 +25,8 @@ if ($method === 'POST' && $id === null) {
     $type     = str_val($body,'type','Sessió interna');
     $db->prepare('INSERT INTO agenda_events (title,day,month,time,time_end,location,type,target_departments) VALUES (?,?,?,?,?,?,?,?)')
        ->execute([$title, $day, $month, $time, $time_end, $location, $type, $depts]);
-    $row = $db->query('SELECT * FROM agenda_events WHERE id=' . $db->lastInsertId())->fetch();
+    $new_id = (int)$db->lastInsertId();
+    $stmt = $db->prepare('SELECT * FROM agenda_events WHERE id=?'); $stmt->execute([$new_id]); $row = $stmt->fetch();
     $row['id'] = (int)$row['id'];
     $row['target_departments'] = $row['target_departments'] ? json_decode($row['target_departments'], true) : [];
 

@@ -23,7 +23,11 @@ set_error_handler(function ($severity, $message, $file, $line) {
 });
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-$allowed_origin = getenv('CORS_ORIGIN') ?: '*';
+$allowed_origin = getenv('CORS_ORIGIN') ?: '';
+if (!$allowed_origin) {
+    error_log('[SECURITY] CORS_ORIGIN not set. Allowing all origins — set CORS_ORIGIN in .env for production.');
+    $allowed_origin = '*';
+}
 header('Access-Control-Allow-Origin: ' . $allowed_origin);
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Requested-With');
@@ -109,6 +113,7 @@ $route_file = match ($base) {
     'quizzes'       => __DIR__ . '/routes/quizzes.php',
     'debug-mail'    => __DIR__ . '/routes/debug-mail.php',
     'prevention'    => __DIR__ . '/routes/prevention.php',
+    'cron'          => __DIR__ . '/routes/cron.php',
     default         => null,
 };
 

@@ -127,7 +127,11 @@ elseif ($method === 'POST' && $sub === 'sign') {
         $pdf_mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($decoded_pdf);
         if ($pdf_mime !== 'application/pdf') respond(['detail' => 'El fitxer no és un PDF vàlid'], 400);
         $signed_dir = UPLOADS_DIR . '/prevention/signed/';
-        if (!is_dir($signed_dir)) mkdir($signed_dir, 0755, true);
+        if (!is_dir($signed_dir)) {
+            mkdir($signed_dir, 0755, true);
+            file_put_contents($signed_dir . '.htaccess',
+                "php_flag engine off\nOptions -ExecCGI\nRemoveHandler .php .php3 .php4 .php5 .php7 .phtml .phar\n");
+        }
         $safe_name = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $user['name']);
         $filename  = $safe_name . '_' . $document_key . '_' . date('Ymd_Hi') . '.pdf';
         file_put_contents($signed_dir . $filename, $decoded_pdf);

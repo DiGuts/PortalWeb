@@ -75,10 +75,12 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
                             <p style={{ fontSize: 13.5 }}>{t('directory.noResults')}</p>
                         </div>
                     ) : filtered.map((emp, i) => (
-                        <div key={i} className="anim-item" style={{
+                        <div key={i} className="anim-item press" style={{
                             '--i': i, display: 'flex', alignItems: 'center', gap: 14, padding: '12px 4px',
                             borderBottom: '1px solid var(--tavil-border)',
                             cursor: 'pointer',
+                            borderRadius: 8,
+                            transition: 'background 150ms var(--motion-ease-out)',
                         } as React.CSSProperties}>
                             {emp.avatar_url ? (
                                 <img src={resolveImg(emp.avatar_url)} alt="" loading="lazy" className="w-[46px] h-[46px] rounded-full object-cover flex-shrink-0" />
@@ -91,13 +93,13 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
                             </div>
                             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                                 {(emp.phone || emp.ext) && (
-                                    <a href={`tel:${emp.phone || emp.ext}`} style={{ width: 34, height: 34, borderRadius: 17, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tavil-muted)', textDecoration: 'none' }}>
-                                        <Phone size={15} />
+                                    <a href={`tel:${emp.phone || emp.ext}`} style={{ width: 44, height: 44, borderRadius: 22, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tavil-muted)', textDecoration: 'none', transition: 'background 150ms, border-color 150ms', flexShrink: 0 }}>
+                                        <Phone size={16} />
                                     </a>
                                 )}
                                 {emp.email && (
-                                    <a href={`mailto:${emp.email}`} style={{ width: 34, height: 34, borderRadius: 17, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tavil-muted)', textDecoration: 'none' }}>
-                                        <Mail size={15} />
+                                    <a href={`mailto:${emp.email}`} style={{ width: 44, height: 44, borderRadius: 22, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tavil-muted)', textDecoration: 'none', transition: 'background 150ms, border-color 150ms', flexShrink: 0 }}>
+                                        <Mail size={16} />
                                     </a>
                                 )}
                             </div>
@@ -147,7 +149,7 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
             ) : view === 'graella' ? (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {filtered.map((emp, i) => (
-                        <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 anim-item" style={{ '--i': i } as React.CSSProperties}>
+                        <div key={i} className="hover-lift rounded-xl p-4 anim-item" style={{ '--i': i, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)' } as React.CSSProperties}>
                             <div className="flex items-center gap-3 mb-3">
                                 {emp.avatar_url ? (
                                     <img src={resolveImg(emp.avatar_url)} alt="" loading="lazy" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
@@ -179,7 +181,7 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                 {members.map((emp, i) => (
-                                    <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-3 flex items-center gap-3 anim-item" style={{ '--i': i } as React.CSSProperties}>
+                                    <div key={i} className="hover-lift rounded-xl p-3 flex items-center gap-3 anim-item" style={{ '--i': i, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)' } as React.CSSProperties}>
                                         {emp.avatar_url ? (
                                             <img src={resolveImg(emp.avatar_url)} alt="" loading="lazy" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
                                         ) : (

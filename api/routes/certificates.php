@@ -102,6 +102,8 @@ elseif ($method === 'POST' && $id === null) {
     $certDir = UPLOADS_DIR . '/certificates';
     if (!is_dir($certDir)) {
         mkdir($certDir, 0755, true);
+        file_put_contents($certDir . '/.htaccess',
+            "php_flag engine off\nOptions -ExecCGI\nRemoveHandler .php .php3 .php4 .php5 .php7 .phtml .phar\n");
     }
 
     // Move the uploaded file into place (before transaction so we can detect failure early)

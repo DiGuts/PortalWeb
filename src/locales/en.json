@@ -12,7 +12,8 @@
     "campus": "TAVIL Campus",
     "veu": "Employee voice",
     "solicituds": "My requests",
-    "perfil": "My profile"
+    "perfil": "My profile",
+    "mes": "More"
   },
   "timeago": {
     "justNow": "Just now",
@@ -109,7 +110,15 @@
       "Fr",
       "Sa"
     ],
-    "required": "Required field"
+    "required": "Required field",
+    "retry": "Try again",
+    "seeAll": "See all",
+    "showAll": "Show all",
+    "week": "Week",
+    "month": "Month",
+    "send": "Send",
+    "sending": "Sending…",
+    "noEvents": "No events"
   },
   "auth": {
     "login": "Sign in",

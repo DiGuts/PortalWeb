@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useLayoutEffect, useCallback, lazy, Suspense } from 'react';
 import { LoginScreen } from './components/mobile/auth/LoginScreen';
 import { MediaUploader } from './components/MediaUploader';
-import { AdminBackoffice } from './components/admin/AdminBackoffice';
+// AdminBackoffice → lazy (heavy admin bundle, minority of users)
 import { CreateAgendaModal, EditAgendaModal } from './components/admin/CreateAgendaModal';
 import { ConfirmModal as SharedConfirmModal } from './components/ConfirmDialog';
 import { VerifyScreen } from './components/mobile/auth/VerifyScreen';
@@ -29,17 +29,15 @@ import { useIsMobile } from './lib/useIsMobile';
 import { usePersistedSubTab } from './lib/usePersistedSubTab';
 import { setGlobalNavHidden, registerGlobalNavSetter } from './lib/globalNav';
 import { tabPrefetch, tabPrefetchAt, isTabCacheFresh, prefetchTabData, resetTabPrefetch } from './lib/tabPrefetch';
-import { Skeleton, SkeletonText, SkeletonCard } from './components/shared/Skeleton';
+import { Skeleton, SkeletonText, SkeletonCard, SkeletonInici, SkeletonNoticies, SkeletonActivitats, SkeletonAgenda, SkeletonDirectori, SkeletonCampus } from './components/shared/Skeleton';
 import { SidebarItem, SidebarSection } from './components/shared/Sidebar';
 import { FilterChip } from './components/shared/FilterChip';
 import { DropdownMultiselect } from './components/shared/DropdownMultiselect';
-import { DatePicker } from './components/shared/AgendaPickers';
+import { DatePicker, TimePicker } from './components/shared/AgendaPickers';
 import { ToastProvider, useToast } from './components/shared/Toast';
 import { AField, AInput, ATextarea, ASelect, AdminCreateModalShell } from './components/admin/primitives';
 import { DeptSearch } from './components/admin/DeptSearch';
-import { AgendaTab } from './components/tabs/AgendaTab';
-import { DirectoriTab } from './components/tabs/DirectoriTab';
-import { CampusTavilTab } from './components/tabs/CampusTavilTab';
+// AgendaTab, DirectoriTab, CampusTavilTab → lazy (see lazy declarations below)
 import { UnderlineTab } from './components/shared/UnderlineTab';
 import { EditModal } from './components/shared/EditModal';
 import { Toggle } from './components/shared/Toggle';
@@ -50,11 +48,7 @@ import { MobileDrawer } from './components/mobile/MobileDrawer';
 import { MesTab, MesSettingsGroup } from './components/mobile/MesTab';
 import { BottomNavBar } from './components/mobile/BottomNavBar';
 import { MobileNotificationsOverlay } from './components/mobile/MobileNotificationsOverlay';
-import { LoginPage } from './components/auth/LoginPage';
-import { VerifyEmailPage } from './components/auth/VerifyEmailPage';
-import { OTPPage } from './components/auth/OTPPage';
-import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
-import { PreventionOnboarding } from './components/prevention/PreventionOnboarding';
+// Auth pages + PreventionOnboarding → lazy (not seen once logged in)
 import { validateVacanca, ANNUAL_QUOTA_DAYS, laboralDaysBetween } from './conveni';
 import {
   User, AuthOut,
@@ -88,6 +82,17 @@ import {
 } from './api';
 
 
+// ── Lazy-loaded chunks ────────────────────────────────────────────────────────
+const AgendaTab         = lazy(() => import('./components/tabs/AgendaTab').then(m => ({ default: m.AgendaTab })));
+const DirectoriTab      = lazy(() => import('./components/tabs/DirectoriTab').then(m => ({ default: m.DirectoriTab })));
+const CampusTavilTab    = lazy(() => import('./components/tabs/CampusTavilTab').then(m => ({ default: m.CampusTavilTab })));
+const AdminBackoffice   = lazy(() => import('./components/admin/AdminBackoffice').then(m => ({ default: m.AdminBackoffice })));
+const LoginPage         = lazy(() => import('./components/auth/LoginPage').then(m => ({ default: m.LoginPage })));
+const VerifyEmailPage   = lazy(() => import('./components/auth/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })));
+const OTPPage           = lazy(() => import('./components/auth/OTPPage').then(m => ({ default: m.OTPPage })));
+const ChangePasswordModal = lazy(() => import('./components/auth/ChangePasswordModal').then(m => ({ default: m.ChangePasswordModal })));
+const PreventionOnboarding = lazy(() => import('./components/prevention/PreventionOnboarding').then(m => ({ default: m.PreventionOnboarding })));
+
 // ── Inici Tab ─────────────────────────────────────────────────────────────────
 
 const NEWS_CAT_COLORS: Record<string, string> = {
@@ -109,8 +114,12 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
   const [loading, setLoading] = useState(
     () => !(tabPrefetch.notices && tabPrefetch.news && tabPrefetch.activities && tabPrefetch.agendaEvents)
   );
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [heroLoaded, setHeroLoaded] = useState(false);
   const [noticeIndex, setNoticeIndex] = useState(0);
+  const [noticeDrawerOpen, setNoticeDrawerOpen] = useState(false);
+  useEffect(() => { setGlobalNavHidden(noticeDrawerOpen); }, [noticeDrawerOpen]);
   const [featuredIdx, setFeaturedIdx] = useState(0);
   const today = new Date();
   const [calMonth, setCalMonth] = useState(today.getMonth() + 1);
@@ -132,10 +141,15 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
       tasks.push(apiGetAgendaEvents().then(d => { if (!cancelled) { setAgendaEvents(d); tabPrefetch.agendaEvents = d; tabPrefetchAt.agendaEvents = Date.now(); } }));
     }
     if (tasks.length === 0) { setLoading(false); return () => { cancelled = true; }; }
-    Promise.allSettled(tasks).finally(() => { if (!cancelled) setLoading(false); });
+    setError(null);
+    Promise.allSettled(tasks).then(results => {
+      if (cancelled) return;
+      const allFailed = results.every(r => r.status === 'rejected');
+      if (allFailed) setError("No s'han pogut carregar les dades. Comprova la connexió.");
+    }).finally(() => { if (!cancelled) setLoading(false); });
     apiGetMyActivityEnrollments().then(list => { if (!cancelled) setMyEnrollments(new Map(list.map(e => [e.activity_id, e.status]))); }).catch(() => {});
     return () => { cancelled = true; };
-  }, []);
+  }, [retryCount]);
 
   const notice = notices[noticeIndex];
   const comunicats = news.filter(n => n.category === 'Comunicats interns');
@@ -253,32 +267,76 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
             : nk === 'neutral'
             ? { bg: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', iconColor: '#6b7280', NIcon: Info }
             : { bg: '#fef3c7', color: '#78350f', border: '1px solid #fde68a', iconColor: '#b45309', NIcon: AlertTriangle };
+          const isLong = !!(notice.content && notice.content.length > 80);
           return (
+          <>
           <div style={{ padding: '14px 16px 0' }}>
-            <div style={{ background: ms.bg, color: ms.color, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 12, border: ms.border }}>
+            <div
+              onClick={isLong ? () => setNoticeDrawerOpen(true) : undefined}
+              style={{ background: ms.bg, color: ms.color, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 12, border: ms.border, cursor: isLong ? 'pointer' : 'default' }}
+            >
               <ms.NIcon size={20} strokeWidth={1.8} style={{ flexShrink: 0, color: ms.iconColor, marginTop: 1 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.3 }}>{notice.title}</div>
-                {notice.content && <div style={{ fontSize: 12, fontWeight: 400, lineHeight: 1.35, marginTop: 2, opacity: 0.85 }}>{notice.content}</div>}
-                {notice.link && notice.link_text && (
+                {notice.content && (
+                  <div style={{ fontSize: 12, fontWeight: 400, lineHeight: 1.35, marginTop: 2, opacity: 0.85, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } as React.CSSProperties}>
+                    {notice.content}
+                  </div>
+                )}
+                {isLong ? (
+                  <button
+                    onClick={e => { e.stopPropagation(); setNoticeDrawerOpen(true); }}
+                    style={{ marginTop: 5, fontSize: 11, fontWeight: 600, color: ms.iconColor, display: 'flex', alignItems: 'center', gap: 3, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    {t('common.showAll')} <ChevronDown size={11} />
+                  </button>
+                ) : notice.link && notice.link_text ? (
                   <button onClick={() => window.open(notice.link, '_blank', 'noopener,noreferrer')}
                     style={{ marginTop: 6, fontSize: 11.5, fontWeight: 600, color: ms.iconColor, display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
                     {notice.link_text} <ArrowRight size={11} />
                   </button>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
+          {noticeDrawerOpen && createPortal(
+            <div style={{ position: 'fixed', inset: 0, zIndex: 2000 }}>
+              <div onClick={() => setNoticeDrawerOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
+              <div className="anim-sheet-enter" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', maxHeight: '80vh', overflowY: 'auto', borderTop: `2px solid ${ms.iconColor}33` }}>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--tavil-border)', margin: '0 auto 20px' }} />
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <ms.NIcon size={20} strokeWidth={1.8} style={{ flexShrink: 0, color: ms.iconColor, marginTop: 2 }} />
+                    <div style={{ fontSize: 16, fontWeight: 700, color: ms.color, lineHeight: 1.3 }}>{notice.title}</div>
+                  </div>
+                  <button onClick={() => setNoticeDrawerOpen(false)} style={{ flexShrink: 0, width: 32, height: 32, borderRadius: 16, background: 'var(--tavil-faint)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-muted)' }}>
+                    <X size={16} />
+                  </button>
+                </div>
+                {notice.content && (
+                  <p style={{ fontSize: 14, lineHeight: 1.7, color: ms.color, opacity: 0.85, whiteSpace: 'pre-line', marginBottom: notice.link && notice.link_text ? 20 : 0 }}>
+                    {notice.content}
+                  </p>
+                )}
+                {notice.link && notice.link_text && (
+                  <button
+                    onClick={() => { window.open(notice.link, '_blank', 'noopener,noreferrer'); setNoticeDrawerOpen(false); }}
+                    style={{ width: '100%', padding: '13px', borderRadius: 12, background: ms.iconColor, color: '#fff', border: 'none', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8 }}
+                  >
+                    {notice.link_text} <ArrowRight size={14} />
+                  </button>
+                )}
+              </div>
+            </div>,
+            document.body
+          )}
+          </>
           );
         })()}
 
         {/* Quick access */}
         <div style={{ padding: '24px 20px 4px' }}>
-          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>{t('home.quickAccess')}</div>
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 24, fontWeight: 400, lineHeight: 1, letterSpacing: '-0.01em', color: 'var(--tavil-text)', marginBottom: 14,
-          }}>{t('home.quickAccess')}</div>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 14 }}>{t('home.quickAccess')}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
             {quickItems.map(q => (
               <button key={q.id} onClick={() => onNavigate?.(q.id)} style={{
@@ -316,7 +374,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                 style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden', cursor: 'pointer' }}
               >
                 {featured.image ? (
-                  <img src={resolveImg(featured.image)} alt={featured.title}
+                  <img src={resolveImg(featured.image)} alt={featured.title} loading="lazy"
                     style={{ width: '100%', aspectRatio: '16/10', objectFit: 'cover', display: 'block', borderBottom: '1px solid var(--tavil-border)' }} />
                 ) : (
                   <div style={{ width: '100%', aspectRatio: '16/10', background: 'repeating-linear-gradient(135deg,rgba(191,33,30,0.07) 0 8px,rgba(191,33,30,0.03) 8px 16px)', borderBottom: '1px solid var(--tavil-border)' }} />
@@ -349,7 +407,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                 {t('common.seeAll')} <ChevronRight size={14} />
               </button>
             </div>
-            <div style={{ padding: '0 0 0 16px', display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none' }}>
+            <div data-no-swipe style={{ padding: '0 0 0 16px', display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none' }}>
               {upcomingThisWeek.map(ev => (
                 <div key={ev.id} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: 14, minWidth: 220, flexShrink: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
@@ -432,21 +490,19 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
       <div className="p-3 md:p-4 lg:p-8 max-w-7xl mx-auto">
 
       {/* Loading skeletons — shown until first fetch completes */}
-      {loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 anim-fade-in" role="status" aria-busy="true" aria-label="Carregant inici">
-          <div className="lg:col-span-2 space-y-4">
-            <Skeleton className="w-full h-48 md:h-56 rounded-xl" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} lines={2} />)}
-            </div>
-          </div>
-          <div className="space-y-4">
-            <Skeleton className="w-full h-64 rounded-xl" />
-            <Skeleton className="w-full h-40 rounded-xl" />
-          </div>
+      {loading && <SkeletonInici />}
+
+      {!loading && error && notices.length === 0 && news.length === 0 && (
+        <div style={{ padding: '2rem 1.5rem', textAlign: 'center' }}>
+          <p style={{ color: 'var(--tavil-muted)', fontSize: 14, marginBottom: '0.75rem' }}>{error}</p>
+          <button
+            onClick={() => { setError(null); setRetryCount(c => c + 1); }}
+            style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--tavil-accent)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            {t('common.retry')}
+          </button>
         </div>
       )}
-
       {!loading && (<>
       {/* Urgent notice (optional — only if notices exist) */}
       {notice && (() => {
@@ -456,33 +512,79 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
           : nk === 'neutral'
           ? { wrap: 'bg-gray-100 dark:bg-zinc-800/40 border-gray-200 dark:border-zinc-700/40', icon: 'text-gray-500 dark:text-gray-400', title: 'text-gray-800 dark:text-gray-100', body: 'text-gray-600/80 dark:text-gray-300/80', link: 'text-gray-600 dark:text-gray-300', nav: 'hover:bg-gray-200 dark:hover:bg-zinc-700/30 text-gray-600 dark:text-gray-300', counter: 'text-gray-500 dark:text-gray-400', NIcon: Info }
           : { wrap: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/40', icon: 'text-amber-600 dark:text-amber-400', title: 'text-amber-900 dark:text-amber-100', body: 'text-amber-800/80 dark:text-amber-200/80', link: 'text-amber-700 dark:text-amber-300', nav: 'hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-300', counter: 'text-amber-700 dark:text-amber-300', NIcon: AlertTriangle };
+        const isLongDesktop = !!(notice.content && notice.content.length > 120);
         return (
-        <div className={`${ns.wrap} border rounded-xl p-4 mb-6 flex items-start gap-3`}>
+        <>
+        <div
+          className={`${ns.wrap} border rounded-xl p-4 mb-6 flex items-start gap-3 ${isLongDesktop ? 'cursor-pointer' : ''}`}
+          onClick={isLongDesktop ? () => setNoticeDrawerOpen(true) : undefined}
+        >
           <ns.NIcon size={16} className={`${ns.icon} mt-0.5 flex-shrink-0`} />
           <div className="flex-1 min-w-0">
             <p className={`font-semibold ${ns.title} text-sm`}>{notice.title}</p>
-            {notice.content && <p className={`text-xs ${ns.body} mt-0.5`}>{notice.content}</p>}
-            {notice.link && notice.link_text && (
+            {notice.content && (
+              <p className={`text-xs ${ns.body} mt-0.5`} style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } as React.CSSProperties}>
+                {notice.content}
+              </p>
+            )}
+            {isLongDesktop ? (
+              <button
+                onClick={e => { e.stopPropagation(); setNoticeDrawerOpen(true); }}
+                className={`${ns.link} text-xs font-medium mt-1 flex items-center gap-1 hover:underline`}
+              >
+                Veure tot <ChevronDown size={11} />
+              </button>
+            ) : notice.link && notice.link_text ? (
               <button
                 onClick={() => window.open(notice.link, '_blank', 'noopener,noreferrer')}
                 className={`${ns.link} text-xs font-medium mt-1 flex items-center gap-1 hover:underline`}
               >
                 {notice.link_text} <ArrowRight size={11} />
               </button>
-            )}
+            ) : null}
           </div>
           {notices.length > 1 && (
             <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
               <span className={`text-xs ${ns.counter}`}>{noticeIndex + 1}/{notices.length}</span>
-              <button onClick={() => setNoticeIndex((noticeIndex - 1 + notices.length) % notices.length)} className={`p-1 ${ns.nav} rounded`}>
+              <button onClick={e => { e.stopPropagation(); setNoticeIndex((noticeIndex - 1 + notices.length) % notices.length); }} className={`p-1 ${ns.nav} rounded`}>
                 <ChevronLeft size={14} />
               </button>
-              <button onClick={() => setNoticeIndex((noticeIndex + 1) % notices.length)} className={`p-1 ${ns.nav} rounded`}>
+              <button onClick={e => { e.stopPropagation(); setNoticeIndex((noticeIndex + 1) % notices.length); }} className={`p-1 ${ns.nav} rounded`}>
                 <ChevronRight size={14} />
               </button>
             </div>
           )}
         </div>
+        {noticeDrawerOpen && createPortal(
+          <div style={{ position: 'fixed', inset: 0, zIndex: 2000 }}>
+            <div onClick={() => setNoticeDrawerOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
+            <div className="anim-sheet-enter" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxWidth: 560, margin: '0 auto', background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 28px 40px', maxHeight: '80vh', overflowY: 'auto' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--tavil-border)', margin: '0 auto 20px' }} />
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="flex items-start gap-3">
+                  <ns.NIcon size={20} className={`${ns.icon} flex-shrink-0 mt-0.5`} />
+                  <p className={`font-bold text-base ${ns.title}`}>{notice.title}</p>
+                </div>
+                <button onClick={() => setNoticeDrawerOpen(false)} className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors">
+                  <X size={16} />
+                </button>
+              </div>
+              {notice.content && (
+                <p className={`text-sm leading-relaxed ${ns.body}`} style={{ whiteSpace: 'pre-line' }}>{notice.content}</p>
+              )}
+              {notice.link && notice.link_text && (
+                <button
+                  onClick={() => { window.open(notice.link, '_blank', 'noopener,noreferrer'); setNoticeDrawerOpen(false); }}
+                  className={`mt-4 flex items-center gap-2 text-sm font-semibold ${ns.link} hover:underline`}
+                >
+                  {notice.link_text} <ArrowRight size={13} />
+                </button>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
+        </>
         );
       })()}
 
@@ -497,7 +599,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
               {t('home.seeAll2')} <ArrowRight size={11} />
             </button>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+          <div data-no-swipe className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
             {comunicats.map(c => (
               <div
                 key={c.id}
@@ -548,7 +650,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                       className="min-w-full relative cursor-pointer"
                     >
                       {item.image ? (
-                        <img src={resolveImg(item.image)} alt="" className="w-full h-40 md:h-56 object-cover" />
+                        <img src={resolveImg(item.image)} alt="" loading="lazy" className="w-full h-40 md:h-56 object-cover" />
                       ) : (
                         <div className="w-full h-40 md:h-56 bg-gradient-to-br from-red-100 to-red-50 dark:from-red-950/30 dark:to-red-950/10 flex items-center justify-center">
                           <Newspaper size={48} className="text-red-300" />
@@ -592,9 +694,9 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
               <h3 className="font-bold text-gray-900 dark:text-white text-[15px]">{t('home.novetats')}</h3>
             </div>
             {novetats.length === 0 ? (
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-8 text-center">
-                <Newspaper size={28} className="text-gray-300 dark:text-zinc-600 mx-auto mb-2" />
-                <p className="text-sm text-gray-400 dark:text-zinc-500">{t('home.noNovetats')}</p>
+              <div className="rounded-xl p-8 text-center" style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)' }}>
+                <Newspaper size={28} style={{ margin: '0 auto 8px', color: 'var(--tavil-faint)' }} />
+                <p className="text-sm" style={{ color: 'var(--tavil-muted)' }}>{t('home.noNovetats')}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -692,7 +794,10 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
               </button>
             </div>
             {upcomingThisWeek.length === 0 ? (
-              <p className="text-xs text-gray-400 dark:text-zinc-500 py-2">{t("home.noEventsThisWeek")}</p>
+              <div className="flex flex-col items-center py-4 gap-1.5" style={{ color: 'var(--tavil-faint)' }}>
+                <Calendar size={20} style={{ opacity: 0.5 }} />
+                <p className="text-xs text-center" style={{ color: 'var(--tavil-faint)' }}>{t("home.noEventsThisWeek")}</p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {upcomingThisWeek.map(ev => (
@@ -867,7 +972,7 @@ function RichBlockViewer({ blocks }: { blocks: ArticleBlock[] }) {
             )}
             {block.type === 'image' && block.url && (
               <figure>
-                <img src={block.url} alt={block.caption ?? ''} className="w-full rounded-xl object-cover" />
+                <img src={block.url} alt={block.caption ?? ''} loading="lazy" className="w-full rounded-xl object-cover" />
                 {block.caption && <figcaption className="text-[11px] text-gray-400 mt-2 text-center italic">{block.caption}</figcaption>}
               </figure>
             )}
@@ -1127,7 +1232,7 @@ function ArticleBlocksEditor({ value, onChange }: ArticleBlocksEditorProps) {
               {b.type === 'image' && (
                 <div className="space-y-2">
                   {b.url ? (
-                    <img src={resolveImg(b.url)} alt="" className="w-full h-32 object-cover rounded" />
+                    <img src={resolveImg(b.url)} alt="" loading="lazy" className="w-full h-32 object-cover rounded" />
                   ) : (
                     <div className="w-full h-32 rounded bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-gray-400 text-xs">
                       Sense imatge
@@ -1238,6 +1343,8 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
   };
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const [newsLoading, setNewsLoading] = useState(() => !tabPrefetch.news);
+  const [newsError, setNewsError] = useState<string | null>(null);
+  const [newsRetryCount, setNewsRetryCount] = useState(0);
   useEffect(() => {
     let cancelled = false;
     // Restore selected article from localStorage (reload or cross-tab open).
@@ -1256,6 +1363,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
       setNewsLoading(false);
       return;
     }
+    setNewsError(null);
     apiGetNews()
       .then(d => {
         if (cancelled) return;
@@ -1264,10 +1372,10 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
         tabPrefetchAt.news = Date.now();
         restoreFromCache(d);
       })
-      .catch(console.error)
+      .catch(() => { if (!cancelled) setNewsError("No s'han pogut carregar les dades. Comprova la connexió."); })
       .finally(() => { if (!cancelled) setNewsLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [newsRetryCount]);
 
   const filtered = (activeFilter === 'Totes' ? news : news.filter(n => n.category === activeFilter))
     .filter(n => !newsSearch || [n.title, n.summary, n.content].some(f => f.toLowerCase().includes(newsSearch.toLowerCase())));
@@ -1306,7 +1414,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
           <div style={{ padding: '0 16px 24px' }}>
             {selectedNews.image && (
               <div style={{ margin: '0 -16px 16px', aspectRatio: '16/9', overflow: 'hidden' }}>
-                <img src={resolveImg(selectedNews.image)} alt={selectedNews.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={resolveImg(selectedNews.image)} alt={selectedNews.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
             )}
             <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -1372,7 +1480,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
           </div>
         )}
         {/* Filter chips */}
-        <div style={{ padding: '0 0 16px 16px', display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }} className="hide-sb">
+        <div data-no-swipe style={{ padding: '0 0 16px 16px', display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }} className="hide-sb">
           {cats.map(cat => (
             <button key={cat} onClick={() => setActiveFilter(cat)} style={{
               padding: '7px 14px', borderRadius: 999,
@@ -1384,6 +1492,18 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
           ))}
           <div style={{ minWidth: 8, flexShrink: 0 }} />
         </div>
+        {/* Error state */}
+        {!newsLoading && newsError && news.length === 0 && (
+          <div style={{ padding: '2rem 1.5rem', textAlign: 'center' }}>
+            <p style={{ color: 'var(--tavil-muted)', fontSize: 14, marginBottom: '0.75rem' }}>{newsError}</p>
+            <button
+              onClick={() => { setNewsError(null); setNewsRetryCount(c => c + 1); }}
+              style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--tavil-accent)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              {t('common.retry')}
+            </button>
+          </div>
+        )}
         {/* Featured article */}
         {newsLoading && !mFeatured && (
           <div style={{ padding: '0 16px 12px' }}><Skeleton style={{ width: '100%', height: 240, borderRadius: 16 }} /></div>
@@ -1393,7 +1513,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
             <div onClick={() => setSelectedNews(mFeatured, 'Notícies')} style={{ background: 'var(--tavil-card)', borderRadius: 16, border: '1px solid var(--tavil-border)', overflow: 'hidden', cursor: 'pointer' }}>
               <div style={{ aspectRatio: '16/10', background: 'var(--tavil-faint)', overflow: 'hidden' }}>
                 {mFeatured.image
-                  ? <img src={resolveImg(mFeatured.image)} alt={mFeatured.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ? <img src={resolveImg(mFeatured.image)} alt={mFeatured.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <div style={{ width: '100%', height: '100%', background: 'var(--tavil-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Newspaper size={40} style={{ color: 'var(--tavil-muted)' }} /></div>
                 }
               </div>
@@ -1423,7 +1543,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
               </div>
               <div style={{ width: 86, height: 86, flexShrink: 0, borderRadius: 10, overflow: 'hidden', background: 'var(--tavil-faint)' }}>
                 {n.image
-                  ? <img src={resolveImg(n.image)} alt={n.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ? <img src={resolveImg(n.image)} alt={n.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Newspaper size={22} style={{ color: 'rgba(191,33,30,0.3)' }} /></div>
                 }
               </div>
@@ -1445,13 +1565,14 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
       <div className={cn("mx-auto", (isTileArrayContent(selectedNews.content) || isRichContent(selectedNews.content)) ? "max-w-5xl" : "max-w-3xl")}>
         <button
           onClick={closeArticle}
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors mb-6"
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600 transition-colors mb-6"
         >
+          <ChevronLeft size={16} className="flex-shrink-0" />
           {t('news.detail.backToNews')}
         </button>
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
           {selectedNews.image && (
-            <img src={resolveImg(selectedNews.image)} alt={selectedNews.title} className="w-full h-72 object-cover" />
+            <img src={resolveImg(selectedNews.image)} alt={selectedNews.title} loading="lazy" className="w-full h-72 object-cover" />
           )}
           <div className="p-8">
             <div className="flex items-center gap-3 mb-4">
@@ -1561,14 +1682,18 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
         </div>
       )}
 
-      {newsLoading && news.length === 0 && (
-        <>
-          <Skeleton className="w-full h-40 md:h-64 rounded-2xl mb-8" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6" role="status" aria-busy="true" aria-label="Carregant notícies">
-            {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} lines={2} />)}
-          </div>
-        </>
+      {!newsLoading && newsError && news.length === 0 && (
+        <div style={{ padding: '2rem 1.5rem', textAlign: 'center' }}>
+          <p style={{ color: 'var(--tavil-muted)', fontSize: 14, marginBottom: '0.75rem' }}>{newsError}</p>
+          <button
+            onClick={() => { setNewsError(null); setNewsRetryCount(c => c + 1); }}
+            style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--tavil-accent)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            {t('common.retry')}
+          </button>
+        </div>
       )}
+      {newsLoading && news.length === 0 && <SkeletonNoticies />}
       <div key={activeFilter} className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6">
         {grid.map((item, i) => (
           <div key={i} className="group hover-lift bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden anim-item" style={{ '--i': i } as React.CSSProperties}>
@@ -1734,15 +1859,18 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
   };
 
   const [actLoading, setActLoading] = useState(() => !tabPrefetch.activities);
+  const [actError, setActError] = useState<string | null>(null);
+  const [actRetryCount, setActRetryCount] = useState(0);
   useEffect(() => {
     let cancelled = false;
     if (isTabCacheFresh('activities')) { setActLoading(false); return; }
+    setActError(null);
     apiGetActivities()
       .then(d => { if (!cancelled) { setActivities(d); tabPrefetch.activities = d; tabPrefetchAt.activities = Date.now(); } })
-      .catch(console.error)
+      .catch(() => { if (!cancelled) setActError("No s'han pogut carregar les dades. Comprova la connexió."); })
       .finally(() => { if (!cancelled) setActLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [actRetryCount]);
 
   const isMobileAct = useIsMobile();
   const ACT_CAT_LABELS: Record<string, string> = {
@@ -1793,10 +1921,18 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
           </div>
         </div>
         {/* Cards */}
-        {actLoading && activities.length === 0 ? (
-          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[1,2,3].map(i => <Skeleton key={i} style={{ width: '100%', height: 96, borderRadius: 14 }} />)}
+        {!actLoading && actError && activities.length === 0 ? (
+          <div style={{ padding: '2rem 1.5rem', textAlign: 'center' }}>
+            <p style={{ color: 'var(--tavil-muted)', fontSize: 14, marginBottom: '0.75rem' }}>{actError}</p>
+            <button
+              onClick={() => { setActError(null); setActRetryCount(c => c + 1); }}
+              style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--tavil-accent)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              {t('common.retry')}
+            </button>
           </div>
+        ) : actLoading && activities.length === 0 ? (
+          <SkeletonActivitats />
         ) : filtered.length === 0 ? (
           <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tavil-faint)' }}>
             <ActivityIcon size={36} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
@@ -1955,7 +2091,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                 <DatePicker value={aDate} onChange={setADate} />
               </AField>
               <AField label="Hora">
-                <AInput type="time" value={aTime} onChange={e => setATime(e.target.value)} icon={Clock} />
+                <TimePicker value={aTime} onChange={setATime} />
               </AField>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -1979,8 +2115,8 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
               <input ref={aImageInputRef} type="file" accept="image/*" style={{ display: 'none' }}
                 onChange={e => { const f = e.target.files?.[0]; if (f) { setAImageFile(f); setAImage(''); } }} />
               <div onClick={() => aImageInputRef.current?.click()} style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 10, border: '1.5px dashed var(--tavil-border)', background: 'var(--tavil-bgAlt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', transition: 'border-color 150ms' }}>
-                {aImageFile ? <img src={URL.createObjectURL(aImageFile)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : aImage ? <img src={aImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {aImageFile ? <img src={URL.createObjectURL(aImageFile)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : aImage ? <img src={aImage} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: 'var(--tavil-faint)' }}><ImageIcon size={24} /><span style={{ fontSize: 12 }}>Afegir foto de portada</span></div>}
               </div>
               {(aImageFile || aImage) && (
@@ -2165,7 +2301,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
               <DatePicker value={aDate} onChange={setADate} />
             </AField>
             <AField label="Hora">
-              <AInput type="time" value={aTime} onChange={e => setATime(e.target.value)} icon={Clock} />
+              <TimePicker value={aTime} onChange={setATime} optional />
             </AField>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -2189,8 +2325,8 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
             <input ref={aImageInputRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f) { setAImageFile(f); setAImage(''); } }} />
             <div onClick={() => aImageInputRef.current?.click()} style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 10, border: '1.5px dashed var(--tavil-border)', background: 'var(--tavil-bgAlt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', transition: 'border-color 150ms' }}>
-              {aImageFile ? <img src={URL.createObjectURL(aImageFile)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : aImage ? <img src={aImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {aImageFile ? <img src={URL.createObjectURL(aImageFile)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : aImage ? <img src={aImage} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 : <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: 'var(--tavil-faint)' }}><ImageIcon size={24} /><span style={{ fontSize: 12 }}>Afegir foto de portada</span></div>}
             </div>
             {(aImageFile || aImage) && (
@@ -2221,11 +2357,18 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
           ))}
         </div>
       </div>
-      {actLoading && activities.length === 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5" role="status" aria-busy="true" aria-label="Carregant activitats">
-          {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} lines={3} />)}
+      {!actLoading && actError && activities.length === 0 && (
+        <div style={{ padding: '2rem 1.5rem', textAlign: 'center' }}>
+          <p style={{ color: 'var(--tavil-muted)', fontSize: 14, marginBottom: '0.75rem' }}>{actError}</p>
+          <button
+            onClick={() => { setActError(null); setActRetryCount(c => c + 1); }}
+            style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--tavil-accent)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            {t('common.retry')}
+          </button>
         </div>
       )}
+      {actLoading && activities.length === 0 && <SkeletonActivitats />}
       <div key={`${activeTab}-${activeFilter}`} className="grid grid-cols-1 md:grid-cols-2 gap-5 anim-tab">
         {filtered.map((act, i) => {
           const available = act.capacity > 0 ? act.capacity - act.enrolled : 0;
@@ -2479,15 +2622,9 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                 <label className={lCls}>Data</label>
                 <DatePicker value={aeDate} onChange={setAeDate} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={lCls}>Hora inici</label>
-                  <input type="time" value={aeTime} onChange={e => setAeTime(e.target.value)} className={iCls} />
-                </div>
-                <div>
-                  <label className={lCls}>Hora final <span className="font-normal normal-case tracking-normal opacity-60">(opcional)</span></label>
-                  <input type="time" className={iCls} />
-                </div>
+              <div>
+                <label className={lCls}>Hora inici</label>
+                <TimePicker value={aeTime} onChange={setAeTime} />
               </div>
               <div>
                 <label className={lCls}>Ubicació</label>
@@ -2510,8 +2647,8 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                   onChange={e => { const f = e.target.files?.[0]; if (f) { setAeImageFile(f); setAeImage(''); } }} />
                 <div onClick={() => aeImageInputRef.current?.click()}
                   style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 10, border: '1.5px dashed var(--tavil-border)', background: 'var(--tavil-bgAlt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                  {aeImageFile ? <img src={URL.createObjectURL(aeImageFile)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : aeImage ? <img src={aeImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {aeImageFile ? <img src={URL.createObjectURL(aeImageFile)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : aeImage ? <img src={aeImage} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: 'var(--tavil-faint)' }}><ImageIcon size={24} /><span style={{ fontSize: 12 }}>Afegir foto de portada</span></div>}
                 </div>
                 {(aeImageFile || aeImage) && (
@@ -3045,6 +3182,9 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
   const [incAdminResolution, setIncAdminResolution] = useState('');
   const [incAdminSaving, setIncAdminSaving] = useState(false);
 
+  // Confirm delete modal for Veu items (mobile and desktop)
+  const [confirmVeuDelete, setConfirmVeuDelete] = useState<{ message: string; onConfirm: () => void } | null>(null);
+
   const isRrhhOrAdmin = ['Administrador', 'Administrador/a', 'Recursos humans', 'SolicitudsVacances', 'SolicitudsDissabtes'].some(x => x === (currentUser?.role ?? '') || (currentUser?.roles ?? []).includes(x));
 
   const openSuggAdmin = (sug: Suggestion) => {
@@ -3083,6 +3223,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
 
   // Enquestes state
   const [enquestes, setEnquestes] = useState<Enquesta[]>([]);
+  const [enquestesError, setEnquestesError] = useState<string | null>(null);
 
   const fetchAll = () => {
     apiGetSuggestions().then(setSuggestions).catch(console.error);
@@ -3177,7 +3318,8 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
       setEnquestes(updated);
     } catch (e) {
       console.error('Error responding enquesta:', e);
-      alert(e instanceof Error ? e.message : 'Error en respondre l\'enquesta');
+      setEnquestesError(e instanceof Error ? e.message : 'Error en respondre l\'enquesta');
+      setTimeout(() => setEnquestesError(null), 4000);
     }
   };
 
@@ -3222,7 +3364,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
           <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>{t('veu.subtitle')}</p>
         </div>
         {/* Pill tabs */}
-        <div style={{ padding: '4px 16px 16px', display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }} className="hide-sb">
+        <div data-no-swipe style={{ padding: '4px 16px 16px', display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }} className="hide-sb">
           {tabs.map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
               padding: '8px 14px', borderRadius: 999,
@@ -3267,7 +3409,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                       <ThumbsDown size={13} />
                     </button>
                     {(isRrhhOrAdmin || s.user_id === currentUser?.id) && (
-                      <button onClick={async () => { await apiDeleteSuggestion(s.id); setSuggestions(await apiGetSuggestions()); }} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
+                      <button onClick={() => setConfirmVeuDelete({ message: t('news.confirmDelete'), onConfirm: async () => { setConfirmVeuDelete(null); await apiDeleteSuggestion(s.id); setSuggestions(await apiGetSuggestions()); } })} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
                     )}
                   </div>
                 </div>
@@ -3317,7 +3459,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                       {inc.priority && <span style={{ marginLeft: 8, fontWeight: 600 }}>Prioritat: {inc.priority}</span>}
                     </div>
                     {(isRrhhOrAdmin || inc.user_id === currentUser?.id) && (
-                      <button onClick={async () => { await apiDeleteIncidencia(inc.id); setIncidencies(await apiGetIncidencies()); }} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
+                      <button onClick={() => setConfirmVeuDelete({ message: t('veu.incidents') + ' — ' + t('news.confirmDelete'), onConfirm: async () => { setConfirmVeuDelete(null); await apiDeleteIncidencia(inc.id); setIncidencies(await apiGetIncidencies()); } })} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
                     )}
                   </div>
                   {isRrhhOrAdmin && (
@@ -3381,7 +3523,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                   <button onClick={closeMobileVeuForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('common.cancel')}</button>
                   <button onClick={async () => { await handleSuggSubmit(); closeMobileVeuForm(); }} disabled={!newTitle.trim() || !newCat || suggSubmitting} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!newTitle.trim() || !newCat || suggSubmitting) ? 0.5 : 1 }}>
-                    {suggSubmitting ? 'Enviant…' : 'Enviar'}
+                    {suggSubmitting ? t('common.sending') : t('common.send')}
                   </button>
                 </div>
               </div>
@@ -3410,7 +3552,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                   <button onClick={closeMobileVeuForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('common.cancel')}</button>
                   <button onClick={async () => { await handleIncSubmit(); closeMobileVeuForm(); }} disabled={!incTitle.trim() || !incArea || !incPriority || incSubmitting} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!incTitle.trim() || !incArea || !incPriority || incSubmitting) ? 0.5 : 1 }}>
-                    {incSubmitting ? 'Enviant…' : 'Enviar'}
+                    {incSubmitting ? t('common.sending') : t('common.send')}
                   </button>
                 </div>
               </div>
@@ -3418,6 +3560,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
           </div>,
           document.body
         )}
+        {confirmVeuDelete && <ConfirmModal message={confirmVeuDelete.message} onConfirm={confirmVeuDelete.onConfirm} onCancel={() => setConfirmVeuDelete(null)} />}
       </div>
     );
   }
@@ -3614,6 +3757,11 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
       {/* ── Enquestes ── */}
       {activeTab === 'Enquestes' && (
         <div className="space-y-4">
+          {enquestesError && (
+            <div className="flex items-center gap-2 text-red-700 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/40 rounded-lg px-3 py-2 text-xs">
+              <AlertTriangle size={13} className="flex-shrink-0" /> {enquestesError}
+            </div>
+          )}
           {enquestes.map(enc => {
             const isCompleted = enc.user_completed || enc.status === 'Completada';
             const isClosed = enc.status === 'Tancada';
@@ -3663,6 +3811,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
         </div>
       )}
       </div>
+      {confirmVeuDelete && <ConfirmModal message={confirmVeuDelete.message} onConfirm={confirmVeuDelete.onConfirm} onCancel={() => setConfirmVeuDelete(null)} />}
     </div>
   );
 }
@@ -4097,6 +4246,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
   const [vacComments, setVacComments] = useState('');
   const [vacSubmitting, setVacSubmitting] = useState(false);
   const [vacSuccess, setVacSuccess] = useState(false);
+  const [vacError, setVacError] = useState<string | null>(null);
   const [vacDenyingId, setVacDenyingId] = useState<number | null>(null);
   const [vacDenyStage, setVacDenyStage] = useState<'head' | 'rrhh'>('head');
   const [vacDenyComment, setVacDenyComment] = useState('');
@@ -4203,7 +4353,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
   const closeSolForm = () => { setSolClosing(true); setTimeout(() => { setMobileSolForm(false); setSolClosing(false); }, 220); };
   const closeVacForm = () => { setVacClosing(true); setTimeout(() => { setMobileVacForm(false); setVacClosing(false); }, 220); };
   // Hide bottom nav when form sheets open
-  useEffect(() => { setGlobalNavHidden(mobileSolForm || mobileVacForm); }, [mobileSolForm, mobileVacForm]);
+  useEffect(() => { setGlobalNavHidden(mobileSolForm || mobileVacForm || mobileFormOpen); }, [mobileSolForm, mobileVacForm, mobileFormOpen]);
   const today = new Date().toISOString().split('T')[0];
 
   // ── Mobile layout ──────────────────────────────────────────────────────────
@@ -4844,11 +4994,11 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
             for (const r of vacRanges) {
               const rep = validateVacanca(r.inici, r.final, ownVacances.map(v => ({ start_date: v.start_date, end_date: v.end_date, status: v.status })));
               if (rep.errors.length > 0) {
-                alert(`La sol·licitud (${r.inici} – ${r.final}) no compleix el conveni:\n\n` + rep.errors.map(e => '• ' + e).join('\n'));
+                setVacError(`La sol·licitud (${r.inici} – ${r.final}) no compleix el conveni: ` + rep.errors.join('; '));
                 return;
               }
             }
-            setVacSubmitting(true);
+            setVacSubmitting(true); setVacError(null);
             try {
               for (const r of vacRanges) {
                 await apiCreateVacanca(r.inici, r.final, vacComments.trim());
@@ -4857,7 +5007,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
               setVacRanges([]); setVacComments('');
               setVacSuccess(true); setTimeout(() => setVacSuccess(false), 3000);
             } catch (e: any) {
-              alert('La sol·licitud ha estat rebutjada pel servidor:\n\n' + (e?.message ?? 'Error desconegut'));
+              setVacError('La sol·licitud ha estat rebutjada: ' + (e?.message ?? 'Error desconegut'));
             } finally { setVacSubmitting(false); }
             return;
           }
@@ -4867,17 +5017,17 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
             ownVacances.map(v => ({ start_date: v.start_date, end_date: v.end_date, status: v.status })),
           );
           if (report.errors.length > 0) {
-            alert('La sol·licitud no compleix el conveni:\n\n' + report.errors.map(e => '• ' + e).join('\n'));
+            setVacError('La sol·licitud no compleix el conveni: ' + report.errors.join('; '));
             return;
           }
-          setVacSubmitting(true);
+          setVacSubmitting(true); setVacError(null);
           try {
             await apiCreateVacanca(vacStartDate, vacEndDate, vacComments.trim());
             fetchVacances(); onNotifChange?.();
             setVacStartDate(''); setVacEndDate(''); setVacComments('');
             setVacSuccess(true); setTimeout(() => setVacSuccess(false), 3000);
           } catch (e: any) {
-            alert('La sol·licitud ha estat rebutjada pel servidor:\n\n' + (e?.message ?? 'Error desconegut'));
+            setVacError('La sol·licitud ha estat rebutjada: ' + (e?.message ?? 'Error desconegut'));
           } finally { setVacSubmitting(false); }
         };
 
@@ -4981,6 +5131,11 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                           <CheckCircle size={13} /> Sol·licitud enviada correctament
                         </div>
                       )}
+                      {vacError && (
+                        <div className="flex items-start gap-2 text-red-700 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/40 rounded-lg px-3 py-2 text-xs">
+                          <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" /> {vacError}
+                        </div>
+                      )}
                       <div>
                         <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Data d'inici</label>
                         <DatePicker value={vacStartDate} onChange={setVacStartDate} minDate={today} />
@@ -5046,6 +5201,11 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                 {vacSuccess && (
                   <div className="mb-3 flex items-center gap-2 text-green-600 bg-green-50 dark:bg-green-950/20 rounded-lg px-3 py-2 text-xs font-medium">
                     <CheckCircle size={13} /> Sol·licitud enviada correctament
+                  </div>
+                )}
+                {vacError && (
+                  <div className="mb-3 flex items-start gap-2 text-red-700 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/40 rounded-lg px-3 py-2 text-xs">
+                    <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" /> {vacError}
                   </div>
                 )}
                 <div className="space-y-3">
@@ -5239,6 +5399,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
   // Edit-profile modal + directory visibility toggle + accordion + password modal.
   const [showEdit, setShowEdit] = useState(false);
   const [expandedRow, setExpandedRow] = useState<'notifs' | 'privacy' | 'support' | null>(null);
+  useEffect(() => { setGlobalNavHidden(showAvatarGallery || showEdit); }, [showAvatarGallery, showEdit]);
 
   const [visInDir, setVisInDir] = useState<boolean>((currentUser?.visible_in_directory ?? 1) === 1);
   useEffect(() => {
@@ -5466,6 +5627,20 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
     // ── Main profile view ──────────────────────────────────
     return (
       <div style={{ margin: '0 -12px', paddingBottom: 96 }}>
+        {/* Back header */}
+        <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px 0', gap: 4 }}>
+          <button
+            onClick={() => onNavigate?.('Més')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: 'var(--tavil-accent)', fontFamily: 'inherit', fontSize: 16, padding: '4px 0',
+            }}
+          >
+            <ChevronLeft size={20} strokeWidth={2} />
+            {t('nav.mes')}
+          </button>
+        </div>
         {/* Hero */}
         <div style={{ padding: '10px 20px 22px', textAlign: 'center' }}>
           <button
@@ -5483,7 +5658,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
               border: 'none', padding: 0, cursor: 'pointer', overflow: 'hidden', position: 'relative',
             }}>
             {avatarUrl
-              ? <img src={resolveImg(avatarUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ? <img src={resolveImg(avatarUrl)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               : <span>{ini}</span>}
             <div style={{ position: 'absolute', right: -2, bottom: -2, width: 28, height: 28, borderRadius: 14, background: 'var(--tavil-card)', border: '2px solid var(--tavil-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tavil-text)' }}>
               <ImageIcon size={13} />
@@ -5714,7 +5889,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                 }}
               >
                 {avatarUrl
-                  ? <img src={resolveImg(avatarUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ? <img src={resolveImg(avatarUrl)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <span>{initials}</span>}
               </button>
             </div>
@@ -6034,7 +6209,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                       fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 500, letterSpacing: '-0.02em',
                     }}
                   >
-                    {avatarUrl ? <img src={resolveImg(avatarUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>{initials}</span>}
+                    {avatarUrl ? <img src={resolveImg(avatarUrl)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>{initials}</span>}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)' }}>Foto de perfil</div>
@@ -7203,6 +7378,7 @@ function BoAgendaPanel({ events, onRefresh, cardCls, inputCls, btnGhost }: {
   events: AgendaEvent[]; onRefresh: () => void;
   cardCls: string; inputCls: string; btnGhost: string;
 }) {
+  const { t } = useTranslation();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [aTitle, setATitle] = useState('');
@@ -7231,9 +7407,6 @@ function BoAgendaPanel({ events, onRefresh, cardCls, inputCls, btnGhost }: {
     const [yStr,mStr,dStr] = aDate.split('-');
     const day = parseInt(dStr); const month = parseInt(mStr); const year = parseInt(yStr);
     if (!day || !month) return;
-    const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
-    if (!timeRe.test(aTime.trim())) { alert("Hora d'inici no vàlida (HH:MM)."); return; }
-    if (aTimeEnd.trim() && !timeRe.test(aTimeEnd.trim())) { alert('Hora final no vàlida (HH:MM).'); return; }
     setSaving(true);
     try {
       const fields = { title: aTitle.trim(), day, month, year, time: aTime.trim(), time_end: aTimeEnd.trim() || undefined, location: aLocation.trim(), type: aType, target_departments: aDepts };
@@ -7271,8 +7444,8 @@ function BoAgendaPanel({ events, onRefresh, cardCls, inputCls, btnGhost }: {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="md:col-span-2"><label className={labelCls}>Títol *</label><input value={aTitle} onChange={e => setATitle(e.target.value)} className={inputCls} placeholder="Títol de l'event" /></div>
             <div className="md:col-span-2"><label className={labelCls}>Data *</label><DatePicker value={aDate} onChange={setADate} /></div>
-            <div><label className={labelCls}>Hora inici</label><input type="time" value={aTime} onChange={e => setATime(e.target.value)} className={inputCls} /></div>
-            <div><label className={labelCls}>Hora final <span className="normal-case text-gray-400">(opcional)</span></label><input type="time" value={aTimeEnd} onChange={e => setATimeEnd(e.target.value)} className={inputCls} /></div>
+            <div><label className={labelCls}>Hora inici</label><TimePicker value={aTime} onChange={setATime} optional /></div>
+            <div><label className={labelCls}>Hora final <span className="normal-case text-gray-400">(opcional)</span></label><TimePicker value={aTimeEnd} onChange={setATimeEnd} optional /></div>
             <div className="md:col-span-2"><label className={labelCls}>Lloc</label><input value={aLocation} onChange={e => setALocation(e.target.value)} className={inputCls} placeholder="Sala, adreça..." /></div>
             <div><label className={labelCls}>Tipus</label>
               <select value={aType} onChange={e => setAType(e.target.value)} className={inputCls}>
@@ -7297,7 +7470,12 @@ function BoAgendaPanel({ events, onRefresh, cardCls, inputCls, btnGhost }: {
       )}
 
       <div className="space-y-2">
-        {sorted.length === 0 && <p className="text-sm text-gray-400 text-center py-6">Cap event</p>}
+        {sorted.length === 0 && (
+          <div className="text-center py-8 flex flex-col items-center gap-2">
+            <Calendar size={24} className="text-gray-300 dark:text-zinc-600" />
+            <p className="text-sm text-gray-400 dark:text-zinc-500">Cap event</p>
+          </div>
+        )}
         {sorted.map(ev => (
           <div key={ev.id} className={`${cardCls} flex items-center gap-3`}>
             <div className="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-950/30 flex flex-col items-center justify-center flex-shrink-0">
@@ -7884,7 +8062,7 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
                         <button key={preset.url} type="button"
                           onClick={() => { setNnImage(preset.url); setNnImageFile(null); }}
                           className={`relative rounded-lg overflow-hidden border-2 transition-all ${selected ? 'border-red-500 shadow-sm' : 'border-gray-200 dark:border-zinc-700 hover:border-red-300'}`}>
-                          <img src={resolveImg(preset.url)} alt={preset.label} className="w-full h-16 object-cover" />
+                          <img src={resolveImg(preset.url)} alt={preset.label} loading="lazy" className="w-full h-16 object-cover" />
                           <p className="text-[9px] font-medium text-center py-1 bg-white dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 truncate px-1">{preset.label}</p>
                           {selected && (
                             <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
@@ -7902,14 +8080,14 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
                     </label>
                     {nnImageFile && (
                       <div className="flex items-center gap-1.5">
-                        <img src={URL.createObjectURL(nnImageFile)} alt="" className="h-6 w-6 rounded object-cover flex-shrink-0" />
+                        <img src={URL.createObjectURL(nnImageFile)} alt="" loading="lazy" className="h-6 w-6 rounded object-cover flex-shrink-0" />
                         <span className="text-[10px] text-gray-500 dark:text-zinc-400 max-w-[100px] truncate">{nnImageFile.name}</span>
                         <button type="button" onClick={() => setNnImageFile(null)} className="text-[10px] text-gray-400 hover:text-red-500 transition-colors"><X size={10} /></button>
                       </div>
                     )}
                     {!nnImageFile && nnImage && !NEWS_IMAGE_PRESETS.find(p => p.url === nnImage) && (
                       <div className="flex items-center gap-1.5">
-                        <img src={resolveImg(nnImage)} alt="" className="h-6 w-6 rounded object-cover flex-shrink-0" />
+                        <img src={resolveImg(nnImage)} alt="" loading="lazy" className="h-6 w-6 rounded object-cover flex-shrink-0" />
                         <button type="button" onClick={() => setNnImage('')} className="text-[10px] text-gray-400 hover:text-red-500 transition-colors"><X size={10} /></button>
                       </div>
                     )}
@@ -8010,11 +8188,7 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
                     <div className="flex gap-1 flex-shrink-0">
                       <button onClick={() => setExpandedQuizId(expanded ? null : q.id)} className={`${btnGhost} ${expanded ? 'text-red-600 bg-red-50 dark:bg-red-950/20' : ''}`} title="Resultats"><BarChart3 size={14} /></button>
                       <button onClick={() => window.open(`${window.location.pathname}?edit=${q.id}`, '_blank')} className={btnGhost}><Pencil size={14} /></button>
-                      <button onClick={async () => {
-                        if (!window.confirm(`Eliminar "${q.title}"?`)) return;
-                        await apiDeleteQuiz(q.id);
-                        loadQuizzes();
-                      }} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-sm px-2 py-2 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                      <button onClick={() => setConfirmModal({ message: `Eliminar la formació "${q.title}"? Aquesta acció no es pot desfer.`, onConfirm: async () => { setConfirmModal(null); await apiDeleteQuiz(q.id); loadQuizzes(); } })} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 text-sm px-2 py-2 rounded-lg transition-colors"><Trash2 size={14} /></button>
                     </div>
                   </div>
                   {expanded && <div ref={expandedQuizRef}><QuizResultsDrawer quizId={q.id} /></div>}
@@ -8234,7 +8408,9 @@ function MobileSwipeStack({
   // Instagram-style permanent strip: every tab in tabOrder is mounted once,
   // hosted at a fixed slot. Switching tabs only changes which slot the
   // viewport shows — components never unmount, state/images persist, no flash.
-  const [dragX, setDragX] = useState(0);
+  const [dragX, setDragXState] = useState(0);
+  const dragXRef = useRef(0); // always-current ref to avoid stale closure in onTouchEnd
+  const setDragX = (v: number) => { dragXRef.current = v; setDragXState(v); };
   const [snapping, setSnapping] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const startRef = useRef<{ x: number; y: number; t: number; axis: 'x' | 'y' | null } | null>(null);
@@ -8256,24 +8432,23 @@ function MobileSwipeStack({
   const onTouchStart = (e: React.TouchEvent) => {
     if (snapping || e.touches.length !== 1) return;
     const tgt = e.target as HTMLElement;
+    // Block on interactive elements and elements that need their own horizontal scroll
     if (tgt.closest('input, textarea, select, [data-no-swipe], [role="slider"]')) return;
-    const w = containerRef.current?.clientWidth ?? window.innerWidth;
-    const touchX = e.touches[0].clientX;
-    if (touchX > w * 0.10 && touchX < w * 0.90) return;
-    startRef.current = { x: touchX, y: e.touches[0].clientY, t: Date.now(), axis: null };
+    startRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), axis: null };
   };
   const onTouchMove = (e: React.TouchEvent) => {
     if (!startRef.current) return;
     const dx = e.touches[0].clientX - startRef.current.x;
     const dy = e.touches[0].clientY - startRef.current.y;
     if (startRef.current.axis == null) {
-      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
-      startRef.current.axis = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'x' : 'y';
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      // Require stronger horizontal intent (1.6×) to avoid stealing vertical scroll
+      startRef.current.axis = Math.abs(dx) > Math.abs(dy) * 1.6 ? 'x' : 'y';
     }
     if (startRef.current.axis !== 'x') return;
     let eff = dx;
-    if (!prevTab && eff > 0) eff *= 0.3;
-    if (!nextTab && eff < 0) eff *= 0.3;
+    if (!prevTab && eff > 0) eff *= 0.25;
+    if (!nextTab && eff < 0) eff *= 0.25;
     setDragX(eff);
   };
   const onTouchEnd = () => {
@@ -8283,22 +8458,19 @@ function MobileSwipeStack({
     startRef.current = null;
     if (axis !== 'x') { setDragX(0); return; }
     const w = containerRef.current?.clientWidth ?? window.innerWidth;
-    const dx = dragX;
+    const dx = dragXRef.current; // use ref, not state — avoids stale closure
     const elapsed = Math.max(1, Date.now() - t0);
     const velocity = Math.abs(dx) / elapsed;
-    const threshold = w * 0.28;
+    const threshold = w * 0.22; // lower from 28% → 22% (easier to trigger)
     setSnapping(true);
-    if ((dx <= -threshold || (dx < -20 && velocity > 0.45)) && nextTab) {
-      // Animate strip fully off (-w). Then swap active (slot N+1 takes
-      // offset=0 position) and reset drag to 0 in same commit — visually
-      // continuous, no second-snap.
+    if ((dx <= -threshold || (dx < -15 && velocity > 0.35)) && nextTab) {
       setDragX(-w);
       window.setTimeout(() => {
         setSnapping(false);
         setDragX(0);
         setActiveTab(nextTab);
       }, 300);
-    } else if ((dx >= threshold || (dx > 20 && velocity > 0.45)) && prevTab) {
+    } else if ((dx >= threshold || (dx > 15 && velocity > 0.35)) && prevTab) {
       setDragX(w);
       window.setTimeout(() => {
         setSnapping(false);
@@ -8550,7 +8722,7 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
         <div className="min-h-full flex items-center justify-center p-8">
           <div className="max-w-2xl w-full text-center" style={{ color: 'var(--q-text)' }}>
             {quiz.image && (
-              <img src={resolveImg(quiz.image)} alt="" className="w-full h-64 object-cover rounded-2xl mb-8 shadow-2xl" />
+              <img src={resolveImg(quiz.image)} alt="" loading="lazy" className="w-full h-64 object-cover rounded-2xl mb-8 shadow-2xl" />
             )}
             <div className="text-xs font-semibold tracking-[0.2em] uppercase mb-4" style={{ color: 'var(--q-kicker)' }}>
               {quiz.category || 'Formació TAVIL'}
@@ -8683,7 +8855,7 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
                 /\.(mp4|webm|ogg|mov)(\?|$)/i.test(q.media_url) ? (
                   <video src={resolveImg(q.media_url)} controls className="w-full max-h-[60vh] rounded-2xl bg-black shadow-2xl" />
                 ) : (
-                  <img src={resolveImg(q.media_url)} alt="" className="w-full max-h-[60vh] object-contain rounded-2xl bg-black/40 shadow-2xl" />
+                  <img src={resolveImg(q.media_url)} alt="" loading="lazy" className="w-full max-h-[60vh] object-contain rounded-2xl bg-black/40 shadow-2xl" />
                 )
               )}
               {q.explanation && (
@@ -9297,7 +9469,7 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                       {/\.(mp4|webm|ogg|mov)(\?|$)/i.test(q.media_url) ? (
                         <video src={resolveImg(q.media_url)} controls className="w-full max-h-[420px] object-contain bg-black" />
                       ) : (
-                        <img src={resolveImg(q.media_url)} alt="" className="w-full max-h-[420px] object-contain bg-black" />
+                        <img src={resolveImg(q.media_url)} alt="" loading="lazy" className="w-full max-h-[420px] object-contain bg-black" />
                       )}
                       <button
                         onClick={() => updateQ(q._key, { media_url: '' })}
@@ -9399,7 +9571,7 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                     <label className="text-xs pt-2" style={{ color: 'var(--q-text-70)' }}>Imatge portada</label>
                     <div className="flex items-center gap-3">
                       {(imageFile || image) && (
-                        <img src={imageFile ? URL.createObjectURL(imageFile) : resolveImg(image)} alt="" className="w-20 h-14 object-cover rounded-lg flex-shrink-0" style={{ border: '1px solid var(--q-border)' }} />
+                        <img src={imageFile ? URL.createObjectURL(imageFile) : resolveImg(image)} alt="" loading="lazy" className="w-20 h-14 object-cover rounded-lg flex-shrink-0" style={{ border: '1px solid var(--q-border)' }} />
                       )}
                       <label className="flex-1 cursor-pointer text-xs px-3 py-2 rounded-lg border border-dashed text-center transition-colors" style={{ background: 'var(--q-surface-08)', borderColor: 'var(--q-border-20)', color: 'var(--q-text-70)' }}>
                         <input type="file" accept="image/*" className="hidden" onChange={e => setImageFile(e.target.files?.[0] ?? null)} />
@@ -10319,7 +10491,7 @@ function NewsTileContent({ tile, editable, activeLang, onChange, onRequestImage,
         : <div style={{ fontFamily: NT.bodyFont, fontSize: 12, lineHeight: 1.5, color: NT.mute, fontStyle: 'italic' }}>{renderInlineLinks(tc)}</div>;
     case 'image':
       if (tile.url) {
-        return <img src={resolveImg(tile.url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />;
+        return <img src={resolveImg(tile.url)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />;
       }
       return (
         <div style={{ position: 'relative', width: '100%', height: '100%' }} onDoubleClick={(e) => { e.stopPropagation(); onRequestImage(); }}>
@@ -12564,14 +12736,14 @@ function App() {
 
   const goBack = () => setActiveTab(goBackRef.current);
 
-  const enterClass = !hasNavigated
+  const enterClass = (isMobilePage && !hasNavigated)
     ? ''
     : isMobilePage
       ? (exitDirection === 'fwd' ? 'anim-page-enter-h-fwd' : 'anim-page-enter-h-back')
       : 'anim-page-enter-desk';
   const exitClass = exitIsMobile
     ? (exitDirection === 'fwd' ? 'anim-page-exit-h-fwd' : 'anim-page-exit-h-back')
-    : 'anim-fade-out';
+    : 'anim-page-exit-desk';
   const [agendaInitDate, setAgendaInitDate] = useState<{ day: number; month: number; year: number } | null>(null);
   const navigateToDate = (day: number, month: number, year: number) => {
     setAgendaInitDate({ day, month, year });
@@ -12866,10 +13038,21 @@ function App() {
       default: return null;
     }
   };
+  const TabSkeleton = ({ tab }: { tab: string }) => {
+    switch (tab) {
+      case 'Agenda':    return <SkeletonAgenda />;
+      case 'Directori': return <SkeletonDirectori />;
+      case 'Campus':    return <SkeletonCampus />;
+      case 'Notícies':  return <SkeletonNoticies />;
+      case 'Activitats': return <SkeletonActivitats />;
+      default:          return <SkeletonInici />;
+    }
+  };
+
   const renderPageLayout = (tab: string) => {
     const isInici = tab === 'Inici';
     // These tabs render their own mobile header (hamburger/back + kicker + title)
-    const selfHandledMobile = new Set(['Inici', 'Notícies', 'Agenda', 'Directori', 'Activitats', 'Veu', 'Solicituds', 'Campus', 'Espai']);
+    const selfHandledMobile = new Set(['Inici', 'Notícies', 'Agenda', 'Directori', 'Activitats', 'Veu', 'Solicituds', 'Campus', 'Espai', 'Perfil']);
     const section = SIDEBAR_SECTIONS.flatMap(s => s.items).find(i => i.id === tab)
       ?? (tab === 'Empresa' ? { id: 'Empresa', label: 'Empresa', icon: Building2 } : undefined);
 
@@ -12945,7 +13128,9 @@ function App() {
           className={cn(!isInici ? 'md:mt-0 px-3 md:px-0 pb-24 md:pb-0' : '', !isInici ? 'stagger-2' : '')}
           style={!isInici ? { background: 'var(--tavil-bg)' } : undefined}
         >
-          {renderContentFor(tab)}
+          <Suspense fallback={<TabSkeleton tab={tab} />}>
+            {renderContentFor(tab)}
+          </Suspense>
         </div>
       </div>
     );
@@ -12977,9 +13162,9 @@ function App() {
       if (authView === 'verify-email') return <VerifyScreen email={pendingEmail} onBack={() => setAuthView('login')} onVerified={handleAuthResult} isDarkMode={isDarkMode} />;
       if (authView === 'forgot') return <ForgotScreen onBack={() => setAuthView('login')} isDarkMode={isDarkMode} />;
     }
-    if (authView === 'login') return <LoginPage onLoginResult={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} />;
-    if (authView === 'verify-email') return <VerifyEmailPage email={pendingEmail} onBack={() => setAuthView('login')} onVerified={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} />;
-    return <OTPPage email={pendingEmail} onBack={() => setAuthView('login')} onVerified={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} />;
+    if (authView === 'login') return <Suspense fallback={null}><LoginPage onLoginResult={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} /></Suspense>;
+    if (authView === 'verify-email') return <Suspense fallback={null}><VerifyEmailPage email={pendingEmail} onBack={() => setAuthView('login')} onVerified={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} /></Suspense>;
+    return <Suspense fallback={null}><OTPPage email={pendingEmail} onBack={() => setAuthView('login')} onVerified={handleAuthResult} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} /></Suspense>;
   }
 
   return (
@@ -12996,12 +13181,31 @@ function App() {
       <aside className={cn("bg-white dark:bg-[#1a1a1a] border-r border-gray-200 dark:border-zinc-800 flex flex-col fixed inset-y-0 z-30 transition-all duration-300 hidden md:flex", sidebarCollapsed ? "md:w-16" : "md:w-60")}>
         <div className={cn("p-5 pb-4", sidebarCollapsed && "px-2")}>
           <div className={cn("mb-7 cursor-pointer", sidebarCollapsed && "flex justify-center")} onClick={() => setActiveTab('Inici')}>
-            {sidebarCollapsed
-              ? <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoCollapsed.png`} alt="TAVIL" className="h-7" />
-              : isDarkMode
-                ? <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoDark.png`} alt="TAVIL" className="h-7" />
-                : <img src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`} alt="TAVIL" className="h-7" />
-            }
+            <div style={{ position: 'relative', height: 28, width: sidebarCollapsed ? 28 : 120 }}>
+              {/* Full wordmark — light */}
+              <img
+                src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`}
+                alt="TAVIL"
+                className="h-7"
+                style={{ position: 'absolute', top: 0, left: 0, opacity: !sidebarCollapsed && !isDarkMode ? 1 : 0, transition: 'opacity 200ms cubic-bezier(.23,1,.32,1)', pointerEvents: 'none' }}
+              />
+              {/* Full wordmark — dark */}
+              <img
+                src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoDark.png`}
+                alt=""
+                aria-hidden="true"
+                className="h-7"
+                style={{ position: 'absolute', top: 0, left: 0, opacity: !sidebarCollapsed && isDarkMode ? 1 : 0, transition: 'opacity 200ms cubic-bezier(.23,1,.32,1)', pointerEvents: 'none' }}
+              />
+              {/* Collapsed icon */}
+              <img
+                src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoCollapsed.png`}
+                alt=""
+                aria-hidden="true"
+                className="h-7"
+                style={{ position: 'absolute', top: 0, left: 0, opacity: sidebarCollapsed ? 1 : 0, transition: 'opacity 200ms cubic-bezier(.23,1,.32,1)', pointerEvents: 'none' }}
+              />
+            </div>
           </div>
           {SIDEBAR_SECTIONS.map((section) => (
             <SidebarSection key={section.title} title={section.title} collapsed={sidebarCollapsed} isAdmin={(section as any).isAdmin}>
@@ -13015,7 +13219,7 @@ function App() {
         <div className="mt-auto border-t border-gray-100 dark:border-zinc-800">
           <div className={cn("flex items-center p-4 gap-3", sidebarCollapsed && "justify-center p-3")}>
             {userAvatar
-              ? <img src={resolveImg(userAvatar)} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+              ? <img src={resolveImg(userAvatar)} alt="" loading="lazy" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
               : <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{userInitials}</div>}
             {!sidebarCollapsed && (
               <>
@@ -13211,7 +13415,7 @@ function App() {
                 className="flex items-center gap-2 p-1.5 hover:bg-gray-100/20 dark:hover:bg-zinc-800/30 rounded-lg transition-colors"
               >
                 {userAvatar
-                  ? <img src={resolveImg(userAvatar)} alt="" className="w-7 h-7 rounded-full object-cover" />
+                  ? <img src={resolveImg(userAvatar)} alt="" loading="lazy" className="w-7 h-7 rounded-full object-cover" />
                   : <div className="w-7 h-7 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold">{userInitials}</div>}
                 <div className="hidden lg:block text-left">
                   <p className="text-xs font-semibold hg-text text-gray-900 dark:text-white leading-none">{currentUser?.name ?? 'Usuari'}</p>
@@ -13299,7 +13503,7 @@ function App() {
       </main>
 
       {showChangePassword && (
-        <ChangePasswordModal onDone={() => window.location.reload()} forced />
+        <Suspense fallback={null}><ChangePasswordModal onDone={() => window.location.reload()} forced /></Suspense>
       )}
       {!showChangePassword && (() => {
         const infPending = preventionPending.includes('inf');
@@ -13309,12 +13513,14 @@ function App() {
           ? ((() => { try { return localStorage.getItem('tavil_lang') === 'en' ? 'inf_en' : 'inf_ca'; } catch { return 'inf_ca'; } })())
           : epiKey!;
         return (
-          <PreventionOnboarding
-            documentKey={docKey as any}
-            userName={currentUser?.name ?? ''}
-            userDept={currentUser?.dept ?? ''}
-            onDone={() => window.location.reload()}
-          />
+          <Suspense fallback={null}>
+            <PreventionOnboarding
+              documentKey={docKey as any}
+              userName={currentUser?.name ?? ''}
+              userDept={currentUser?.dept ?? ''}
+              onDone={() => window.location.reload()}
+            />
+          </Suspense>
         );
       })()}
       <MobileDrawer

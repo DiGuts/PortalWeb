@@ -12,7 +12,8 @@
     "campus": "Campus TAVIL",
     "veu": "Voz del empleado",
     "solicituds": "Mis solicitudes",
-    "perfil": "Mi perfil"
+    "perfil": "Mi perfil",
+    "mes": "Más"
   },
   "timeago": {
     "justNow": "Hace un momento",
@@ -109,7 +110,15 @@
       "Vi",
       "Sá"
     ],
-    "required": "Campo obligatorio"
+    "required": "Campo obligatorio",
+    "retry": "Volver a intentar",
+    "seeAll": "Ver todo",
+    "showAll": "Ver todo",
+    "week": "Semana",
+    "month": "Mes",
+    "send": "Enviar",
+    "sending": "Enviando…",
+    "noEvents": "Sin eventos"
   },
   "auth": {
     "login": "Inicia sesión",

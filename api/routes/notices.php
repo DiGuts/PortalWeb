@@ -49,7 +49,8 @@ elseif ($method === 'POST' && $seg1 === null) {
            (int)($body['active'] ?? 1),
            $kind,
        ]);
-    $row = $db->query('SELECT * FROM notices WHERE id=' . $db->lastInsertId())->fetch();
+    $new_id = (int)$db->lastInsertId();
+    $stmt = $db->prepare('SELECT * FROM notices WHERE id=?'); $stmt->execute([$new_id]); $row = $stmt->fetch();
     respond(_notice_out($row), 201);
 }
 
@@ -68,7 +69,7 @@ elseif ($method === 'PUT' && $id !== null) {
            $kind,
            $id,
        ]);
-    $row = $db->query('SELECT * FROM notices WHERE id=' . $id)->fetch();
+    $stmt = $db->prepare('SELECT * FROM notices WHERE id=?'); $stmt->execute([$id]); $row = $stmt->fetch();
     if (!$row) respond(['detail' => 'Avís no trobat'], 404);
     respond(_notice_out($row));
 }

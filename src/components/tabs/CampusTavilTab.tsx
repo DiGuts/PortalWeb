@@ -48,7 +48,7 @@ function CertUploader({ onUpload, reupload = false }: { onUpload: (f: File) => v
   if (clip) {
     return (
       <div className="flex flex-col gap-1.5 rounded-lg border border-[#e3e2db] dark:border-zinc-700 p-2">
-        <img src={clip.preview} alt="" className="w-full h-20 object-cover rounded" />
+        <img src={clip.preview} alt="" loading="lazy" className="w-full h-20 object-cover rounded" />
         <div className="flex gap-1.5">
           <button
             onClick={() => { onUpload(clip.file); setClip(null); }}
@@ -155,9 +155,9 @@ function CatalogCard({ item, i, onSelect, onOpenExternal, onCertUpload }: {
 
   return (
     <div
-      className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 anim-item flex flex-col"
+      className="hover-lift rounded-xl p-5 anim-item flex flex-col"
       onClick={() => onSelect(item)}
-      style={{ '--i': i, cursor: 'pointer' } as React.CSSProperties}
+      style={{ '--i': i, cursor: 'pointer', background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)' } as React.CSSProperties}
     >
       {/* Category + status */}
       <div className="flex items-start justify-between mb-3 gap-2">
@@ -605,7 +605,7 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
         )}
 
         {/* Category pills */}
-        <div style={{ padding: '0 16px 14px', overflowX: 'auto', display: 'flex', gap: 8 }} className="hide-sb">
+        <div data-no-swipe style={{ padding: '0 16px 14px', overflowX: 'auto', display: 'flex', gap: 8 }} className="hide-sb">
           {MOBILE_CATS.map(c => (
             <button key={c} onClick={() => setMobileCat(c)} style={{
               flexShrink: 0, height: 32, padding: '0 14px', borderRadius: 999,

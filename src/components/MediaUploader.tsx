@@ -76,7 +76,7 @@ export function MediaUploader({
         {kind === 'video' ? (
           <video src={previewSrc} controls style={{ maxWidth: '100%', maxHeight: 280, display: 'block' }} />
         ) : (
-          <img src={previewSrc} alt="" style={{ maxWidth: '100%', maxHeight: 280, display: 'block' }} />
+          <img src={previewSrc} alt="" loading="lazy" style={{ maxWidth: '100%', maxHeight: 280, display: 'block' }} />
         )}
         <button
           type="button"

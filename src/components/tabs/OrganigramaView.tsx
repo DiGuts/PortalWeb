@@ -25,7 +25,7 @@ interface DeptGroup {
 // ── Avatar ────────────────────────────────────────────────────────────────────
 function Avatar({ emp, size = 34 }: { emp: Employee; size?: number }) {
   if (emp.avatar_url) {
-    return <img src={resolveImg(emp.avatar_url)} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />;
+    return <img src={resolveImg(emp.avatar_url)} alt="" loading="lazy" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />;
   }
   return (
     <div style={{ width: size, height: size, borderRadius: '50%', background: avatarBg(emp.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.floor(size * 0.3), fontWeight: 700, color: '#f7f7f2', flexShrink: 0 }}>

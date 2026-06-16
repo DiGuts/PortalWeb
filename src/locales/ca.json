@@ -12,7 +12,8 @@
     "campus": "Campus TAVIL",
     "veu": "Veu de l'empleat",
     "solicituds": "Les meves sol·licituds",
-    "perfil": "El meu perfil"
+    "perfil": "El meu perfil",
+    "mes": "Més"
   },
   "timeago": {
     "justNow": "Fa un moment",
@@ -109,7 +110,15 @@
       "Dv",
       "Ds"
     ],
-    "required": "Camp obligatori"
+    "required": "Camp obligatori",
+    "retry": "Torna-ho a intentar",
+    "seeAll": "Veure-ho tot",
+    "showAll": "Veure tot",
+    "week": "Setmana",
+    "month": "Mes",
+    "send": "Enviar",
+    "sending": "Enviant…",
+    "noEvents": "Cap event"
   },
   "auth": {
     "login": "Inicia sessió",

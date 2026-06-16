@@ -31,6 +31,19 @@ if ($method === 'POST' && $sub === '') {
         auth_user();
         respond(['detail' => 'Format de fitxer no permès'], 415);
     }
+    // Reject double-extension attacks (e.g. evil.php.jpg)
+    if (preg_match('/\.(php\d?|phtml|phar|cgi|pl|py|sh|asp|aspx)(\.|$)/i', $file['name'])) {
+        auth_user();
+        respond(['detail' => 'Nom de fitxer no permès'], 415);
+    }
+    // Validate actual file content via MIME sniffing, not just extension
+    $finfo    = new \finfo(FILEINFO_MIME_TYPE);
+    $detected = $finfo->file($file['tmp_name']);
+    $allowed_mimes = ['image/jpeg','image/png','image/gif','image/webp','video/mp4','video/webm','video/quicktime'];
+    if (!in_array($detected, $allowed_mimes, true)) {
+        auth_user();
+        respond(['detail' => 'Tipus de fitxer no permès (MIME invàlid)'], 415);
+    }
     if ($is_video) {
         require_content_editor();
     } else {

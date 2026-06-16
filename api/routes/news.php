@@ -15,7 +15,8 @@ if ($method === 'POST' && $id === null) {
     $active = isset($body['active']) ? (bool_val($body,'active') ? 1 : 0) : 1;
     $db->prepare('INSERT INTO news (category,title,summary,content,date,image,featured,active,translations) VALUES (?,?,?,?,?,?,?,?,?)')
        ->execute([str_val($body,'category'), str_val($body,'title'), str_val($body,'summary'), str_val($body,'content'), str_val($body,'date'), str_val($body,'image'), bool_val($body,'featured') ? 1 : 0, $active, $translations]);
-    $row = $db->query('SELECT * FROM news WHERE id=' . $db->lastInsertId())->fetch();
+    $new_id = (int)$db->lastInsertId();
+    $stmt = $db->prepare('SELECT * FROM news WHERE id=?'); $stmt->execute([$new_id]); $row = $stmt->fetch();
     $row['id'] = (int)$row['id'];
     $row['featured'] = (int)$row['featured'];
     $row['active'] = (int)$row['active'];

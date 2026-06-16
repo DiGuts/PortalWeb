@@ -2,6 +2,7 @@ import {
     Home, Newspaper, Calendar, Activity as ActivityIcon,
     Building2, Users, GraduationCap, FileText, UserCircle, X,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { resolveImg } from '../../lib/resolveImg';
 
 export function MobileDrawer({
@@ -19,30 +20,31 @@ export function MobileDrawer({
     isDarkMode: boolean;
     activeTab: string;
 }) {
+    const { t } = useTranslation();
     const avatarUrl = currentUser?.avatar_url ?? null;
     const groups = [
         {
-            label: 'General',
+            label: t('nav.general'),
             items: [
-                { id: 'Inici', icon: Home, label: 'Inici' },
-                { id: 'Notícies', icon: Newspaper, label: 'Notícies' },
-                { id: 'Agenda', icon: Calendar, label: 'Agenda' },
-                { id: 'Activitats', icon: ActivityIcon, label: 'Connect' },
+                { id: 'Inici', icon: Home, label: t('nav.inici') },
+                { id: 'Notícies', icon: Newspaper, label: t('nav.noticies') },
+                { id: 'Agenda', icon: Calendar, label: t('nav.agenda') },
+                { id: 'Activitats', icon: ActivityIcon, label: t('nav.activitats') },
             ],
         },
         {
-            label: 'Empresa',
+            label: t('nav.empresa'),
             items: [
-                { id: 'Espai', icon: Building2, label: 'Tavipedia' },
-                { id: 'Directori', icon: Users, label: 'Who is who?' },
-                { id: 'Campus', icon: GraduationCap, label: 'Campus TAVIL' },
+                { id: 'Espai', icon: Building2, label: t('nav.espai') },
+                { id: 'Directori', icon: Users, label: t('nav.directori') },
+                { id: 'Campus', icon: GraduationCap, label: t('nav.campus') },
             ],
         },
         {
-            label: 'Personal',
+            label: t('nav.personal'),
             items: [
-                { id: 'Solicituds', icon: FileText, label: 'Sol·licituds' },
-                { id: 'Perfil', icon: UserCircle, label: 'Perfil' },
+                { id: 'Solicituds', icon: FileText, label: t('nav.solicituds') },
+                { id: 'Perfil', icon: UserCircle, label: t('nav.perfil') },
             ],
         },
     ];
@@ -95,7 +97,7 @@ export function MobileDrawer({
                     {currentUser && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             {avatarUrl ? (
-                                <img src={resolveImg(avatarUrl)} alt="" style={{ width: 42, height: 42, borderRadius: 21, objectFit: 'cover', flexShrink: 0 }} />
+                                <img src={resolveImg(avatarUrl)} alt="" loading="lazy" style={{ width: 42, height: 42, borderRadius: 21, objectFit: 'cover', flexShrink: 0 }} />
                             ) : (
                                 <div style={{
                                     width: 42, height: 42, borderRadius: 21,
