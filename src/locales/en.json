@@ -350,7 +350,8 @@
     "noPendingGroup": "No pending training.",
     "allDepartments": "All departments",
     "deadlineWarning": "Upcoming deadline — complete soon:",
-    "backToCampus": "Back to Campus"
+    "backToCampus": "Back to Campus",
+    "externalEnrollmentNotice": "Enrollments managed by an external entity"
   },
   "veu": {
     "subtitle": "Suggestions, incidents and internal surveys",

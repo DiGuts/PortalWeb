@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, CSSProperties } from 'react';
 import {
   Plus, Check, Mail, MapPin, Clock, Users, Calendar, Newspaper,
   GraduationCap, Activity as ActivityIcon, ArrowRight, Settings,
-  LogOut, Image as ImageIcon, Globe, FileText, Bell, UserCheck, UserX, LayoutGrid, Search,
+  LogOut, Image as ImageIcon, Globe, FileText, Bell, UserCheck, UserX, LayoutGrid, Search, ExternalLink,
 } from 'lucide-react';
 import {
   User, Activity, AgendaEvent, NewsArticle, Course, Quiz, Notice,
@@ -1788,6 +1788,10 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
               >
                 {selected.kind === 'external' ? (
                   <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, background: T.bgAlt, border: `1px solid ${T.border}`, marginBottom: 4 }}>
+                      <ExternalLink size={13} style={{ color: T.textMuted, flexShrink: 0 }} />
+                      <span style={{ fontSize: 12.5, color: T.textMuted }}>Inscripcions gestionades per una entitat externa</span>
+                    </div>
                     <AField label="Títol"><AInput value={draft.title ?? ''} onChange={(e) => setDraft(d => ({ ...d, title: e.target.value }))} /></AField>
                     <AField label="Descripció"><ATextarea rows={4} value={draft.description ?? ''} onChange={(e) => setDraft(d => ({ ...d, description: e.target.value }))} /></AField>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

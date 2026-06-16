@@ -350,7 +350,8 @@
     "noPendingGroup": "Ninguna formación pendiente.",
     "allDepartments": "Todos los departamentos",
     "deadlineWarning": "Plazo próximo — completa pronto:",
-    "backToCampus": "Volver al Campus"
+    "backToCampus": "Volver al Campus",
+    "externalEnrollmentNotice": "Inscripciones gestionadas por una entidad externa"
   },
   "veu": {
     "subtitle": "Sugerencias, incidencias y encuestas internas",

@@ -350,7 +350,8 @@
     "noPendingGroup": "Cap formació per fer.",
     "allDepartments": "Tots els departaments",
     "deadlineWarning": "Termini proper — cal completar aviat:",
-    "backToCampus": "Tornar al Campus"
+    "backToCampus": "Tornar al Campus",
+    "externalEnrollmentNotice": "Inscripcions gestionades per una entitat externa"
   },
   "veu": {
     "subtitle": "Suggeriments, incidències i enquestes internes",
