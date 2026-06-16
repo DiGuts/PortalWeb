@@ -81,7 +81,7 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
                             cursor: 'pointer',
                         } as React.CSSProperties}>
                             {emp.avatar_url ? (
-                                <img src={resolveImg(emp.avatar_url)} alt="" className="w-[46px] h-[46px] rounded-full object-cover flex-shrink-0" />
+                                <img src={resolveImg(emp.avatar_url)} alt="" loading="lazy" className="w-[46px] h-[46px] rounded-full object-cover flex-shrink-0" />
                             ) : (
                                 <div className="w-[46px] h-[46px] rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: avatarBg(emp.name), color: '#f7f7f2' }}>{emp.initials}</div>
                             )}
@@ -150,7 +150,7 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
                         <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 anim-item" style={{ '--i': i } as React.CSSProperties}>
                             <div className="flex items-center gap-3 mb-3">
                                 {emp.avatar_url ? (
-                                    <img src={resolveImg(emp.avatar_url)} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                                    <img src={resolveImg(emp.avatar_url)} alt="" loading="lazy" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                                 ) : (
                                     <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: avatarBg(emp.name), color: '#f7f7f2' }}>{emp.initials}</div>
                                 )}
@@ -181,7 +181,7 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
                                 {members.map((emp, i) => (
                                     <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-3 flex items-center gap-3 anim-item" style={{ '--i': i } as React.CSSProperties}>
                                         {emp.avatar_url ? (
-                                            <img src={resolveImg(emp.avatar_url)} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                                            <img src={resolveImg(emp.avatar_url)} alt="" loading="lazy" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
                                         ) : (
                                             <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: avatarBg(emp.name), color: '#f7f7f2' }}>{emp.initials}</div>
                                         )}

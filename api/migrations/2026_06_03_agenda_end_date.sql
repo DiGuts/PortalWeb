@@ -1,0 +1,3 @@
+ALTER TABLE agenda_events ADD COLUMN IF NOT EXISTS end_day   INT NULL;
+ALTER TABLE agenda_events ADD COLUMN IF NOT EXISTS end_month INT NULL;
+ALTER TABLE agenda_events ADD COLUMN IF NOT EXISTS end_year  INT NULL;

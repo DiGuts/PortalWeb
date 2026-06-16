@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Clock, X, Calendar } from 'lucide-react';
 
 const MONTHS_CA = ['Gener','Febrer','Març','Abril','Maig','Juny','Juliol','Agost','Setembre','Octubre','Novembre','Desembre'];
@@ -43,6 +43,28 @@ export function DatePicker({ value, onChange, error, onClose, placeholder = 'Sel
   const [open, setOpen] = useState(false);
   const [viewMonth, setViewMonth] = useState(parsed ? parsed.getMonth() : today.getMonth());
   const [viewYear, setViewYear] = useState(parsed ? parsed.getFullYear() : today.getFullYear());
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // Close on outside click/tap — no backdrop div needed (avoids scroll blocking & z-index fights)
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: PointerEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        if (!value) onClose?.();
+      }
+    };
+    // Use capture so we catch taps before any inner stopPropagation
+    document.addEventListener('pointerdown', handler, true);
+    return () => document.removeEventListener('pointerdown', handler, true);
+  }, [open, value, onClose]);
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayMon = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
@@ -68,7 +90,7 @@ export function DatePicker({ value, onChange, error, onClose, placeholder = 'Sel
   const triggerBg = error && !parsed ? C.errorBg : C.bg;
 
   return (
-    <div>
+    <div ref={wrapperRef}>
       <button
         type="button"
         onClick={() => open ? handleClose() : setOpen(true)}
@@ -96,10 +118,15 @@ export function DatePicker({ value, onChange, error, onClose, placeholder = 'Sel
       )}
 
       {open && (
-        <>
-          {/* Backdrop to close */}
-          <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={handleClose} />
-          <div style={{
+          <div style={isMobile ? {
+            position: 'fixed', top: 60, left: 0, right: 0, zIndex: 1001,
+            margin: '0 auto', maxWidth: 360,
+            borderRadius: 14,
+            border: `1px solid ${C.border}`,
+            background: C.card,
+            boxShadow: '0 8px 32px rgba(34,39,37,0.22)',
+            overflow: 'hidden',
+          } : {
             position: 'relative', zIndex: 11,
             marginTop: 6, borderRadius: 14,
             border: `1px solid ${C.border}`,
@@ -178,7 +205,6 @@ export function DatePicker({ value, onChange, error, onClose, placeholder = 'Sel
               })}
             </div>
           </div>
-        </>
       )}
     </div>
   );

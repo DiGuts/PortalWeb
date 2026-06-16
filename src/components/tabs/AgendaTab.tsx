@@ -658,7 +658,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
         {/* Admin: new event bottom sheet */}
         {isAdmin && showEventForm && createPortal(
           <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${closingEventForm ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeEventForm}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: `20px 20px calc(env(safe-area-inset-bottom, 0px) + 80px)`, width: '100%', maxHeight: 'calc(92vh - env(safe-area-inset-bottom, 0px))', overflowY: 'auto' }} className={closingEventForm ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: `20px 20px calc(env(safe-area-inset-bottom, 0px) + 80px)`, width: '100%', maxHeight: 'calc(92dvh - env(safe-area-inset-bottom, 0px))', overflowY: 'auto' }} className={closingEventForm ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
               <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 18 }}>Nou event</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input type="text" value={eTitle} onChange={e => setETitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
@@ -689,7 +689,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
                   <DeptSearch value={eDepts} onChange={setEDepts} />
                 </div>
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                  <button onClick={closeEventForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                  <button onClick={closeEventForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('common.cancel')}</button>
                   <button onClick={handleCreateEvent} disabled={!eTitle.trim() || !eDate || eSaving} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!eTitle.trim() || !eDate || eSaving) ? 0.5 : 1 }}>{eSaving ? 'Desant...' : 'Crear event'}</button>
                 </div>
               </div>
@@ -700,7 +700,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
         {/* Admin: edit event bottom sheet */}
         {isAdmin && evEditId !== null && createPortal(
           <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${evEditClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeEvEdit}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: `24px 20px calc(env(safe-area-inset-bottom, 0px) + 80px)`, width: '100%', maxHeight: 'calc(92vh - env(safe-area-inset-bottom, 0px))', overflowY: 'auto' }} className={evEditClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: `24px 20px calc(env(safe-area-inset-bottom, 0px) + 80px)`, width: '100%', maxHeight: 'calc(92dvh - env(safe-area-inset-bottom, 0px))', overflowY: 'auto' }} className={evEditClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
               {/* Kicker + live title */}
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--tavil-accent)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 2 }}>Editar esdeveniment</div>
@@ -738,7 +738,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
                       <DeptSearch value={eeDepts} onChange={setEeDepts} />
                     </div>
                     <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-                      <button onClick={closeEvEdit} style={{ flex: 1, padding: '13px', borderRadius: 14, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·la</button>
+                      <button onClick={closeEvEdit} style={{ flex: 1, padding: '13px', borderRadius: 14, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('common.cancel')}</button>
                       <button onClick={handleSaveEvEdit} disabled={!eeTitle.trim() || !eeDate || eeSaving} style={{ flex: 1, padding: '13px', borderRadius: 14, border: 'none', background: 'var(--tavil-text)', color: 'var(--tavil-bg)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!eeTitle.trim() || !eeDate || eeSaving) ? 0.4 : 1 }}>{eeSaving ? 'Desant…' : '✓ Desa canvis'}</button>
                     </div>
                   </div>
@@ -753,7 +753,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6 w-full max-w-xs mx-4 shadow-xl anim-scale-in" onClick={e => e.stopPropagation()}>
               <p className="text-sm text-gray-700 dark:text-zinc-300 mb-4">{confirmModal.message}</p>
               <div className="flex gap-2 justify-end">
-                <button onClick={() => setConfirmModal(null)} className="px-3 py-1.5 text-xs border border-gray-200 dark:border-zinc-700 rounded-lg text-gray-600 dark:text-zinc-400">Cancel·lar</button>
+                <button onClick={() => setConfirmModal(null)} className="px-3 py-1.5 text-xs border border-gray-200 dark:border-zinc-700 rounded-lg text-gray-600 dark:text-zinc-400">{t('common.cancel')}</button>
                 <button onClick={confirmModal.onConfirm} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg font-semibold">Eliminar</button>
               </div>
             </div>

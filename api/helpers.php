@@ -1,5 +1,41 @@
 <?php
 
+/** Return the preferred API language: 'ca', 'es', or 'en'. Defaults to 'ca'. */
+function api_lang(): string {
+    $header = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '';
+    if (str_starts_with($header, 'es')) return 'es';
+    if (str_starts_with($header, 'en')) return 'en';
+    return 'ca';
+}
+
+/** Return a translated error message for the given key. */
+function api_msg(string $key): string {
+    static $msgs = [
+        'internal_error' => [
+            'ca' => "S'ha produït un error intern",
+            'es' => 'Se ha producido un error interno',
+            'en' => 'An internal error occurred',
+        ],
+        'unauthorized' => [
+            'ca' => 'No autoritzat',
+            'es' => 'No autorizado',
+            'en' => 'Unauthorized',
+        ],
+        'forbidden' => [
+            'ca' => 'Accés denegat',
+            'es' => 'Acceso denegado',
+            'en' => 'Access denied',
+        ],
+        'not_found' => [
+            'ca' => 'No trobat',
+            'es' => 'No encontrado',
+            'en' => 'Not found',
+        ],
+    ];
+    $lang = api_lang();
+    return $msgs[$key][$lang] ?? $msgs[$key]['ca'] ?? $key;
+}
+
 function respond(mixed $data, int $status = 200): never {
     http_response_code($status);
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

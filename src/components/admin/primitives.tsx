@@ -474,6 +474,7 @@ export function ASelect({ value, onChange, options }: {
   options: (string | { value: string; label: string })[];
 }) {
   const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
 
@@ -507,14 +508,18 @@ export function ASelect({ value, onChange, options }: {
         ref={triggerRef}
         type="button"
         onClick={open ? () => setOpen(false) : openDrop}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         style={{
           width: '100%', height: 44, padding: '0 12px 0 14px',
           background: T.card, color: T.text,
           border: `1px solid ${open ? T.accent : T.border}`,
-          borderRadius: 8, outline: 'none', cursor: 'pointer',
+          borderRadius: 8, outline: focused ? `2px solid ${T.accent}` : 'none',
+          outlineOffset: focused ? 2 : 0,
+          cursor: 'pointer',
           fontFamily: F_BODY, fontSize: 14.5,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          transition: 'border-color 140ms',
+          transition: 'border-color 140ms, outline 140ms',
           boxSizing: 'border-box',
         }}
       >

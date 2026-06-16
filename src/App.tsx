@@ -98,7 +98,7 @@ const NEWS_CAT_COLORS: Record<string, string> = {
   "Esdeveniments":         "bg-green-100 text-green-600 dark:bg-green-950/30 dark:text-green-400",
   "Innovació":             "bg-violet-100 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400",
 };
-function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onOpenNotifs, currentUser: currentUserProp }: { onNavigate?: (tab: string) => void; onNavigateToDate?: (day: number, month: number, year: number) => void; onOpenDrawer?: () => void; hasUnread?: boolean; onOpenNotifs?: () => void; currentUser?: User | null }) {
+function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onOpenNotifs, currentUser: currentUserProp, myEnrollments }: { onNavigate?: (tab: string) => void; onNavigateToDate?: (day: number, month: number, year: number) => void; onOpenDrawer?: () => void; hasUnread?: boolean; onOpenNotifs?: () => void; currentUser?: User | null; myEnrollments?: Map<number, string> }) {
   const [notices, setNotices] = useState<Notice[]>(() => tabPrefetch.notices ?? []);
   const [rawNews, setNews] = useState<NewsArticle[]>(() => tabPrefetch.news ?? []);
   const newsLang = i18n.language;
@@ -383,7 +383,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                       <div style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1.3, color: 'var(--tavil-text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{n.title}</div>
                     </div>
                     {n.image ? (
-                      <img src={resolveImg(n.image)} alt="" style={{ width: 64, height: 64, flexShrink: 0, borderRadius: 10, objectFit: 'cover' }} />
+                      <img src={resolveImg(n.image)} alt="" loading="lazy" style={{ width: 64, height: 64, flexShrink: 0, borderRadius: 10, objectFit: 'cover' }} />
                     ) : (
                       <div style={{ width: 64, height: 64, flexShrink: 0, borderRadius: 10, background: 'repeating-linear-gradient(135deg,rgba(120,132,117,0.1) 0 8px,rgba(120,132,117,0.05) 8px 16px)', border: '1px solid var(--tavil-border)' }} />
                     )}
@@ -604,7 +604,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                   >
                     <div className="hidden md:block">
                       {item.image ? (
-                        <img src={resolveImg(item.image)} alt="" className="w-full h-28 object-cover" />
+                        <img src={resolveImg(item.image)} alt="" loading="lazy" className="w-full h-28 object-cover" />
                       ) : (
                         <div className={cn("w-full h-28 flex items-center justify-center", item.kind === 'news' ? "bg-red-50 dark:bg-red-950/20" : "bg-green-50 dark:bg-green-950/20")}>
                           {item.kind === 'news'
@@ -615,7 +615,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                       )}
                     </div>
                     <div className="p-3 flex-1 flex flex-col">
-                      <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                         <span className={cn(
                           "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase",
                           item.kind === 'news' ? "bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400" : "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400"
@@ -624,6 +624,12 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
                         </span>
                         {item.category && (
                           <span className="text-[9px] text-gray-500 dark:text-zinc-400 truncate">{item.category}</span>
+                        )}
+                        {item.kind === 'activity' && myEnrollments?.has(item.id) && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 flex items-center gap-0.5">
+                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ flexShrink: 0 }}><path d="M1.5 4l1.8 1.8L6.5 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            {t('activities.enrolled')}
+                          </span>
                         )}
                       </div>
                       <p className="font-semibold text-gray-900 dark:text-white text-sm leading-snug line-clamp-2">{item.title}</p>
@@ -1503,7 +1509,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
                   onClick={() => setSelectedNews(item, 'Notícies')}
                 >
                   {item.image ? (
-                    <img src={resolveImg(item.image)} alt="Featured" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                    <img src={resolveImg(item.image)} alt="Featured" loading="lazy" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
                   ) : (
                     <div className="w-full h-full min-h-[160px] md:min-h-[224px] bg-gradient-to-br from-red-100 to-red-50 dark:from-red-950/30 dark:to-red-950/10 flex items-center justify-center">
                       <Newspaper size={56} className="text-red-300" />
@@ -1566,7 +1572,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
           <div key={i} className="group hover-lift bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden anim-item" style={{ '--i': i } as React.CSSProperties}>
             <div className="hidden md:block aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-zinc-800 cursor-pointer" onClick={() => setSelectedNews(item, 'Notícies')}>
               {item.image ? (
-                <img src={resolveImg(item.image)} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[600ms] ease-out" />
+                <img src={resolveImg(item.image)} alt={item.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[600ms] ease-out" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-red-100 to-red-50 dark:from-red-950/30 dark:to-red-950/10 flex items-center justify-center">
                   <Newspaper size={40} className="text-red-300" />
@@ -1811,13 +1817,13 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                     style={{ width: 96, flexShrink: 0, background: 'rgba(191,33,30,0.06)', borderRight: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isProperes ? 'pointer' : 'default', minHeight: 110, overflow: 'hidden' }}
                   >
                     {act.image
-                      ? <img src={resolveImg(act.image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ? <img src={resolveImg(act.image)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       : <ActivityIcon size={28} style={{ color: 'rgba(191,33,30,0.3)' }} />}
                   </div>
                   <div style={{ flex: 1, padding: 14, minWidth: 0 }}>
                     <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 10.5, fontWeight: 700, background: 'var(--tavil-bg)', color: 'var(--tavil-muted)', border: '1px solid var(--tavil-border)', padding: '2px 8px', borderRadius: 6 }}>{act.category}</span>
-                      {full && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '2px 8px', borderRadius: 6 }}>Complert</span>}
+                      {full && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '2px 8px', borderRadius: 6 }}>{t('activities.full')}</span>}
                       {!full && isProperes && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.1)', padding: '2px 8px', borderRadius: 6 }}>Oberta</span>}
                     </div>
                     <div style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1.25, color: 'var(--tavil-text)', marginBottom: 6, cursor: isProperes ? 'pointer' : 'default' }}
@@ -1877,7 +1883,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                                 onClick={e => { e.stopPropagation(); setUnenrollConfirm(act.id); }}
                                 style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--tavil-border)', fontSize: 12, fontWeight: 600, background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}
                               >
-                                Cancel·la
+                                {t('common.cancel')}
                               </button>
                             )}
                           </>
@@ -2058,7 +2064,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                       onClick={() => setUnenrollConfirm(selectedAct.id)}
                       style={{ width: '100%', height: 44, borderRadius: 14, border: '1.5px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                     >
-                      Cancel·la la inscripció
+                      {t('common.cancel')}
                     </button>
                   )}
                 </div>
@@ -2122,7 +2128,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 p-6 w-full max-w-xs mx-4 shadow-xl anim-scale-in" onClick={e => e.stopPropagation()}>
               <p className="text-sm text-gray-700 dark:text-zinc-300 mb-4">{confirmModal.message}</p>
               <div className="flex gap-2 justify-end">
-                <button onClick={() => setConfirmModal(null)} className="px-3 py-1.5 text-xs border border-gray-200 dark:border-zinc-700 rounded-lg text-gray-600 dark:text-zinc-400">Cancel·lar</button>
+                <button onClick={() => setConfirmModal(null)} className="px-3 py-1.5 text-xs border border-gray-200 dark:border-zinc-700 rounded-lg text-gray-600 dark:text-zinc-400">{t('common.cancel')}</button>
                 <button onClick={confirmModal.onConfirm} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg font-semibold">Eliminar</button>
               </div>
             </div>
@@ -2233,7 +2239,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
               } as Record<string,string>)[act.category] ?? 'rgba(191,33,30,0.06)'
             }}>
               {act.image
-                ? <img src={resolveImg(act.image)} alt="" className="w-full h-full object-cover" />
+                ? <img src={resolveImg(act.image)} alt="" loading="lazy" className="w-full h-full object-cover" />
                 : <ActivityIcon size={36} style={{
                     opacity: 0.25,
                     color: ({
@@ -2248,13 +2254,20 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
             <div className="p-5 flex flex-col flex-1">
               <div className="flex items-start justify-between mb-3">
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tavil-muted)', background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', padding: '2px 8px', borderRadius: 6 }}>{act.category}</span>
-                {isProperes
-                  ? <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', background: 'var(--tavil-accent)', padding: '2px 10px', borderRadius: 6 }}>Inscripció oberta</span>
-                  : <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tavil-muted)', background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', padding: '2px 10px', borderRadius: 6 }}>Finalitzada</span>}
+                {myEnrollments.has(act.id)
+                  ? <span style={{ fontSize: 11, fontWeight: 700, color: '#15803d', background: '#dcfce7', padding: '2px 10px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.2 2.2L8 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      Inscrit
+                    </span>
+                  : isProperes
+                    ? <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', background: 'var(--tavil-accent)', padding: '2px 10px', borderRadius: 6 }}>Inscripció oberta</span>
+                    : <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tavil-muted)', background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', padding: '2px 10px', borderRadius: 6 }}>Finalitzada</span>}
               </div>
-              <h3 style={{ fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 6, fontSize: 15 }}>{act.title}</h3>
-              <p className="mb-4 line-clamp-3" style={{ fontSize: 14, fontFamily: "'Barlow Semi Condensed', var(--font-ui)", color: 'var(--tavil-muted)', lineHeight: 1.6 }}>{act.description}</p>
-              <div className="space-y-1.5 mb-4">
+              <div className="flex-1">
+                <h3 style={{ fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 6, fontSize: 15 }}>{act.title}</h3>
+                <p className="mb-0 line-clamp-3" style={{ fontSize: 14, fontFamily: "'Barlow Semi Condensed', var(--font-ui)", color: 'var(--tavil-muted)', lineHeight: 1.6 }}>{act.description}</p>
+              </div>
+              <div className="space-y-1.5 mt-4 mb-4">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--tavil-muted)' }}><Calendar size={13} /><span>{act.date}</span></div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--tavil-muted)' }}><Clock size={13} /><span>{act.time}</span></div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--tavil-muted)' }}><MapPin size={13} /><span>{act.location}</span></div>
@@ -2277,12 +2290,12 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                 ) : null}
                 {isProperes && (
                   act.link ? (
-                    <a href={act.link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--tavil-accent)', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', marginTop: 14 }}>
-                      Veure detalls i inscriure's <ArrowRight size={14} />
+                    <a href={act.link} target="_blank" rel="noopener noreferrer" style={{ color: myEnrollments.has(act.id) ? '#15803d' : 'var(--tavil-accent)', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', marginTop: 14 }}>
+                      {myEnrollments.has(act.id) ? 'Inscrit · Veure detalls' : "Veure detalls i inscriure's"} <ArrowRight size={14} />
                     </a>
                   ) : (
-                    <button onClick={() => { setSelectedAct(act); setEnrollError(''); }} style={{ color: 'var(--tavil-accent)', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', marginTop: 14 }}>
-                      Veure detalls i inscriure's <ArrowRight size={14} />
+                    <button onClick={() => { setSelectedAct(act); setEnrollError(''); }} style={{ color: myEnrollments.has(act.id) ? '#15803d' : 'var(--tavil-accent)', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', marginTop: 14 }}>
+                      {myEnrollments.has(act.id) ? 'Inscrit · Veure detalls' : "Veure detalls i inscriure's"} <ArrowRight size={14} />
                     </button>
                   )
                 )}
@@ -2374,7 +2387,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                     className="press w-full font-semibold py-2 rounded-lg transition-colors text-sm"
                     style={{ border: '1px solid var(--tavil-border)', color: 'var(--tavil-muted)', background: 'none' }}
                   >
-                    Cancel·la la inscripció
+                    {t('common.cancel')}
                   </button>
                 )}
               </div>
@@ -2507,7 +2520,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                 )}
               </div>
               <div className="flex gap-2 pt-1">
-                <button onClick={() => setActEditId(null)} className="press flex-1 py-2.5 rounded-xl border border-[var(--tavil-border)] text-sm text-[var(--tavil-muted)] hover:bg-[var(--tavil-bgAlt)] transition-colors">Cancel·la</button>
+                <button onClick={() => setActEditId(null)} className="press flex-1 py-2.5 rounded-xl border border-[var(--tavil-border)] text-sm text-[var(--tavil-muted)] hover:bg-[var(--tavil-bgAlt)] transition-colors">{t('common.cancel')}</button>
                 <button onClick={handleSaveActEdit} disabled={!aeTitle.trim() || aeSaving}
                   className="press flex-1 py-2.5 rounded-xl bg-[var(--tavil-text)] text-[var(--tavil-bg)] text-sm font-semibold disabled:opacity-40 transition-opacity flex items-center justify-center gap-1.5">
                   {aeSaving ? 'Desant…' : <><span>✓</span> Desa canvis</>}
@@ -3268,7 +3281,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                         </select>
                         <textarea value={suggAdminResponse} onChange={e => setSuggAdminResponse(e.target.value)} placeholder="Resposta (opcional)" rows={2} style={{ borderRadius: 8, border: '1px solid var(--tavil-border)', padding: '8px 10px', fontSize: 13, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', resize: 'none', outline: 'none' }} />
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                          <button onClick={() => setSuggAdminOpen(null)} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                          <button onClick={() => setSuggAdminOpen(null)} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}>{t('common.cancel')}</button>
                           <button onClick={() => saveSuggAdmin(s.id)} disabled={suggAdminSaving} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--tavil-accent)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>{suggAdminSaving ? 'Desant...' : 'Desar'}</button>
                         </div>
                       </div>
@@ -3318,7 +3331,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                           <input type="text" value={incAdminAssigned} onChange={e => setIncAdminAssigned(e.target.value)} placeholder="Assignat a" style={{ borderRadius: 8, border: '1px solid var(--tavil-border)', padding: '6px 10px', fontSize: 13, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
                           <textarea value={incAdminResolution} onChange={e => setIncAdminResolution(e.target.value)} placeholder="Resolució" rows={2} style={{ borderRadius: 8, border: '1px solid var(--tavil-border)', padding: '8px 10px', fontSize: 13, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', resize: 'none', outline: 'none' }} />
                           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                            <button onClick={() => setIncAdminOpen(null)} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                            <button onClick={() => setIncAdminOpen(null)} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}>{t('common.cancel')}</button>
                             <button onClick={() => saveIncAdmin(inc.id)} disabled={incAdminSaving} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--tavil-accent)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>{incAdminSaving ? 'Desant...' : 'Desar'}</button>
                           </div>
                         </div>
@@ -3364,7 +3377,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                 </label>
                 {suggSuccess && <p style={{ fontSize: 13, color: '#22c55e', fontWeight: 600 }}>Suggeriment enviat!</p>}
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                  <button onClick={closeMobileVeuForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                  <button onClick={closeMobileVeuForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('common.cancel')}</button>
                   <button onClick={async () => { await handleSuggSubmit(); closeMobileVeuForm(); }} disabled={!newTitle.trim() || !newCat || suggSubmitting} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!newTitle.trim() || !newCat || suggSubmitting) ? 0.5 : 1 }}>
                     {suggSubmitting ? 'Enviant…' : 'Enviar'}
                   </button>
@@ -3393,7 +3406,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                 <textarea value={incDesc} onChange={e => setIncDesc(e.target.value)} placeholder="Descripció" rows={3} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', resize: 'none' }} />
                 {incSuccess && <p style={{ fontSize: 13, color: '#22c55e', fontWeight: 600 }}>Incidència enviada!</p>}
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                  <button onClick={closeMobileVeuForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                  <button onClick={closeMobileVeuForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('common.cancel')}</button>
                   <button onClick={async () => { await handleIncSubmit(); closeMobileVeuForm(); }} disabled={!incTitle.trim() || !incArea || !incPriority || incSubmitting} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!incTitle.trim() || !incArea || !incPriority || incSubmitting) ? 0.5 : 1 }}>
                     {incSubmitting ? 'Enviant…' : 'Enviar'}
                   </button>
@@ -4013,7 +4026,7 @@ function VacRangePicker({
                     {draftError && <span className="text-[10.5px] text-red-600 dark:text-red-400">{draftError}</span>}
                   </div>
                   <div className="flex gap-1.5">
-                    <button type="button" onClick={() => { setDraftFrom(null); setDraftTo(null); }} className="text-[11px] px-2.5 py-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800">Cancel·lar</button>
+                    <button type="button" onClick={() => { setDraftFrom(null); setDraftTo(null); }} className="text-[11px] px-2.5 py-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800">{t('common.cancel')}</button>
                     <button type="button" onClick={handleAfegir} disabled={!!draftError} className="text-[11px] px-3 py-1.5 rounded-md bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-semibold">+ Afegir rang</button>
                   </div>
                 </>
@@ -4296,7 +4309,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                           <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 6 }}>
                             <input type="text" value={denyMotive} onChange={e => setDenyMotive(e.target.value)} placeholder="Motiu (opcional)" style={{ borderRadius: 8, border: '1px solid var(--tavil-border)', padding: '7px 10px', fontSize: 13, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
                             <div style={{ display: 'flex', gap: 6 }}>
-                              <button onClick={() => setDenyingId(null)} style={{ flex: 1, padding: '7px', borderRadius: 8, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                              <button onClick={() => setDenyingId(null)} style={{ flex: 1, padding: '7px', borderRadius: 8, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>{t('common.cancel')}</button>
                               <button onClick={() => handleDenyConfirm(d.id)} style={{ flex: 1, padding: '7px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Confirmar</button>
                             </div>
                           </div>
@@ -4465,7 +4478,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                   <textarea value={comments} onChange={e => setComments(e.target.value)} placeholder="Motiu (opcional)" rows={3} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', resize: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                  <button onClick={closeSolForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                  <button onClick={closeSolForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('common.cancel')}</button>
                   <button onClick={async () => { await handleSubmit(); closeSolForm(); }} disabled={!selectedDate || submitting} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!selectedDate || submitting) ? 0.5 : 1 }}>
                     {submitting ? 'Enviant…' : 'Enviar'}
                   </button>
@@ -4495,7 +4508,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                   <textarea value={vacComments} onChange={e => setVacComments(e.target.value)} placeholder="Opcional" rows={2} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', resize: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                  <button onClick={closeVacForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
+                  <button onClick={closeVacForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('common.cancel')}</button>
                   <button
                     onClick={async () => {
                       if (!vacStartDate || !vacEndDate) return;
@@ -4889,7 +4902,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                                   className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none" />
                                 <div className="flex gap-2">
                                   <button onClick={() => handleVacDenyConfirm(v.id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">Confirmar denegació</button>
-                                  <button onClick={() => { setVacDenyingId(null); setVacDenyComment(''); }} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">Cancel·lar</button>
+                                  <button onClick={() => { setVacDenyingId(null); setVacDenyComment(''); }} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">{t('common.cancel')}</button>
                                 </div>
                               </div>
                             )}
@@ -5537,10 +5550,6 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                       disabled={!gallerySelected}
                       className="press w-full py-2.5 rounded-xl text-sm font-semibold bg-[var(--tavil-text)] text-[var(--tavil-bg)] disabled:opacity-40 transition-opacity"
                     >Confirmar</button>
-                    <button
-                      onClick={() => { setShowAvatarGallery(false); setTimeout(() => avatarFileRef.current?.click(), 100); }}
-                      className="press w-full py-2 rounded-xl text-sm font-medium text-[var(--tavil-muted)] hover:bg-[var(--tavil-bgAlt)] transition-colors"
-                    >Pujar foto pròpia…</button>
                   </div>
                 </div>
               </div>
@@ -6130,7 +6139,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                         color: 'var(--tavil-text)', fontSize: 13.5, fontWeight: 600, fontFamily: 'inherit', cursor: avatarSaving ? 'wait' : 'pointer',
                         opacity: avatarSaving ? 0.6 : 1,
                       }}
-                    >Cancel·la</button>
+                    >{t('common.cancel')}</button>
                     <button
                       onClick={async () => { const ok = await commitAvatarPending(); if (ok) setShowEdit(false); }}
                       disabled={avatarSaving}
@@ -7136,7 +7145,7 @@ function ExternalCourseModal({ course, onClose, onSaved }: {
                     <button key={u.id} type="button" onClick={() => addTargetUser(u.id)}
                       className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-zinc-700 text-left transition-colors">
                       {u.avatar_url ? (
-                        <img src={resolveImg(u.avatar_url)} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                        <img src={resolveImg(u.avatar_url)} alt="" loading="lazy" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
                       ) : (
                         <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0">
                           {u.name.split(' ').slice(0,2).map((n: string) => n[0]).join('').toUpperCase()}
@@ -7689,7 +7698,7 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
                   <div key={u.id} className={isEditing ? 'rounded-xl border border-red-300 dark:border-red-700 bg-white dark:bg-zinc-900 overflow-hidden' : ''}>
                     <div className={`${isEditing ? 'flex items-center gap-3 px-4 py-3' : `${cardCls} flex items-center gap-3`}`}>
                       {u.avatar_url ? (
-                        <img src={resolveImg(u.avatar_url)} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                        <img src={resolveImg(u.avatar_url)} alt="" loading="lazy" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
                       ) : (
                         <div className="w-9 h-9 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                           {u.name.split(' ').slice(0,2).map((n:string) => n[0]).join('').toUpperCase()}
@@ -7925,7 +7934,7 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
             <div className="space-y-2">
               {newsItems.map(n => (
                 <div key={n.id} className={`${cardCls} flex items-center gap-3 ${editNewsItem?.id === n.id ? 'border-red-300 dark:border-red-700' : ''}`}>
-                  {n.image && <img src={resolveImg(n.image)} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />}
+                  {n.image && <img src={resolveImg(n.image)} alt="" loading="lazy" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{n.title}</p>
@@ -7974,7 +7983,7 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
                 <div key={q.id} className={cardCls}>
                   <div className="flex items-center gap-3">
                     {q.image ? (
-                      <img src={resolveImg(q.image)} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0 border border-gray-100 dark:border-zinc-800" />
+                      <img src={resolveImg(q.image)} alt="" loading="lazy" className="w-12 h-12 rounded-lg object-cover flex-shrink-0 border border-gray-100 dark:border-zinc-800" />
                     ) : (
                       <div className="w-12 h-12 rounded-lg bg-red-50 dark:bg-red-950/20 flex items-center justify-center text-red-600 flex-shrink-0">
                         <GraduationCap size={20} />
@@ -12786,7 +12795,7 @@ function App() {
     const openDrawer = () => setIsDrawerOpen(true);
     const openNotifs = () => setMobileNotifsOpen(true);
     switch (tab) {
-      case 'Inici': return <InicialTab onNavigate={setActiveTab} onNavigateToDate={navigateToDate} onOpenDrawer={openDrawer} hasUnread={hasUnread} onOpenNotifs={openNotifs} currentUser={currentUser} />;
+      case 'Inici': return <InicialTab onNavigate={setActiveTab} onNavigateToDate={navigateToDate} onOpenDrawer={openDrawer} hasUnread={hasUnread} onOpenNotifs={openNotifs} currentUser={currentUser} myEnrollments={myEnrollments} />;
       case 'Notícies': return <NoticiesTab currentUser={currentUser} onOpenDrawer={openDrawer} onNavigate={setActiveTab} />;
       case 'Activitats': return <ActivitatsTab currentUser={currentUser} onBack={goBack} />;
       case 'Agenda': return <AgendaTab currentUser={currentUser} initDate={agendaInitDate} onInitDateConsumed={() => setAgendaInitDate(null)} onOpenDrawer={openDrawer} onNavigate={setActiveTab} />;

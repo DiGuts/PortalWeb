@@ -205,6 +205,9 @@ elseif ($method === 'PATCH' && $action === 'change-password') {
 }
 
 elseif ($method === 'POST' && $action === 'impersonate') {
+    if (getenv('IMPERSONATE_ENABLED') !== 'true') {
+        respond(['detail' => 'No autoritzat'], 403);
+    }
     require_once __DIR__ . '/../auth_middleware.php';
     $caller = auth_user();
     if (($caller['email'] ?? '') !== 'unaiclapers@tavil.net') {

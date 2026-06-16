@@ -43,7 +43,7 @@ function get_bearer_token(): ?string {
 function auth_user(): array {
     $token = get_bearer_token();
     if (!$token) {
-        respond(['detail' => 'Not authenticated'], 401);
+        respond(['detail' => api_msg('unauthorized')], 401);
     }
     $payload = jwt_decode($token);
     if (!$payload) {
@@ -79,7 +79,7 @@ function auth_user(): array {
 function require_admin(): array {
     $u = auth_user();
     if (!user_has_any_role($u, ['Administrador', 'Administrador/a'])) {
-        respond(['detail' => 'Acció reservada a administradors'], 403);
+        respond(['detail' => api_msg('forbidden')], 403);
     }
     return $u;
 }
@@ -87,7 +87,7 @@ function require_admin(): array {
 function require_rrhh_or_admin(): array {
     $u = auth_user();
     if (!user_has_any_role($u, ['Administrador', 'Administrador/a', 'SolicitudsVacances', 'SolicitudsDissabtes', 'Sol·licituds', 'Recursos humans'])) {
-        respond(['detail' => 'Acció reservada a sol·licituds o administradors'], 403);
+        respond(['detail' => api_msg('forbidden')], 403);
     }
     return $u;
 }
@@ -95,7 +95,7 @@ function require_rrhh_or_admin(): array {
 function require_formacions_or_admin(): array {
     $u = auth_user();
     if (!user_has_any_role($u, ['Administrador', 'Administrador/a', 'Formacions', 'Recursos humans'])) {
-        respond(['detail' => 'Acció reservada al gestor de formacions'], 403);
+        respond(['detail' => api_msg('forbidden')], 403);
     }
     return $u;
 }
@@ -103,7 +103,7 @@ function require_formacions_or_admin(): array {
 function require_comunicacions_or_admin(): array {
     $u = auth_user();
     if (!user_has_any_role($u, ['Administrador', 'Administrador/a', 'Comunicacions', 'Comunicació', 'Recursos humans'])) {
-        respond(['detail' => 'Acció reservada al gestor de comunicacions'], 403);
+        respond(['detail' => api_msg('forbidden')], 403);
     }
     return $u;
 }
@@ -111,7 +111,7 @@ function require_comunicacions_or_admin(): array {
 function require_content_editor(): array {
     $u = auth_user();
     if (!user_has_any_role($u, ['Administrador', 'Administrador/a', 'Comunicacions', 'Comunicació', 'Formacions', 'Recursos humans'])) {
-        respond(['detail' => 'Acció reservada a editors de contingut'], 403);
+        respond(['detail' => api_msg('forbidden')], 403);
     }
     return $u;
 }

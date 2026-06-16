@@ -14,7 +14,7 @@ set_exception_handler(function (Throwable $e) {
         http_response_code(500);
     }
     error_log('[api] ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
-    echo json_encode(['detail' => $e->getMessage()]);
+    echo json_encode(['detail' => api_msg('internal_error')]);
     exit;
 });
 set_error_handler(function ($severity, $message, $file, $line) {

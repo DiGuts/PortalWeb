@@ -1,0 +1,3 @@
+ALTER TABLE agenda_events ADD COLUMN IF NOT EXISTS activity_id INT NULL;
+ALTER TABLE agenda_events ADD COLUMN IF NOT EXISTS year INT NOT NULL DEFAULT 2026;
+ALTER TABLE agenda_events ADD UNIQUE KEY IF NOT EXISTS uq_activity_id (activity_id);
