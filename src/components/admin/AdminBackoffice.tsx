@@ -1114,7 +1114,8 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <div style={{
             width: 44, height: 32, borderRadius: 5, flexShrink: 0,
-            background: T.accentLight, color: T.accentDark,
+            background: T.bgAlt, color: T.textMuted,
+            border: `1px solid ${T.border}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}><ActivityIcon size={14} /></div>
           <div style={{ minWidth: 0, overflow: 'hidden' }}>
@@ -1151,26 +1152,20 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
 
   return (
     <>
-      <AdminHeader
-        title="Connect"
-        subtitle="Esdeveniments interns amb inscripció: cultura, esport, formació, jornades."
-        actions={actTab === 'activitats' ? <ABtn variant="primary" icon={Plus} onClick={newActivity}>Nova activitat</ABtn> : undefined}
-      />
-      <AdminToolbar>
-        <ASegmented value={actTab} onChange={v => { setActTab(v as 'activitats' | 'inscripcions'); setSelectedId(null); }} options={[
-          { value: 'activitats', label: 'Connect' },
-          { value: 'inscripcions', label: 'Inscripcions' },
-        ]} />
-      </AdminToolbar>
+      <div style={{ display: 'flex', gap: 8, padding: '0 0 16px' }}>
+        <ABtn variant={actTab === 'activitats' ? 'primary' : 'ghost'} onClick={() => { setActTab('activitats'); setSelectedId(null); }}>Connect</ABtn>
+        <ABtn variant={actTab === 'inscripcions' ? 'primary' : 'ghost'} onClick={() => { setActTab('inscripcions'); setSelectedId(null); }}>Inscripcions</ABtn>
+      </div>
 
       {actTab === 'activitats' && (
         <>
+          <AdminHeader
+            title="Connect"
+            subtitle="Esdeveniments interns amb inscripció: cultura, esport, formació, jornades."
+            actions={<ABtn variant="primary" icon={Plus} onClick={newActivity}>Nova activitat</ABtn>}
+          />
           <AdminToolbar>
             <AdminSearch value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca activitats, categoria, lloc…" />
-            <div style={{ width: 1, height: 22, background: T.border }} />
-            <AdminFilterPills value={statusFilter} onChange={setStatusFilter} options={[
-              { id: 'all', label: 'Tots', count: counts.all },
-            ]} />
           </AdminToolbar>
           <AdminTwoPane
             left={<AdminTable columns={columns} rows={filtered} selectedId={selectedId} onRowClick={(id) => setSelectedId(id as number)} emptyMessage="Cap activitat." />}
@@ -1212,7 +1207,13 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
       )}
 
       {actTab === 'inscripcions' && (
-        <AdminActivityEnrollments activities={activities} />
+        <>
+          <AdminHeader
+            title="Inscripcions"
+            subtitle="Persones inscrites a les activitats Connect."
+          />
+          <AdminActivityEnrollments activities={activities} />
+        </>
       )}
 
       <CreateActivityModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={onCreatedActivity} />
