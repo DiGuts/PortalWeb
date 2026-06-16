@@ -98,13 +98,14 @@ const NEWS_CAT_COLORS: Record<string, string> = {
   "Esdeveniments":         "bg-green-100 text-green-600 dark:bg-green-950/30 dark:text-green-400",
   "Innovació":             "bg-violet-100 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400",
 };
-function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onOpenNotifs, currentUser: currentUserProp, myEnrollments }: { onNavigate?: (tab: string) => void; onNavigateToDate?: (day: number, month: number, year: number) => void; onOpenDrawer?: () => void; hasUnread?: boolean; onOpenNotifs?: () => void; currentUser?: User | null; myEnrollments?: Map<number, string> }) {
+function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onOpenNotifs, currentUser: currentUserProp }: { onNavigate?: (tab: string) => void; onNavigateToDate?: (day: number, month: number, year: number) => void; onOpenDrawer?: () => void; hasUnread?: boolean; onOpenNotifs?: () => void; currentUser?: User | null }) {
   const [notices, setNotices] = useState<Notice[]>(() => tabPrefetch.notices ?? []);
   const [rawNews, setNews] = useState<NewsArticle[]>(() => tabPrefetch.news ?? []);
   const newsLang = i18n.language;
   const news = useMemo(() => rawNews.map(n => localizeNews(n, newsLang)), [rawNews, newsLang]);
   const [activities, setActivities] = useState<Activity[]>(() => tabPrefetch.activities ?? []);
   const [agendaEvents, setAgendaEvents] = useState<AgendaEvent[]>(() => tabPrefetch.agendaEvents ?? []);
+  const [myEnrollments, setMyEnrollments] = useState<Map<number, string>>(new Map());
   const [loading, setLoading] = useState(
     () => !(tabPrefetch.notices && tabPrefetch.news && tabPrefetch.activities && tabPrefetch.agendaEvents)
   );
@@ -132,6 +133,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
     }
     if (tasks.length === 0) { setLoading(false); return () => { cancelled = true; }; }
     Promise.allSettled(tasks).finally(() => { if (!cancelled) setLoading(false); });
+    apiGetMyActivityEnrollments().then(list => { if (!cancelled) setMyEnrollments(new Map(list.map(e => [e.activity_id, e.status]))); }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
@@ -4026,7 +4028,7 @@ function VacRangePicker({
                     {draftError && <span className="text-[10.5px] text-red-600 dark:text-red-400">{draftError}</span>}
                   </div>
                   <div className="flex gap-1.5">
-                    <button type="button" onClick={() => { setDraftFrom(null); setDraftTo(null); }} className="text-[11px] px-2.5 py-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800">{t('common.cancel')}</button>
+                    <button type="button" onClick={() => { setDraftFrom(null); setDraftTo(null); }} className="text-[11px] px-2.5 py-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800">Cancel·lar</button>
                     <button type="button" onClick={handleAfegir} disabled={!!draftError} className="text-[11px] px-3 py-1.5 rounded-md bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-semibold">+ Afegir rang</button>
                   </div>
                 </>
@@ -12795,7 +12797,7 @@ function App() {
     const openDrawer = () => setIsDrawerOpen(true);
     const openNotifs = () => setMobileNotifsOpen(true);
     switch (tab) {
-      case 'Inici': return <InicialTab onNavigate={setActiveTab} onNavigateToDate={navigateToDate} onOpenDrawer={openDrawer} hasUnread={hasUnread} onOpenNotifs={openNotifs} currentUser={currentUser} myEnrollments={myEnrollments} />;
+      case 'Inici': return <InicialTab onNavigate={setActiveTab} onNavigateToDate={navigateToDate} onOpenDrawer={openDrawer} hasUnread={hasUnread} onOpenNotifs={openNotifs} currentUser={currentUser} />;
       case 'Notícies': return <NoticiesTab currentUser={currentUser} onOpenDrawer={openDrawer} onNavigate={setActiveTab} />;
       case 'Activitats': return <ActivitatsTab currentUser={currentUser} onBack={goBack} />;
       case 'Agenda': return <AgendaTab currentUser={currentUser} initDate={agendaInitDate} onInitDateConsumed={() => setAgendaInitDate(null)} onOpenDrawer={openDrawer} onNavigate={setActiveTab} />;
