@@ -118,7 +118,7 @@ elseif ($method === 'POST' && $action === 'register') {
 
     $hashed = password_hash(str_val($body, 'password'), PASSWORD_BCRYPT);
     $name   = str_val($body, 'name');
-    $role   = str_val($body, 'role', 'Treballador/a');
+    $role   = 'Treballador/a'; // always default — never trust caller-supplied role
     $dept   = str_val($body, 'dept', 'General');
 
     if (EMAIL_VERIFY_ENABLED) {

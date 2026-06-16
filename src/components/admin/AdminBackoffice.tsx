@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, CSSProperties } from 'react';
 import {
   Plus, Check, Mail, MapPin, Clock, Users, Calendar, Newspaper,
   GraduationCap, Activity as ActivityIcon, ArrowRight, Settings,
-  LogOut, Image as ImageIcon, Globe, FileText, Bell, UserCheck, UserX, LayoutGrid,
+  LogOut, Image as ImageIcon, Globe, FileText, Bell, UserCheck, UserX, LayoutGrid, Search,
 } from 'lucide-react';
 import {
   User, Activity, AgendaEvent, NewsArticle, Course, Quiz, Notice,
@@ -841,6 +841,14 @@ function AdminNews({ news, refresh, intent, onConsumeIntent }: { news: NewsArtic
 
 // ── Sub-component: AdminActivityEnrollments ─────────────────────────────────
 
+const ACT_CAT_COLORS: Record<string, { bar: string; bg: string }> = {
+  'Esport':   { bar: '#16a34a', bg: 'rgba(34,197,94,0.10)' },
+  'Cultura':  { bar: '#7c3aed', bg: 'rgba(139,92,246,0.10)' },
+  'Social':   { bar: '#2563eb', bg: 'rgba(59,130,246,0.10)' },
+  'RSC':      { bar: '#d97706', bg: 'rgba(245,158,11,0.10)' },
+  'Benestar': { bar: '#0f766e', bg: 'rgba(20,184,166,0.10)' },
+};
+
 function AdminActivityEnrollments({ activities }: { activities: Activity[] }) {
   const [q, setQ] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -859,65 +867,79 @@ function AdminActivityEnrollments({ activities }: { activities: Activity[] }) {
     setEnrollments([]);
     setLoading(true);
     apiGetActivityEnrollments(selectedId)
-      .then(setEnrollments)
+      .then(rows => setEnrollments(rows.filter(e => e.status === 'confirmed')))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [selectedId]);
 
-  const confirmed = enrollments.filter(e => e.status === 'confirmed');
-  const waitlist  = enrollments.filter(e => e.status === 'waitlist');
-
   return (
     <AdminTwoPane
+      ratio="1fr 1fr"
       left={
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-          <div style={{ padding: '14px 16px', borderBottom: `1px solid ${T.border}` }}>
+        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden' }}>
+          {/* Search */}
+          <div style={{ padding: '12px 14px', borderBottom: `1px solid ${T.border}`, background: T.bgAlt }}>
             <div style={{ position: 'relative' }}>
-              <Users size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: T.textMuted, pointerEvents: 'none' }} />
+              <Search size={13} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: T.textMuted, pointerEvents: 'none' }} />
               <input
                 value={q}
                 onChange={e => setQ(e.target.value)}
                 placeholder="Cerca activitats…"
-                style={{ width: '100%', height: 38, borderRadius: 10, border: `1.5px solid ${T.border}`, background: T.card, paddingLeft: 34, paddingRight: 12, fontSize: 13, color: T.text, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                style={{ width: '100%', height: 36, borderRadius: 8, border: `1px solid ${T.border}`, background: T.card, paddingLeft: 32, paddingRight: 12, fontSize: 13, color: T.text, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
               />
             </div>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
+          {/* Activity cards */}
+          <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 280px)' }}>
             {filtered.length === 0 && (
-              <div style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: T.textFaint }}>Cap activitat.</div>
+              <div style={{ padding: '40px 16px', textAlign: 'center', fontSize: 13, color: T.textFaint }}>Cap activitat.</div>
             )}
-            {filtered.map(a => {
+            {filtered.map((a, i) => {
               const enr = a.enrolled || 0;
               const cap = a.capacity || 0;
+              const pct = cap > 0 ? Math.min((enr / cap) * 100, 100) : 0;
+              const cat = ACT_CAT_COLORS[a.category] ?? { bar: T.accent, bg: 'rgba(191,33,30,0.08)' };
               const isActive = a.id === selectedId;
               return (
                 <button
                   key={a.id}
                   onClick={() => setSelectedId(a.id === selectedId ? null : a.id)}
+                  onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = T.bgAlt; }}
+                  onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
                   style={{
-                    width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '9px 12px', borderRadius: 10, border: `1.5px solid ${isActive ? T.accent : 'transparent'}`,
-                    cursor: 'pointer', fontFamily: 'inherit', marginBottom: 2,
+                    width: '100%', textAlign: 'left', border: 'none', padding: 0,
+                    borderBottom: i < filtered.length - 1 ? `1px solid ${T.border}` : 'none',
+                    cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'stretch',
                     background: isActive ? T.accentLight : 'transparent',
-                    transition: 'background 120ms, border-color 120ms',
-                    boxSizing: 'border-box',
+                    transition: 'background 120ms',
                   }}
                 >
-                  <div style={{ width: 34, height: 34, borderRadius: 9, background: isActive ? T.accent : T.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 120ms' }}>
-                    <ActivityIcon size={14} style={{ color: isActive ? '#fff' : T.accent }} />
+                  {/* Category color strip */}
+                  <div style={{ width: 4, flexShrink: 0, background: cat.bar, opacity: isActive ? 1 : 0.35, transition: 'opacity 120ms' }} />
+                  <div style={{ flex: 1, padding: '13px 14px', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 600, color: isActive ? T.accent : T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 120ms' }}>{a.title}</div>
+                        <div style={{ fontSize: 11, color: T.textMuted, marginTop: 3 }}>
+                          {a.date}{a.category ? ` · ${a.category}` : ''}{a.location ? ` · ${a.location}` : ''}
+                        </div>
+                      </div>
+                      <span style={{
+                        flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+                        background: enr > 0 ? 'rgba(34,197,94,0.12)' : T.bgAlt,
+                        color: enr > 0 ? '#15803d' : T.textMuted,
+                        border: `1px solid ${enr > 0 ? 'rgba(34,197,94,0.25)' : T.border}`,
+                        marginTop: 1,
+                      }}>
+                        {enr}{cap > 0 ? `/${cap}` : ' inscrits'}
+                      </span>
+                    </div>
+                    {cap > 0 && (
+                      <div style={{ marginTop: 9, height: 3, borderRadius: 2, background: T.border, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? '#f59e0b' : cat.bar, borderRadius: 2, transition: 'width 400ms ease' }} />
+                      </div>
+                    )}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</div>
-                    <div style={{ fontSize: 11, color: T.textMuted, marginTop: 1 }}>{a.date}{a.category ? ` · ${a.category}` : ''}</div>
-                  </div>
-                  <span style={{
-                    flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 99,
-                    background: enr > 0 ? 'rgba(34,197,94,0.12)' : T.bgAlt,
-                    color: enr > 0 ? '#15803d' : T.textMuted,
-                    border: `1px solid ${enr > 0 ? 'rgba(34,197,94,0.25)' : T.border}`,
-                  }}>
-                    {enr}{cap > 0 ? `/${cap}` : ''}
-                  </span>
                 </button>
               );
             })}
@@ -926,55 +948,74 @@ function AdminActivityEnrollments({ activities }: { activities: Activity[] }) {
       }
       right={selected ? (
         <AdminDetail
-          badge="INSCRIPCIONS" title={selected.title}
+          badge="INSCRIPCIONS"
+          title={selected.title}
           onClose={() => setSelectedId(null)}
         >
-          {/* Summary */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, background: 'rgba(34,197,94,0.1)', color: '#166534', padding: '5px 14px', borderRadius: 99, border: '1px solid rgba(34,197,94,0.2)' }}>
-              {confirmed.length} confirmats
-            </span>
-            {waitlist.length > 0 && (
-              <span style={{ fontSize: 12, fontWeight: 600, background: 'rgba(234,179,8,0.1)', color: '#713f12', padding: '5px 14px', borderRadius: 99, border: '1px solid rgba(234,179,8,0.25)' }}>
-                {waitlist.length} en espera
-              </span>
+          {/* Stat summary */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px', background: T.bgAlt, borderRadius: 10, border: `1px solid ${T.border}` }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 32, fontWeight: 700, fontFamily: F_DISPLAY, color: T.text, lineHeight: 1 }}>{enrollments.length}</div>
+              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 3 }}>inscrits</div>
+            </div>
+            {selected.capacity > 0 && (
+              <>
+                <div style={{ width: 1, height: 36, background: T.border }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.textMuted, marginBottom: 5 }}>
+                    <span>Aforament</span>
+                    <span style={{ fontWeight: 600, color: T.text }}>{selected.enrolled}/{selected.capacity}</span>
+                  </div>
+                  <div style={{ height: 5, borderRadius: 3, background: T.border, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', background: T.accent, width: `${Math.min((selected.enrolled / selected.capacity) * 100, 100)}%`, borderRadius: 3, transition: 'width 400ms ease' }} />
+                  </div>
+                  <div style={{ fontSize: 10.5, color: T.textFaint, marginTop: 4 }}>
+                    {Math.max(0, selected.capacity - selected.enrolled)} places lliures
+                  </div>
+                </div>
+              </>
             )}
           </div>
 
           {loading ? (
-            <div style={{ fontSize: 13, color: T.textMuted, padding: '20px 0' }}>Carregant…</div>
+            <div style={{ fontSize: 13, color: T.textMuted, padding: '20px 0', textAlign: 'center' }}>Carregant…</div>
           ) : enrollments.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0', gap: 10, color: T.textMuted }}>
-              <Users size={32} style={{ opacity: 0.25 }} />
-              <span style={{ fontSize: 13 }}>Ningú inscrit encara.</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '36px 0', gap: 10 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 24, background: T.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Users size={22} style={{ color: T.textFaint }} />
+              </div>
+              <span style={{ fontSize: 13, color: T.textMuted }}>Ningú inscrit encara.</span>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {enrollments.map(e => (
-                <div key={e.enrollment_id} style={{
-                  display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
-                  borderRadius: 10, background: T.card, border: `1px solid ${T.border}`,
-                }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 99, background: T.bgAlt, border: `1.5px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: T.textMuted }}>{e.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('')}</span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}</div>
-                    <div style={{ fontSize: 11, color: T.textMuted, marginTop: 1 }}>{e.dept} · <span style={{ color: T.textFaint }}>{e.email}</span></div>
-                  </div>
-                  <div style={{ flexShrink: 0, textAlign: 'right' }}>
+            <div style={{ borderRadius: 10, border: `1px solid ${T.border}`, overflow: 'hidden' }}>
+              {enrollments.map((e, i) => {
+                const initials = e.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('');
+                return (
+                  <div key={e.enrollment_id} style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px',
+                    borderBottom: i < enrollments.length - 1 ? `1px solid ${T.border}` : 'none',
+                    background: T.card,
+                  }}>
                     <div style={{
-                      fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 99, marginBottom: 3,
-                      background: e.status === 'confirmed' ? 'rgba(34,197,94,0.1)' : 'rgba(234,179,8,0.1)',
-                      color: e.status === 'confirmed' ? '#166534' : '#713f12',
-                      border: `1px solid ${e.status === 'confirmed' ? 'rgba(34,197,94,0.2)' : 'rgba(234,179,8,0.25)'}`,
+                      width: 36, height: 36, borderRadius: 18, flexShrink: 0,
+                      background: T.accentLight, color: T.accent,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
                     }}>
-                      {e.status === 'confirmed' ? 'Confirmat' : 'Espera'}
+                      {initials}
                     </div>
-                    <div style={{ fontSize: 10, color: T.textFaint }}>{new Date(e.enrolled_at).toLocaleDateString('ca-ES')}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}</div>
+                      <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {e.dept}{e.dept && e.email ? ' · ' : ''}<span style={{ color: T.textFaint }}>{e.email}</span>
+                      </div>
+                    </div>
+                    <div style={{ flexShrink: 0, fontSize: 11, color: T.textFaint }}>
+                      {new Date(e.enrolled_at).toLocaleDateString('ca-ES')}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </AdminDetail>

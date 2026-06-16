@@ -52,7 +52,7 @@ const FESTIUS_2026: AgendaEvent[] = [
   { id: -11226, title: 'Sant Esteve',                   day: 26, month: 12, time: '', location: '', type: 'Festiu' },
 ];
 
-export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer }: { currentUser: User | null; initDate: { day: number; month: number; year: number } | null; onInitDateConsumed: () => void; onOpenDrawer?: () => void }) {
+export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDrawer, onNavigate }: { currentUser: User | null; initDate: { day: number; month: number; year: number } | null; onInitDateConsumed: () => void; onOpenDrawer?: () => void; onNavigate?: (tab: string, intent?: 'new') => void }) {
   const [apiAgendaEvents, setApiAgendaEvents] = useState<AgendaEvent[]>(() => tabPrefetch.agendaEvents ?? []);
   const [, setView] = useState<'calendar' | 'list'>('calendar');
   const [activeFilter, setActiveFilter] = useState('Tots');
@@ -110,8 +110,11 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
   // New event form state
   const [showEventForm, setShowEventForm] = useState(false);
   const [closingEventForm, setClosingEventForm] = useState(false);
-  // Hide bottom nav when any form sheet is open
-  useEffect(() => { setGlobalNavHidden(showEventForm); }, [showEventForm]);
+  // Edit event id — declared early so the nav-hide effect can reference it
+  const [evEditId, setEvEditId] = useState<number | null>(null);
+  const [evEditClosing, setEvEditClosing] = useState(false);
+  // Hide bottom nav when any form sheet is open (create or edit)
+  useEffect(() => { setGlobalNavHidden(showEventForm || evEditId !== null); }, [showEventForm, evEditId]);
   const [eTitle, setETitle] = useState('');
   const [eDate, setEDate] = useState('');
   const [eTime, setETime] = useState('');
@@ -128,12 +131,12 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
 
   const handleCreateEvent = async () => {
     if (!eTitle.trim() || !eDate) return;
-    const [, mStr, dStr] = eDate.split('-');
-    const day = parseInt(dStr); const month = parseInt(mStr);
-    if (!day || !month) return;
+    const [yStr, mStr, dStr] = eDate.split('-');
+    const day = parseInt(dStr); const month = parseInt(mStr); const year = parseInt(yStr);
+    if (!day || !month || !year) return;
     setESaving(true);
     try {
-      await apiCreateAgendaEvent({ title: eTitle.trim(), day, month,
+      await apiCreateAgendaEvent({ title: eTitle.trim(), day, month, year,
         time: eTime.trim(), time_end: eTimeEnd.trim() || undefined,
         location: eLocation.trim(), type: eType, target_departments: eDepts });
       setApiAgendaEvents(await apiGetAgendaEvents());
@@ -144,8 +147,6 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
   };
 
   // Edit event state
-  const [evEditId, setEvEditId] = useState<number | null>(null);
-  const [evEditClosing, setEvEditClosing] = useState(false);
   const closeEvEdit = () => { setEvEditClosing(true); setTimeout(() => { setEvEditId(null); setEvEditClosing(false); }, 220); };
   const [eeTitle, setEeTitle] = useState('');
   const [eeDate, setEeDate] = useState('');
@@ -170,16 +171,16 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
 
   const handleSaveEvEdit = async () => {
     if (!evEditId || !eeTitle.trim() || !eeDate) return;
-    const [, mStr, dStr] = eeDate.split('-');
-    const day = parseInt(dStr); const month = parseInt(mStr);
-    if (!day || !month) return;
+    const [yStr, mStr, dStr] = eeDate.split('-');
+    const day = parseInt(dStr); const month = parseInt(mStr); const year = parseInt(yStr);
+    if (!day || !month || !year) return;
     const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
     if (eeTime.trim() && !timeRe.test(eeTime.trim())) { alert("Hora d'inici no vàlida (HH:MM)."); return; }
     if (eeTimeEnd.trim() && !timeRe.test(eeTimeEnd.trim())) { alert('Hora final no vàlida (HH:MM).'); return; }
     setEeSaving(true);
     try {
       await apiUpdateAgendaEvent(evEditId, { title: eeTitle.trim(), day,
-        month, time: eeTime.trim(), time_end: eeTimeEnd.trim() || undefined,
+        month, year, time: eeTime.trim(), time_end: eeTimeEnd.trim() || undefined,
         location: eeLocation.trim(), type: eeType, target_departments: eeDepts });
       setApiAgendaEvents(await apiGetAgendaEvents());
       setEvEditId(null);
@@ -657,7 +658,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
         {/* Admin: new event bottom sheet */}
         {isAdmin && showEventForm && createPortal(
           <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${closingEventForm ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeEventForm}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }} className={closingEventForm ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: `20px 20px calc(env(safe-area-inset-bottom, 0px) + 80px)`, width: '100%', maxHeight: 'calc(92vh - env(safe-area-inset-bottom, 0px))', overflowY: 'auto' }} className={closingEventForm ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
               <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 18 }}>Nou event</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input type="text" value={eTitle} onChange={e => setETitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
@@ -685,12 +686,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
                   <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8, fontWeight: 600 }}>
                     Departaments {eDepts.length === 0 ? '(tots)' : `(${eDepts.length})`}
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {DEPT_ORDER.map(d => (
-                      <button key={d} onClick={() => setEDepts(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])}
-                        style={{ padding: '6px 11px', borderRadius: 999, fontSize: 12, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', background: eDepts.includes(d) ? 'var(--tavil-accent)' : 'var(--tavil-bg)', color: eDepts.includes(d) ? '#fff' : 'var(--tavil-muted)', border: `1px solid ${eDepts.includes(d) ? 'var(--tavil-accent)' : 'var(--tavil-border)'}` }}>{d}</button>
-                    ))}
-                  </div>
+                  <DeptSearch value={eDepts} onChange={setEDepts} />
                 </div>
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                   <button onClick={closeEventForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel·lar</button>
@@ -704,7 +700,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
         {/* Admin: edit event bottom sheet */}
         {isAdmin && evEditId !== null && createPortal(
           <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${evEditClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeEvEdit}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '24px 20px 48px', width: '100%', maxHeight: '88vh', overflowY: 'auto' }} className={evEditClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: `24px 20px calc(env(safe-area-inset-bottom, 0px) + 80px)`, width: '100%', maxHeight: 'calc(92vh - env(safe-area-inset-bottom, 0px))', overflowY: 'auto' }} className={evEditClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
               {/* Kicker + live title */}
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--tavil-accent)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 2 }}>Editar esdeveniment</div>

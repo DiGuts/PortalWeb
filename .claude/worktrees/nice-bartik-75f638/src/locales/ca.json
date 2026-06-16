@@ -1,0 +1,201 @@
+{
+  "nav": {
+    "general": "General",
+    "empresa": "Empresa",
+    "personal": "Personal",
+    "inici": "Inici",
+    "noticies": "Notícies",
+    "activitats": "Activitats",
+    "agenda": "Agenda",
+    "directori": "Who is who?",
+    "espai": "Espai corporatiu",
+    "campus": "Campus TAVIL",
+    "veu": "Veu de l'empleat",
+    "solicituds": "Solicituds personals",
+    "perfil": "El meu perfil"
+  },
+  "common": {
+    "search": "Cercar...",
+    "cancel": "Cancel·lar",
+    "save": "Desar",
+    "saving": "Desant...",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "back": "Tornar",
+    "all": "Totes",
+    "loading": "Carregant...",
+    "noResults": "Sense resultats per \"{{query}}\"",
+    "portalIntern": "Portal Intern",
+    "expandMenu": "Expandir menú",
+    "collapseMenu": "Reduir menú",
+    "darkMode": "Mode fosc",
+    "lightMode": "Mode clar",
+    "language": "Idioma",
+    "languages": {
+      "ca": "Català",
+      "es": "Castellano",
+      "en": "English"
+    },
+    "goodMorning": "Bon dia",
+    "goodAfternoon": "Bona tarda",
+    "goodEvening": "Bona nit",
+    "seeAll": "Veure-ho tot"
+  },
+  "auth": {
+    "login": "Inicia sessió",
+    "register": "Registrar-se",
+    "signUp": "Crear compte",
+    "logout": "Tancar sessió",
+    "email": "Correu electrònic",
+    "password": "Contrasenya",
+    "confirm": "Confirma la contrasenya",
+    "name": "Nom complet",
+    "loginTitle": "Portal intern TAVIL",
+    "loginSubtitle": "Entra amb el teu compte corporatiu",
+    "registerTitle": "Crea el teu compte",
+    "regSubtitle": "Uneix-te al portal intern TAVIL",
+    "noAccount": "Encara no tens compte?",
+    "haveAccount": "Ja tens compte?",
+    "forgotPassword": "Has oblidat la contrasenya?",
+    "rememberMe": "Recorda'm",
+    "next": "Continua",
+    "welcome": "Benvingut",
+    "createAccount": "Crear compte",
+    "verify": "Verifica el teu correu",
+    "verifySub": "Hem enviat un codi de 8 caràcters a",
+    "codeLabel": "Codi de verificació",
+    "resend": "Tornar a enviar el codi",
+    "resentConfirm": "✓ Codi reenviat",
+    "forgotTitle": "Restableix la contrasenya",
+    "forgotSubtitle": "Introdueix el teu correu corporatiu i t'enviarem un enllaç per restablir la contrasenya.",
+    "forgotBtn": "Envia l'enllaç",
+    "forgotSentTitle": "Revisa la safata",
+    "forgotSentBody": "Hem enviat un enllaç de recuperació a {{email}}. Caduca en 30 minuts.",
+    "backToLogin": "Tornar a l'accés"
+  },
+  "notifications": {
+    "title": "Notificacions",
+    "empty": "No hi ha notificacions",
+    "markAllRead": "Marcar totes com a llegides",
+    "deleteAll": "Eliminar totes"
+  },
+  "profile": {
+    "myProfile": "El meu perfil",
+    "settings": "Configuració",
+    "demoRole": "Rol de demostració"
+  },
+  "home": {
+    "urgentNotice": "AVÍS URGENT",
+    "upcomingAgenda": "Pròxims a l'agenda",
+    "quickAccess": "Accés ràpid",
+    "latestNews": "Últimes notícies",
+    "allNews": "Totes les notícies",
+    "seeAll": "Veure",
+    "readMore": "Llegir més",
+    "featuredPrev": "Anterior destacada",
+    "featuredNext": "Següent destacada"
+  },
+  "news": {
+    "subtitle": "Informació, comunicats i novetats de l'empresa",
+    "newArticle": "+ Nova notícia",
+    "title": "Títol *",
+    "summary": "Resum",
+    "author": "Autor",
+    "date": "Data (ex: 1 abril 2026)",
+    "image": "Imatge",
+    "featured": "Destacada",
+    "create": "Crear notícia",
+    "confirmDelete": "Segur que vols eliminar aquesta notícia? Aquesta acció no es pot desfer.",
+    "confirmTitle": "Confirmar eliminació",
+    "featured": "Destacat",
+    "searchPlaceholder": "Cercar notícies...",
+    "detail": {
+      "backToNews": "← Tornar a notícies",
+      "readingTime": "min de lectura",
+      "share": "Compartir"
+    }
+  },
+  "activities": {
+    "subtitle": "Activitats i esdeveniments de l'empresa",
+    "upcoming": "Properes",
+    "past": "Passades",
+    "enrolled": "Inscrit",
+    "enroll": "Inscriure'm",
+    "full": "Complet",
+    "capacity": "{{enrolled}}/{{capacity}} places",
+    "newActivity": "+ Nova activitat"
+  },
+  "agenda": {
+    "subtitle": "Calendari intern de reunions i esdeveniments",
+    "newEvent": "+ Nou event",
+    "today": "Avui"
+  },
+  "directory": {
+    "subtitle": "Cerca treballadors per nom, departament, càrrec o extensió",
+    "grid": "Graella",
+    "departments": "Departaments",
+    "all": "Tots",
+    "ext": "Ext."
+  },
+  "corporate": {
+    "subtitle": "Documents, procediments i recursos corporatius"
+  },
+  "campus": {
+    "subtitle": "Formació i cursos interns de TAVIL"
+  },
+  "veu": {
+    "subtitle": "Suggeriments, incidències i enquestes internes",
+    "suggestions": "Suggeriments",
+    "incidents": "Incidències",
+    "surveys": "Enquestes",
+    "newSuggestion": "Nou suggeriment",
+    "suggestionTitle": "Títol del suggeriment",
+    "suggestionDesc": "Descriu la teva proposta amb detall...",
+    "category": "Categoria",
+    "anonymous": "Enviar de forma anònima",
+    "send": "Enviar suggeriment",
+    "reviewNote": "L'equip de persones revisa els suggeriments setmanalment.",
+    "recentSuggestions": "Suggeriments recents ({{count}})",
+    "manage": "Gestionar",
+    "anonymous_label": "Anònim",
+    "upvote": "Vota a favor",
+    "downvote": "Vota en contra",
+    "newIncident": "Nova incidència",
+    "incidentTitle": "Títol de la incidència",
+    "incidentDesc": "Descriu la incidència, ubicació i detalls rellevants...",
+    "affectedArea": "Àrea afectada",
+    "priority": "Prioritat",
+    "registerIncident": "Registrar incidència",
+    "incidentNote": "Les incidències s'identifiquen amb el teu perfil per facilitar-ne el seguiment.",
+    "incidents_list": "Incidències registrades ({{count}})"
+  },
+  "solicituds": {
+    "subtitle": "Gestió de sol·licituds i peticions personals",
+    "nonWorkingDays": "Dies no ordinaris",
+    "sentRequests": "Sol·licituds enviades ({{count}})",
+    "noRequests": "No hi ha sol·licituds encara.",
+    "noRequestsHint": "Fes servir el formulari per enviar la primera.",
+    "newRequest": "Nova sol·licitud",
+    "requestedDay": "Dia sol·licitat",
+    "comments": "Comentaris",
+    "commentsPlaceholder": "Explica el motiu o qualsevol detall rellevant...",
+    "reviewNote": "L'equip de RRHH revisarà la sol·licitud en un termini de 48 hores.",
+    "send": "Enviar sol·licitud",
+    "sent": "Sol·licitud enviada correctament.",
+    "approve": "Aprovar",
+    "deny": "Denegar",
+    "denyReason": "Motiu de la denegació...",
+    "confirmDeny": "Confirmar denegació",
+    "requestedOn": "Sol·licitat el {{date}} · Per: {{author}}",
+    "motive": "Motiu:"
+  },
+  "confirm": {
+    "deleteTitle": "Confirmar eliminació",
+    "cancel": "Cancel·lar",
+    "delete": "Eliminar"
+  },
+  "breadcrumb": {
+    "home": "Inici"
+  }
+}

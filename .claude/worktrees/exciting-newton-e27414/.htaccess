@@ -1,0 +1,12 @@
+Options -Indexes
+RewriteEngine On
+
+# Static assets from build/ (JS, CSS, fonts, images)
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# API requests → api/index.php
+RewriteRule ^api(/.*)?$ api/index.php [QSA,L]
+
+# React SPA fallback — all other routes serve index.html
+RewriteRule ^ build/index.html [L]

@@ -92,33 +92,39 @@ elseif ($method === 'POST' && $id !== null && $sub === 'enroll') {
     $u = auth_user();
     $user_id = (int)$u['id'];
 
-    // Fetch activity
     $stmt = $db->prepare('SELECT capacity, enrolled FROM activities WHERE id=?');
     $stmt->execute([$id]);
     $activity = $stmt->fetch();
     if (!$activity) respond(['detail' => 'Activitat no trobada'], 404);
 
-    // Check for existing confirmed enrollment
-    $stmt = $db->prepare(
-        'SELECT id FROM activity_enrollments
-         WHERE activity_id = ? AND user_id = ? AND status = \'confirmed\''
-    );
-    $stmt->execute([$id, $user_id]);
-    if ($stmt->fetch()) respond(['detail' => 'Ja estàs inscrit/a'], 409);
-
     $capacity = (int)$activity['capacity'];
     $enrolled = (int)$activity['enrolled'];
-
     if ($capacity > 0 && $enrolled >= $capacity) {
         respond(['detail' => 'Activitat plena'], 409);
     }
 
-    // Delete any old cancelled record before inserting
-    $db->prepare('DELETE FROM activity_enrollments WHERE activity_id=? AND user_id=?')->execute([$id, $user_id]);
-    $db->prepare(
-        'INSERT INTO activity_enrollments (activity_id, user_id, status) VALUES (?,?,\'confirmed\')'
-    )->execute([$id, $user_id]);
-    $db->prepare('UPDATE activities SET enrolled=enrolled+1 WHERE id=?')->execute([$id]);
+    // 1. Purge any stale non-confirmed records (legacy waitlist/cancelled rows)
+    $db->prepare('DELETE FROM activity_enrollments WHERE activity_id = ? AND user_id = ? AND status != \'confirmed\'')
+       ->execute([$id, $user_id]);
+
+    // 2. After purge, check if a confirmed record already exists
+    $stmt = $db->prepare('SELECT id FROM activity_enrollments WHERE activity_id = ? AND user_id = ?');
+    $stmt->execute([$id, $user_id]);
+    if ($stmt->fetch()) {
+        respond(['detail' => 'Ja estàs inscrit/a'], 409);
+    }
+
+    // 3. Insert — catch any race-condition duplicate that slips through
+    try {
+        $db->prepare('INSERT INTO activity_enrollments (activity_id, user_id, status) VALUES (?, ?, \'confirmed\')')
+           ->execute([$id, $user_id]);
+    } catch (\PDOException $e) {
+        if ((string)$e->getCode() === '23000') {
+            respond(['detail' => 'Ja estàs inscrit/a'], 409);
+        }
+        throw $e;
+    }
+    $db->prepare('UPDATE activities SET enrolled = enrolled + 1 WHERE id = ?')->execute([$id]);
     respond(['ok' => true, 'status' => 'confirmed']);
 }
 
@@ -135,9 +141,9 @@ elseif ($method === 'DELETE' && $id !== null && $sub === 'enroll') {
     $enrollment = $stmt->fetch();
     if (!$enrollment) respond(['detail' => 'Inscripció no trobada'], 404);
 
-    // Decrement counter and hard-delete the record
+    // Decrement counter, delete confirmed record, and purge any leftover stale records
     $db->prepare('UPDATE activities SET enrolled=GREATEST(enrolled-1,0) WHERE id=?')->execute([$id]);
-    $db->prepare('DELETE FROM activity_enrollments WHERE id=?')->execute([(int)$enrollment['id']]);
+    $db->prepare('DELETE FROM activity_enrollments WHERE activity_id = ? AND user_id = ?')->execute([$id, $user_id]);
 
     http_response_code(204); exit;
 }
@@ -150,7 +156,7 @@ elseif ($method === 'GET' && $id !== null && $sub === 'enrollments') {
                 u.name, u.email, u.dept
          FROM activity_enrollments ae
          JOIN users u ON u.id = ae.user_id
-         WHERE ae.activity_id = ?
+         WHERE ae.activity_id = ? AND ae.status = 'confirmed'
          ORDER BY ae.enrolled_at ASC'
     );
     $stmt->execute([$id]);

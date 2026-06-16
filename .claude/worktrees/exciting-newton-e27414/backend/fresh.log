@@ -1,0 +1,14 @@
+INFO:     Started server process [21528]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+ERROR:    [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8000): [winerror 10048] solo se permite un uso de cada dirección de socket (protocolo/dirección de red/puerto)
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+Exception ignored while calling deallocator <function Connection.__del__ at 0x0000027D810838A0>:
+Traceback (most recent call last):
+  File "C:\Users\unaiclapers\AppData\Roaming\Python\Python314\site-packages\aiomysql\connection.py", line 1131, in __del__
+  File "C:\Users\unaiclapers\AppData\Roaming\Python\Python314\site-packages\aiomysql\connection.py", line 339, in close
+  File "C:\Python314\Lib\asyncio\proactor_events.py", line 109, in close
+  File "C:\Python314\Lib\asyncio\base_events.py", line 827, in call_soon
+  File "C:\Python314\Lib\asyncio\base_events.py", line 550, in _check_closed
+RuntimeError: Event loop is closed

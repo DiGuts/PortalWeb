@@ -34,6 +34,7 @@ import { SidebarItem, SidebarSection } from './components/shared/Sidebar';
 import { FilterChip } from './components/shared/FilterChip';
 import { DropdownMultiselect } from './components/shared/DropdownMultiselect';
 import { DatePicker } from './components/shared/AgendaPickers';
+import { ToastProvider, useToast } from './components/shared/Toast';
 import { AField, AInput, ATextarea, ASelect, AdminCreateModalShell } from './components/admin/primitives';
 import { DeptSearch } from './components/admin/DeptSearch';
 import { AgendaTab } from './components/tabs/AgendaTab';
@@ -1594,16 +1595,22 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
 
 function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBack?: () => void }) {
   const { t } = useTranslation();
+  const toast = useToast();
   const [activities, setActivities] = useState<Activity[]>(() => tabPrefetch.activities ?? []);
   const [activeTab, setActiveTab] = usePersistedSubTab<string>('activitats', 'Properes', ['Properes', 'Passades'] as const);
   const [activeFilter, setActiveFilter] = useState('Totes');
   const [actSearch, setActSearch] = useState('');
   const [selectedAct, setSelectedAct] = useState<Activity | null>(null);
   const [actClosing, setActClosing] = useState(false);
-  const closeAct = () => { setActClosing(true); setTimeout(() => { setSelectedAct(null); setActClosing(false); }, 220); };
+  const [enrollConfirm, setEnrollConfirm] = useState<number | null>(null);
+  const closeAct = () => { setActClosing(true); setEnrollConfirm(null); setTimeout(() => { setSelectedAct(null); setActClosing(false); }, 220); };
   useEffect(() => { scrollPageToTop(); }, [selectedAct]);
   const [myEnrollments, setMyEnrollments] = useState<Map<number, string>>(new Map());
   const [enrollError, setEnrollError] = useState('');
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollSuccess, setEnrollSuccess] = useState<number | null>(null);
+  const [unenrolling, setUnenrolling] = useState(false);
+  const [unenrollConfirm, setUnenrollConfirm] = useState<number | null>(null);
   useEffect(() => {
     apiGetMyActivityEnrollments()
       .then(list => setMyEnrollments(new Map(list.map(e => [e.activity_id, e.status]))))
@@ -1835,23 +1842,44 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
                         {myEnrollments.has(act.id) ? (
                           <>
-                            <span style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span className={enrollSuccess === act.id ? 'anim-enroll-pop anim-enroll-ring' : ''} style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', gap: 4 }}>
                               ✓ Inscrit/a
                             </span>
-                            <button
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                const prev = new Map(myEnrollments);
-                                setMyEnrollments(cur => { const n = new Map(cur); n.delete(act.id); return n; });
-                                try {
-                                  await apiUnenrollActivity(act.id);
-                                  setActivities(await apiGetActivities());
-                                } catch { setMyEnrollments(prev); }
-                              }}
-                              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--tavil-border)', fontSize: 12, fontWeight: 600, background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}
-                            >
-                              Cancel·la
-                            </button>
+                            {unenrollConfirm === act.id ? (
+                              <div className="anim-confirm-in" style={{ display: 'flex', flexDirection: 'column', gap: 7, background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', borderRadius: 10, padding: '8px 10px' }}>
+                                <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--tavil-text)', margin: 0 }}>Cancel·lar inscripció?</p>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    setUnenrollConfirm(null);
+                                    const prev = new Map(myEnrollments);
+                                    setMyEnrollments(cur => { const n = new Map(cur); n.delete(act.id); return n; });
+                                    try {
+                                      await apiUnenrollActivity(act.id);
+                                      setActivities(await apiGetActivities());
+                                    } catch { setMyEnrollments(prev); }
+                                  }}
+                                  style={{ flex: 1, height: 32, borderRadius: 8, border: 'none', fontSize: 12, fontWeight: 600, background: 'var(--tavil-accent)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}
+                                >
+                                  Sí, cancel·la
+                                </button>
+                                <button
+                                  onClick={e => { e.stopPropagation(); setUnenrollConfirm(null); }}
+                                  style={{ flex: 1, height: 32, borderRadius: 8, border: '1px solid var(--tavil-border)', fontSize: 12, fontWeight: 600, background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}
+                                >
+                                  No
+                                </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={e => { e.stopPropagation(); setUnenrollConfirm(act.id); }}
+                                style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--tavil-border)', fontSize: 12, fontWeight: 600, background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}
+                              >
+                                Cancel·la
+                              </button>
+                            )}
                           </>
                         ) : (
                           <button
@@ -1960,7 +1988,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         {/* Detail modal (shared with desktop) */}
         {selectedAct && createPortal(
           <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${actClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeAct}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }} className={actClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px calc(env(safe-area-inset-bottom, 0px) + 80px)', width: '100%', maxHeight: 'calc(90vh - env(safe-area-inset-bottom, 0px))', overflowY: 'auto' }} className={actClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, background: 'var(--tavil-border)', color: 'var(--tavil-muted)', padding: '2px 8px', borderRadius: 6 }}>{selectedAct.category}</span>
                 <button onClick={closeAct} style={{ background: 'none', border: 'none', color: 'var(--tavil-faint)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
@@ -1986,46 +2014,100 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                   <Users size={12} /><span>Places lliures · {selectedAct.enrolled} inscrits</span>
                 </div>
               )}
-              {enrollError && <p style={{ fontSize: 13, color: 'var(--tavil-accent)', marginBottom: 10 }}>{enrollError}</p>}
+              {enrollError && <p style={{ fontSize: 13, color: 'var(--tavil-accent)', background: 'rgba(191,33,30,0.06)', border: '1px solid rgba(191,33,30,0.22)', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>{enrollError}</p>}
               {selectedAct.link ? (
                 <a href={selectedAct.link} target="_blank" rel="noopener noreferrer" style={{ width: '100%', height: 50, borderRadius: 14, background: 'var(--tavil-accent)', color: '#fff', fontSize: 15, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' }}>
                   Més informació i inscripció
                 </a>
               ) : myEnrollments.has(selectedAct.id) ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ width: '100%', height: 50, borderRadius: 14, background: '#dcfce7', color: '#15803d', fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <div className={enrollSuccess === selectedAct.id ? 'anim-enroll-pop anim-enroll-ring' : ''} style={{ width: '100%', height: 50, borderRadius: 14, background: '#16a34a', color: '#fff', fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                     ✓ Inscrit/a
                   </div>
-                  <button
-                    onClick={async () => {
-                      setEnrollError('');
-                      const prev = new Map(myEnrollments);
-                      setMyEnrollments(cur => { const n = new Map(cur); n.delete(selectedAct.id); return n; });
-                      try {
-                        await apiUnenrollActivity(selectedAct.id);
-                        setActivities(await apiGetActivities());
-                      } catch (e: any) { setMyEnrollments(prev); setEnrollError(e.message ?? 'Error en cancel·lar'); }
-                    }}
-                    style={{ width: '100%', height: 44, borderRadius: 14, border: '1.5px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    Cancel·la la inscripció
-                  </button>
+                  {unenrollConfirm === selectedAct.id ? (
+                    <div className="anim-confirm-in" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', borderRadius: 12, background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)' }}>
+                      <p style={{ fontSize: 13, color: 'var(--tavil-text)', fontWeight: 500, margin: 0, textAlign: 'center' }}>Segur que vols cancel·lar la inscripció?</p>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={async () => {
+                          setUnenrollConfirm(null); setEnrollError('');
+                          setUnenrolling(true);
+                          const prev = new Map(myEnrollments);
+                          setMyEnrollments(cur => { const n = new Map(cur); n.delete(selectedAct.id); return n; });
+                          try {
+                            await apiUnenrollActivity(selectedAct.id);
+                            setActivities(await apiGetActivities());
+                            toast.info("Inscripció cancel·lada");
+                          } catch (e: any) { setMyEnrollments(prev); setEnrollError(e.message ?? 'Error en cancel·lar'); }
+                          finally { setUnenrolling(false); }
+                        }}
+                        style={{ flex: 1, height: 40, borderRadius: 10, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: unenrolling ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: unenrolling ? 0.7 : 1, transition: 'opacity 150ms' }}
+                      >
+                        {unenrolling ? <><span className="anim-spin" style={{ display: 'inline-block', width: 13, height: 13, border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', borderRadius: '50%' }} />Cancel·lant…</> : 'Sí, cancel·la'}
+                      </button>
+                      <button
+                        onClick={() => setUnenrollConfirm(null)}
+                        style={{ flex: 1, height: 40, borderRadius: 10, border: '1.5px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                      >
+                        No
+                      </button>
+                    </div>
+                  </div>
+                  ) : (
+                    <button
+                      onClick={() => setUnenrollConfirm(selectedAct.id)}
+                      style={{ width: '100%', height: 44, borderRadius: 14, border: '1.5px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      Cancel·la la inscripció
+                    </button>
+                  )}
+                </div>
+              ) : enrollConfirm === selectedAct.id ? (
+                <div className="anim-confirm-in" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 16px', borderRadius: 14, background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)' }}>
+                  <p style={{ fontSize: 14, color: 'var(--tavil-text)', fontWeight: 600, margin: 0, textAlign: 'center', lineHeight: 1.35 }}>
+                    Confirmes la teva inscripció?
+                  </p>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      disabled={enrolling}
+                      onClick={async () => {
+                        setEnrollError('');
+                        setEnrolling(true);
+                        try {
+                          const result = await apiEnrollActivity(selectedAct.id);
+                          setEnrollConfirm(null);
+                          setMyEnrollments(prev => new Map(prev).set(selectedAct.id, result.status ?? 'confirmed'));
+                          setActivities(await apiGetActivities());
+                          setEnrollSuccess(selectedAct.id);
+                          setTimeout(() => setEnrollSuccess(null), 900);
+                          toast.success("Inscripció confirmada!");
+                        } catch (e: any) { setEnrollError(e.message ?? 'Error en la inscripció'); }
+                        finally { setEnrolling(false); }
+                      }}
+                      style={{ flex: 1, height: 44, borderRadius: 12, border: 'none', background: '#16a34a', color: '#fff', fontSize: 14, fontWeight: 600, cursor: enrolling ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: enrolling ? 0.7 : 1, transition: 'opacity 150ms' }}
+                    >
+                      {enrolling ? <><span className="anim-spin" style={{ display: 'inline-block', width: 13, height: 13, border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', borderRadius: '50%' }} />Inscrivint…</> : "Sí, m'inscric"}
+                    </button>
+                    <button
+                      onClick={() => setEnrollConfirm(null)}
+                      style={{ flex: 1, height: 44, borderRadius: 12, border: '1.5px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      No
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button
-                  onClick={async () => {
-                    setEnrollError('');
-                    try {
-                      const result = await apiEnrollActivity(selectedAct.id);
-                      setMyEnrollments(prev => new Map(prev).set(selectedAct.id, result.status ?? 'confirmed'));
-                      setActivities(await apiGetActivities());
-                    } catch (e: any) { setEnrollError(e.message ?? 'Error'); }
-                  }}
+                  className="press anim-enroll-btn"
+                  onClick={() => { setEnrollConfirm(selectedAct.id); setEnrollError(''); }}
                   style={{
                     width: '100%', height: 50, borderRadius: 14, border: 'none',
                     background: 'var(--tavil-accent)',
-                    color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                    color: '#fff', fontSize: 15, fontWeight: 600,
+                    cursor: 'pointer',
                     fontFamily: 'inherit',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    transition: 'transform 110ms var(--ease-out-cubic)',
                   }}
                 >
                   Inscriure's
@@ -2140,8 +2222,8 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         {filtered.map((act, i) => {
           const available = act.capacity > 0 ? act.capacity - act.enrolled : 0;
           return (
-          <div key={i} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
-            <div className="hidden md:flex h-24 items-center justify-center overflow-hidden" style={{
+          <div key={i} className="hover-lift rounded-xl overflow-hidden flex flex-col" style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)' }}>
+            <div className="hidden md:flex h-24 items-center justify-center overflow-hidden flex-shrink-0" style={{
               background: ({
                 'Esport':   'rgba(34,197,94,0.08)',
                 'Cultura':  'rgba(139,92,246,0.08)',
@@ -2163,52 +2245,54 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                     } as Record<string,string>)[act.category] ?? '#bf211e'
                   }} />}
             </div>
-            <div className="p-5">
-            <div className="flex items-start justify-between mb-3">
-              <span className="text-[11px] font-bold text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{act.category}</span>
-              {isProperes
-                ? <span className="text-[11px] font-bold text-white bg-red-600 px-2.5 py-0.5 rounded">Inscripció oberta</span>
-                : <span className="text-[11px] font-bold text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 px-2.5 py-0.5 rounded">Finalitzada</span>}
-            </div>
-            <h3 className="font-bold text-gray-900 dark:text-white mb-2">{act.title}</h3>
-            <p className="mb-4" style={{ fontSize: 15, fontFamily: "'Barlow Semi Condensed', var(--font-ui)", color: 'var(--tavil-muted)', lineHeight: 1.65 }}>{act.description}</p>
-            <div className="space-y-1.5 mb-4">
-              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><Calendar size={13} /><span>{act.date}</span></div>
-              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><Clock size={13} /><span>{act.time}</span></div>
-              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-zinc-400"><MapPin size={13} /><span>{act.location}</span></div>
-            </div>
-            {act.capacity > 0 ? (
-              <div className={isProperes ? "mb-4" : ""}>
-                <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
-                  <span className="flex items-center gap-1"><Users size={11} />{act.enrolled} / {act.capacity} places</span>
-                  {isProperes && <span className="text-green-600 font-medium">{available} disponibles</span>}
-                </div>
-                <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5">
-                  <div className={cn("h-1.5 rounded-full", isProperes ? "bg-red-500" : "bg-gray-400 dark:bg-zinc-600")} style={{ width: `${(act.enrolled / act.capacity) * 100}%` }} />
-                </div>
+            <div className="p-5 flex flex-col flex-1">
+              <div className="flex items-start justify-between mb-3">
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tavil-muted)', background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', padding: '2px 8px', borderRadius: 6 }}>{act.category}</span>
+                {isProperes
+                  ? <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', background: 'var(--tavil-accent)', padding: '2px 10px', borderRadius: 6 }}>Inscripció oberta</span>
+                  : <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tavil-muted)', background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', padding: '2px 10px', borderRadius: 6 }}>Finalitzada</span>}
               </div>
-            ) : isProperes ? (
-              <div className="flex items-center gap-1.5 text-xs text-green-600 font-medium mb-4">
-                <Users size={11} /><span>{act.enrolled} inscrits · Places lliures</span>
+              <h3 style={{ fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 6, fontSize: 15 }}>{act.title}</h3>
+              <p className="mb-4 line-clamp-3" style={{ fontSize: 14, fontFamily: "'Barlow Semi Condensed', var(--font-ui)", color: 'var(--tavil-muted)', lineHeight: 1.6 }}>{act.description}</p>
+              <div className="space-y-1.5 mb-4">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--tavil-muted)' }}><Calendar size={13} /><span>{act.date}</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--tavil-muted)' }}><Clock size={13} /><span>{act.time}</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--tavil-muted)' }}><MapPin size={13} /><span>{act.location}</span></div>
               </div>
-            ) : null}
-            {isProperes && (
-              act.link ? (
-                <a href={act.link} target="_blank" rel="noopener noreferrer" className="text-red-600 text-sm font-medium flex items-center gap-1 hover:underline mt-4">
-                  Veure detalls i inscriure's <ArrowRight size={14} />
-                </a>
-              ) : (
-                <button onClick={() => { setSelectedAct(act); setEnrollError(''); }} className="text-red-600 text-sm font-medium flex items-center gap-1 hover:underline mt-4">
-                  Veure detalls i inscriure's <ArrowRight size={14} />
-                </button>
-              )
-            )}
-            {isAdmin && (
-              <div className="flex gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-zinc-800">
-                <button onClick={() => actEditId === act.id ? setActEditId(null) : openActEdit(act)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-600 transition-colors"><Pencil size={12} /> Editar</button>
-                <button onClick={() => handleDeleteActivity(act.id)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-600 transition-colors"><Trash2 size={12} /> Eliminar</button>
+              <div className="mt-auto">
+                {act.capacity > 0 ? (
+                  <div className={isProperes ? "mb-4" : ""}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--tavil-muted)', marginBottom: 6 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Users size={11} />{act.enrolled} / {act.capacity} places</span>
+                      {isProperes && <span style={{ color: '#22c55e', fontWeight: 600 }}>{available} disponibles</span>}
+                    </div>
+                    <div style={{ width: '100%', height: 5, borderRadius: 3, background: 'var(--tavil-border)' }}>
+                      <div style={{ height: 5, borderRadius: 3, background: isProperes ? 'var(--tavil-accent)' : 'var(--tavil-muted)', width: `${(act.enrolled / act.capacity) * 100}%` }} />
+                    </div>
+                  </div>
+                ) : isProperes ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#22c55e', fontWeight: 500, marginBottom: 16 }}>
+                    <Users size={11} /><span>{act.enrolled} inscrits · Places lliures</span>
+                  </div>
+                ) : null}
+                {isProperes && (
+                  act.link ? (
+                    <a href={act.link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--tavil-accent)', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', marginTop: 14 }}>
+                      Veure detalls i inscriure's <ArrowRight size={14} />
+                    </a>
+                  ) : (
+                    <button onClick={() => { setSelectedAct(act); setEnrollError(''); }} style={{ color: 'var(--tavil-accent)', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', marginTop: 14 }}>
+                      Veure detalls i inscriure's <ArrowRight size={14} />
+                    </button>
+                  )
+                )}
+                {isAdmin && (
+                  <div style={{ display: 'flex', gap: 12, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--tavil-border)' }}>
+                    <button onClick={() => actEditId === act.id ? setActEditId(null) : openActEdit(act)} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--tavil-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}><Pencil size={12} /> Editar</button>
+                    <button onClick={() => handleDeleteActivity(act.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--tavil-accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}><Trash2 size={12} /> Eliminar</button>
+                  </div>
+                )}
               </div>
-            )}
             </div>
           </div>
           );
@@ -2243,47 +2327,102 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                 <Users size={11} /><span>Places lliures · {selectedAct.enrolled} inscrits</span>
               </div>
             )}
-            {enrollError && <p className="text-red-500 text-xs mb-3">{enrollError}</p>}
+            {enrollError && <p className="text-xs mb-3" style={{ color: 'var(--tavil-accent)', background: 'rgba(191,33,30,0.06)', border: '1px solid rgba(191,33,30,0.22)', borderRadius: 8, padding: '8px 12px' }}>{enrollError}</p>}
             {selectedAct.link ? (
               <a href={selectedAct.link} target="_blank" rel="noopener noreferrer" className="press w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-lg transition-colors text-sm flex items-center justify-center gap-1.5">
                 Més informació i inscripció <ArrowRight size={14} />
               </a>
             ) : myEnrollments.has(selectedAct.id) ? (
               <div className="space-y-2">
-                <div className="w-full py-2.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-sm font-bold text-center">
-                  ✓ {myEnrollments.get(selectedAct.id) === 'waitlist' ? "A la llista d'espera" : 'Inscrit/a'}
+                <div className={`w-full py-2.5 rounded-lg text-sm font-bold text-center${enrollSuccess === selectedAct.id ? ' anim-enroll-pop anim-enroll-ring' : ''}`} style={{ background: '#16a34a', color: '#fff' }}>
+                  ✓ Inscrit/a
                 </div>
-                <button
-                  onClick={async () => {
-                    setEnrollError('');
-                    const prev = new Map(myEnrollments);
-                    setMyEnrollments(cur => { const n = new Map(cur); n.delete(selectedAct.id); return n; });
-                    try {
-                      await apiUnenrollActivity(selectedAct.id);
-                      setActivities(await apiGetActivities());
-                    } catch (e: any) { setMyEnrollments(prev); setEnrollError(e.message ?? 'Error en cancel·lar'); }
-                  }}
-                  className="press w-full border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-zinc-400 font-semibold py-2 rounded-lg transition-colors text-sm"
-                >
-                  Cancel·la la inscripció
-                </button>
+                {unenrollConfirm === selectedAct.id ? (
+                  <div className="anim-confirm-in rounded-xl p-3 space-y-2.5" style={{ background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)' }}>
+                    <p className="text-xs text-center font-medium" style={{ color: 'var(--tavil-text)' }}>Segur que vols cancel·lar la inscripció?</p>
+                    <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        setUnenrollConfirm(null); setEnrollError('');
+                        setUnenrolling(true);
+                        const prev = new Map(myEnrollments);
+                        setMyEnrollments(cur => { const n = new Map(cur); n.delete(selectedAct.id); return n; });
+                        try {
+                          await apiUnenrollActivity(selectedAct.id);
+                          setActivities(await apiGetActivities());
+                          toast.info("Inscripció cancel·lada");
+                        } catch (e: any) { setMyEnrollments(prev); setEnrollError(e.message ?? 'Error en cancel·lar'); }
+                        finally { setUnenrolling(false); }
+                      }}
+                      className="press flex-1 text-white font-semibold py-2 rounded-lg text-sm flex items-center justify-center gap-1.5"
+                      style={{ background: 'var(--tavil-accent)', opacity: unenrolling ? 0.7 : 1 }}
+                    >
+                      {unenrolling ? <><span className="anim-spin" style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', borderRadius: '50%' }} />Cancel·lant…</> : 'Sí, cancel·la'}
+                    </button>
+                    <button
+                      onClick={() => setUnenrollConfirm(null)}
+                      className="press flex-1 font-semibold py-2 rounded-lg text-sm"
+                      style={{ border: '1px solid var(--tavil-border)', color: 'var(--tavil-muted)', background: 'none' }}
+                    >
+                      No
+                    </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setUnenrollConfirm(selectedAct.id)}
+                    className="press w-full font-semibold py-2 rounded-lg transition-colors text-sm"
+                    style={{ border: '1px solid var(--tavil-border)', color: 'var(--tavil-muted)', background: 'none' }}
+                  >
+                    Cancel·la la inscripció
+                  </button>
+                )}
+              </div>
+            ) : selectedAct.capacity > 0 && selectedAct.enrolled >= selectedAct.capacity ? (
+              <button disabled className="w-full disabled:opacity-60 text-white font-bold py-2.5 rounded-lg text-sm" style={{ background: 'var(--tavil-accent)' }}>
+                Activitat completa
+              </button>
+            ) : enrollConfirm === selectedAct.id ? (
+              <div className="anim-confirm-in rounded-xl p-3.5 space-y-3" style={{ background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)' }}>
+                <p className="text-sm text-center font-semibold" style={{ color: 'var(--tavil-text)' }}>Confirmes la teva inscripció?</p>
+                <div className="flex gap-2">
+                  <button
+                    disabled={enrolling}
+                    onClick={async () => {
+                      setEnrollError('');
+                      setEnrolling(true);
+                      try {
+                        const result = await apiEnrollActivity(selectedAct.id);
+                        setEnrollConfirm(null);
+                        setMyEnrollments(prev => new Map(prev).set(selectedAct.id, result.status ?? 'confirmed'));
+                        setActivities(await apiGetActivities());
+                        setEnrollSuccess(selectedAct.id);
+                        setTimeout(() => setEnrollSuccess(null), 900);
+                        toast.success("Inscripció confirmada!");
+                      } catch (e: any) { setEnrollError(e.message ?? 'Error en la inscripció'); }
+                      finally { setEnrolling(false); }
+                    }}
+                    className="press flex-1 text-white font-semibold py-2 rounded-lg text-sm flex items-center justify-center gap-1.5"
+                    style={{ background: '#16a34a', opacity: enrolling ? 0.7 : 1, transition: 'opacity 150ms' }}
+                  >
+                    {enrolling ? <><span className="anim-spin" style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', borderRadius: '50%' }} />Inscrivint…</> : "Sí, m'inscric"}
+                  </button>
+                  <button
+                    onClick={() => setEnrollConfirm(null)}
+                    className="press flex-1 font-semibold py-2 rounded-lg text-sm"
+                    style={{ border: '1px solid var(--tavil-border)', color: 'var(--tavil-muted)', background: 'none' }}
+                  >
+                    No
+                  </button>
+                </div>
               </div>
             ) : (
               <button
-                onClick={async () => {
-                  setEnrollError('');
-                  try {
-                    const result = await apiEnrollActivity(selectedAct.id);
-                    setMyEnrollments(prev => new Map(prev).set(selectedAct.id, result.status ?? 'confirmed'));
-                    setActivities(await apiGetActivities());
-                  } catch (e: any) {
-                    setEnrollError(e.message ?? 'Error en la inscripció');
-                  }
-                }}
-                disabled={selectedAct.capacity > 0 && selectedAct.enrolled >= selectedAct.capacity}
-                className="press w-full bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold py-2.5 rounded-lg transition-colors text-sm"
+                onClick={() => { setEnrollConfirm(selectedAct.id); setEnrollError(''); }}
+                className="press anim-enroll-btn w-full text-white font-bold py-2.5 rounded-lg text-sm flex items-center justify-center gap-2"
+                style={{ background: 'var(--tavil-accent)' }}
               >
-                {selectedAct.capacity > 0 && selectedAct.enrolled >= selectedAct.capacity ? 'Activitat completa' : "Inscriure's"}
+                Inscriure's
               </button>
             )}
           </div>
@@ -3210,7 +3349,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
         {/* New suggestion form */}
         {mobileVeuForm === 'sugg' && createPortal(
           <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${veuClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeMobileVeuForm}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }} className={veuClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px calc(env(safe-area-inset-bottom, 0px) + 80px)', width: '100%', maxHeight: 'calc(90vh - env(safe-area-inset-bottom, 0px))', overflowY: 'auto' }} className={veuClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
               <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Nou suggeriment</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
@@ -3239,7 +3378,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
         {/* New incidència form */}
         {mobileVeuForm === 'inc' && createPortal(
           <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${veuClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeMobileVeuForm}>
-            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }} className={veuClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px calc(env(safe-area-inset-bottom, 0px) + 80px)', width: '100%', maxHeight: 'calc(90vh - env(safe-area-inset-bottom, 0px))', overflowY: 'auto' }} className={veuClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
               <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Nova incidència</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input type="text" value={incTitle} onChange={e => setIncTitle(e.target.value)} placeholder="Títol *" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
@@ -9756,13 +9895,19 @@ const EditableText = React.memo(function EditableText({ initialContent, style, o
 function isHtmlContent(s: string) { return /<\/?(b|strong|em|i|u|s|br|span)[\s>\/]/i.test(s); }
 
 function sanitizeParaHtml(html: string): string {
-  // Only allow b/strong/em/i/u/s/span(with style) — strip everything else
+  // Allow only b/strong/em/i/u/s/br/span — strip all other tags and all attributes
+  // except style on span. This prevents event-handler injection on any element.
   return html
-    .replace(/<\/div>\s*<div[^>]*>/gi, '<br>')  // transition between divs = line break
-    .replace(/<div[^>]*>/gi, '')                 // opening div (first one)
-    .replace(/<\/div>/gi, '')                    // remaining closing divs
-    .replace(/<(?!\/?(?:b|strong|em|i|u|s|br|span)[\s>])[^>]+>/gi, '')
-    .replace(/(<span(?:\s+style="[^"]*")?)\s+[^>]*/gi, '$1');
+    .replace(/<\/div>\s*<div[^>]*>/gi, '<br>')
+    .replace(/<div[^>]*>/gi, '')
+    .replace(/<\/div>/gi, '')
+    // Strip disallowed tags entirely
+    .replace(/<(?!\/?(?:b|strong|em|i|u|s|br|span)[\s>\/])[^>]+>/gi, '')
+    // Strip all attributes from inline tags except style on span
+    .replace(/<(b|strong|em|i|u|s|br)(\s[^>]*)?>/, '<$1>')
+    .replace(/(<span)(\s+style="[^"]*")?(\s[^>]*)?>/gi, (_m, _tag, style) => `<span${style ?? ''}>`)
+    // Remove any remaining on* event handlers that slipped through
+    .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '');
 }
 
 const PARA_COLORS = ['#000000','#bf211e','#1a56db','#057a55','#c27803','#6c2bd9','#ffffff'];
@@ -12827,6 +12972,7 @@ function App() {
   }
 
   return (
+    <ToastProvider>
     <div className={cn("flex min-h-screen bg-[var(--tavil-bg)] font-sans text-gray-900 dark:text-zinc-100 transition-colors duration-300", isDarkMode && "dark")}>
       {/* Impersonate banner */}
       {impersonating && (
@@ -13179,6 +13325,7 @@ function App() {
       )}
       <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} onOpenDrawer={() => setIsDrawerOpen(true)} isDarkMode={isDarkMode} hidden={navHidden || mobileNotifsOpen || isDrawerOpen} />
     </div>
+    </ToastProvider>
   );
 }
 

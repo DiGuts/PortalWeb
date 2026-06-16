@@ -1,0 +1,201 @@
+{
+  "nav": {
+    "general": "General",
+    "empresa": "Company",
+    "personal": "Personal",
+    "inici": "Home",
+    "noticies": "News",
+    "activitats": "Activities",
+    "agenda": "Calendar",
+    "directori": "Who is who?",
+    "espai": "Corporate space",
+    "campus": "TAVIL Campus",
+    "veu": "Employee voice",
+    "solicituds": "Personal requests",
+    "perfil": "My profile"
+  },
+  "common": {
+    "search": "Search...",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving...",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "back": "Back",
+    "all": "All",
+    "loading": "Loading...",
+    "noResults": "No results for \"{{query}}\"",
+    "portalIntern": "Internal Portal",
+    "expandMenu": "Expand menu",
+    "collapseMenu": "Collapse menu",
+    "darkMode": "Dark mode",
+    "lightMode": "Light mode",
+    "language": "Language",
+    "languages": {
+      "ca": "Català",
+      "es": "Castellano",
+      "en": "English"
+    },
+    "goodMorning": "Good morning",
+    "goodAfternoon": "Good afternoon",
+    "goodEvening": "Good evening",
+    "seeAll": "See all"
+  },
+  "auth": {
+    "login": "Sign in",
+    "register": "Register",
+    "signUp": "Create account",
+    "logout": "Sign out",
+    "email": "Email address",
+    "password": "Password",
+    "confirm": "Confirm password",
+    "name": "Full name",
+    "loginTitle": "TAVIL internal portal",
+    "loginSubtitle": "Sign in with your corporate account",
+    "registerTitle": "Create your account",
+    "regSubtitle": "Join the TAVIL internal portal",
+    "noAccount": "Don't have an account yet?",
+    "haveAccount": "Already have an account?",
+    "forgotPassword": "Forgot your password?",
+    "rememberMe": "Remember me",
+    "next": "Continue",
+    "welcome": "Welcome",
+    "createAccount": "Create account",
+    "verify": "Verify your email",
+    "verifySub": "We've sent an 8-character code to",
+    "codeLabel": "Verification code",
+    "resend": "Resend the code",
+    "resentConfirm": "✓ Code resent",
+    "forgotTitle": "Reset your password",
+    "forgotSubtitle": "Enter your corporate email and we'll send you a reset link.",
+    "forgotBtn": "Send the link",
+    "forgotSentTitle": "Check your inbox",
+    "forgotSentBody": "We've sent a recovery link to {{email}}. It expires in 30 minutes.",
+    "backToLogin": "Back to sign in"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications",
+    "markAllRead": "Mark all as read",
+    "deleteAll": "Delete all"
+  },
+  "profile": {
+    "myProfile": "My profile",
+    "settings": "Settings",
+    "demoRole": "Demo role"
+  },
+  "home": {
+    "urgentNotice": "URGENT NOTICE",
+    "upcomingAgenda": "Upcoming events",
+    "quickAccess": "Quick access",
+    "latestNews": "Latest news",
+    "allNews": "All news",
+    "seeAll": "See all",
+    "readMore": "Read more",
+    "featuredPrev": "Previous featured",
+    "featuredNext": "Next featured"
+  },
+  "news": {
+    "subtitle": "Company information, announcements and news",
+    "newArticle": "+ New article",
+    "title": "Title *",
+    "summary": "Summary",
+    "author": "Author",
+    "date": "Date (e.g. April 1, 2026)",
+    "image": "Image",
+    "featured": "Featured",
+    "create": "Create article",
+    "confirmDelete": "Are you sure you want to delete this article? This action cannot be undone.",
+    "confirmTitle": "Confirm deletion",
+    "featured": "Featured",
+    "searchPlaceholder": "Search news...",
+    "detail": {
+      "backToNews": "← Back to news",
+      "readingTime": "min read",
+      "share": "Share"
+    }
+  },
+  "activities": {
+    "subtitle": "Company activities and events",
+    "upcoming": "Upcoming",
+    "past": "Past",
+    "enrolled": "Enrolled",
+    "enroll": "Enroll",
+    "full": "Full",
+    "capacity": "{{enrolled}}/{{capacity}} spots",
+    "newActivity": "+ New activity"
+  },
+  "agenda": {
+    "subtitle": "Internal calendar for meetings and events",
+    "newEvent": "+ New event",
+    "today": "Today"
+  },
+  "directory": {
+    "subtitle": "Search employees by name, department, role or extension",
+    "grid": "Grid",
+    "departments": "Departments",
+    "all": "All",
+    "ext": "Ext."
+  },
+  "corporate": {
+    "subtitle": "Documents, procedures and corporate resources"
+  },
+  "campus": {
+    "subtitle": "TAVIL internal training and courses"
+  },
+  "veu": {
+    "subtitle": "Suggestions, incidents and internal surveys",
+    "suggestions": "Suggestions",
+    "incidents": "Incidents",
+    "surveys": "Surveys",
+    "newSuggestion": "New suggestion",
+    "suggestionTitle": "Suggestion title",
+    "suggestionDesc": "Describe your proposal in detail...",
+    "category": "Category",
+    "anonymous": "Send anonymously",
+    "send": "Send suggestion",
+    "reviewNote": "The people team reviews suggestions weekly.",
+    "recentSuggestions": "Recent suggestions ({{count}})",
+    "manage": "Manage",
+    "anonymous_label": "Anonymous",
+    "upvote": "Upvote",
+    "downvote": "Downvote",
+    "newIncident": "New incident",
+    "incidentTitle": "Incident title",
+    "incidentDesc": "Describe the incident, location and relevant details...",
+    "affectedArea": "Affected area",
+    "priority": "Priority",
+    "registerIncident": "Register incident",
+    "incidentNote": "Incidents are linked to your profile to facilitate follow-up.",
+    "incidents_list": "Registered incidents ({{count}})"
+  },
+  "solicituds": {
+    "subtitle": "Management of personal requests and petitions",
+    "nonWorkingDays": "Non-working days",
+    "sentRequests": "Sent requests ({{count}})",
+    "noRequests": "No requests yet.",
+    "noRequestsHint": "Use the form to submit the first one.",
+    "newRequest": "New request",
+    "requestedDay": "Requested day",
+    "comments": "Comments",
+    "commentsPlaceholder": "Explain the reason or any relevant details...",
+    "reviewNote": "The HR team will review the request within 48 hours.",
+    "send": "Send request",
+    "sent": "Request sent successfully.",
+    "approve": "Approve",
+    "deny": "Deny",
+    "denyReason": "Reason for denial...",
+    "confirmDeny": "Confirm denial",
+    "requestedOn": "Requested on {{date}} · By: {{author}}",
+    "motive": "Reason:"
+  },
+  "confirm": {
+    "deleteTitle": "Confirm deletion",
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "breadcrumb": {
+    "home": "Home"
+  }
+}

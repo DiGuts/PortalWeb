@@ -59,7 +59,7 @@ function send_email(string $to, string $subject, string $html, array $attachment
     $port    = SMTP_PORT;
     $use_ssl = ($port === 465);
     $host    = ($use_ssl ? 'ssl://' : '') . SMTP_HOST;
-    $ctx     = stream_context_create(['ssl' => ['verify_peer' => false, 'verify_peer_name' => false]]);
+    $ctx     = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true]]);
 
     $sock = @stream_socket_client($host . ':' . $port, $errno, $errstr, 10, STREAM_CLIENT_CONNECT, $ctx);
     if (!$sock) {

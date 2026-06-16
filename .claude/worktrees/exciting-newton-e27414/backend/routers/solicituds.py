@@ -1,0 +1,146 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncConnection
+
+from database import get_db
+from auth import get_current_user, require_rrhh_or_admin
+from models import SolicitudIn, SolicitudUpdateIn
+from email_service import send_email
+
+router = APIRouter(prefix="/api/solicituds", tags=["solicituds"])
+
+
+async def _notify(db: AsyncConnection, user_id: int, title: str, body: str, tab: str = "Solicituds/Dies no ordinaris") -> None:
+    await db.execute(
+        text("INSERT INTO notifications (user_id, title, body, tab) VALUES (:uid, :title, :body, :tab)"),
+        {"uid": user_id, "title": title, "body": body, "tab": tab},
+    )
+
+
+@router.get("")
+async def list_solicituds(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncConnection = Depends(get_db),
+):
+    if current_user["role"] in ("Administrador/a", "Recursos humans"):
+        rows = (await db.execute(
+            text("SELECT * FROM solicituds ORDER BY created_at DESC")
+        )).mappings().all()
+    else:
+        rows = (await db.execute(
+            text("SELECT * FROM solicituds WHERE author = :author ORDER BY created_at DESC"),
+            {"author": current_user["email"]},
+        )).mappings().all()
+    return [dict(r) for r in rows]
+
+
+@router.post("", status_code=201)
+async def create_solicitud(
+    body: SolicitudIn,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncConnection = Depends(get_db),
+):
+    result = await db.execute(
+        text("""
+            INSERT INTO solicituds (date, motive, comments, author)
+            VALUES (:date, :motive, :comments, :author)
+        """),
+        {"date": body.date, "motive": body.motive,
+         "comments": body.comments, "author": current_user["email"]},
+    )
+
+    # Notify and email all RRHH users
+    staff = (await db.execute(
+        text("SELECT id, email, email_notifs FROM users WHERE role = 'Recursos humans'")
+    )).mappings().all()
+    for s in staff:
+        await _notify(
+            db, s["id"],
+            "Nova petició rebuda",
+            f"{current_user['name']} ha enviat una nova petició per al {body.date}.",
+        )
+        if s["email_notifs"]:
+            await send_email(
+                to=s["email"],
+                subject=f"Nova petició de dies no ordinaris — {current_user['name']}",
+                html=f"""
+                <p>Hola,</p>
+                <p><b>{current_user['name']}</b> ha sol·licitat un dia no ordinari per al <b>{body.date}</b>.</p>
+                {f'<p><b>Comentaris:</b> {body.comments}</p>' if body.comments else ''}
+                <p>Accedeix al portal per gestionar la petició.</p>
+                """,
+            )
+
+    await db.commit()
+    row = (await db.execute(
+        text("SELECT * FROM solicituds WHERE id = :id"), {"id": result.lastrowid}
+    )).mappings().first()
+    return dict(row)
+
+
+@router.patch("/{solicitud_id}")
+async def update_solicitud(
+    solicitud_id: int,
+    body: SolicitudUpdateIn,
+    _staff: dict = Depends(require_rrhh_or_admin),
+    db: AsyncConnection = Depends(get_db),
+):
+    # Fetch current solicitud to get author email
+    row = (await db.execute(
+        text("SELECT author, status FROM solicituds WHERE id = :id"),
+        {"id": solicitud_id},
+    )).mappings().first()
+
+    if row and row["author"] == _staff["email"]:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="No pots aprovar/denegar la teva pròpia sol·licitud.")
+
+    await db.execute(
+        text("UPDATE solicituds SET status = :status, motive = :motive WHERE id = :id"),
+        {"status": body.status, "motive": body.motive, "id": solicitud_id},
+    )
+
+    # Notify the author if status changed from Pendent
+    if row and row["status"] == "Pendent" and body.status != "Pendent":
+        author = (await db.execute(
+            text("SELECT id, email, email_notifs FROM users WHERE email = :email"),
+            {"email": row["author"]},
+        )).mappings().first()
+        if author:
+            status_label = "aprovada" if body.status == "Aprovada" else "denegada"
+            notif_body = f"La teva petició ha estat {status_label}."
+            if body.motive:
+                notif_body += f" Motiu: {body.motive}"
+            await _notify(db, author["id"], f"Petició {body.status}", notif_body)
+            if author["email_notifs"]:
+                await send_email(
+                    to=author["email"],
+                    subject=f"Petició de dies no ordinaris {body.status}",
+                    html=f"""
+                    <p>Hola,</p>
+                    <p>La teva petició de dies no ordinaris ha estat <b>{status_label}</b>.</p>
+                    {f'<p><b>Motiu:</b> {body.motive}</p>' if body.motive else ''}
+                    <p>Accedeix al portal per veure els detalls.</p>
+                    """,
+                )
+
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/{solicitud_id}", status_code=204)
+async def delete_solicitud(
+    solicitud_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncConnection = Depends(get_db),
+):
+    row = (await db.execute(
+        text("SELECT author FROM solicituds WHERE id = :id"), {"id": solicitud_id}
+    )).mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="No trobat")
+    is_admin = current_user["role"] in ("Administrador/a", "Recursos humans")
+    if not is_admin and row["author"] != current_user["email"]:
+        raise HTTPException(status_code=403, detail="No autoritzat")
+    await db.execute(text("DELETE FROM solicituds WHERE id = :id"), {"id": solicitud_id})
+    await db.commit()

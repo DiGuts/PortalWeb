@@ -3,8 +3,8 @@ import { scrollPageToTop } from '../../lib/scroll';
 import { cn } from '../../lib/cn';
 import { useIsMobile } from '../../lib/useIsMobile';
 import { usePersistedSubTab } from '../../lib/usePersistedSubTab';
-import { ChevronLeft, Clock, ExternalLink, Search, PlayCircle, GraduationCap, UploadCloud, CalendarDays } from 'lucide-react';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { ChevronLeft, ChevronDown, ChevronUp, Clock, ExternalLink, Search, PlayCircle, GraduationCap, UploadCloud, CalendarDays } from 'lucide-react';
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Course, Quiz, apiGetCourses, apiGetQuizzes, apiUpdateCourseProgress, apiUploadCertificate, openCertificateFile, User } from '../../api';
@@ -101,6 +101,32 @@ interface Props {
   pageActive?: boolean;   // true only when Campus is the active page (not exiting)
 }
 
+// ── CatalogItem type (shared by CatalogCard + CampusTavilTab) ────────────────
+type CatalogItem = {
+  id: string;
+  type: 'Externes' | 'Internes';
+  title: string;
+  description: string;
+  category?: string;
+  hours?: string;
+  mandatory?: boolean;
+  status: 'Pendent' | 'En curs' | 'Completat' | 'No aprovat';
+  progress?: number;
+  url?: string;
+  courseId?: number;
+  quizId?: number;
+  quizInProgress?: boolean;
+  quizAttempted?: boolean;
+  quizQuestions?: number;
+  isPresential?: boolean;
+  certificateStatus?: 'pending' | 'approved' | 'rejected' | null;
+  certificateId?: number | null;
+  requiresCert?: boolean;
+  departments?: string[];
+  startAt?: string | null;
+  endAt?: string | null;
+};
+
 const STATUS_COLORS: Record<string, string> = {
   "En curs":   "bg-[#fde68a] text-[#854d0e] dark:bg-[#5c4313] dark:text-[#fcd34d]",
   "Pendent":   "bg-[#e2e8f0] text-[#475569] dark:bg-[#334155] dark:text-[#cbd5e1]",
@@ -108,31 +134,153 @@ const STATUS_COLORS: Record<string, string> = {
   "No aprovat":"bg-[#fecaca] text-[#991b1b] dark:bg-[#5a1414] dark:text-[#fca5a5]",
 };
 
+// ── CatalogCard ───────────────────────────────────────────────────────────────
+function CatalogCard({ item, i, onSelect, onOpenExternal, onCertUpload }: {
+  item: CatalogItem;
+  i: number;
+  onSelect: (item: CatalogItem) => void;
+  onOpenExternal: (item: CatalogItem) => void;
+  onCertUpload: (item: CatalogItem, f: File) => void;
+}) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+  const descRef = useRef<HTMLParagraphElement>(null);
+
+  // Detect clamping after first paint (while line-clamp-2 is active)
+  useLayoutEffect(() => {
+    const el = descRef.current;
+    if (el) setIsClamped(el.scrollHeight > el.clientHeight + 1);
+  }, [item.description]);
+
+  return (
+    <div
+      className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 anim-item flex flex-col"
+      onClick={() => onSelect(item)}
+      style={{ '--i': i, cursor: 'pointer' } as React.CSSProperties}
+    >
+      {/* Category + status */}
+      <div className="flex items-start justify-between mb-3 gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {item.category && (
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400">
+              {item.category}
+            </span>
+          )}
+          {item.isPresential && (
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-[#d1fae5] text-[#065f46] dark:bg-[#14532d] dark:text-[#86efac]">
+              {t('campus.presential')}
+            </span>
+          )}
+        </div>
+        <span className={cn('text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded flex-shrink-0', STATUS_COLORS[item.status])}>
+          {item.status}
+        </span>
+      </div>
+
+      {/* Title */}
+      <h4 className="font-semibold text-gray-900 dark:text-white mb-2 text-[15px] leading-snug">
+        {item.title}
+      </h4>
+
+      {/* Description — always reserves 2 lines of height */}
+      <p
+        ref={descRef}
+        className={cn(
+          'text-xs text-gray-500 dark:text-zinc-400 leading-relaxed min-h-[2.4375rem]',
+          !expanded && 'line-clamp-2',
+        )}
+      >
+        {item.description}
+      </p>
+
+      {/* Expand/collapse row — fixed height keeps footer always aligned */}
+      <div className="h-[1.375rem] mt-1 mb-3 flex items-center">
+        {isClamped && (
+          <button
+            onClick={e => { e.stopPropagation(); setExpanded(v => !v); }}
+            className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+          >
+            {expanded ? <><ChevronUp size={10} />Plegar</> : '···'}
+          </button>
+        )}
+      </div>
+
+      {/* Footer — mt-auto pins everything to the bottom of the card */}
+      <div className="mt-auto flex flex-col gap-2">
+        {/* Hours + mandatory — always occupies a fixed row even if empty */}
+        <div className="flex items-center gap-2 text-xs text-gray-500 min-h-[1.125rem]">
+          {item.hours && <><Clock size={12} /><span>{item.hours}</span></>}
+          {!!item.mandatory && (
+            <span className="text-[10px] bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400 px-1.5 py-0.5 rounded font-semibold">
+              {t('campus.mandatory')}
+            </span>
+          )}
+        </div>
+        {/* Date — always occupies a fixed row even if empty */}
+        <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-zinc-500 min-h-[1.125rem]">
+          {(item.startAt || item.endAt) && (
+            <>
+              <CalendarDays size={11} />
+              <span>
+                {item.startAt ? item.startAt.slice(0, 10).split('-').reverse().join('/') : ''}
+                {item.startAt && item.endAt ? ' – ' : ''}
+                {item.endAt ? item.endAt.slice(0, 10).split('-').reverse().join('/') : ''}
+              </span>
+            </>
+          )}
+        </div>
+        {item.type === 'Internes' && item.quizInProgress && (
+          <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1 overflow-hidden">
+            <div className="h-1 rounded-full bg-amber-500 animate-pulse" style={{ width: '55%' }} />
+          </div>
+        )}
+        {item.type === 'Externes' && item.url && (
+          <button
+            onClick={e => { e.stopPropagation(); onOpenExternal(item); }}
+            className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800 py-1.5 rounded-lg transition-colors"
+          >
+            <ExternalLink size={12} /> {t('campus.openCourse')}
+          </button>
+        )}
+        {item.type === 'Externes' && item.requiresCert && item.certificateStatus === null && (
+          <div onClick={e => e.stopPropagation()}>
+            <CertUploader onUpload={f => onCertUpload(item, f)} />
+          </div>
+        )}
+        {item.type === 'Externes' && item.requiresCert && item.certificateStatus === 'pending' && (
+          <div className="w-full flex items-center justify-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/20">
+            <Clock size={11} /> {t('campus.certPendingValidation')}
+          </div>
+        )}
+        {item.type === 'Externes' && item.requiresCert && item.certificateStatus === 'rejected' && (
+          <div className="flex flex-col gap-1.5" onClick={e => e.stopPropagation()}>
+            <div className="text-[11px] text-red-500 dark:text-red-400 text-center">{t('campus.certRejected')}</div>
+            <CertUploader onUpload={f => onCertUpload(item, f)} reupload />
+          </div>
+        )}
+        {item.type === 'Internes' && item.quizId && !item.isPresential && item.status !== 'Completat' && (
+          <button
+            onClick={e => {
+              e.stopPropagation();
+              window.open(`${window.location.pathname}?quiz=${item.quizId}${item.quizInProgress ? '&resume=1' : ''}`, '_blank');
+            }}
+            className={`w-full flex items-center justify-center gap-1.5 text-xs font-medium text-white py-1.5 rounded-lg transition-colors ${
+              item.quizInProgress ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#8b8c89] hover:bg-[#222725]'
+            }`}
+          >
+            <PlayCircle size={12} /> {item.quizInProgress ? t('campus.continue') : t('campus.start')}
+          </button>
+        )}
+        {item.type === 'Internes' && item.isPresential && item.status !== 'Completat' && (
+          <p className="text-[11px] text-[var(--tavil-muted)] text-center py-1">{t('campus.attendanceByAdmin')}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props) {
-  type CatalogItem = {
-    id: string;
-    type: 'Externes' | 'Internes';
-    title: string;
-    description: string;
-    category?: string;
-    hours?: string;
-    mandatory?: boolean;
-    status: 'Pendent' | 'En curs' | 'Completat' | 'No aprovat';
-    progress?: number;
-    url?: string;
-    courseId?: number;
-    quizId?: number;
-    quizInProgress?: boolean;
-    quizAttempted?: boolean;
-    quizQuestions?: number;
-    isPresential?: boolean;
-    certificateStatus?: 'pending' | 'approved' | 'rejected' | null;
-    certificateId?: number | null;
-    requiresCert?: boolean;
-    departments?: string[];
-    startAt?: string | null;
-    endAt?: string | null;
-  };
   const { t, i18n } = useTranslation();
   const [courses, setCourses] = useState<Course[]>(() => tabPrefetch.courses ?? []);
   const [activeTab, setActiveTab] = usePersistedSubTab<string>('campus', 'Catàleg', ['Catàleg', 'El meu progrés', 'Proves', ] as const);
@@ -558,74 +706,14 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
           )}
           <div className={cn("grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4", mandatoryPending && "pb-28")}>
             {filteredCatalog.map((item, i) => (
-              <div key={item.id} className="hover-lift bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 anim-item flex flex-col" onClick={() => setSelectedCourse(item)} style={{ '--i': i, cursor: 'pointer' } as React.CSSProperties}>
-                <div className="flex items-start justify-between mb-3 gap-2">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {item.category && (
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400">{item.category}</span>
-                    )}
-                    {item.isPresential && (
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-[#d1fae5] text-[#065f46] dark:bg-[#14532d] dark:text-[#86efac]">{t("campus.presential")}</span>
-                    )}
-                  </div>
-                  <span className={cn("text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded flex-shrink-0", STATUS_COLORS[item.status])}>{item.status}</span>
-                </div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2 text-[15px] leading-snug">{item.title}</h4>
-                <p className="text-xs text-gray-500 dark:text-zinc-400 mb-4 leading-relaxed line-clamp-2 min-h-[2.5rem]">{item.description}</p>
-                <div className="mt-auto flex flex-col gap-2">
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    {item.hours && <><Clock size={12} /><span>{item.hours}</span></>}
-                    {!!item.mandatory && <span className="text-[10px] bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400 px-1.5 py-0.5 rounded font-semibold">{t('campus.mandatory')}</span>}
-                  </div>
-                  {(item.startAt || item.endAt) && (
-                    <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-zinc-500">
-                      <CalendarDays size={11} />
-                      <span>
-                        {item.startAt ? item.startAt.slice(0, 10).split('-').reverse().join('/') : ''}
-                        {item.startAt && item.endAt ? ' – ' : ''}
-                        {item.endAt ? item.endAt.slice(0, 10).split('-').reverse().join('/') : ''}
-                      </span>
-                    </div>
-                  )}
-                  {item.type === 'Internes' && item.quizInProgress && (
-                    <div className="w-full bg-gray-100 dark:bg-zinc-800 rounded-full h-1 overflow-hidden">
-                      <div className="h-1 rounded-full bg-amber-500 animate-pulse" style={{ width: '55%' }} />
-                    </div>
-                  )}
-                  {item.type === 'Externes' && item.url && (
-                    <button onClick={(e) => { e.stopPropagation(); openExternalCourse(item); }} className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-gray-600 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800 py-1.5 rounded-lg transition-colors">
-                      <ExternalLink size={12} /> {t('campus.openCourse')}
-                    </button>
-                  )}
-                  {item.type === 'Externes' && item.requiresCert && item.certificateStatus === null && (
-                    <div onClick={e => e.stopPropagation()}>
-                      <CertUploader onUpload={f => handleCertUpload(item, f)} />
-                    </div>
-                  )}
-                  {item.type === 'Externes' && item.requiresCert && item.certificateStatus === 'pending' && (
-                    <div className="w-full flex items-center justify-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/20">
-                      <Clock size={11} /> {t('campus.certPendingValidation')}
-                    </div>
-                  )}
-                  {item.type === 'Externes' && item.requiresCert && item.certificateStatus === 'rejected' && (
-                    <div className="flex flex-col gap-1.5" onClick={e => e.stopPropagation()}>
-                      <div className="text-[11px] text-red-500 dark:text-red-400 text-center">{t('campus.certRejected')}</div>
-                      <CertUploader onUpload={f => handleCertUpload(item, f)} reupload />
-                    </div>
-                  )}
-                  {item.type === 'Internes' && item.quizId && !item.isPresential && item.status !== 'Completat' && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); window.open(`${window.location.pathname}?quiz=${item.quizId}${item.quizInProgress ? '&resume=1' : ''}`, '_blank'); }}
-                      className={`w-full flex items-center justify-center gap-1.5 text-xs font-medium text-white py-1.5 rounded-lg transition-colors ${item.quizInProgress ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#8b8c89] hover:bg-[#222725]'}`}
-                    >
-                      <PlayCircle size={12} /> {item.quizInProgress ? t('campus.continue') : t('campus.start')}
-                    </button>
-                  )}
-                  {item.type === 'Internes' && item.isPresential && item.status !== 'Completat' && (
-                    <p className="text-[11px] text-[var(--tavil-muted)] text-center py-1">{t('campus.attendanceByAdmin')}</p>
-                  )}
-                </div>
-              </div>
+              <CatalogCard
+                key={item.id}
+                item={item}
+                i={i}
+                onSelect={setSelectedCourse}
+                onOpenExternal={openExternalCourse}
+                onCertUpload={handleCertUpload}
+              />
             ))}
           </div>
           {mandatoryPending && pageActive && createPortal(

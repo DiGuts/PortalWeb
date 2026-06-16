@@ -60,6 +60,9 @@ function auth_user(): array {
     if (!$user) {
         respond(['detail' => 'Usuari no trobat'], 401);
     }
+    if (isset($user['active']) && (int)$user['active'] === 0) {
+        respond(['detail' => 'El teu compte ha sigut desactivat'], 401);
+    }
     decode_user_roles($user);
     // Block all requests (except change-password) if password change is required.
     if ((int)($user['must_change_password'] ?? 0) === 1) {

@@ -12,8 +12,15 @@ $sub  = $segments[2] ?? '';
 
 // GET /api/incidencies
 if ($method === 'GET' && $id === null) {
-    auth_user();
-    $rows = $db->query('SELECT * FROM incidencies ORDER BY created_at DESC')->fetchAll();
+    $u = auth_user();
+    $is_privileged = user_has_any_role($u, ['Administrador', 'Administrador/a', 'Recursos humans', 'SolicitudsVacances', 'SolicitudsDissabtes']);
+    if ($is_privileged) {
+        $stmt = $db->query('SELECT * FROM incidencies ORDER BY created_at DESC');
+    } else {
+        $stmt = $db->prepare('SELECT * FROM incidencies WHERE author=? ORDER BY created_at DESC');
+        $stmt->execute([$u['name']]);
+    }
+    $rows = $stmt->fetchAll();
     foreach ($rows as &$r) $r['id'] = (int)$r['id'];
     respond($rows);
 }

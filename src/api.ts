@@ -556,7 +556,7 @@ export interface ActivityEnrollment {
   email: string;
   dept: string;
   enrolled_at: string;
-  status: 'confirmed' | 'waitlist' | 'cancelled';
+  status: 'confirmed';
 }
 
 export async function apiGetActivityEnrollments(id: number): Promise<ActivityEnrollment[]> {

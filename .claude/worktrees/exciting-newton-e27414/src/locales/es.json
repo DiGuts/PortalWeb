@@ -1,0 +1,201 @@
+{
+  "nav": {
+    "general": "General",
+    "empresa": "Empresa",
+    "personal": "Personal",
+    "inici": "Inicio",
+    "noticies": "Noticias",
+    "activitats": "Actividades",
+    "agenda": "Agenda",
+    "directori": "Who is who?",
+    "espai": "Espacio corporativo",
+    "campus": "Campus TAVIL",
+    "veu": "Voz del empleado",
+    "solicituds": "Solicitudes personales",
+    "perfil": "Mi perfil"
+  },
+  "common": {
+    "search": "Buscar...",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "saving": "Guardando...",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "back": "Volver",
+    "all": "Todas",
+    "loading": "Cargando...",
+    "noResults": "Sin resultados para \"{{query}}\"",
+    "portalIntern": "Portal Interno",
+    "expandMenu": "Expandir menú",
+    "collapseMenu": "Reducir menú",
+    "darkMode": "Modo oscuro",
+    "lightMode": "Modo claro",
+    "language": "Idioma",
+    "languages": {
+      "ca": "Català",
+      "es": "Castellano",
+      "en": "English"
+    },
+    "goodMorning": "Buenos días",
+    "goodAfternoon": "Buenas tardes",
+    "goodEvening": "Buenas noches",
+    "seeAll": "Ver todo"
+  },
+  "auth": {
+    "login": "Inicia sesión",
+    "register": "Registrarse",
+    "signUp": "Crear cuenta",
+    "logout": "Cerrar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "confirm": "Confirma la contraseña",
+    "name": "Nombre completo",
+    "loginTitle": "Portal interno TAVIL",
+    "loginSubtitle": "Accede con tu cuenta corporativa",
+    "registerTitle": "Crea tu cuenta",
+    "regSubtitle": "Únete al portal interno TAVIL",
+    "noAccount": "¿Todavía no tienes cuenta?",
+    "haveAccount": "¿Ya tienes cuenta?",
+    "forgotPassword": "¿Has olvidado la contraseña?",
+    "rememberMe": "Recuérdame",
+    "next": "Continuar",
+    "welcome": "Bienvenido",
+    "createAccount": "Crear cuenta",
+    "verify": "Verifica tu correo",
+    "verifySub": "Hemos enviado un código de 8 caracteres a",
+    "codeLabel": "Código de verificación",
+    "resend": "Volver a enviar el código",
+    "resentConfirm": "✓ Código reenviado",
+    "forgotTitle": "Restablece la contraseña",
+    "forgotSubtitle": "Introduce tu correo corporativo y te enviaremos un enlace para restablecer la contraseña.",
+    "forgotBtn": "Enviar el enlace",
+    "forgotSentTitle": "Revisa tu bandeja",
+    "forgotSentBody": "Hemos enviado un enlace de recuperación a {{email}}. Caduca en 30 minutos.",
+    "backToLogin": "Volver al acceso"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "empty": "No hay notificaciones",
+    "markAllRead": "Marcar todas como leídas",
+    "deleteAll": "Eliminar todas"
+  },
+  "profile": {
+    "myProfile": "Mi perfil",
+    "settings": "Configuración",
+    "demoRole": "Rol de demostración"
+  },
+  "home": {
+    "urgentNotice": "AVISO URGENTE",
+    "upcomingAgenda": "Próximos en agenda",
+    "quickAccess": "Acceso rápido",
+    "latestNews": "Últimas noticias",
+    "allNews": "Todas las noticias",
+    "seeAll": "Ver",
+    "readMore": "Leer más",
+    "featuredPrev": "Anterior destacada",
+    "featuredNext": "Siguiente destacada"
+  },
+  "news": {
+    "subtitle": "Información, comunicados y novedades de la empresa",
+    "newArticle": "+ Nueva noticia",
+    "title": "Título *",
+    "summary": "Resumen",
+    "author": "Autor",
+    "date": "Fecha (ej: 1 abril 2026)",
+    "image": "Imagen",
+    "featured": "Destacada",
+    "create": "Crear noticia",
+    "confirmDelete": "¿Seguro que quieres eliminar esta noticia? Esta acción no se puede deshacer.",
+    "confirmTitle": "Confirmar eliminación",
+    "featured": "Destacado",
+    "searchPlaceholder": "Buscar noticias...",
+    "detail": {
+      "backToNews": "← Volver a noticias",
+      "readingTime": "min de lectura",
+      "share": "Compartir"
+    }
+  },
+  "activities": {
+    "subtitle": "Actividades y eventos de la empresa",
+    "upcoming": "Próximas",
+    "past": "Pasadas",
+    "enrolled": "Inscrito",
+    "enroll": "Inscribirme",
+    "full": "Completo",
+    "capacity": "{{enrolled}}/{{capacity}} plazas",
+    "newActivity": "+ Nueva actividad"
+  },
+  "agenda": {
+    "subtitle": "Calendario interno de reuniones y eventos",
+    "newEvent": "+ Nuevo evento",
+    "today": "Hoy"
+  },
+  "directory": {
+    "subtitle": "Busca trabajadores por nombre, departamento, cargo o extensión",
+    "grid": "Cuadrícula",
+    "departments": "Departamentos",
+    "all": "Todos",
+    "ext": "Ext."
+  },
+  "corporate": {
+    "subtitle": "Documentos, procedimientos y recursos corporativos"
+  },
+  "campus": {
+    "subtitle": "Formación y cursos internos de TAVIL"
+  },
+  "veu": {
+    "subtitle": "Sugerencias, incidencias y encuestas internas",
+    "suggestions": "Sugerencias",
+    "incidents": "Incidencias",
+    "surveys": "Encuestas",
+    "newSuggestion": "Nueva sugerencia",
+    "suggestionTitle": "Título de la sugerencia",
+    "suggestionDesc": "Describe tu propuesta con detalle...",
+    "category": "Categoría",
+    "anonymous": "Enviar de forma anónima",
+    "send": "Enviar sugerencia",
+    "reviewNote": "El equipo de personas revisa las sugerencias semanalmente.",
+    "recentSuggestions": "Sugerencias recientes ({{count}})",
+    "manage": "Gestionar",
+    "anonymous_label": "Anónimo",
+    "upvote": "Vota a favor",
+    "downvote": "Vota en contra",
+    "newIncident": "Nueva incidencia",
+    "incidentTitle": "Título de la incidencia",
+    "incidentDesc": "Describe la incidencia, ubicación y detalles relevantes...",
+    "affectedArea": "Área afectada",
+    "priority": "Prioridad",
+    "registerIncident": "Registrar incidencia",
+    "incidentNote": "Las incidencias se identifican con tu perfil para facilitar el seguimiento.",
+    "incidents_list": "Incidencias registradas ({{count}})"
+  },
+  "solicituds": {
+    "subtitle": "Gestión de solicitudes y peticiones personales",
+    "nonWorkingDays": "Días no ordinarios",
+    "sentRequests": "Solicitudes enviadas ({{count}})",
+    "noRequests": "No hay solicitudes todavía.",
+    "noRequestsHint": "Usa el formulario para enviar la primera.",
+    "newRequest": "Nueva solicitud",
+    "requestedDay": "Día solicitado",
+    "comments": "Comentarios",
+    "commentsPlaceholder": "Explica el motivo o cualquier detalle relevante...",
+    "reviewNote": "El equipo de RRHH revisará la solicitud en un plazo de 48 horas.",
+    "send": "Enviar solicitud",
+    "sent": "Solicitud enviada correctamente.",
+    "approve": "Aprobar",
+    "deny": "Denegar",
+    "denyReason": "Motivo de la denegación...",
+    "confirmDeny": "Confirmar denegación",
+    "requestedOn": "Solicitado el {{date}} · Por: {{author}}",
+    "motive": "Motivo:"
+  },
+  "confirm": {
+    "deleteTitle": "Confirmar eliminación",
+    "cancel": "Cancelar",
+    "delete": "Eliminar"
+  },
+  "breadcrumb": {
+    "home": "Inicio"
+  }
+}

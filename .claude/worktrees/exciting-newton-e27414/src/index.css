@@ -1,0 +1,483 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Animation primitives ─────────────────────────────────────────────────── */
+:root {
+  /* Legacy easing aliases (kept for non-page animations) */
+  --ease-out-quint:   cubic-bezier(.23, 1, .32, 1);
+  --ease-out-cubic:   cubic-bezier(.33, 1, .68, 1);
+  --ease-in-out-cubic:cubic-bezier(.645, .045, .355, 1);
+  --ease-spring:      cubic-bezier(.34, 1.56, .64, 1);
+
+  /* ── Motion system (TAVIL Handoff spec) ────────────────────────────────── */
+  --motion-ease:      cubic-bezier(0.32, 0.72, 0.24, 1); /* arrivals — corporate ease-out */
+  --motion-ease-out:  cubic-bezier(0.22, 1, 0.36, 1);    /* departures — quick exit */
+  --motion-dur-in:    380ms;  /* arrivals */
+  --motion-dur-out:   220ms;  /* departures */
+  --motion-dur-quick: 160ms;  /* hovers, toggles, micro-state */
+  --motion-stagger:   60ms;   /* sequential child reveals */
+}
+
+@keyframes tavil-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes tavil-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes tavil-sheet-enter {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes tavil-sheet-exit {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
+}
+@keyframes tavil-scale-in {
+  from { opacity: 0; transform: scale(.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes tavil-slide-down {
+  from { opacity: 0; transform: translateY(-6px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+@keyframes tavil-slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes tavil-pulse-soft {
+  0%, 100% { transform: scale(1);   opacity: 1; }
+  50%      { transform: scale(1.35); opacity: .55; }
+}
+@keyframes tavil-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.anim-fade-in     { animation: tavil-fade-in     220ms var(--ease-out-cubic)    both; }
+.anim-fade-out    { animation: tavil-fade-out    220ms var(--ease-out-cubic)    both; }
+.anim-scale-in    { animation: tavil-scale-in    240ms var(--ease-out-quint)    both; }
+.anim-slide-down  { animation: tavil-slide-down  220ms var(--ease-out-quint)    both; }
+.anim-slide-up    { animation: tavil-slide-up    280ms var(--ease-out-quint)    both; }
+.anim-sheet-enter { animation: tavil-sheet-enter 320ms var(--ease-out-quint)    both; }
+.anim-sheet-exit  { animation: tavil-sheet-exit  260ms var(--ease-in-out-cubic) both; }
+.anim-pulse-soft { animation: tavil-pulse-soft 2.2s  var(--ease-in-out-cubic) infinite; }
+
+/* Drawer expand — height grows from 0 below host card. Reliable max-height
+   animation, works in all browsers. Set --drawer-max if 1200px not enough. */
+@keyframes tavil-drawer-down {
+  from { max-height: 0;      opacity: 0; transform: translateY(-4px); }
+  to   { max-height: var(--drawer-max, 1200px); opacity: 1; transform: translateY(0); }
+}
+.anim-drawer-down {
+  overflow: hidden;
+  animation: tavil-drawer-down 360ms var(--ease-out-quint) both;
+}
+
+/* Smooth tab/view transition — used when switching tabs, views, sub-tabs,
+   carousel slides. Longer fade + soft upward glide so swaps don't feel abrupt. */
+@keyframes tavil-tab-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.anim-tab { animation: tavil-tab-in 320ms var(--ease-out-quint) both; }
+
+/* Crossfade helper — absolute positioning with soft in/out */
+@keyframes tavil-crossfade-in {
+  from { opacity: 0; transform: scale(1.01); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.anim-crossfade { animation: tavil-crossfade-in 380ms var(--ease-out-quint) both; }
+
+/* ── Page transitions — push style ─────────────────────────────────────────
+   Two pages rendered during transition: OLD slides out, NEW slides in, stacked.
+   Desktop: forward (moving down sidebar list) pushes the old page UP and the new
+   page comes up from below, as if a film reel advances upward.
+   Mobile: forward pushes old LEFT, new comes from RIGHT (Instagram-carousel).
+*/
+
+/* ── PAGE mode — top-level ↔ top-level (desktop sidebar nav) ───────────────
+   Cross-fade with subtle directional drift. Asymmetric timing: arrivals
+   are deliberate (380ms), departures clear the stage fast (220ms).        */
+@keyframes tavil-page-out-up {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-6px); }
+}
+@keyframes tavil-page-in-from-below {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes tavil-page-out-down {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(6px); }
+}
+@keyframes tavil-page-in-from-above {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── SUB mode — drill-down / back (sub-pages, Més sub-tabs) ────────────────
+   Small directional slide (36px / 18px). Reinforces mental model of depth. */
+@keyframes tavil-page-out-left {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-18px); }
+}
+@keyframes tavil-page-in-from-right {
+  from { opacity: 0; transform: translateX(36px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes tavil-page-out-right {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(18px); }
+}
+@keyframes tavil-page-in-from-left {
+  from { opacity: 0; transform: translateX(-36px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.anim-page-enter-v-fwd  { animation: tavil-page-in-from-below  var(--motion-dur-in)  var(--motion-ease)     both; }
+.anim-page-exit-v-fwd   { animation: tavil-page-out-up          var(--motion-dur-out) var(--motion-ease-out) both; }
+.anim-page-enter-v-back { animation: tavil-page-in-from-above   var(--motion-dur-in)  var(--motion-ease)     both; }
+.anim-page-exit-v-back  { animation: tavil-page-out-down        var(--motion-dur-out) var(--motion-ease-out) both; }
+.anim-page-enter-h-fwd  { animation: tavil-page-in-from-right   var(--motion-dur-in)  var(--motion-ease)     both; }
+.anim-page-exit-h-fwd   { animation: tavil-page-out-left        var(--motion-dur-out) var(--motion-ease-out) both; }
+.anim-page-enter-h-back { animation: tavil-page-in-from-left    var(--motion-dur-in)  var(--motion-ease)     both; }
+.anim-page-exit-h-back  { animation: tavil-page-out-right       var(--motion-dur-out) var(--motion-ease-out) both; }
+
+/* ── Inner-content stagger — major sections within a freshly mounted page ──
+   Apply .stagger-1 … .stagger-5 to section-level wrappers, not list rows.  */
+@keyframes tavil-stagger-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stagger-1 { animation: tavil-stagger-in 420ms var(--motion-ease) both; animation-delay: 0ms; }
+.stagger-2 { animation: tavil-stagger-in 420ms var(--motion-ease) both; animation-delay: var(--motion-stagger); }
+.stagger-3 { animation: tavil-stagger-in 420ms var(--motion-ease) both; animation-delay: calc(var(--motion-stagger) * 2); }
+.stagger-4 { animation: tavil-stagger-in 420ms var(--motion-ease) both; animation-delay: calc(var(--motion-stagger) * 3); }
+.stagger-5 { animation: tavil-stagger-in 420ms var(--motion-ease) both; animation-delay: calc(var(--motion-stagger) * 4); }
+
+.page-viewport {
+  will-change: transform, opacity, filter;
+}
+.page-stack {
+  position: relative;
+  overflow: hidden;
+}
+.page-stack > .page-exiting {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.page-stack > .page-entering {
+  position: relative;
+  z-index: 2;
+}
+
+/* Reusable interaction helpers */
+.hover-lift {
+  transition: transform 220ms var(--ease-out-quint),
+              box-shadow 220ms var(--ease-out-quint);
+  will-change: transform;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -12px rgba(34, 39, 37, .18);
+}
+
+.press {
+  transition: transform 110ms var(--ease-out-cubic);
+}
+.press:active {
+  transform: scale(.97);
+}
+
+/* Hide scrollbars while keeping scroll behavior (used for horizontal filter rows) */
+.scrollbar-hide {
+  scrollbar-width: none;           /* Firefox */
+  -ms-overflow-style: none;        /* IE/Edge */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;                   /* Chrome/Safari */
+}
+
+/* ── Skeleton loading primitives ─────────────────────────────────────────────
+   Use `.skeleton` on a sized block to show shimmering placeholder.
+   Pairs with `tavil-shimmer` keyframes above. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: #e5e5e0;
+  background-image: linear-gradient(
+    90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,.55) 50%,
+    rgba(255,255,255,0) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: tavil-shimmer 1.4s var(--ease-in-out-cubic) infinite;
+  border-radius: 8px;
+}
+html.dark .skeleton {
+  background-color: #2a2a2d;
+  background-image: linear-gradient(
+    90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,.08) 50%,
+    rgba(255,255,255,0) 100%
+  );
+}
+.skeleton-text    { height: .85em; border-radius: 4px; }
+.skeleton-title   { height: 1.25em; border-radius: 6px; }
+.skeleton-avatar  { border-radius: 9999px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none !important; }
+}
+
+/* ── Touch / a11y helpers ────────────────────────────────────────────────────
+   WCAG 2.5.5 AAA = 44x44 minimum tap target.
+   Use `.tap-target` on any interactive element that is narrow on mobile. */
+.tap-target {
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
+}
+@media (max-width: 767px) {
+  .tap-target-mobile {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+  }
+}
+
+/* Focus-visible ring (keyboard only, not mouse) */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--tavil-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Respect user preference */
+@media (prefers-reduced-motion: reduce) {
+  /* Micro-animations: disable entirely */
+  .anim-fade-in,
+  .anim-fade-out,
+  .anim-sheet-enter,
+  .anim-sheet-exit,
+  .anim-scale-in,
+  .anim-slide-down,
+  .anim-slide-up,
+  .anim-pulse-soft,
+  .anim-tab,
+  .anim-crossfade,
+  .stagger-1, .stagger-2, .stagger-3, .stagger-4, .stagger-5 {
+    animation: none !important;
+  }
+  /* Page transitions: 120ms opacity-only (per spec) */
+  .anim-page-enter-v-fwd,
+  .anim-page-enter-v-back,
+  .anim-page-enter-h-fwd,
+  .anim-page-enter-h-back {
+    animation: tavil-fade-in 120ms linear both !important;
+  }
+  .anim-page-exit-v-fwd,
+  .anim-page-exit-v-back,
+  .anim-page-exit-h-fwd,
+  .anim-page-exit-h-back {
+    animation: tavil-fade-out 120ms linear both !important;
+  }
+  .page-stack > .page-exiting { display: none !important; }
+  .hover-lift:hover { transform: none; }
+  .press:active     { transform: none; }
+  * {
+    transition-duration: 0ms !important;
+  }
+}
+
+html, body {
+  margin: 0;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+#root {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+img, video, canvas, iframe {
+  max-width: 100%;
+  height: auto;
+}
+/* Mobile — force all text to wrap, never push container */
+@media (max-width: 767px) {
+  h1, h2, h3, h4, h5, p, span, div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  /* iOS auto-zooms inputs under 16px. Force 16px on mobile only to stop zoom. */
+  input, textarea, select {
+    font-size: 16px;
+  }
+}
+
+/* ── TAVIL Light Mode Palette ──────────────────────────────────────────────────
+   Porcelain    #f7f7f2  backgrounds & cards
+   Dusty Olive  #788475  secondary/muted text
+   Mahogany Red #bf211e  primary accent
+   Carbon Black #222725  primary text
+   Ink Black    #040f0f  deepest
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Backgrounds ── */
+html:not(.dark) .bg-white          { background-color: #f7f7f2; }
+html:not(.dark) .bg-gray-50        { background-color: #eeeee9; }
+html:not(.dark) .bg-gray-100       { background-color: #e5e5e0; }
+html:not(.dark) .bg-gray-200       { background-color: #d6d6d1; }
+
+html:not(.dark) .hover\:bg-gray-50:hover  { background-color: #eeeee9; }
+html:not(.dark) .hover\:bg-gray-100:hover { background-color: #e5e5e0; }
+
+/* ── Text ── */
+html:not(.dark) .text-gray-900 { color: #222725; }
+html:not(.dark) .text-gray-800 { color: #2d312e; }
+html:not(.dark) .text-gray-700 { color: #3b3f3c; }
+html:not(.dark) .text-gray-600 { color: #4e524f; }
+html:not(.dark) .text-gray-500 { color: #788475; }
+html:not(.dark) .text-gray-400 { color: #9da89a; }
+html:not(.dark) .text-gray-300 { color: #b8c0b5; }
+
+/* ── Borders ── */
+html:not(.dark) .border-gray-50  { border-color: #eeeee9; }
+html:not(.dark) .border-gray-100 { border-color: #deded9; }
+html:not(.dark) .border-gray-200 { border-color: #cecec9; }
+
+html:not(.dark) .divide-gray-50 > * + * { border-color: #eeeee9; }
+
+/* ── Accent — Mahogany Red ── */
+html:not(.dark) .bg-red-600               { background-color: var(--tavil-accent); }
+html:not(.dark) .bg-red-700               { background-color: var(--tavil-accent-dark); }
+html:not(.dark) .bg-red-50                { background-color: var(--tavil-accent-light); }
+html:not(.dark) .bg-red-100               { background-color: #f1d7d6; }
+
+html:not(.dark) .hover\:bg-red-600:hover  { background-color: var(--tavil-accent); }
+html:not(.dark) .hover\:bg-red-700:hover  { background-color: var(--tavil-accent-dark); }
+html:not(.dark) .hover\:bg-red-50:hover   { background-color: var(--tavil-accent-light); }
+
+html:not(.dark) .text-red-600  { color: var(--tavil-accent); }
+html:not(.dark) .text-red-700  { color: var(--tavil-accent-dark); }
+html:not(.dark) .text-red-400  { color: #d44442; }
+
+html:not(.dark) .border-red-400 { border-color: #d44442; }
+html:not(.dark) .border-red-600 { border-color: var(--tavil-accent); }
+
+html:not(.dark) .focus\:border-red-400:focus { border-color: #d44442; }
+
+/* ring on white (used in notification dot) */
+html:not(.dark) .ring-white { --tw-ring-color: #f7f7f2; }
+
+/* ── Page root bg ── */
+html:not(.dark) { background-color: #eeeee9; }
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* ── Mobile design tokens ─────────────────────────────────────────────────── */
+:root {
+  --tavil-bg: #eeeee9;
+  --tavil-card: #ffffff;
+  --tavil-border: #e3e2db;
+  --tavil-text: #222725;
+  --tavil-muted: #5d655c;
+  --tavil-faint: #8b948a;
+  --tavil-accent: #bf211e;
+  --tavil-accent-light: #f9eceb;
+  --tavil-accent-dark: #a21b18;
+}
+html.dark {
+  --tavil-bg: #121212;
+  --tavil-card: #242624;
+  --tavil-border: #33362f;
+  --tavil-text: #f0efe8;
+  --tavil-muted: #a8afa6;
+  --tavil-faint: #7a8178;
+}
+@media (max-width: 767px) {
+
+  /* Mobile tokens */
+  :root {
+    --tavil-bg: #f7f7f2;
+  }
+
+  html.dark {
+    --tavil-bg: #1a1c1a;
+  }
+
+  /* Aquest és el canvi que volies */
+  html:not(.dark) .bg-gray-50 {
+    background-color: #f7f7f2;
+  }
+
+}
+/* Instrument Serif for mobile serif headings */
+.font-serif-display {
+  font-family: 'Instrument Serif', 'Times New Roman', serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+/* Mobile screen kicker label */
+.mobile-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--tavil-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin-bottom: 6px;
+}
+
+/* Suppress scrollbar in horizontal strips on mobile */
+@media (max-width: 767px) {
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+  .hide-scrollbar { scrollbar-width: none; }
+}
+
+/* ── Mobile base overrides ───────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* Porcelain background on mobile — keep same font as desktop */
+  body {
+    background-color: var(--tavil-bg);
+  }
+  html.dark body {
+    background-color: var(--tavil-bg);
+  }
+
+  /* Cards on mobile use design token border-radius + border */
+  .mobile-card {
+    background: var(--tavil-card);
+    border: 1px solid var(--tavil-border);
+    border-radius: 16px;
+  }
+
+  /* Horizontal scroll strips */
+  .mobile-hscroll {
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    padding-left: 16px;
+    scrollbar-width: none;
+  }
+  .mobile-hscroll::-webkit-scrollbar { display: none; }
+}

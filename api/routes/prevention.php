@@ -122,11 +122,15 @@ elseif ($method === 'POST' && $sub === 'sign') {
     // Save signed PDF to disk if provided
     $attachments = [];
     if (!empty($pdf_data)) {
+        $decoded_pdf = base64_decode($pdf_data, true);
+        if ($decoded_pdf === false) respond(['detail' => 'pdf_data invàlid (base64)'], 400);
+        $pdf_mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($decoded_pdf);
+        if ($pdf_mime !== 'application/pdf') respond(['detail' => 'El fitxer no és un PDF vàlid'], 400);
         $signed_dir = UPLOADS_DIR . '/prevention/signed/';
         if (!is_dir($signed_dir)) mkdir($signed_dir, 0755, true);
         $safe_name = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $user['name']);
         $filename  = $safe_name . '_' . $document_key . '_' . date('Ymd_Hi') . '.pdf';
-        file_put_contents($signed_dir . $filename, base64_decode($pdf_data));
+        file_put_contents($signed_dir . $filename, $decoded_pdf);
         $attachments[] = [
             'filename' => $filename,
             'mime'     => 'application/pdf',

@@ -9,7 +9,8 @@ if ($method !== 'POST' || !isset($_GET['send']) || $_GET['send'] !== '1') {
     respond(['detail' => 'Use POST /api/debug-mail?send=1'], 400);
 }
 
-$to = $body['to'] ?? $u['email'];
+$to_raw = $body['to'] ?? $u['email'];
+$to = filter_var($to_raw, FILTER_VALIDATE_EMAIL) ? $to_raw : $u['email'];
 $subject = 'Portal TAVIL — SMTP smoke test';
 $html = '<p>SMTP funciona correctament.</p><p>From: ' . htmlspecialchars(SMTP_FROM) . '</p>';
 send_email($to, $subject, $html);

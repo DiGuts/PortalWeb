@@ -68,6 +68,12 @@ elseif ($method === 'PATCH' && $seg1 === 'me' && $seg2 === '') {
         if (array_key_exists($k, $body)) {
             if ($k === 'email_notifs' || $k === 'visible_in_directory') {
                 $updates[$k] = bool_val($body, $k) ? 1 : 0;
+            } elseif ($k === 'avatar_url') {
+                $v = $body[$k];
+                if ($v !== null && $v !== '' && !str_starts_with((string)$v, '/uploads/')) {
+                    respond(['detail' => 'avatar_url invàlid'], 400);
+                }
+                $updates[$k] = $v === '' ? null : $v;
             } else {
                 $updates[$k] = $body[$k];
             }
@@ -91,10 +97,14 @@ elseif ($method === 'POST' && $seg1 === 'me' && $seg2 === 'onboarding') {
     respond(_fetch_user($db, $uid));
 }
 
-// PATCH /api/users/me/role
+// PATCH /api/users/me/role  (admin/demo only — used for role-switcher view)
 elseif ($method === 'PATCH' && $seg1 === 'me' && $seg2 === 'role') {
-    $u = auth_user();
-    $db->prepare('UPDATE users SET role=? WHERE id=?')->execute([str_val($body,'role'), (int)$u['id']]);
+    $u = require_admin();
+    $role = str_val($body, 'role');
+    if (!in_array($role, _ALLOWED_NEW_ROLES, true)) {
+        respond(['detail' => 'Rol no permès'], 400);
+    }
+    $db->prepare('UPDATE users SET role=? WHERE id=?')->execute([$role, (int)$u['id']]);
     respond(_fetch_user($db, (int)$u['id']));
 }
 

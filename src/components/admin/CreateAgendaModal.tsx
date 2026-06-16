@@ -127,15 +127,15 @@ export function CreateAgendaModal({ open, onClose, onCreated, initialDate }: {
     setTitleTouched(true);
     if (!form.title.trim()) { setError('Cal indicar el títol.'); return; }
     if (!form.date) { setDateError(true); setError('Cal seleccionar una data.'); return; }
-    const [, mStr, dStr] = form.date.split('-');
-    const day = parseInt(dStr, 10), month = parseInt(mStr, 10);
-    if (!day || !month) { setDateError(true); setError('Data no vàlida.'); return; }
+    const [yStr, mStr, dStr] = form.date.split('-');
+    const day = parseInt(dStr, 10), month = parseInt(mStr, 10), year = parseInt(yStr, 10);
+    if (!day || !month || !year) { setDateError(true); setError('Data no vàlida.'); return; }
     const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
     if (form.time && !timeRe.test(form.time)) { setError("Hora d'inici no vàlida."); return; }
     if (form.timeEnd && !timeRe.test(form.timeEnd)) { setError('Hora final no vàlida.'); return; }
     setError(null); setSaving(true);
     try {
-      const created = await apiCreateAgendaEvent({ title: form.title.trim(), day, month, time: form.time || '', time_end: form.timeEnd || undefined, location: form.location.trim(), type: form.type, target_departments: form.depts });
+      const created = await apiCreateAgendaEvent({ title: form.title.trim(), day, month, year, time: form.time || '', time_end: form.timeEnd || undefined, location: form.location.trim(), type: form.type, target_departments: form.depts });
       onCreated(created);
     } catch (e: any) { setError(e?.message ?? 'Error creant esdeveniment'); }
     finally { setSaving(false); }
