@@ -40,6 +40,33 @@ import { useConfirm } from '../ConfirmDialog';
 
 // Primitives + tokens imported from ./primitives. Modules below compose them.
 
+// ── Toast helper (replaces browser alert() in all admin sub-modules) ─────────
+
+type AdminToastState = { msg: string; kind: 'error' | 'ok' } | null;
+
+function useAdminToast(): [AdminToastState, (msg: string) => void, (msg: string) => void] {
+  const [toast, setToast] = useState<AdminToastState>(null);
+  const showErr = (msg: string) => { setToast({ msg, kind: 'error' }); setTimeout(() => setToast(null), 4000); };
+  const showOk  = (msg: string) => { setToast({ msg, kind: 'ok'    }); setTimeout(() => setToast(null), 2500); };
+  return [toast, showErr, showOk];
+}
+
+function AdminToast({ toast }: { toast: AdminToastState }) {
+  if (!toast) return null;
+  return (
+    <div style={{
+      position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+      zIndex: 9999, padding: '10px 20px', borderRadius: 10,
+      background: toast.kind === 'error' ? '#dc2626' : '#16a34a',
+      color: '#fff', fontSize: 13, fontWeight: 500,
+      boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+      animation: 'tavil-slide-up 280ms var(--ease-spring-soft) both',
+      pointerEvents: 'none',
+    }}>
+      {toast.msg}
+    </div>
+  );
+}
 
 // ── Module: AdminDashboard ──────────────────────────────────────────────────
 
@@ -271,6 +298,7 @@ function AdminUsers({ users, setUsers, refresh, currentUser, onImpersonate, inte
   const [newPass, setNewPass] = useState('');
   const [saving, setSaving] = useState(false);
   const { confirm, confirmNode } = useConfirm();
+  const [adminToast, showErr] = useAdminToast();
 
   const selected = users.find(u => u.id === selectedId) || null;
 
@@ -305,7 +333,7 @@ function AdminUsers({ users, setUsers, refresh, currentUser, onImpersonate, inte
 
   const save = async () => {
     if (!selected) return;
-    if (newPass && newPass.length < 8) { alert('La nova contrasenya ha de tenir mínim 8 caràcters.'); return; }
+    if (newPass && newPass.length < 8) { showErr('La nova contrasenya ha de tenir mínim 8 caràcters.'); return; }
     setSaving(true);
     try {
       await apiAdminUpdateUser(selected.id, {
@@ -318,7 +346,7 @@ function AdminUsers({ users, setUsers, refresh, currentUser, onImpersonate, inte
       setNewPass('');
       refresh();
     } catch (e: any) {
-      alert(e?.message ?? 'Error desant');
+      showErr(e?.message ?? 'Error desant');
     } finally {
       setSaving(false);
     }
@@ -333,7 +361,7 @@ function AdminUsers({ users, setUsers, refresh, currentUser, onImpersonate, inte
       setSelectedId(null);
       refresh();
     } catch (e: any) {
-      alert(e?.message ?? 'Error');
+      showErr(e?.message ?? 'Error');
     }
   };
 
@@ -347,7 +375,7 @@ function AdminUsers({ users, setUsers, refresh, currentUser, onImpersonate, inte
     } catch (e: any) {
       // Rollback
       setUsers(prev => prev.map(u => u.id === selected.id ? { ...u, active: selected.active } : u));
-      alert(e?.message ?? 'Error canviant l\'estat d\'accés');
+      showErr(e?.message ?? 'Error canviant l\'estat d\'accés');
     }
   };
 
@@ -556,6 +584,7 @@ function AdminUsers({ users, setUsers, refresh, currentUser, onImpersonate, inte
       />
       <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={onCreated} />
       {confirmNode}
+      <AdminToast toast={adminToast} />
     </>
   );
 }
@@ -579,6 +608,7 @@ function AdminNews({ news, refresh, intent, onConsumeIntent }: { news: NewsArtic
   const [langDraft, setLangDraft] = useState<LangDraft>(emptyLangDraft());
   const [saving, setSaving] = useState(false);
   const { confirm, confirmNode } = useConfirm();
+  const [adminToast, showErr] = useAdminToast();
 
   const selected = news.find(n => n.id === selectedId) || null;
 
@@ -638,7 +668,7 @@ function AdminNews({ news, refresh, intent, onConsumeIntent }: { news: NewsArtic
     try {
       await apiUpdateNews(selected.id, buildPayload());
       refresh();
-    } catch (e: any) { alert(e?.message ?? 'Error desant'); }
+    } catch (e: any) { showErr(e?.message ?? 'Error desant'); }
     finally { setSaving(false); }
   };
 
@@ -648,7 +678,7 @@ function AdminNews({ news, refresh, intent, onConsumeIntent }: { news: NewsArtic
       await apiUpdateNews(selected.id, buildPayload({ image: url }));
       setCoverDraft(url);
       refresh();
-    } catch (e: any) { alert(e?.message ?? 'Error desant portada'); }
+    } catch (e: any) { showErr(e?.message ?? 'Error desant portada'); }
   };
   const newsStatus = (n: NewsArticle) => !n.active ? 'draft' : n.featured ? 'featured' : 'activa';
   const filtered = useMemo(() => news.filter(n => {
@@ -692,7 +722,7 @@ function AdminNews({ news, refresh, intent, onConsumeIntent }: { news: NewsArtic
     const ok = await confirm(`Vols eliminar l'article "${selected.title}"? Aquesta acció no es pot desfer.`);
     if (!ok) return;
     try { await apiDeleteNews(selected.id); setSelectedId(null); refresh(); }
-    catch (e: any) { alert(e?.message ?? 'Error'); }
+    catch (e: any) { showErr(e?.message ?? 'Error'); }
   };
 
   const columns: Column<NewsArticle>[] = [
@@ -835,6 +865,7 @@ function AdminNews({ news, refresh, intent, onConsumeIntent }: { news: NewsArtic
       />
       <CreateNewsModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={onCreatedArticle} />
       {confirmNode}
+      <AdminToast toast={adminToast} />
     </>
   );
 }
@@ -1036,6 +1067,7 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
   const [draft, setDraft] = useState<Partial<Activity>>({});
   const [saving, setSaving] = useState(false);
   const { confirm, confirmNode } = useConfirm();
+  const [adminToast, showErr] = useAdminToast();
 
   const selected = activities.find(a => a.id === selectedId) || null;
   useEffect(() => {
@@ -1072,7 +1104,7 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
         link: (draft.link !== undefined ? draft.link : selected.link) ?? '',
       });
       refresh();
-    } catch (e: any) { alert(e?.message ?? 'Error desant'); }
+    } catch (e: any) { showErr(e?.message ?? 'Error desant'); }
     finally { setSaving(false); }
   };
 
@@ -1104,7 +1136,7 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
     const ok = await confirm(`Vols eliminar l'activitat "${selected.title}"? Aquesta acció no es pot desfer.`);
     if (!ok) return;
     try { await apiDeleteActivity(selected.id); setSelectedId(null); refresh(); }
-    catch (e: any) { alert(e?.message ?? 'Error'); }
+    catch (e: any) { showErr(e?.message ?? 'Error'); }
   };
 
   const columns: Column<Activity>[] = [
@@ -1224,6 +1256,7 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
 
       <CreateActivityModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={onCreatedActivity} />
       {confirmNode}
+      <AdminToast toast={adminToast} />
     </>
   );
 }
@@ -1235,6 +1268,7 @@ function AdminCertificats() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [reviewing, setReviewing] = useState<number | null>(null);
+  const [adminToast, showErr] = useAdminToast();
 
   useEffect(() => {
     setLoading(true);
@@ -1252,7 +1286,7 @@ function AdminCertificats() {
         c.id === id ? { ...c, status: action === 'approve' ? 'approved' : 'rejected' } : c
       ));
     } catch (e: any) {
-      alert(e?.message ?? 'Error');
+      showErr(e?.message ?? 'Error');
     } finally {
       setReviewing(null);
     }
@@ -1260,7 +1294,7 @@ function AdminCertificats() {
 
   const handleViewFile = async (id: number) => {
     try { await openCertificateFile(id); }
-    catch (e: any) { alert(e?.message ?? 'Error obrint el fitxer'); }
+    catch (e: any) { showErr(e?.message ?? 'Error obrint el fitxer'); }
   };
 
   const filtered = statusFilter === 'all' ? certs : certs.filter(c => c.status === statusFilter);
@@ -1316,6 +1350,7 @@ function AdminCertificats() {
         ? <div style={{ textAlign: 'center', padding: 40, color: T.textMuted, fontFamily: F_BODY }}>Carregant certificats…</div>
         : <AdminTable columns={columns} rows={filtered} emptyMessage="Cap certificat amb aquests filtres." />
       }
+      <AdminToast toast={adminToast} />
     </div>
   );
 }
@@ -1576,6 +1611,7 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
   const [saving, setSaving] = useState(false);
   const { confirm, confirmNode } = useConfirm();
   const [campusTab, setCampusTab] = useState<'formacions' | 'certificats' | 'seguiment'>('formacions');
+  const [adminToast, showErr] = useAdminToast();
 
   const rows: FormationRow[] = useMemo(() => {
     const qz: FormationRow[] = quizzes.map(z => ({
@@ -1679,7 +1715,7 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
       }
       setSelectedKey(null);
       refresh();
-    } catch (e: any) { alert(e?.message ?? 'Error'); }
+    } catch (e: any) { showErr(e?.message ?? 'Error'); }
   };
 
   const save = async () => {
@@ -1720,7 +1756,7 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
         });
       }
       refresh();
-    } catch (e: any) { alert(e?.message ?? 'Error'); }
+    } catch (e: any) { showErr(e?.message ?? 'Error'); }
     finally { setSaving(false); }
   };
 
@@ -1896,6 +1932,7 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
           <CreateExternalCourseModal open={createExtOpen} onClose={() => setCreateExtOpen(false)} onCreated={onCreatedExternal} />
         </>
       )}
+      <AdminToast toast={adminToast} />
     </>
   );
 }
@@ -1908,6 +1945,7 @@ function AdminAgenda({ events, refresh, intent, onConsumeIntent }: { events: Age
   const [draft, setDraft] = useState<Partial<AgendaEvent>>({});
   const [saving, setSaving] = useState(false);
   const { confirm, confirmNode } = useConfirm();
+  const [adminToast, showErr] = useAdminToast();
 
   const selected = events.find(e => e.id === selectedId) || null;
   useEffect(() => {
@@ -1935,8 +1973,8 @@ function AdminAgenda({ events, refresh, intent, onConsumeIntent }: { events: Age
     const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
     const tStart = (draft.time ?? selected.time ?? '').trim();
     const tEnd = (draft.time_end ?? '').trim();
-    if (!timeRe.test(tStart)) { alert("Hora d'inici no vàlida (HH:MM)."); return; }
-    if (tEnd && !timeRe.test(tEnd)) { alert('Hora final no vàlida (HH:MM).'); return; }
+    if (!timeRe.test(tStart)) { showErr("Hora d'inici no vàlida (HH:MM)."); return; }
+    if (tEnd && !timeRe.test(tEnd)) { showErr('Hora final no vàlida (HH:MM).'); return; }
     setSaving(true);
     try {
       await apiUpdateAgendaEvent(selected.id, {
@@ -1951,7 +1989,7 @@ function AdminAgenda({ events, refresh, intent, onConsumeIntent }: { events: Age
         target_departments: draft.target_departments ?? selected.target_departments ?? [],
       });
       refresh();
-    } catch (e: any) { alert(e?.message ?? 'Error desant'); }
+    } catch (e: any) { showErr(e?.message ?? 'Error desant'); }
     finally { setSaving(false); }
   };
 
@@ -1983,7 +2021,7 @@ function AdminAgenda({ events, refresh, intent, onConsumeIntent }: { events: Age
     const ok = await confirm(`Vols eliminar l'esdeveniment "${selected.title}"? Aquesta acció no es pot desfer.`);
     if (!ok) return;
     try { await apiDeleteAgendaEvent(selected.id); setSelectedId(null); refresh(); }
-    catch (e: any) { alert(e?.message ?? 'Error'); }
+    catch (e: any) { showErr(e?.message ?? 'Error'); }
   };
 
   const columns: Column<AgendaEvent>[] = [
@@ -2064,6 +2102,7 @@ function AdminAgenda({ events, refresh, intent, onConsumeIntent }: { events: Age
       />
       <CreateAgendaModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={onCreatedEvent} />
       {confirmNode}
+      <AdminToast toast={adminToast} />
     </>
   );
 }
@@ -2079,6 +2118,7 @@ function AdminAvisos({ notices, refresh, intent, onConsumeIntent }: { notices: N
   const [draft, setDraft] = useState<Partial<Notice>>({});
   const [saving, setSaving] = useState(false);
   const { confirm, confirmNode } = useConfirm();
+  const [adminToast, showErr] = useAdminToast();
 
   const selected = notices.find(n => n.id === selectedId) || null;
   useEffect(() => {
@@ -2104,7 +2144,7 @@ function AdminAvisos({ notices, refresh, intent, onConsumeIntent }: { notices: N
         active: draft.active ?? 1, kind: (draft.kind ?? 'warning') as string,
       });
       refresh();
-    } catch (e: any) { alert(e?.message ?? 'Error desant'); }
+    } catch (e: any) { showErr(e?.message ?? 'Error desant'); }
     finally { setSaving(false); }
   };
 
@@ -2129,7 +2169,7 @@ function AdminAvisos({ notices, refresh, intent, onConsumeIntent }: { notices: N
     const ok = await confirm(`Vols eliminar l'avís "${selected.title}"? Aquesta acció no es pot desfer.`);
     if (!ok) return;
     try { await apiDeleteNotice(selected.id); setSelectedId(null); refresh(); }
-    catch (e: any) { alert(e?.message ?? 'Error'); }
+    catch (e: any) { showErr(e?.message ?? 'Error'); }
   };
 
   const filtered = useMemo(() => notices.filter(n => {
@@ -2217,6 +2257,7 @@ function AdminAvisos({ notices, refresh, intent, onConsumeIntent }: { notices: N
       />
       <CreateNoticeModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={onCreatedNotice} />
       {confirmNode}
+      <AdminToast toast={adminToast} />
     </>
   );
 }

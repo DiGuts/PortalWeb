@@ -1040,6 +1040,7 @@ function ArticleBlocksEditor({ value, onChange }: ArticleBlocksEditorProps) {
   }, [blocks, onChange]);
 
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [uploadErr, setUploadErr] = useState<string | null>(null);
 
   const addBlock = (type: BlockType) => {
     const base: ArticleBlock = { id: mkBlockId(), type, span: 3 };
@@ -1076,7 +1077,7 @@ function ArticleBlocksEditor({ value, onChange }: ArticleBlocksEditorProps) {
     try {
       const { url } = await apiUploadMedia(file, frac => setUploadProgress(p => ({ ...p, [id]: frac })));
       updateBlock(id, { url });
-    } catch (e: any) { alert(e?.message ?? 'Error pujant el vídeo'); }
+    } catch (e: any) { setUploadErr(e?.message ?? 'Error pujant el vídeo'); setTimeout(() => setUploadErr(null), 4000); }
     finally { setUploadProgress(p => { const n = { ...p }; delete n[id]; return n; }); }
   };
 
@@ -1091,6 +1092,11 @@ function ArticleBlocksEditor({ value, onChange }: ArticleBlocksEditorProps) {
 
   return (
     <div>
+      {uploadErr && (
+        <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, padding: '10px 20px', borderRadius: 10, background: '#dc2626', color: '#fff', fontSize: 13, fontWeight: 500, boxShadow: '0 4px 16px rgba(0,0,0,0.18)', pointerEvents: 'none' }}>
+          {uploadErr}
+        </div>
+      )}
       {/* Palette */}
       <div className="flex flex-wrap gap-2 mb-3 p-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg">
         {tools.map(({ type, label, Icon }) => (
@@ -5361,6 +5367,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
   const [showAvatarGallery, setShowAvatarGallery] = useState(false);
   const [gallerySelected, setGallerySelected] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarErr, setAvatarErr] = useState<string | null>(null);
   const avatarFileRef = useRef<HTMLInputElement | null>(null);
   const handleAvatarPick = async (file: File) => {
     if (!file) return;
@@ -5371,7 +5378,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
       const rel = m ? m[1] : url;
       setPendingAvatar(rel);
     } catch (e: any) {
-      alert(e?.message ?? 'Error pujant la imatge');
+      setAvatarErr(e?.message ?? 'Error pujant la imatge'); setTimeout(() => setAvatarErr(null), 4000);
     } finally {
       setAvatarUploading(false);
     }
@@ -5389,7 +5396,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
       setPendingAvatar(undefined);
       return true;
     } catch (e: any) {
-      alert(e?.message ?? 'Error desant la foto');
+      setAvatarErr(e?.message ?? 'Error desant la foto'); setTimeout(() => setAvatarErr(null), 4000);
       return false;
     } finally {
       setAvatarSaving(false);
@@ -6541,6 +6548,11 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
           </div>
         );
       })(), document.body)}
+      {avatarErr && (
+        <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, padding: '10px 20px', borderRadius: 10, background: '#dc2626', color: '#fff', fontSize: 13, fontWeight: 500, boxShadow: '0 4px 16px rgba(0,0,0,0.18)', pointerEvents: 'none' }}>
+          {avatarErr}
+        </div>
+      )}
     </div>
   );
 }

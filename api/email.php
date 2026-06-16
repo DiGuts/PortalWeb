@@ -9,8 +9,8 @@ require_once __DIR__ . '/config.php';
 function send_email(string $to, string $subject, string $html, array $attachments = []): void {
     if (!SMTP_HOST) return;
 
-    $outer = md5(uniqid('outer', true));
-    $inner = md5(uniqid('inner', true));
+    $outer = bin2hex(random_bytes(16));
+    $inner = bin2hex(random_bytes(16));
 
     if (empty($attachments)) {
         // Simple multipart/alternative (original behavior)

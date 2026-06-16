@@ -111,7 +111,7 @@ elseif ($method === 'PATCH' && $seg1 === 'me' && $seg2 === 'role') {
 // PATCH /api/users/me/dept
 elseif ($method === 'PATCH' && $seg1 === 'me' && $seg2 === 'dept') {
     $u    = auth_user();
-    if ($u['role'] !== 'Administrador/a') {
+    if (!user_has_any_role($u, ['Administrador', 'Administrador/a'])) {
         respond(['detail' => 'No autoritzat'], 403);
     }
     $uid  = (int)$u['id'];
