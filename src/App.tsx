@@ -3,7 +3,7 @@ import { LoginScreen } from './components/mobile/auth/LoginScreen';
 import { MediaUploader } from './components/MediaUploader';
 // AdminBackoffice → lazy (heavy admin bundle, minority of users)
 import { CreateAgendaModal, EditAgendaModal } from './components/admin/CreateAgendaModal';
-import { ConfirmModal as SharedConfirmModal } from './components/ConfirmDialog';
+import { ConfirmModal as SharedConfirmModal, useConfirm } from './components/ConfirmDialog';
 import { VerifyScreen } from './components/mobile/auth/VerifyScreen';
 import { ForgotScreen } from './components/mobile/auth/ForgotScreen';
 import { createPortal } from 'react-dom';
@@ -1402,6 +1402,28 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
     'Seguretat': t('news.cat.safety'),
   };
 
+  const isAdmin = (() => {
+    const r = currentUser?.role ?? '';
+    const rs = currentUser?.roles ?? [];
+    return ['Administrador', 'Administrador/a', 'Recursos humans', 'Comunicacions', 'Comunicació'].some(x => x === r || rs.includes(x));
+  })();
+  const { confirm, confirmNode } = useConfirm();
+  const handleDeleteNews = async (id: number) => {
+    const ok = await confirm({ title: 'Eliminar notícia?', message: 'Aquesta acció no es pot desfer.', confirmLabel: 'Eliminar', cancelLabel: 'Cancel·lar', destructive: true });
+    if (!ok) return;
+    try {
+      await apiDeleteNews(id);
+      setNews(prev => prev.filter(n => n.id !== id));
+      tabPrefetch.news = tabPrefetch.news?.filter(n => n.id !== id);
+    } catch (e) { console.error(e); }
+  };
+  const handleEditNews = (n: NewsArticle) => {
+    try {
+      window.sessionStorage.setItem('tavil_edit_news_id', String(n.id));
+    } catch {}
+    onNavigate?.('Backoffice');
+  };
+
   // ── Mobile branch ────────────────────────────────────────────────────────
   if (isMobileNoticies) {
     const cats = ['Totes', ...Array.from(new Set(news.map(n => n.category).filter(Boolean)))];
@@ -1532,6 +1554,12 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
                 </div>
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, lineHeight: 1.15, margin: 0, letterSpacing: '0.01em', color: 'var(--tavil-text)', textWrap: 'balance' } as React.CSSProperties}>{mFeatured.title}</h3>
                 <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '10px 0 0', lineHeight: 1.45 }}>{mFeatured.summary}</p>
+                {isAdmin && (
+                  <div style={{ display: 'flex', gap: 16, paddingTop: 10, borderTop: '1px solid var(--tavil-border)', marginTop: 12 }}>
+                    <button onClick={e => { e.stopPropagation(); handleEditNews(mFeatured); }} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--tavil-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}><Pencil size={12} /> Editar</button>
+                    <button onClick={e => { e.stopPropagation(); handleDeleteNews(mFeatured.id); }} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--tavil-accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}><Trash2 size={12} /> Eliminar</button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1540,21 +1568,29 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
         <div key={activeFilter} style={{ padding: '4px 16px' }}>
           {mRest.map((n, i) => (
             <div key={n.id} onClick={() => setSelectedNews(n, 'Notícies')} className="anim-item" style={{
-              '--i': i + 1, display: 'flex', gap: 14, padding: '14px 4px',
+              '--i': i + 1, padding: '14px 4px',
               borderBottom: '1px solid var(--tavil-border)',
               cursor: 'pointer',
             } as React.CSSProperties}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 5 }}>{n.category}</div>
-                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, lineHeight: 1.2, margin: 0, letterSpacing: '0.01em', color: 'var(--tavil-text)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>{n.title}</h4>
-                <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginTop: 8 }}><span>{n.date}</span></div>
+              <div style={{ display: 'flex', gap: 14 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 10.5, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 5 }}>{n.category}</div>
+                  <h4 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, lineHeight: 1.2, margin: 0, letterSpacing: '0.01em', color: 'var(--tavil-text)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>{n.title}</h4>
+                  <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginTop: 8 }}><span>{n.date}</span></div>
+                </div>
+                <div style={{ width: 86, height: 86, flexShrink: 0, borderRadius: 10, overflow: 'hidden', background: 'var(--tavil-faint)' }}>
+                  {n.image
+                    ? <img src={resolveImg(n.image)} alt={n.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Newspaper size={22} style={{ color: 'rgba(191,33,30,0.3)' }} /></div>
+                  }
+                </div>
               </div>
-              <div style={{ width: 86, height: 86, flexShrink: 0, borderRadius: 10, overflow: 'hidden', background: 'var(--tavil-faint)' }}>
-                {n.image
-                  ? <img src={resolveImg(n.image)} alt={n.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Newspaper size={22} style={{ color: 'rgba(191,33,30,0.3)' }} /></div>
-                }
-              </div>
+              {isAdmin && (
+                <div style={{ display: 'flex', gap: 16, paddingTop: 10, borderTop: '1px solid var(--tavil-border)', marginTop: 10 }}>
+                  <button onClick={e => { e.stopPropagation(); handleEditNews(n); }} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--tavil-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}><Pencil size={12} /> Editar</button>
+                  <button onClick={e => { e.stopPropagation(); handleDeleteNews(n.id); }} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--tavil-accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}><Trash2 size={12} /> Eliminar</button>
+                </div>
+              )}
             </div>
           ))}
           {newsLoading && mRest.length === 0 && mFeatured && Array.from({ length: 3 }).map((_, i) => (
@@ -1564,6 +1600,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
             </div>
           ))}
         </div>
+        {confirmNode}
       </div>
     );
   }
@@ -1704,7 +1741,7 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
       {newsLoading && news.length === 0 && <SkeletonNoticies />}
       <div key={activeFilter} className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6">
         {grid.map((item, i) => (
-          <div key={i} className="group hover-lift bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden anim-item" style={{ '--i': i } as React.CSSProperties}>
+          <div key={i} className="group hover-lift bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden anim-item flex flex-col" style={{ '--i': i } as React.CSSProperties}>
             <div className="hidden md:block aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-zinc-800 cursor-pointer" onClick={() => setSelectedNews(item, 'Notícies')}>
               {item.image ? (
                 <img src={resolveImg(item.image)} alt={item.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[600ms] ease-out" />
@@ -1714,20 +1751,27 @@ function NoticiesTab({ currentUser, onOpenDrawer, onNavigate }: { currentUser: U
                 </div>
               )}
             </div>
-            <div className="p-4 md:p-5">
+            <div className="p-4 md:p-5 flex-1 flex flex-col">
               <div className="flex items-center gap-1.5 mb-2">
                 <p className="text-[9px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">{item.category}</p>
                 {item.featured === 1 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-400/90 text-amber-900 uppercase flex items-center gap-0.5"><Star size={8} /> {t('news.badge.featured')}</span>}
               </div>
-              <h3 className="text-sm md:text-base font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 transition-colors cursor-pointer" onClick={() => setSelectedNews(item, 'Notícies')}>{item.title}</h3>
-              <p className="text-[13px] md:text-xs text-gray-500 dark:text-zinc-400 mb-4 line-clamp-2 leading-relaxed">{item.summary}</p>
-              <div className="flex items-center justify-between text-[10px] text-gray-400">
-                <span>{item.date}</span>
+              <div className="flex-1">
+                <h3 className="line-clamp-2 cursor-pointer" style={{ fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 6, fontSize: 15 }} onClick={() => setSelectedNews(item, 'Notícies')}>{item.title}</h3>
+                <p className="mb-0 line-clamp-3" style={{ fontSize: 14, fontFamily: "'Barlow Semi Condensed', var(--font-ui)", color: 'var(--tavil-muted)', lineHeight: 1.6 }}>{item.summary}</p>
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--tavil-muted)', marginTop: 16 }}><Calendar size={13} /><span>{item.date}</span></div>
+              {isAdmin && (
+                <div style={{ display: 'flex', gap: 16, paddingTop: 10, borderTop: '1px solid var(--tavil-border)', marginTop: 10 }}>
+                  <button onClick={e => { e.stopPropagation(); handleEditNews(item); }} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--tavil-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}><Pencil size={12} /> Editar</button>
+                  <button onClick={e => { e.stopPropagation(); handleDeleteNews(item.id); }} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--tavil-accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}><Trash2 size={12} /> Eliminar</button>
+                </div>
+              )}
             </div>
           </div>
         ))}
       </div>
+      {confirmNode}
     </div>
   );
 }
@@ -7746,6 +7790,24 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
     else if (subTab === 'agenda') loadBoAgenda();
     else loadNews();
   }, [subTab]);
+
+  // Handoff from Notícies tab "Editar": switch to news subtab and open editor for the requested article.
+  useEffect(() => {
+    let pendingId: string | null = null;
+    try { pendingId = window.sessionStorage.getItem('tavil_edit_news_id'); } catch {}
+    if (pendingId && subTab !== 'notícies') setSubTab('notícies');
+  }, []); // run once on mount
+  useEffect(() => {
+    if (subTab !== 'notícies') return;
+    let pendingId: string | null = null;
+    try { pendingId = window.sessionStorage.getItem('tavil_edit_news_id'); } catch {}
+    if (!pendingId) return;
+    const article = newsItems.find(n => n.id === Number(pendingId));
+    if (article) {
+      openEditNews(article);
+      try { window.sessionStorage.removeItem('tavil_edit_news_id'); } catch {}
+    }
+  }, [subTab, newsItems]);
 
   // Refresh quiz list when editor tab posts back a save event.
   useEffect(() => {
