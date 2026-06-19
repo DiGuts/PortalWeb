@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-    Activity as ActivityIcon, Building2, GraduationCap, FileText, ChevronRight,
+    Activity as ActivityIcon, Building2, GraduationCap, FileText, Calendar, ChevronRight,
 } from 'lucide-react';
 
 export function MesSettingsGroup({ label, children, noCard }: { label: string; children: React.ReactNode; noCard?: boolean }) {
@@ -45,7 +45,8 @@ export function MesTab({
             { id: 'Campus', icon: GraduationCap, label: 'Campus TAVIL' },
         ]},
         { label: 'Personal', items: [
-            { id: 'Solicituds', icon: FileText, label: 'Sol·licituds' },
+            { id: 'Solicituds', icon: FileText, label: 'Sol·licituds dissabtes' },
+            { id: 'Solicituds:Vacances', icon: Calendar, label: 'Sol·licituds de vacances' },
         ]},
     ];
 

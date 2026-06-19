@@ -13251,7 +13251,7 @@ function App() {
       case 'Solicituds': return <SolicitudsTab currentUser={currentUser} onNotifChange={refreshNotifications} initialSubTab={notifSubTab} onSubTabConsumed={() => setNotifSubTab(null)} onBack={goBack} />;
       case 'Perfil': return <PerfilTab currentUser={currentUser} onUserUpdate={u => { setCurrentUser(u); }} onNavigate={setActiveTab} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} onLogout={handleLogout} />;
       case 'Empresa': return <EmpresaLandingTab onNavigate={setActiveTab} />;
-      case 'Més': return <MesTab onNavigate={setActiveTab} currentUser={currentUser} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} onLogout={handleLogout} />;
+      case 'Més': return <MesTab onNavigate={(tab) => { const [base, sub] = tab.split(':'); if (sub) setNotifSubTab(sub); setActiveTab(base); }} currentUser={currentUser} isDarkMode={isDarkMode} toggleDarkMode={toggleTheme} onLogout={handleLogout} />;
       case 'Backoffice':        return <BackofficeTab currentUser={currentUser} onImpersonate={handleImpersonate} />;
       case 'admin-dashboard':   return <AdminBackoffice view="dashboard"  currentUser={currentUser} onNavigate={setActiveTab} intent={adminIntent} onConsumeIntent={consumeAdminIntent} />;
       case 'admin-users':       return <AdminBackoffice view="users"      currentUser={currentUser} onNavigate={setActiveTab} onImpersonate={handleImpersonate} intent={adminIntent} onConsumeIntent={consumeAdminIntent} />;
