@@ -80,6 +80,19 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
   const toast = useToast();
   const MONTH_NAMES = t('common.months', { returnObjects: true }) as string[];
 
+  const typeLabel = (type: string): string => {
+    const map: Record<string, string> = {
+      'Tots': 'agenda.types.all',
+      'Festiu': 'agenda.types.festiu',
+      'Fira': 'agenda.types.fira',
+      'Visita comercial': 'agenda.types.visitaComercial',
+      'Sessió interna': 'agenda.types.sessioInterna',
+      'Activitat empresa': 'agenda.types.activitatEmpresa',
+      'Formació': 'agenda.types.formacio',
+    };
+    return map[type] ? t(map[type]) : type;
+  };
+
   const eventRailColor = (ev: AgendaEvent): string => {
     switch (ev.type) {
       case 'Festiu':              return '#e05c5c';
@@ -432,8 +445,8 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
               options={['Festiu', 'Fira', 'Sessió interna', 'Activitat empresa']}
               value={typeFilterMulti}
               onChange={setTypeFilterMulti}
-              getLabel={(x) => x}
-              placeholder="Tots els tipus"
+              getLabel={(x) => typeLabel(x)}
+              placeholder={t('agenda.allTypes')}
               align="right"
             />
           </div>
@@ -780,7 +793,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
         {/* Type filters */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, flex: 1 }}>
           {filters.map(f => (
-            <FilterChip key={f} label={f} active={activeFilter === f} onClick={() => setActiveFilter(f)} />
+            <FilterChip key={f} label={typeLabel(f)} active={activeFilter === f} onClick={() => setActiveFilter(f)} />
           ))}
         </div>
         {/* Dept filter */}
@@ -789,7 +802,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
           value={deptFilter}
           onChange={setDeptFilter}
           getLabel={(d) => deptLabel(d, i18n.language)}
-          placeholder="Tots els departaments"
+          placeholder={t('agenda.allDepartments')}
         />
         {/* New event */}
         {isAdmin && (
@@ -911,7 +924,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
             }).map(([label, color]) => (
               <div key={label} className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-sm flex-shrink-0 inline-block" style={{ background: color }} />
-                <span className="text-[10.5px] font-medium" style={{ color: 'var(--tavil-muted)' }}>{label}</span>
+                <span className="text-[10.5px] font-medium" style={{ color: 'var(--tavil-muted)' }}>{typeLabel(label)}</span>
               </div>
             ))}
           </div>
@@ -925,7 +938,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
               {isToday(selDay) ? t('agenda.today') : `${DAYS_OF_WEEK[new Date(currentYear, currentMonth - 1, selDay).getDay()]} ${selDay} ${monthGenitiu(currentMonth)}`}
             </div>
             <div className="font-bold" style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: '-0.01em', lineHeight: 1.1, color: 'var(--tavil-text)' }}>
-              {selEvents.length === 0 ? 'Cap esdeveniment' : `${selEvents.length} ${selEvents.length === 1 ? 'esdeveniment' : 'esdeveniments'}`}
+              {selEvents.length === 0 ? t('agenda.noEventsShort') : (selEvents.length === 1 ? t('agenda.event', { count: selEvents.length }) : t('agenda.events', { count: selEvents.length }))}
             </div>
             <div className="text-xs mt-1" style={{ color: 'var(--tavil-muted)' }}>
               {selDay} {monthGenitiu(currentMonth)} {currentYear} · Barcelona
@@ -935,7 +948,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
           {selEvents.length === 0 ? (
             <div className="rounded-xl p-8 flex flex-col items-center justify-center gap-2 text-center" style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)' }}>
               <Calendar size={26} style={{ color: 'var(--tavil-faint)' }} />
-              <span className="text-sm" style={{ color: 'var(--tavil-muted)' }}>Aquest dia està lliure.</span>
+              <span className="text-sm" style={{ color: 'var(--tavil-muted)' }}>{t('agenda.freeDayNote')}</span>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
@@ -971,10 +984,10 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
                     {isAdmin && ev.id >= 0 && (
                       <div className="flex gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-zinc-800">
                         <button onClick={() => openEvEdit(ev)} className="flex items-center gap-1 text-xs text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors">
-                          <Pencil size={12} /> Edita
+                          <Pencil size={12} /> {t('common.edit')}
                         </button>
                         <button onClick={() => handleDeleteEvent(ev.id)} className="flex items-center gap-1 text-xs text-gray-400 dark:text-zinc-500 hover:text-red-500 transition-colors">
-                          <Trash2 size={12} /> Elimina
+                          <Trash2 size={12} /> {t('common.delete')}
                         </button>
                       </div>
                     )}

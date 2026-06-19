@@ -64,7 +64,7 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
                         options={DEPT_ORDER}
                         value={deptFilters}
                         onChange={setDeptFilters}
-                        placeholder="Tots els departaments"
+                        placeholder={t('directory.allDepartments')}
                     />
                 </div>
                 {/* People list */}
@@ -128,13 +128,13 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
                 <div className="flex items-center gap-3 flex-wrap">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                        <input type="text" value={dirSearch} onChange={e => setDirSearch(e.target.value)} placeholder="Cercar..." className="bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white w-40" />
+                        <input type="text" value={dirSearch} onChange={e => setDirSearch(e.target.value)} placeholder={t('common.search')} className="bg-gray-100 dark:bg-zinc-800 rounded-lg py-2.5 pl-9 pr-4 text-sm outline-none dark:text-white w-40" />
                     </div>
                     <DropdownMultiselect
                         options={DEPT_ORDER}
                         value={deptFilters}
                         onChange={setDeptFilters}
-                        placeholder="Tots els departaments"
+                        placeholder={t('directory.allDepartments')}
                     />
                 </div>
                 {viewToggle}

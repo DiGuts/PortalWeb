@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, CSSProperties } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Plus, Check, Mail, MapPin, Clock, Users, Calendar, Newspaper,
   GraduationCap, Activity as ActivityIcon, ArrowRight, Settings,
@@ -95,36 +96,37 @@ function AdminDashboard({ currentUser, onNavigate, counts }: {
   onNavigate: (tab: string, intent?: 'new') => void;
   counts: { users: number; news: number; activities: number; formations: number; agenda: number; avisos: number };
 }) {
+  const { t } = useTranslation();
   const firstName = currentUser?.name?.split(' ')[0] ?? 'admin';
   const allowed = modulesForRole(currentUser?.role, currentUser?.roles);
 
   // Hero defaults to "Nova notícia"; falls back to first allowed module if Notícies not permitted.
   const heroCandidates = [
-    { id: 'new-news',      label: 'Nova notícia',     sub: 'Publica o programa un article. Editor extens, audiència segmentada, multilingüe.', icon: Newspaper,     target: 'admin-news' },
-    { id: 'new-formation', label: 'Nova formació',    sub: 'Curs o itinerari del Campus TAVIL: extens, presencial o intern.',                  icon: GraduationCap, target: 'admin-campus' },
-    { id: 'new-activity',  label: 'Nova activitat',   sub: "Esdeveniment intern amb inscripció: cultura, esport, formació, jornades.",         icon: ActivityIcon,  target: 'admin-activities' },
-    { id: 'new-agenda',    label: 'Nou esdeveniment', sub: 'Reunió, jornada o esdeveniment corporatiu.',                                       icon: Calendar,      target: 'admin-agenda' },
+    { id: 'new-news',      label: t('adminDash.actions.news.label'),     sub: t('adminDash.actions.news.heroSub'),     icon: Newspaper,     target: 'admin-news' },
+    { id: 'new-formation', label: t('adminDash.actions.formation.label'),    sub: t('adminDash.actions.formation.heroSub'),                  icon: GraduationCap, target: 'admin-campus' },
+    { id: 'new-activity',  label: t('adminDash.actions.activity.label'),   sub: t('adminDash.actions.activity.heroSub'),         icon: ActivityIcon,  target: 'admin-activities' },
+    { id: 'new-agenda',    label: t('adminDash.actions.agenda.label'), sub: t('adminDash.actions.agenda.heroSub'),                                       icon: Calendar,      target: 'admin-agenda' },
   ];
   const heroAction = heroCandidates.find(h => allowed.has(h.target)) ?? heroCandidates[0];
 
   const allQuickActions = [
-    { id: 'new-user',     label: 'Nou usuari',      sub: "Crea un compte i envia-li l'accés", icon: Users,          target: 'admin-users' },
-    { id: 'new-news',     label: 'Nova notícia',    sub: 'Publica o programa un article',     icon: Newspaper,      target: 'admin-news' },
-    { id: 'new-notice',   label: 'Nou avís',        sub: 'Banner destacat al portal',         icon: Bell,           target: 'admin-avisos' },
-    { id: 'new-activity', label: 'Nova activitat',  sub: 'Esdeveniment intern amb inscripció', icon: ActivityIcon,   target: 'admin-activities' },
-    { id: 'new-formation',label: 'Nova formació',   sub: 'Curs o itinerari del Campus',       icon: GraduationCap,  target: 'admin-campus' },
-    { id: 'new-agenda',   label: 'Nou esdeveniment',sub: 'Reunió o jornada corporativa',      icon: Calendar,       target: 'admin-agenda' },
+    { id: 'new-user',     label: t('adminDash.actions.user.label'),      sub: t('adminDash.actions.user.sub'), icon: Users,          target: 'admin-users' },
+    { id: 'new-news',     label: t('adminDash.actions.news.label'),    sub: t('adminDash.actions.news.sub'),     icon: Newspaper,      target: 'admin-news' },
+    { id: 'new-notice',   label: t('adminDash.actions.notice.label'),        sub: t('adminDash.actions.notice.sub'),         icon: Bell,           target: 'admin-avisos' },
+    { id: 'new-activity', label: t('adminDash.actions.activity.label'),  sub: t('adminDash.actions.activity.sub'), icon: ActivityIcon,   target: 'admin-activities' },
+    { id: 'new-formation',label: t('adminDash.actions.formation.label'),   sub: t('adminDash.actions.formation.sub'),       icon: GraduationCap,  target: 'admin-campus' },
+    { id: 'new-agenda',   label: t('adminDash.actions.agenda.label'),sub: t('adminDash.actions.agenda.sub'),      icon: Calendar,       target: 'admin-agenda' },
   ];
   const quickActions = allQuickActions.filter(a => a.target !== heroAction.target && allowed.has(a.target)).slice(0, 4);
   const HeroIcon = heroAction.icon;
 
   const allModules = [
-    { id: 'admin-users',      label: 'Usuaris',    icon: Users,         n: counts.users,      sub: 'comptes' },
-    { id: 'admin-news',       label: 'Notícies',   icon: Newspaper,     n: counts.news,       sub: 'articles' },
-    { id: 'admin-avisos',     label: 'Avisos',     icon: Bell,          n: counts.avisos,     sub: 'banners' },
-    { id: 'admin-activities', label: 'Connect', icon: ActivityIcon,  n: counts.activities, sub: 'activitats' },
-    { id: 'admin-campus',     label: 'Formacions', icon: GraduationCap, n: counts.formations, sub: 'cursos' },
-    { id: 'admin-agenda',     label: 'Agenda',     icon: Calendar,      n: counts.agenda,     sub: 'esdeveniments' },
+    { id: 'admin-users',      label: t('adminDash.modules.users.label'),    icon: Users,         n: counts.users,      sub: t('adminDash.modules.users.sub') },
+    { id: 'admin-news',       label: t('adminDash.modules.news.label'),   icon: Newspaper,     n: counts.news,       sub: t('adminDash.modules.news.sub') },
+    { id: 'admin-avisos',     label: t('adminDash.modules.avisos.label'),     icon: Bell,          n: counts.avisos,     sub: t('adminDash.modules.avisos.sub') },
+    { id: 'admin-activities', label: t('adminDash.modules.connect.label'), icon: ActivityIcon,  n: counts.activities, sub: t('adminDash.modules.connect.sub') },
+    { id: 'admin-campus',     label: t('adminDash.modules.formations.label'), icon: GraduationCap, n: counts.formations, sub: t('adminDash.modules.formations.sub') },
+    { id: 'admin-agenda',     label: t('adminDash.modules.agenda.label'),     icon: Calendar,      n: counts.agenda,     sub: t('adminDash.modules.agenda.sub') },
   ];
   const modules = allModules.filter(m => allowed.has(m.id));
 
@@ -137,9 +139,9 @@ function AdminDashboard({ currentUser, onNavigate, counts }: {
     return (
       <>
         <AdminHeader
-          kicker={`Bon dia, ${firstName}`}
-          title="Sol·licituds"
-          subtitle="Gestiona les sol·licituds pendents des de la secció Sol·licituds del portal."
+          kicker={t('adminDash.greeting', { name: firstName })}
+          title={t('adminDash.solicitudsTitle')}
+          subtitle={t('adminDash.solicitudsSubtitle')}
         />
         <div style={{
           border: `1px dashed ${T.border}`, borderRadius: 12,
@@ -147,9 +149,9 @@ function AdminDashboard({ currentUser, onNavigate, counts }: {
           fontFamily: F_BODY, color: T.textFaint,
         }}>
           <FileText size={28} style={{ marginBottom: 12, color: T.textMuted }} />
-          <div style={{ fontSize: 15, fontWeight: 600, color: T.text, marginBottom: 6 }}>Accés via la pestanya Sol·licituds</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: T.text, marginBottom: 6 }}>{t('adminDash.solicitudsAccess')}</div>
           <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 360, marginInline: 'auto', lineHeight: 1.5 }}>
-            El teu rol dona accés a la gestió de sol·licituds directament des del portal, a la secció Sol·licituds.
+            {t('adminDash.solicitudsAccessHint')}
           </div>
         </div>
       </>
@@ -159,12 +161,12 @@ function AdminDashboard({ currentUser, onNavigate, counts }: {
   return (
     <>
       <AdminHeader
-        kicker={`Bon dia, ${firstName}`}
-        title="Tauler d'administració"
-        subtitle="Accés ràpid a les tasques més freqüents. Selecciona un mòdul per a una vista detallada."
+        kicker={t('adminDash.greeting', { name: firstName })}
+        title={t('adminDash.title')}
+        subtitle={t('adminDash.subtitle')}
       />
 
-      <div style={labelStyle}>Accions ràpides</div>
+      <div style={labelStyle}>{t('adminDash.quickActions')}</div>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
@@ -194,7 +196,7 @@ function AdminDashboard({ currentUser, onNavigate, counts }: {
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             fontSize: 13, fontWeight: 600, letterSpacing: '0.04em',
-          }}>Crear article <ArrowRight size={16} /></div>
+          }}>{t('adminDash.createArticle')} <ArrowRight size={16} /></div>
         </button>
 
         {/* 4 small bento cards */}
@@ -228,7 +230,7 @@ function AdminDashboard({ currentUser, onNavigate, counts }: {
         })}
       </div>
 
-      <div style={labelStyle}>Mòduls</div>
+      <div style={labelStyle}>{t('adminDash.modulesLabel')}</div>
       <div style={{
         background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden',
       }}>
@@ -293,6 +295,7 @@ function AdminUsers({ users, setUsers, refresh, currentUser, onImpersonate, inte
   intent?: 'new' | null;
   onConsumeIntent?: () => void;
 }) {
+  const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [q, setQ] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'editor' | 'empleat'>('all');
@@ -518,7 +521,7 @@ function AdminUsers({ users, setUsers, refresh, currentUser, onImpersonate, inte
                     list="admin-dept-list"
                     value={draft.dept ?? ''}
                     onChange={(e) => update({ dept: e.target.value })}
-                    placeholder="Cerca departament…"
+                    placeholder={t('directory.searchDept')}
                     style={{
                       width: '100%', height: 44, padding: '0 14px',
                       background: T.card, color: T.text,

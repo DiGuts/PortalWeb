@@ -350,6 +350,14 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
   const completedHours = completed.reduce((s, c) => s + (parseInt(c.hours) || 0), 0);
 
   const statuses = ['Tots els estats', 'Pendent', 'En curs'];
+  const statusLabel = (s: string): string => {
+    const map: Record<string, string> = {
+      'Tots els estats': 'campus.statuses.all',
+      'Pendent': 'campus.statuses.pending',
+      'En curs': 'campus.inProgress',
+    };
+    return map[s] ? t(map[s]) : s;
+  };
 
   const externes: CatalogItem[] = courses
     .filter(c => c.is_external === 1)
@@ -766,7 +774,7 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
               placeholder={t('campus.allDepartments')}
             />
             <div className="flex flex-wrap gap-2">
-              {statuses.map(s => <FilterChip key={s} label={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />)}
+              {statuses.map(s => <FilterChip key={s} label={statusLabel(s)} active={statusFilter === s} onClick={() => setStatusFilter(s)} />)}
             </div>
           </div>
           {deadlineItems.length > 0 && (
@@ -854,9 +862,9 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
         const groups: { label: string; items: typeof catalog; emptyText: string }[] = [
           { label: t('campus.inProgress'), items: allInProgress, emptyText: t('campus.noProgressGroup') },
           { label: t('campus.completedStat') + 's', items: allCompleted, emptyText: t('campus.noCompletedGroup') },
-          { label: 'No aprovats', items: allFailed, emptyText: '' },
+          { label: t('campus.statuses.notApproved'), items: allFailed, emptyText: '' },
           { label: t('campus.pendingGroup'), items: allPending, emptyText: t('campus.noPendingGroup') },
-        ].filter(g => g.items.length > 0 || g.label === 'Pendents');
+        ].filter(g => g.items.length > 0 || g.label === t('campus.pendingGroup'));
 
         return (
           <>

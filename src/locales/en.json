@@ -13,7 +13,9 @@
     "veu": "Employee voice",
     "solicituds": "My requests",
     "perfil": "My profile",
-    "mes": "More"
+    "mes": "More",
+    "administracio": "Administration",
+    "tauler": "Dashboard"
   },
   "timeago": {
     "justNow": "Just now",
@@ -262,6 +264,7 @@
     "event": "{{count}} event",
     "events": "{{count}} events",
     "noEvents": "No events this day",
+    "noEventsShort": "No events",
     "freeDayNote": "This day is free.",
     "viewInConnect": "View in Connect",
     "viewInCampus": "View in Campus",
@@ -291,7 +294,12 @@
     "ext": "Ext.",
     "kicker": "Team",
     "searchPlaceholder": "Search by name, role, department…",
-    "noResults": "No results for this search."
+    "noResults": "No results for this search.",
+    "allDepartments": "All departments",
+    "allOption": "All",
+    "searchDept": "Search department...",
+    "clearFilters": "Clear filters",
+    "noResultsShort": "No results"
   },
   "corporate": {
     "subtitle": "Documents, procedures and corporate resources",
@@ -301,7 +309,14 @@
     "searchPlaceholderFull": "Search documents, policies, templates...",
     "openTavipedia": "Open Tavipedia",
     "featuredDocuments": "Featured documents",
-    "knowledgeBase": "Internal knowledge base, documentation and corporate resources"
+    "knowledgeBase": "Internal knowledge base, documentation and corporate resources",
+    "connectSharePoint": "Connect with SharePoint",
+    "disconnect": "Disconnect",
+    "liveSharePoint": "SharePoint live",
+    "openInSharePoint": "Open in SharePoint",
+    "docsCount": "{{count}} documents",
+    "result": "{{count}} result",
+    "results": "{{count}} results"
   },
   "campus": {
     "subtitle": "TAVIL internal training and courses",
@@ -330,7 +345,8 @@
       "all": "All statuses",
       "pending": "Pending",
       "lowProgress": "Low progress",
-      "completed": "Completed"
+      "completed": "Completed",
+      "notApproved": "Not approved"
     },
     "uploadCertificate": "Upload certificate",
     "reuploadCertificate": "Upload again",
@@ -417,7 +433,26 @@
     "denyReason": "Reason for denial...",
     "confirmDeny": "Confirm denial",
     "requestedOn": "Requested on {{date}} · By: {{author}}",
-    "motive": "Reason:"
+    "motive": "Reason:",
+    "byAuthor": "By: {{author}}",
+    "tabSaturdays": "Saturdays",
+    "tabVacances": "Holidays",
+    "pendingApproval": "PENDING APPROVAL",
+    "requested": "Requested",
+    "processed": "Processed requests",
+    "date": "Date",
+    "reasonOptional": "Reason (optional)",
+    "kicker": "HR",
+    "title": "Requests",
+    "statVacances": "Holidays",
+    "statAssumptes": "Personal days",
+    "statTeletreball": "Remote work",
+    "availableLabel": "available",
+    "status": {
+      "approved": "Approved",
+      "denied": "Denied",
+      "pending": "Pending"
+    }
   },
   "confirm": {
     "deleteTitle": "Confirm deletion",
@@ -434,6 +469,34 @@
     "searchTraining": "Search training…",
     "searchFormationHint": "Select a training to view user progress"
   },
+  "adminUsers": {
+    "editTitle": "Edit user",
+    "newTitle": "New user",
+    "name": "Name",
+    "namePlaceholder": "Full name",
+    "email": "Email",
+    "tempPassword": "Temporary password",
+    "tempPasswordPlaceholder": "The user will change it on first login",
+    "newPassword": "New password",
+    "newPasswordNote": "(leave blank to keep unchanged)",
+    "newPasswordPlaceholder": "Minimum 8 characters",
+    "department": "Department",
+    "portalRoles": "Portal roles",
+    "epiGroup": "PPE group",
+    "unassigned": "Unassigned",
+    "group": "Group {{n}}",
+    "group3Intl": "Group 3 International",
+    "prlRequired": "OHS signature required",
+    "prlRequiredHint": "Enabled = the worker must sign OHS documents",
+    "phone": "Phone",
+    "workerCode": "Employee code",
+    "location": "Location",
+    "profilePhoto": "Profile photo",
+    "photoPlaceholder": "Drag the profile photo or click",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "save": "Save"
+  },
   "perfil": {
     "account": "Account",
     "personalData": "Personal details",
@@ -441,6 +504,7 @@
     "phone": "Phone",
     "workerCode": "Employee code",
     "office": "Office",
+    "location": "Location",
     "joinDate": "Start date",
     "quickAccess": "Quick access",
     "preferences": "Preferences",
@@ -458,7 +522,18 @@
     "settings": "Settings",
     "backToProfile": "Profile",
     "noNotifications": "No notifications",
-    "markAllRead": "Mark all as read"
+    "markAllRead": "Mark all as read",
+    "profilePhoto": "Profile photo",
+    "photoHint": "JPG or PNG, minimum 256×256 px. Shown across the portal.",
+    "uploading": "Uploading…",
+    "changePhoto": "Change photo",
+    "role": "Role",
+    "department": "Department",
+    "dataManagedByAdmin": "All data is managed by the portal administrator.",
+    "visibleInDirectory": "Visible in directory",
+    "visibleInDirectoryHint": "The rest of the team will be able to find you in Who is who.",
+    "changesSavedToAccount": "Changes are saved to your TAVIL account.",
+    "saveChanges": "Save changes"
   },
   "shortcuts": {
     "company": "Company",
@@ -468,5 +543,33 @@
     "campus": "TAVIL Campus",
     "directory": "Directory",
     "connect": "Connect"
+  },
+  "adminDash": {
+    "greeting": "Good morning, {{name}}",
+    "title": "Administration dashboard",
+    "subtitle": "Quick access to the most frequent tasks. Select a module for a detailed view.",
+    "quickActions": "Quick actions",
+    "modulesLabel": "Modules",
+    "createArticle": "Create article",
+    "solicitudsTitle": "Requests",
+    "solicitudsSubtitle": "Manage pending requests from the Requests section of the portal.",
+    "solicitudsAccess": "Access via the Requests tab",
+    "solicitudsAccessHint": "Your role grants access to request management directly from the portal, in the Requests section.",
+    "actions": {
+      "news": { "label": "New article", "sub": "Publish or schedule an article", "heroSub": "Publish or schedule an article. Rich editor, segmented audience, multilingual." },
+      "formation": { "label": "New training", "sub": "Course or itinerary of the Campus", "heroSub": "Course or itinerary of TAVIL Campus: rich, in-person or internal." },
+      "activity": { "label": "New activity", "sub": "Internal event with enrollment", "heroSub": "Internal event with enrollment: culture, sport, training, sessions." },
+      "agenda": { "label": "New event", "sub": "Meeting or corporate session", "heroSub": "Meeting, session or corporate event." },
+      "user": { "label": "New user", "sub": "Create an account and send the access" },
+      "notice": { "label": "New notice", "sub": "Featured banner on the portal" }
+    },
+    "modules": {
+      "users": { "label": "Users", "sub": "accounts" },
+      "news": { "label": "News", "sub": "articles" },
+      "avisos": { "label": "Notices", "sub": "banners" },
+      "connect": { "label": "Connect", "sub": "activities" },
+      "formations": { "label": "Trainings", "sub": "courses" },
+      "agenda": { "label": "Agenda", "sub": "events" }
+    }
   }
 }

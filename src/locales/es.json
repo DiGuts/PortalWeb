@@ -13,7 +13,9 @@
     "veu": "Voz del empleado",
     "solicituds": "Mis solicitudes",
     "perfil": "Mi perfil",
-    "mes": "Más"
+    "mes": "Más",
+    "administracio": "Administración",
+    "tauler": "Panel"
   },
   "timeago": {
     "justNow": "Hace un momento",
@@ -262,6 +264,7 @@
     "event": "{{count}} evento",
     "events": "{{count}} eventos",
     "noEvents": "Ningún evento este día",
+    "noEventsShort": "Ningún evento",
     "freeDayNote": "Este día está libre.",
     "viewInConnect": "Ver en Connect",
     "viewInCampus": "Ver en Campus",
@@ -291,7 +294,12 @@
     "ext": "Ext.",
     "kicker": "Equipo",
     "searchPlaceholder": "Busca por nombre, rol, departamento…",
-    "noResults": "Sin resultados para esta búsqueda."
+    "noResults": "Sin resultados para esta búsqueda.",
+    "allDepartments": "Todos los departamentos",
+    "allOption": "Todos",
+    "searchDept": "Busca departamento...",
+    "clearFilters": "Borrar filtros",
+    "noResultsShort": "Sin resultados"
   },
   "corporate": {
     "subtitle": "Documentos, procedimientos y recursos corporativos",
@@ -301,7 +309,14 @@
     "searchPlaceholderFull": "Buscar documentos, políticas, plantillas...",
     "openTavipedia": "Abrir Tavipedia",
     "featuredDocuments": "Documentos destacados",
-    "knowledgeBase": "Base de conocimiento interno, documentación y recursos corporativos"
+    "knowledgeBase": "Base de conocimiento interno, documentación y recursos corporativos",
+    "connectSharePoint": "Conectar con SharePoint",
+    "disconnect": "Desconectar",
+    "liveSharePoint": "SharePoint en directo",
+    "openInSharePoint": "Abrir en SharePoint",
+    "docsCount": "{{count}} documentos",
+    "result": "{{count}} resultado",
+    "results": "{{count}} resultados"
   },
   "campus": {
     "subtitle": "Formación y cursos internos de TAVIL",
@@ -330,7 +345,8 @@
       "all": "Todos los estados",
       "pending": "Pendiente",
       "lowProgress": "Poco avanzados",
-      "completed": "Completado"
+      "completed": "Completado",
+      "notApproved": "No aprobados"
     },
     "uploadCertificate": "Subir certificado",
     "reuploadCertificate": "Volver a subir",
@@ -417,7 +433,26 @@
     "denyReason": "Motivo de la denegación...",
     "confirmDeny": "Confirmar denegación",
     "requestedOn": "Solicitado el {{date}} · Por: {{author}}",
-    "motive": "Motivo:"
+    "motive": "Motivo:",
+    "byAuthor": "Por: {{author}}",
+    "tabSaturdays": "Sábados",
+    "tabVacances": "Vacaciones",
+    "pendingApproval": "PENDIENTE APROBACIÓN",
+    "requested": "Solicitadas",
+    "processed": "Solicitudes procesadas",
+    "date": "Fecha",
+    "reasonOptional": "Motivo (opcional)",
+    "kicker": "RRHH",
+    "title": "Solicitudes",
+    "statVacances": "Vacaciones",
+    "statAssumptes": "Asuntos",
+    "statTeletreball": "Teletrabajo",
+    "availableLabel": "disponibles",
+    "status": {
+      "approved": "Aprobada",
+      "denied": "Denegada",
+      "pending": "Pendiente"
+    }
   },
   "confirm": {
     "deleteTitle": "Confirmar eliminación",
@@ -434,6 +469,34 @@
     "searchTraining": "Buscar formación…",
     "searchFormationHint": "Selecciona una formación para ver el seguimiento de usuarios"
   },
+  "adminUsers": {
+    "editTitle": "Editar usuario",
+    "newTitle": "Nuevo usuario",
+    "name": "Nombre",
+    "namePlaceholder": "Nombre completo",
+    "email": "Correo",
+    "tempPassword": "Contraseña temporal",
+    "tempPasswordPlaceholder": "El usuario la cambiará en el primer acceso",
+    "newPassword": "Nueva contraseña",
+    "newPasswordNote": "(dejar en blanco para no cambiar)",
+    "newPasswordPlaceholder": "Mínimo 8 caracteres",
+    "department": "Departamento",
+    "portalRoles": "Roles del portal",
+    "epiGroup": "Grupo EPI",
+    "unassigned": "Sin asignar",
+    "group": "Grupo {{n}}",
+    "group3Intl": "Grupo 3 Internacional",
+    "prlRequired": "Firma PRL obligatoria",
+    "prlRequiredHint": "Activado = el trabajador debe firmar documentos PRL",
+    "phone": "Teléfono",
+    "workerCode": "Código trabajador",
+    "location": "Ubicación",
+    "profilePhoto": "Foto de perfil",
+    "photoPlaceholder": "Arrastra la foto de perfil o haz clic",
+    "cancel": "Cancelar",
+    "saving": "Guardando...",
+    "save": "Guardar"
+  },
   "perfil": {
     "account": "Cuenta",
     "personalData": "Datos personales",
@@ -441,6 +504,7 @@
     "phone": "Teléfono",
     "workerCode": "Código trabajador",
     "office": "Oficina",
+    "location": "Ubicación",
     "joinDate": "Incorporación",
     "quickAccess": "Acceso rápido",
     "preferences": "Preferencias",
@@ -458,7 +522,18 @@
     "settings": "Configuración",
     "backToProfile": "Perfil",
     "noNotifications": "Sin notificaciones",
-    "markAllRead": "Marcar todas como leídas"
+    "markAllRead": "Marcar todas como leídas",
+    "profilePhoto": "Foto de perfil",
+    "photoHint": "JPG o PNG, mínimo 256×256 px. Se muestra en todo el portal.",
+    "uploading": "Subiendo…",
+    "changePhoto": "Cambiar foto",
+    "role": "Rol",
+    "department": "Departamento",
+    "dataManagedByAdmin": "Todos los datos los gestiona el administrador del portal.",
+    "visibleInDirectory": "Visible en el directorio",
+    "visibleInDirectoryHint": "El resto del equipo te podrá encontrar en Who is who.",
+    "changesSavedToAccount": "Los cambios se guardan en tu cuenta TAVIL.",
+    "saveChanges": "Guardar cambios"
   },
   "shortcuts": {
     "company": "Empresa",
@@ -468,5 +543,33 @@
     "campus": "Campus TAVIL",
     "directory": "Directorio",
     "connect": "Connect"
+  },
+  "adminDash": {
+    "greeting": "Buenos días, {{name}}",
+    "title": "Panel de administración",
+    "subtitle": "Acceso rápido a las tareas más frecuentes. Selecciona un módulo para una vista detallada.",
+    "quickActions": "Acciones rápidas",
+    "modulesLabel": "Módulos",
+    "createArticle": "Crear artículo",
+    "solicitudsTitle": "Solicitudes",
+    "solicitudsSubtitle": "Gestiona las solicitudes pendientes desde la sección Solicitudes del portal.",
+    "solicitudsAccess": "Acceso vía la pestaña Solicitudes",
+    "solicitudsAccessHint": "Tu rol da acceso a la gestión de solicitudes directamente desde el portal, en la sección Solicitudes.",
+    "actions": {
+      "news": { "label": "Nueva noticia", "sub": "Publica o programa un artículo", "heroSub": "Publica o programa un artículo. Editor extenso, audiencia segmentada, multilingüe." },
+      "formation": { "label": "Nueva formación", "sub": "Curso o itinerario del Campus", "heroSub": "Curso o itinerario del Campus TAVIL: extenso, presencial o interno." },
+      "activity": { "label": "Nueva actividad", "sub": "Evento interno con inscripción", "heroSub": "Evento interno con inscripción: cultura, deporte, formación, jornadas." },
+      "agenda": { "label": "Nuevo evento", "sub": "Reunión o jornada corporativa", "heroSub": "Reunión, jornada o evento corporativo." },
+      "user": { "label": "Nuevo usuario", "sub": "Crea una cuenta y envíale el acceso" },
+      "notice": { "label": "Nuevo aviso", "sub": "Banner destacado en el portal" }
+    },
+    "modules": {
+      "users": { "label": "Usuarios", "sub": "cuentas" },
+      "news": { "label": "Noticias", "sub": "artículos" },
+      "avisos": { "label": "Avisos", "sub": "banners" },
+      "connect": { "label": "Connect", "sub": "actividades" },
+      "formations": { "label": "Formaciones", "sub": "cursos" },
+      "agenda": { "label": "Agenda", "sub": "eventos" }
+    }
   }
 }

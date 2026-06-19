@@ -286,11 +286,11 @@ export function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
                         <span className="text-xs text-green-600 dark:text-green-400 font-semibold flex items-center gap-1.5">
                             <CheckCircle size={13} /> {graphAccount.username}
                         </span>
-                        <button onClick={() => graphLogout().catch(console.error)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Desconnectar</button>
+                        <button onClick={() => graphLogout().catch(console.error)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">{t('corporate.disconnect')}</button>
                     </div>
                 ) : (
                     <button onClick={() => graphLogin().catch(console.error)} className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 border border-blue-200 dark:border-blue-900/60 hover:bg-blue-50 dark:hover:bg-blue-950/20 px-3 py-1.5 rounded-lg transition-colors">
-                        <Globe size={13} /> Connectar amb SharePoint
+                        <Globe size={13} /> {t('corporate.connectSharePoint')}
                     </button>
                 )}
             </div>
@@ -327,7 +327,7 @@ export function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
                         <h3 className={cn("font-semibold text-sm mb-2 transition-colors", selectedCat === i ? "text-red-600" : "text-gray-900 dark:text-white")}>{c.title}</h3>
                         <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed">{c.desc}</p>
                         <div className="flex items-center justify-between">
-                            <p className="text-[11px] text-gray-400 font-medium">{c.docs} documents</p>
+                            <p className="text-[11px] text-gray-400 font-medium">{t('corporate.docsCount', { count: c.docs })}</p>
                         </div>
                     </div>
                 ))}
@@ -341,14 +341,14 @@ export function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
                         ))}
                         {spFiles !== null && (
                             <span className="text-xs font-semibold text-green-600 dark:text-green-400 flex items-center gap-1.5">
-                                <CheckCircle size={12} /> SharePoint en directe
+                                <CheckCircle size={12} /> {t('corporate.liveSharePoint')}
                             </span>
                         )}
                         <span className="text-sm text-gray-500 dark:text-zinc-400">
-                            {spFiles !== null ? spFiles.filter(f => !f.folder).length : visibleDocs.length} documents
+                            {t('corporate.docsCount', { count: spFiles !== null ? spFiles.filter(f => !f.folder).length : visibleDocs.length })}
                         </span>
                         <a href={cat.sharepointUrl} target="_blank" rel="noopener noreferrer" className="ml-auto flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-950/60">
-                            <ExternalLink size={14} /> Obrir a SharePoint
+                            <ExternalLink size={14} /> {t('corporate.openInSharePoint')}
                         </a>
                     </div>
 
@@ -410,9 +410,9 @@ export function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
                 <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
                     <div className="flex items-center gap-2 mb-4">
                         <Star size={15} className="text-amber-500" />
-                        <h3 className="font-bold text-gray-900 dark:text-white text-sm">Documents destacats</h3>
+                        <h3 className="font-bold text-gray-900 dark:text-white text-sm">{t('corporate.featuredDocuments')}</h3>
                         <a href={SP_BASE} target="_blank" rel="noopener noreferrer" className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors">
-                            <ExternalLink size={13} /> Obrir Tavipedia
+                            <ExternalLink size={13} /> {t('corporate.openTavipedia')}
                         </a>
                     </div>
                     <div className="space-y-1">

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, Check, X, Search } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
@@ -11,8 +12,10 @@ interface Props {
   align?: 'left' | 'right';
 }
 
-export function DropdownMultiselect({ options, value, onChange, placeholder = 'Tots', getLabel, align = 'left' }: Props) {
+export function DropdownMultiselect({ options, value, onChange, placeholder, getLabel, align = 'left' }: Props) {
+  const { t } = useTranslation();
   const labelFor = (opt: string) => (getLabel ? getLabel(opt) : opt);
+  const resolvedPlaceholder = placeholder ?? t('directory.allOption');
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
@@ -35,7 +38,7 @@ export function DropdownMultiselect({ options, value, onChange, placeholder = 'T
   const clear = () => { onChange([]); setOpen(false); };
 
   const label = value.length === 0
-    ? placeholder
+    ? resolvedPlaceholder
     : value.length === 1
       ? labelFor(value[0])
       : value.length === 2
@@ -64,7 +67,7 @@ export function DropdownMultiselect({ options, value, onChange, placeholder = 'T
       {value.length > 1 && (
         <button
           onClick={clear}
-          aria-label="Esborra filtres"
+          aria-label={t('directory.clearFilters')}
           style={{
             width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -99,7 +102,7 @@ export function DropdownMultiselect({ options, value, onChange, placeholder = 'T
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Cerca departament..."
+              placeholder={t('directory.searchDept')}
               style={{
                 width: '100%', height: 34, paddingLeft: 30, paddingRight: 10,
                 background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)',
@@ -142,7 +145,7 @@ export function DropdownMultiselect({ options, value, onChange, placeholder = 'T
               );
             })}
             {options.filter(opt => !search || labelFor(opt).toLowerCase().includes(search.toLowerCase())).length === 0 && (
-              <div style={{ padding: '20px 14px', textAlign: 'center', color: 'var(--tavil-faint)', fontSize: 13 }}>Sense resultats</div>
+              <div style={{ padding: '20px 14px', textAlign: 'center', color: 'var(--tavil-faint)', fontSize: 13 }}>{t('directory.noResultsShort')}</div>
             )}
           </div>
         </div>

@@ -2318,7 +2318,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-gray-500 dark:text-zinc-400 text-sm">{t('activities.connectSubtitle')}</p>
-        {isAdmin && <button onClick={() => setShowActForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">+ Nova activitat</button>}
+        {isAdmin && <button onClick={() => setShowActForm(v => !v)} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">{t('activities.newActivity')}</button>}
       </div>
       {isAdmin && (
         <AdminCreateModalShell
@@ -2992,7 +2992,7 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
         </div>
         {espaiSearch && allDocs.length > 0 ? (
           <div style={{ padding: '0 16px' }}>
-            <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>{allDocs.length} resultat{allDocs.length !== 1 ? 's' : ''}</div>
+            <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--tavil-faint)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>{allDocs.length === 1 ? t('corporate.result', { count: allDocs.length }) : t('corporate.results', { count: allDocs.length })}</div>
             <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, overflow: 'hidden' }}>
               {allDocs.map((doc, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: i < allDocs.length - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
@@ -3100,11 +3100,11 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
             <span className="text-xs text-green-600 dark:text-green-400 font-semibold flex items-center gap-1.5">
               <CheckCircle size={13} /> {graphAccount.username}
             </span>
-            <button onClick={() => graphLogout().catch(console.error)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Desconnectar</button>
+            <button onClick={() => graphLogout().catch(console.error)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">{t('corporate.disconnect')}</button>
           </div>
         ) : (
           <button onClick={() => graphLogin().catch(console.error)} className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 border border-blue-200 dark:border-blue-900/60 hover:bg-blue-50 dark:hover:bg-blue-950/20 px-3 py-1.5 rounded-lg transition-colors">
-            <Globe size={13} /> Connectar amb SharePoint
+            <Globe size={13} /> {t('corporate.connectSharePoint')}
           </button>
         )}
       </div>
@@ -3116,7 +3116,7 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
 
       {espaiSearchResults.length > 0 && (
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4 mb-6">
-          <p className="text-xs font-semibold text-gray-500 dark:text-zinc-400 mb-3">{espaiSearchResults.length} resultat{espaiSearchResults.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs font-semibold text-gray-500 dark:text-zinc-400 mb-3">{espaiSearchResults.length === 1 ? t('corporate.result', { count: espaiSearchResults.length }) : t('corporate.results', { count: espaiSearchResults.length })}</p>
           <div className="space-y-2">
             {espaiSearchResults.map((d, i) => (
               <div key={i} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-800 rounded-lg">
@@ -3141,7 +3141,7 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
             <h3 className={cn("font-semibold text-sm mb-2 transition-colors", selectedCat === i ? "text-red-600" : "text-gray-900 dark:text-white")}>{c.title}</h3>
             <p className="text-xs text-gray-500 dark:text-zinc-400 mb-3 leading-relaxed">{c.desc}</p>
             <div className="flex items-center justify-between">
-              <p className="text-[11px] text-gray-400 font-medium">{c.docs} documents</p>
+              <p className="text-[11px] text-gray-400 font-medium">{t('corporate.docsCount', { count: c.docs })}</p>
             </div>
           </div>
         ))}
@@ -3155,14 +3155,14 @@ function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
             ))}
             {spFiles !== null && (
               <span className="text-xs font-semibold text-green-600 dark:text-green-400 flex items-center gap-1.5">
-                <CheckCircle size={12} /> SharePoint en directe
+                <CheckCircle size={12} /> {t('corporate.liveSharePoint')}
               </span>
             )}
             <span className="text-sm text-gray-500 dark:text-zinc-400">
-              {spFiles !== null ? spFiles.filter(f => !f.folder).length : visibleDocs.length} documents
+              {t('corporate.docsCount', { count: spFiles !== null ? spFiles.filter(f => !f.folder).length : visibleDocs.length })}
             </span>
             <a href={cat.sharepointUrl} target="_blank" rel="noopener noreferrer" className="ml-auto flex items-center gap-1.5 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-950/60">
-              <ExternalLink size={14} /> Obrir a SharePoint
+              <ExternalLink size={14} /> {t('corporate.openInSharePoint')}
             </a>
           </div>
 
@@ -4318,6 +4318,14 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
   const { t } = useTranslation();
   const _solDaysAbbr = t('common.daysAbbr', { returnObjects: true }) as string[];
   const daysMonFirst = [..._solDaysAbbr.slice(1), _solDaysAbbr[0]];
+  const solTabLabel = (key: string): string => {
+    const map: Record<string, string> = { 'Dies no ordinaris': 'solicituds.tabSaturdays', 'Vacances': 'solicituds.tabVacances' };
+    return map[key] ? t(map[key]) : (SOL_TAB_LABEL[key] ?? key);
+  };
+  const solStatusLabel = (s: string): string => {
+    const map: Record<string, string> = { 'Aprovada': 'solicituds.status.approved', 'Denegada': 'solicituds.status.denied', 'Pendent': 'solicituds.status.pending' };
+    return map[s] ? t(map[s]) : s;
+  };
   const [activeTab, setActiveTab] = usePersistedSubTab<string>('solicituds', initialSubTab ?? 'Dies no ordinaris', ['Dies no ordinaris', 'Vacances'] as const);
 
   useEffect(() => {
@@ -4512,28 +4520,28 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
           <button onClick={onBack} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0, zIndex: 1 }}>
             <ChevronLeft size={18} />
           </button>
-          <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Sol·licituds</span>
+          <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>{t('solicituds.title')}</span>
           <button onClick={handleRefresh} disabled={refreshing} aria-label="Refrescar" style={{ width: 36, height: 36, borderRadius: 18, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: refreshing ? 'wait' : 'pointer', color: refreshing ? 'var(--tavil-accent)' : 'var(--tavil-muted)', flexShrink: 0, zIndex: 1, marginLeft: 'auto', transition: 'color 150ms' }}>
             <RefreshCw size={15} className={cn(refreshing && "animate-spin")} />
           </button>
         </div>
         {/* Header kicker + title + subtitle */}
         <div style={{ padding: '0 20px 14px' }}>
-          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>RRHH</div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, lineHeight: 1.05, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>Sol·licituds</h1>
+          <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>{t('solicituds.kicker')}</div>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 600, lineHeight: 1.05, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>{t('solicituds.title')}</h1>
           <p style={{ fontSize: 13.5, color: 'var(--tavil-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>{t('solicituds.subtitle')}</p>
         </div>
         {/* Counter grid (no vacances mentre estigui ocult) */}
         {!isRRHH && !isHead && (
           <div style={{ padding: '6px 16px 18px', display: 'grid', gridTemplateColumns: HIDE_VACANCES ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: 8 }}>
             {[
-              ...(HIDE_VACANCES ? [] : [{ n: vacancesDisponibles, l: 'Vacances' }]),
-              { n: diesNoOrdinaris.filter(d => d.status === 'Pendent' && !isRRHH && !isHead).length, l: 'Assumptes' },
-              { n: 0, l: 'Teletreball' },
+              ...(HIDE_VACANCES ? [] : [{ n: vacancesDisponibles, l: t('solicituds.statVacances') }]),
+              { n: diesNoOrdinaris.filter(d => d.status === 'Pendent' && !isRRHH && !isHead).length, l: t('solicituds.statAssumptes') },
+              { n: 0, l: t('solicituds.statTeletreball') },
             ].map((c, i) => (
               <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: 12, textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, lineHeight: 1, color: 'var(--tavil-accent)' }}>{c.n}</div>
-                <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginTop: 4, letterSpacing: '0.02em' }}>{c.l} · disponibles</div>
+                <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginTop: 4, letterSpacing: '0.02em' }}>{c.l} · {t('solicituds.availableLabel')}</div>
               </div>
             ))}
           </div>
@@ -4552,7 +4560,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
             onClick={() => (!HIDE_VACANCES && activeTab === 'Vacances') ? setMobileVacForm(true) : setMobileSolForm(true)}
             style={{ width: '100%', height: 48, borderRadius: 14, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
           >
-            <Plus size={18} /> Nova sol·licitud
+            <Plus size={18} /> {t('solicituds.newRequest')}
           </button>
         </div>
         {/* Tab selector (només si hi ha més d'un tab visible) */}
@@ -4565,13 +4573,13 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                 color: activeTab === key ? 'var(--tavil-bg)' : 'var(--tavil-muted)',
                 border: `1px solid ${activeTab === key ? 'var(--tavil-text)' : 'var(--tavil-border)'}`,
                 fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-              }}>{SOL_TAB_LABEL[key] ?? key}</button>
+              }}>{solTabLabel(key)}</button>
             ))}
           </div>
         )}
         {/* Kicker */}
         <div style={{ padding: '2px 20px 8px', fontSize: 11, color: 'var(--tavil-faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em' }}>
-          Sol·licitades · {activeTab === 'Dies no ordinaris' ? diesNoOrdinaris.length : (isRRHH ? vacances : vacances.filter(v => v.user_id === currentUser?.id)).length}
+          {t('solicituds.requested')} · {activeTab === 'Dies no ordinaris' ? diesNoOrdinaris.length : (isRRHH ? vacances : vacances.filter(v => v.user_id === currentUser?.id)).length}
         </div>
 
         {/* Dies no ordinaris */}
@@ -4580,7 +4588,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
             {/* Pending approvals for RRHH/head */}
             {(isRRHH || isHead) && diesNoOrdinaris.filter(d => d.status === 'Pendent' && d.author !== currentUser?.email).length > 0 && (
               <div style={{ marginBottom: 16 }}>
-                <div className="mobile-kicker" style={{ marginBottom: 8 }}>PENDENT APROVACIÓ</div>
+                <div className="mobile-kicker" style={{ marginBottom: 8 }}>{t('solicituds.pendingApproval')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {diesNoOrdinaris.filter(d => d.status === 'Pendent' && d.author !== currentUser?.email).map((d, i) => (
                     <div key={i} className={cn(approvingId === d.id && "anim-approve-out", denyOutId === d.id && "anim-deny-out")} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: '12px 14px' }}>
@@ -4634,7 +4642,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                               {d.comments && <div style={{ fontSize: 12, color: 'var(--tavil-muted)' }}>{d.comments}</div>}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(d.status) }}>{d.status}</span>
+                              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(d.status) }}>{solStatusLabel(d.status)}</span>
                               {d.author === currentUser?.email && (
                                 <button onClick={() => askDeleteSol(d.id, formatDate(d.date))} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
                               )}
@@ -4661,13 +4669,13 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                                 {d.comments && <div style={{ fontSize: 12, color: 'var(--tavil-faint)' }}>{d.comments}</div>}
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(d.status) }}>{d.status}</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(d.status) }}>{solStatusLabel(d.status)}</span>
                                 {(isRRHH || isHead) && (
                                   <button onClick={() => askDeleteSol(d.id, formatDate(d.date))} style={{ background: 'none', border: 'none', color: 'var(--tavil-faint)', cursor: 'pointer', padding: 0, minWidth: 36, minHeight: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}><Trash2 size={15} /></button>
                                 )}
                               </div>
                             </div>
-                            {d.motive && <div style={{ fontSize: 12, color: 'var(--tavil-faint)', marginTop: 4, fontStyle: 'italic' }}>Motiu: {d.motive}</div>}
+                            {d.motive && <div style={{ fontSize: 12, color: 'var(--tavil-faint)', marginTop: 4, fontStyle: 'italic' }}>{t('solicituds.motive')} {d.motive}</div>}
                           </div>
                         ))}
                       </div>
@@ -4707,7 +4715,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
             {/* RRHH pending approvals */}
             {(isRRHH || isHead) && pendingVacances.length > 0 && (
               <div style={{ marginBottom: 16 }}>
-                <div className="mobile-kicker" style={{ marginBottom: 8 }}>PENDENT APROVACIÓ ({pendingVacances.length})</div>
+                <div className="mobile-kicker" style={{ marginBottom: 8 }}>{t('solicituds.pendingApproval')} ({pendingVacances.length})</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {pendingVacances.map((v, i) => (
                     <div key={i} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: '12px 14px' }}>
@@ -4780,20 +4788,20 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
         {mobileSolForm && createPortal(
           <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${solClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeSolForm}>
             <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%' }} className={solClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
-              <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Nova sol·licitud</h3>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>{t('solicituds.newRequest')}</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div>
-                  <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>Data</label>
+                  <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>{t('solicituds.date')}</label>
                   <DatePicker value={selectedDate} onChange={setSelectedDate} minDate={today} emphasizeSaturday />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>Comentaris</label>
-                  <textarea value={comments} onChange={e => setComments(e.target.value)} placeholder="Motiu (opcional)" rows={3} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', resize: 'none', boxSizing: 'border-box' }} />
+                  <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>{t('solicituds.comments')}</label>
+                  <textarea value={comments} onChange={e => setComments(e.target.value)} placeholder={t('solicituds.reasonOptional')} rows={3} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', resize: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                   <button onClick={closeSolForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('common.cancel')}</button>
                   <button onClick={async () => { await handleSubmit(); closeSolForm(); }} disabled={!selectedDate || submitting} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!selectedDate || submitting) ? 0.5 : 1 }}>
-                    {submitting ? 'Enviant…' : 'Enviar'}
+                    {submitting ? t('common.sending') : t('common.send')}
                   </button>
                 </div>
               </div>
@@ -4878,7 +4886,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
       {visibleTabs.length > 1 && (
         <div className="flex items-center gap-1 border-b border-gray-200 dark:border-zinc-800 mb-6">
           {visibleTabs.map(tab => (
-            <UnderlineTab key={tab} label={SOL_TAB_LABEL[tab] ?? tab} active={activeTab === tab} onClick={() => setActiveTab(tab)} />
+            <UnderlineTab key={tab} label={solTabLabel(tab)} active={activeTab === tab} onClick={() => setActiveTab(tab)} />
           ))}
         </div>
       )}
@@ -4911,14 +4919,14 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                           <Calendar size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{formatDate(d.date)}</p>
-                            <p className="text-xs text-gray-400 mb-2">Sol·licitat el {formatDate(d.created_at)} · Per: {d.author}</p>
+                            <p className="text-xs text-gray-400 mb-2">{t('solicituds.requestedOn', { date: formatDate(d.created_at), author: d.author })}</p>
                             {d.comments && <p className="text-xs text-gray-600 dark:text-zinc-400 bg-gray-50 dark:bg-zinc-800 rounded-lg px-3 py-2 mb-2">{d.comments}</p>}
                             {(isRRHH || isHead) && d.author !== currentUser?.email && denyingId === d.id && (
                               <div className="mt-3 space-y-2">
                                 <textarea
                                   value={denyMotive}
                                   onChange={e => setDenyMotive(e.target.value)}
-                                  placeholder="Motiu de la denegació..."
+                                  placeholder={t('solicituds.denyReason')}
                                   rows={2}
                                   className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none"
                                 />
@@ -4930,7 +4938,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                             )}
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(d.status))}>{d.status}</span>
+                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(d.status))}>{solStatusLabel(d.status)}</span>
                             {(isRRHH || isHead) && d.author !== currentUser?.email && denyingId !== d.id && (
                               <>
                                 <button onClick={() => handleApprove(d.id)} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-950/50 transition-colors">{t('solicituds.approve')}</button>
@@ -4947,7 +4955,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                 {diesNoOrdinaris.filter(d => d.status !== 'Pendent').length > 0 && (
                   <div className={diesNoOrdinaris.filter(d => d.status === 'Pendent').length > 0 ? 'mt-6' : ''}>
                     <button onClick={() => setClosedCollapsed(c => !c)} className="flex items-center gap-2 mb-3 group">
-                      <span className="text-[10px] font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Sol·licituds processades · {diesNoOrdinaris.filter(d => d.status !== 'Pendent').length}</span>
+                      <span className="text-[10px] font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">{t('solicituds.processed')} · {diesNoOrdinaris.filter(d => d.status !== 'Pendent').length}</span>
                       <ChevronDown size={12} className={cn("text-gray-400 dark:text-zinc-500 transition-transform duration-300", closedCollapsed ? '' : 'rotate-180')} />
                     </button>
                     <div className="sol-drawer" data-open={String(!closedCollapsed)}>
@@ -4959,14 +4967,14 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                               <Calendar size={14} className="text-gray-400 dark:text-zinc-500 flex-shrink-0 mt-0.5" />
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-gray-600 dark:text-zinc-300 text-sm mb-0.5">{formatDate(d.date)}</p>
-                                <p className="text-xs text-gray-400 dark:text-zinc-500">Per: {d.author}</p>
+                                <p className="text-xs text-gray-400 dark:text-zinc-500">{t('solicituds.byAuthor', { author: d.author })}</p>
                                 {d.comments && <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">{d.comments}</p>}
                                 {d.status === 'Denegada' && d.motive && (
-                                  <p className="text-xs text-red-400 dark:text-red-500 mt-1"><span className="font-semibold">Motiu:</span> {d.motive}</p>
+                                  <p className="text-xs text-red-400 dark:text-red-500 mt-1"><span className="font-semibold">{t('solicituds.motive')}</span> {d.motive}</p>
                                 )}
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
-                                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(d.status))}>{d.status}</span>
+                                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(d.status))}>{solStatusLabel(d.status)}</span>
                                 {(isRRHH || isHead) && (
                                   <button onClick={() => askDeleteSol(d.id, formatDate(d.date))} className="p-1 text-gray-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"><Trash2 size={13} /></button>
                                 )}
@@ -5274,7 +5282,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                     {processedVac.length > 0 && (
                       <div className={activeVac.length > 0 ? 'mt-6' : ''}>
                         <button onClick={() => setVacClosedCollapsed(c => !c)} className="flex items-center gap-2 mb-3 group">
-                          <span className="text-[10px] font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Sol·licituds processades · {processedVac.length}</span>
+                          <span className="text-[10px] font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">{t('solicituds.processed')} · {processedVac.length}</span>
                           <ChevronDown size={12} className={cn("text-gray-400 dark:text-zinc-500 transition-transform duration-300", vacClosedCollapsed ? '' : 'rotate-180')} />
                         </button>
                         <div className="sol-drawer" data-open={String(!vacClosedCollapsed)}>
@@ -6199,8 +6207,8 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                       <FileText size={15} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)' }}>Solicita un dissabte laborable</div>
-                      <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 1 }}>Dies no ordinaris</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)' }}>{t('home.solicitudsQuick')}</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 1 }}>{t('solicituds.nonWorkingDays')}</div>
                     </div>
                     <ArrowRight size={14} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
                   </button>
@@ -6361,8 +6369,8 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                             <div style={{ paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                                 <div style={{ minWidth: 0 }}>
-                                  <div style={{ fontSize: 13.5, color: 'var(--tavil-text)' }}>Visible al directori</div>
-                                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 2 }}>La resta de l'equip et podrà trobar a Qui és qui.</div>
+                                  <div style={{ fontSize: 13.5, color: 'var(--tavil-text)' }}>{t('perfil.visibleInDirectory')}</div>
+                                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 2 }}>{t('perfil.visibleInDirectoryHint')}</div>
                                 </div>
                                 <Toggle on={visInDir} onToggle={toggleVisInDir} />
                               </div>
@@ -6449,9 +6457,9 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                     {avatarUrl ? <img src={resolveImg(avatarUrl)} alt="" loading="lazy" style={avatarImgStyle(avatarUrl)} /> : <span>{initials}</span>}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)' }}>Foto de perfil</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)' }}>{t('perfil.profilePhoto')}</div>
                     <div style={{ fontSize: 12, color: 'var(--tavil-muted)', marginTop: 4, marginBottom: 10 }}>
-                      JPG o PNG, mínim 256×256 px. Es mostra a tot el portal.
+                      {t('perfil.photoHint')}
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button
@@ -6465,7 +6473,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                           cursor: avatarUploading ? 'wait' : 'pointer', opacity: avatarUploading ? 0.6 : 1,
                         }}
                       >
-                        <Plus size={13} /> {avatarUploading ? 'Pujant…' : 'Canviar foto'}
+                        <Plus size={13} /> {avatarUploading ? t('perfil.uploading') : t('perfil.changePhoto')}
                       </button>
                       <input ref={avatarFileRef} type="file" accept="image/jpeg,image/png" style={{ display: 'none' }}
                         onChange={e => { const f = e.target.files?.[0]; if (f) handleAvatarPick(f); e.currentTarget.value = ''; }} />
@@ -6477,7 +6485,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                             background: 'transparent', border: 'none',
                             color: 'var(--tavil-muted)', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
                           }}
-                        >Elimina</button>
+                        >{t('common.delete')}</button>
                       )}
                     </div>
                   </div>
@@ -6489,8 +6497,8 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                     {([
                       [t('perfil.personalData'),     currentUser?.name ?? '—'],
                       [t('perfil.corporateEmail'),   currentUser?.email ?? '—'],
-                      ['Rol',                        currentUser?.role ?? '—'],
-                      ['Departament',                currentUser?.dept ?? '—'],
+                      [t('perfil.role'),             currentUser?.role ?? '—'],
+                      [t('perfil.department'),       currentUser?.dept ?? '—'],
                       [t('perfil.phone'),            currentUser?.phone || '—'],
                       [t('perfil.workerCode'),       currentUser?.ext || '—'],
                       [t('perfil.office'),           currentUser?.location || '—'],
@@ -6505,7 +6513,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                   <div style={{ gridColumn: '1 / -1', paddingTop: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Eye size={12} style={{ color: 'var(--tavil-faint)' }} />
                     <span style={{ fontSize: 11.5, color: 'var(--tavil-faint)' }}>
-                      Totes les dades les gestiona l'administrador del portal.
+                      {t('perfil.dataManagedByAdmin')}
                     </span>
                   </div>
                 </div>
@@ -6531,9 +6539,9 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                     }} />
                   </button>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--tavil-text)' }}>Visible al directori</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--tavil-text)' }}>{t('perfil.visibleInDirectory')}</div>
                     <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginTop: 2 }}>
-                      La resta de l'equip et podrà trobar a Qui és qui.
+                      {t('perfil.visibleInDirectoryHint')}
                     </div>
                   </div>
                 </div>
@@ -6541,7 +6549,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                 {/* Footer */}
                 <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--tavil-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 11.5, color: 'var(--tavil-faint)' }}>
-                    Els canvis es desen al teu compte TAVIL.
+                    {t('perfil.changesSavedToAccount')}
                   </span>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
@@ -6564,7 +6572,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                         color: 'var(--tavil-bg)', fontSize: 13.5, fontWeight: 600, fontFamily: 'inherit',
                         cursor: avatarSaving ? 'wait' : 'pointer', opacity: avatarSaving ? 0.7 : 1,
                       }}
-                    ><Check size={14} /> {avatarSaving ? 'Desant…' : 'Desa els canvis'}</button>
+                    ><Check size={14} /> {avatarSaving ? t('common.saving') : t('perfil.saveChanges')}</button>
                   </div>
                 </div>
               </div>
@@ -7404,6 +7412,7 @@ function ExternalCourseModal({ course, onClose, onSaved }: {
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const isEdit = !!course;
   const [title, setTitle] = useState(course?.title ?? '');
   const [description, setDescription] = useState(course?.description ?? '');
@@ -7533,7 +7542,7 @@ function ExternalCourseModal({ course, onClose, onSaved }: {
             <div className="flex items-center justify-between">
               <label className={labelCls}>Departaments destinataris</label>
               <span className="text-[10px] text-gray-400 dark:text-zinc-500">
-                {depts.length === 0 ? 'Tots els departaments' : `${depts.length} seleccionat${depts.length !== 1 ? 's' : ''}`}
+                {depts.length === 0 ? t('directory.allDepartments') : `${depts.length} seleccionat${depts.length !== 1 ? 's' : ''}`}
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -7752,6 +7761,7 @@ function BoAgendaPanel({ events, onRefresh, cardCls, inputCls, btnGhost }: {
 }
 
 function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./api').User | null; onImpersonate?: (userId: number, userName: string) => void }) {
+  const { t } = useTranslation();
   const role = currentUser?.role ?? '';
   // Check both legacy `role` string (demo switcher) and new `roles` array
   const allRoles = new Set([role, ...(currentUser?.roles ?? [])]);
@@ -8043,22 +8053,22 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
         const userFormBody = (embedded: boolean) => (
           <div className={`${embedded ? 'border-t border-red-200 dark:border-red-800 bg-red-50/30 dark:bg-red-950/10 px-4 py-3 rounded-b-xl' : `${cardCls} border-red-200 dark:border-red-800`} space-y-3 ${embedded ? '' : 'anim-slide-down'}`}>
             <div className="flex justify-between items-center">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">{editUser ? 'Editar usuari' : 'Nou usuari'}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">{editUser ? t('adminUsers.editTitle') : t('adminUsers.newTitle')}</p>
               <button onClick={() => setShowUserForm(false)} className={btnGhost}><X size={16} /></button>
             </div>
             {error && <p className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2">{error}</p>}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Nom</label><input value={uName} onChange={e => setUName(e.target.value)} className={inputCls} placeholder="Nom complet" /></div>
-              <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Correu</label><input value={uEmail} onChange={e => setUEmail(e.target.value)} className={inputCls} type="email" placeholder="nom@tavil.net" /></div>
-              {!editUser && <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Contrasenya temporal</label><input value={uPass} onChange={e => setUPass(e.target.value)} className={inputCls} type="text" placeholder="L'usuari la canviarà al primer accés" /></div>}
-              {editUser && <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Nova contrasenya <span className="normal-case font-normal">(deixar en blanc per no canviar)</span></label><input value={uNewPass} onChange={e => setUNewPass(e.target.value)} className={inputCls} type="password" placeholder="Mínim 8 caràcters" autoComplete="new-password" /></div>}
-              <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Departament</label>
+              <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">{t('adminUsers.name')}</label><input value={uName} onChange={e => setUName(e.target.value)} className={inputCls} placeholder={t('adminUsers.namePlaceholder')} /></div>
+              <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">{t('adminUsers.email')}</label><input value={uEmail} onChange={e => setUEmail(e.target.value)} className={inputCls} type="email" placeholder="nom@tavil.net" /></div>
+              {!editUser && <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">{t('adminUsers.tempPassword')}</label><input value={uPass} onChange={e => setUPass(e.target.value)} className={inputCls} type="text" placeholder={t('adminUsers.tempPasswordPlaceholder')} /></div>}
+              {editUser && <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">{t('adminUsers.newPassword')} <span className="normal-case font-normal">{t('adminUsers.newPasswordNote')}</span></label><input value={uNewPass} onChange={e => setUNewPass(e.target.value)} className={inputCls} type="password" placeholder={t('adminUsers.newPasswordPlaceholder')} autoComplete="new-password" /></div>}
+              <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">{t('adminUsers.department')}</label>
                 <select value={uDept} onChange={e => setUDept(e.target.value)} className={inputCls}>
                   {DEPTS.map(d => <option key={d}>{d}</option>)}
                 </select>
               </div>
               <div className="md:col-span-2">
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-2">Rols del portal</label>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-2">{t('adminUsers.portalRoles')}</label>
                 <div className="flex flex-wrap gap-2">
                   {ROLES.map(r => {
                     const active = uRoles.includes(r.value);
@@ -8072,28 +8082,28 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Grup EPI</label>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">{t('adminUsers.epiGroup')}</label>
                 <select value={uEpiGrup} onChange={e => setUEpiGrup(e.target.value)} className={inputCls} style={{ fontFamily: 'inherit' }}>
-                  <option value="">Sense assignar</option>
-                  <option value="1">Grup 1</option>
-                  <option value="2">Grup 2</option>
-                  <option value="3">Grup 3</option>
-                  <option value="3i">Grup 3 Internacional</option>
-                  <option value="4">Grup 4</option>
+                  <option value="">{t('adminUsers.unassigned')}</option>
+                  <option value="1">{t('adminUsers.group', { n: 1 })}</option>
+                  <option value="2">{t('adminUsers.group', { n: 2 })}</option>
+                  <option value="3">{t('adminUsers.group', { n: 3 })}</option>
+                  <option value="3i">{t('adminUsers.group3Intl')}</option>
+                  <option value="4">{t('adminUsers.group', { n: 4 })}</option>
                 </select>
               </div>
               <div className="md:col-span-2 flex items-center gap-3 pt-1">
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Firma PRL obligatòria</label>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">{t('adminUsers.prlRequired')}</label>
                 <input type="checkbox" checked={uRequiresPrl} onChange={e => setURequiresPrl(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-                <span className="text-[11px] text-gray-400">Activat = el treballador ha de signar documents PRL</span>
+                <span className="text-[11px] text-gray-400">{t('adminUsers.prlRequiredHint')}</span>
               </div>
               {editUser && (
                 <>
-                  <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Telèfon</label><input value={uPhone} onChange={e => setUPhone(e.target.value)} className={inputCls} placeholder="—" /></div>
-                  <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Codi treballador</label><input value={uExt} onChange={e => setUExt(e.target.value)} className={inputCls} placeholder="—" /></div>
-                  <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">Ubicació</label><input value={uLocation} onChange={e => setULocation(e.target.value)} className={inputCls} placeholder="—" /></div>
+                  <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">{t('adminUsers.phone')}</label><input value={uPhone} onChange={e => setUPhone(e.target.value)} className={inputCls} placeholder="—" /></div>
+                  <div><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">{t('adminUsers.workerCode')}</label><input value={uExt} onChange={e => setUExt(e.target.value)} className={inputCls} placeholder="—" /></div>
+                  <div className="md:col-span-2"><label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-1">{t('adminUsers.location')}</label><input value={uLocation} onChange={e => setULocation(e.target.value)} className={inputCls} placeholder="—" /></div>
                   <div className="md:col-span-2">
-                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-2">Foto de perfil</label>
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-2">{t('adminUsers.profilePhoto')}</label>
                     <MediaUploader
                       value={uAvatarUrl}
                       kind="image"
@@ -8104,15 +8114,15 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
                         setUAvatarUrl(m ? m[1] : url);
                       }}
                       onError={(msg) => setError(msg)}
-                      placeholder="Arrossega la foto de perfil o clica"
+                      placeholder={t('adminUsers.photoPlaceholder')}
                     />
                   </div>
                 </>
               )}
             </div>
             <div className="flex gap-2 justify-end pt-1">
-              <button onClick={() => setShowUserForm(false)} className={btnGhost}>Cancel·lar</button>
-              <button onClick={saveUser} disabled={uSaving || !uName || !uEmail || (!editUser && !uPass)} className={btnPrimary}>{uSaving ? 'Guardant...' : 'Guardar'}</button>
+              <button onClick={() => setShowUserForm(false)} className={btnGhost}>{t('adminUsers.cancel')}</button>
+              <button onClick={saveUser} disabled={uSaving || !uName || !uEmail || (!editUser && !uPass)} className={btnPrimary}>{uSaving ? t('adminUsers.saving') : t('adminUsers.save')}</button>
             </div>
           </div>
         );
@@ -8492,7 +8502,7 @@ function BackofficeTab({ currentUser, onImpersonate }: { currentUser: import('./
                           </div>
                           <p className="text-xs text-gray-400 truncate">
                             {c.hours ? `${c.hours} · ` : ''}
-                            {depts.length > 0 ? depts.join(', ') : 'Tots els departaments'}
+                            {depts.length > 0 ? depts.join(', ') : t('directory.allDepartments')}
                           </p>
                         </div>
                         <div className="flex gap-1 flex-shrink-0">
@@ -8615,10 +8625,10 @@ function useSidebarSections(role?: string, roles?: string[]) {
       ]
     },
     ...(['Administrador', 'Administrador/a', 'Recursos humans', 'Comunicacions', 'Comunicació', 'Formacions', 'SolicitudsVacances', 'SolicitudsDissabtes'].some(r => (roles ?? []).includes(r) || role === r) ? [{
-      title: 'Administració',
+      title: t('nav.administracio'),
       isAdmin: true as const,
       items: [
-        { id: 'admin-dashboard', label: 'Tauler', icon: LayoutGrid },
+        { id: 'admin-dashboard', label: t('nav.tauler'), icon: LayoutGrid },
       ]
     }] : [])
   ];
@@ -9292,14 +9302,15 @@ function QuizPlayerPage({ quizId }: { quizId: number }) {
 // ── Quiz Editor Page (full-screen, presentation-style WYSIWYG) ───────────────
 
 function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
+  const { t } = useTranslation();
   // Token inherit from opener (sessionStorage isn't shared cross-tab)
   useEffect(() => {
     try {
       const have = localStorage.getItem('tavil_token') || sessionStorage.getItem('tavil_token');
       if (!have && window.opener) {
         const op = window.opener as Window | null;
-        const t = op?.localStorage?.getItem('tavil_token') ?? op?.sessionStorage?.getItem('tavil_token') ?? null;
-        if (t) sessionStorage.setItem('tavil_token', t);
+        const tok = op?.localStorage?.getItem('tavil_token') ?? op?.sessionStorage?.getItem('tavil_token') ?? null;
+        if (tok) sessionStorage.setItem('tavil_token', tok);
       }
     } catch { /* cross-origin or null opener */ }
     document.title = 'Editor formació · TAVIL';
@@ -9955,7 +9966,7 @@ function QuizEditorPage({ initialQuizId }: { initialQuizId: number | null }) {
                           const q = userSearch.toLowerCase();
                           return (u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) && !targetUsers.includes(u.id);
                         }).length === 0 && (
-                          <p className="px-3 py-2 text-sm" style={{ color: 'var(--q-text-50)' }}>Sense resultats</p>
+                          <p className="px-3 py-2 text-sm" style={{ color: 'var(--q-text-50)' }}>{t('directory.noResultsShort')}</p>
                         )}
                       </div>
                     )}

@@ -13,7 +13,9 @@
     "veu": "Veu de l'empleat",
     "solicituds": "Les meves sol·licituds",
     "perfil": "El meu perfil",
-    "mes": "Més"
+    "mes": "Més",
+    "administracio": "Administració",
+    "tauler": "Tauler"
   },
   "timeago": {
     "justNow": "Fa un moment",
@@ -262,6 +264,7 @@
     "event": "{{count}} esdeveniment",
     "events": "{{count}} esdeveniments",
     "noEvents": "Cap esdeveniment aquest dia",
+    "noEventsShort": "Cap esdeveniment",
     "freeDayNote": "Aquest dia està lliure.",
     "viewInConnect": "Veure a Connect",
     "viewInCampus": "Veure a Campus",
@@ -291,7 +294,12 @@
     "ext": "Ext.",
     "kicker": "Equip",
     "searchPlaceholder": "Cerca per nom, rol, departament…",
-    "noResults": "Cap resultat per a aquesta cerca."
+    "noResults": "Cap resultat per a aquesta cerca.",
+    "allDepartments": "Tots els departaments",
+    "allOption": "Tots",
+    "searchDept": "Cerca departament...",
+    "clearFilters": "Esborra filtres",
+    "noResultsShort": "Sense resultats"
   },
   "corporate": {
     "subtitle": "Documents, procediments i recursos corporatius",
@@ -301,7 +309,14 @@
     "searchPlaceholderFull": "Cercar documents, polítiques, plantilles...",
     "openTavipedia": "Obrir Tavipedia",
     "featuredDocuments": "Documents destacats",
-    "knowledgeBase": "Base de coneixement intern, documentació i recursos corporatius"
+    "knowledgeBase": "Base de coneixement intern, documentació i recursos corporatius",
+    "connectSharePoint": "Connectar amb SharePoint",
+    "disconnect": "Desconnectar",
+    "liveSharePoint": "SharePoint en directe",
+    "openInSharePoint": "Obrir a SharePoint",
+    "docsCount": "{{count}} documents",
+    "result": "{{count}} resultat",
+    "results": "{{count}} resultats"
   },
   "campus": {
     "subtitle": "Formació i cursos interns de TAVIL",
@@ -330,7 +345,8 @@
       "all": "Tots els estats",
       "pending": "Pendent",
       "lowProgress": "Poc avançats",
-      "completed": "Completat"
+      "completed": "Completat",
+      "notApproved": "No aprovats"
     },
     "uploadCertificate": "Puja el certificat",
     "reuploadCertificate": "Torna a pujar",
@@ -417,7 +433,26 @@
     "denyReason": "Motiu de la denegació...",
     "confirmDeny": "Confirmar denegació",
     "requestedOn": "Sol·licitat el {{date}} · Per: {{author}}",
-    "motive": "Motiu:"
+    "motive": "Motiu:",
+    "byAuthor": "Per: {{author}}",
+    "tabSaturdays": "Dissabtes",
+    "tabVacances": "Vacances",
+    "pendingApproval": "PENDENT APROVACIÓ",
+    "requested": "Sol·licitades",
+    "processed": "Sol·licituds processades",
+    "date": "Data",
+    "reasonOptional": "Motiu (opcional)",
+    "kicker": "RRHH",
+    "title": "Sol·licituds",
+    "statVacances": "Vacances",
+    "statAssumptes": "Assumptes",
+    "statTeletreball": "Teletreball",
+    "availableLabel": "disponibles",
+    "status": {
+      "approved": "Aprovada",
+      "denied": "Denegada",
+      "pending": "Pendent"
+    }
   },
   "confirm": {
     "deleteTitle": "Confirmar eliminació",
@@ -434,6 +469,34 @@
     "searchTraining": "Cercar formació…",
     "searchFormationHint": "Selecciona una formació per veure el seguiment d’usuaris"
   },
+  "adminUsers": {
+    "editTitle": "Editar usuari",
+    "newTitle": "Nou usuari",
+    "name": "Nom",
+    "namePlaceholder": "Nom complet",
+    "email": "Correu",
+    "tempPassword": "Contrasenya temporal",
+    "tempPasswordPlaceholder": "L'usuari la canviarà al primer accés",
+    "newPassword": "Nova contrasenya",
+    "newPasswordNote": "(deixar en blanc per no canviar)",
+    "newPasswordPlaceholder": "Mínim 8 caràcters",
+    "department": "Departament",
+    "portalRoles": "Rols del portal",
+    "epiGroup": "Grup EPI",
+    "unassigned": "Sense assignar",
+    "group": "Grup {{n}}",
+    "group3Intl": "Grup 3 Internacional",
+    "prlRequired": "Firma PRL obligatòria",
+    "prlRequiredHint": "Activat = el treballador ha de signar documents PRL",
+    "phone": "Telèfon",
+    "workerCode": "Codi treballador",
+    "location": "Ubicació",
+    "profilePhoto": "Foto de perfil",
+    "photoPlaceholder": "Arrossega la foto de perfil o clica",
+    "cancel": "Cancel·lar",
+    "saving": "Guardant...",
+    "save": "Guardar"
+  },
   "perfil": {
     "account": "Compte",
     "personalData": "Dades personals",
@@ -441,6 +504,7 @@
     "phone": "Telèfon",
     "workerCode": "Codi treballador",
     "office": "Oficina",
+    "location": "Ubicació",
     "joinDate": "Incorporació",
     "quickAccess": "Accés ràpid",
     "preferences": "Preferències",
@@ -458,7 +522,18 @@
     "settings": "Configuració",
     "backToProfile": "Perfil",
     "noNotifications": "Sense notificacions",
-    "markAllRead": "Marcar totes com a llegides"
+    "markAllRead": "Marcar totes com a llegides",
+    "profilePhoto": "Foto de perfil",
+    "photoHint": "JPG o PNG, mínim 256×256 px. Es mostra a tot el portal.",
+    "uploading": "Pujant…",
+    "changePhoto": "Canviar foto",
+    "role": "Rol",
+    "department": "Departament",
+    "dataManagedByAdmin": "Totes les dades les gestiona l'administrador del portal.",
+    "visibleInDirectory": "Visible al directori",
+    "visibleInDirectoryHint": "La resta de l'equip et podrà trobar a Qui és qui.",
+    "changesSavedToAccount": "Els canvis es desen al teu compte TAVIL.",
+    "saveChanges": "Desa els canvis"
   },
   "shortcuts": {
     "company": "Empresa",
@@ -468,5 +543,33 @@
     "campus": "Campus TAVIL",
     "directory": "Directori",
     "connect": "Connect"
+  },
+  "adminDash": {
+    "greeting": "Bon dia, {{name}}",
+    "title": "Tauler d'administració",
+    "subtitle": "Accés ràpid a les tasques més freqüents. Selecciona un mòdul per a una vista detallada.",
+    "quickActions": "Accions ràpides",
+    "modulesLabel": "Mòduls",
+    "createArticle": "Crear article",
+    "solicitudsTitle": "Sol·licituds",
+    "solicitudsSubtitle": "Gestiona les sol·licituds pendents des de la secció Sol·licituds del portal.",
+    "solicitudsAccess": "Accés via la pestanya Sol·licituds",
+    "solicitudsAccessHint": "El teu rol dona accés a la gestió de sol·licituds directament des del portal, a la secció Sol·licituds.",
+    "actions": {
+      "news": { "label": "Nova notícia", "sub": "Publica o programa un article", "heroSub": "Publica o programa un article. Editor extens, audiència segmentada, multilingüe." },
+      "formation": { "label": "Nova formació", "sub": "Curs o itinerari del Campus", "heroSub": "Curs o itinerari del Campus TAVIL: extens, presencial o intern." },
+      "activity": { "label": "Nova activitat", "sub": "Esdeveniment intern amb inscripció", "heroSub": "Esdeveniment intern amb inscripció: cultura, esport, formació, jornades." },
+      "agenda": { "label": "Nou esdeveniment", "sub": "Reunió o jornada corporativa", "heroSub": "Reunió, jornada o esdeveniment corporatiu." },
+      "user": { "label": "Nou usuari", "sub": "Crea un compte i envia-li l'accés" },
+      "notice": { "label": "Nou avís", "sub": "Banner destacat al portal" }
+    },
+    "modules": {
+      "users": { "label": "Usuaris", "sub": "comptes" },
+      "news": { "label": "Notícies", "sub": "articles" },
+      "avisos": { "label": "Avisos", "sub": "banners" },
+      "connect": { "label": "Connect", "sub": "activitats" },
+      "formations": { "label": "Formacions", "sub": "cursos" },
+      "agenda": { "label": "Agenda", "sub": "esdeveniments" }
+    }
   }
 }
