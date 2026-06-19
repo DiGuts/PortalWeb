@@ -3,7 +3,7 @@ const DEV_SERVER_IP = '192.168.10.169';
 export const API_BASE: string =
   window.location.hostname === 'localhost'
     ? `http://${DEV_SERVER_IP}/public_html/portal_web/api/index.php`
-    : (process.env.PUBLIC_URL || '') + '/api/index.php';
+    : '/public_html/portal_web/api/index.php'; // DevPortal: shares prod api/ + DB
 
 export type AdminRole = 'Treballador/a' | 'Cap de departament' | 'Administrador' | 'Formacions' | 'Comunicacions' | 'SolicitudsDissabtes' | 'SolicitudsVacances';
 export const ADMIN_ROLES: AdminRole[] = ['Treballador/a', 'Cap de departament', 'Administrador', 'Formacions', 'Comunicacions', 'SolicitudsDissabtes', 'SolicitudsVacances'];

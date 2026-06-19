@@ -2,7 +2,7 @@
   "name": "portalweb",
   "version": "0.1.0",
   "private": true,
-  "homepage": "/public_html/portal_web",
+  "homepage": "/public_html/dev_portal_web",
   "dependencies": {
     "@azure/msal-browser": "^5.11.0",
     "@dnd-kit/core": "^6.3.1",
