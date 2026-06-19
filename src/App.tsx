@@ -4310,7 +4310,7 @@ function VacRangePicker({
 }
 
 // Vacances temporalment ocult: mantenim el codi però amaguem la UI.
-const HIDE_VACANCES = true;
+const HIDE_VACANCES = false;
 // Etiqueta visible per al tab intern 'Dies no ordinaris'.
 const SOL_TAB_LABEL: Record<string, string> = { 'Dies no ordinaris': 'Dissabtes', 'Vacances': 'Vacances' };
 
