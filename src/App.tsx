@@ -4339,7 +4339,8 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
   const [denyingId, setDenyingId] = useState<number | null>(null);
   const [denyMotive, setDenyMotive] = useState('');
   const [closedCollapsed, setClosedCollapsed] = useState(false);
-  const [solConfirm, setSolConfirm] = useState<{ id: number; message: string } | null>(null);
+  const [vacClosedCollapsed, setVacClosedCollapsed] = useState(false);
+  const [solConfirm, setSolConfirm] = useState<{ id: number; message: string; kind?: 'sol' | 'vac' } | null>(null);
   const [solToast, setSolToast] = useState<string | null>(null);
   const showSolToast = (msg: string) => { setSolToast(msg); setTimeout(() => setSolToast(null), 2500); };
   const handleSolDelete = async (id: number) => {
@@ -4354,6 +4355,24 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
   const askDeleteSol = (id: number, dateLabel: string) => {
     setSolConfirm({ id, message: `Eliminar sol·licitud del ${dateLabel}?` });
   };
+  const handleVacDelete = async (id: number) => {
+    try {
+      await apiDeleteVacanca(id);
+      fetchVacances();
+      showSolToast('Sol·licitud eliminada');
+    } catch (e: any) {
+      showSolToast(e?.message || 'Error en eliminar');
+    }
+  };
+  const askDeleteVac = (id: number, rangeLabel: string) => {
+    setSolConfirm({ id, kind: 'vac', message: `Eliminar sol·licitud de vacances (${rangeLabel})?` });
+  };
+  // Overall resolution of a vacanca request across the two-stage flow.
+  const vacFinalStatus = (v: Vacanca): string =>
+    v.rrhh_status === 'Aprovada' ? 'Aprovada'
+      : (v.rrhh_status === 'Denegada' || v.head_status === 'Denegada') ? 'Denegada'
+      : 'Pendent';
+  const vacIsProcessed = (v: Vacanca): boolean => vacFinalStatus(v) !== 'Pendent';
 
   // Vacances state
   const [vacSubTab, setVacSubTab] = useState<'sol' | 'info'>('sol');
@@ -4710,26 +4729,50 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                 <Calendar size={32} style={{ margin: '0 auto 10px', opacity: 0.35 }} />
                 <p style={{ fontSize: 13.5 }}>Sense sol·licituds de vacances</p>
               </div>
-            ) : (
-              <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden' }}>
-                {myVacances.map((v, i) => (
-                  <div key={i} style={{ padding: '12px 14px', borderBottom: '1px solid var(--tavil-border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)' }}>
-                        {formatDate(v.start_date)} – {formatDate(v.end_date)}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(v.rrhh_status === 'Aprovada' ? 'Aprovada' : v.rrhh_status === 'Denegada' || v.head_status === 'Denegada' ? 'Denegada' : 'Pendent') }}>{v.rrhh_status === 'Aprovada' ? 'Aprovada' : v.rrhh_status === 'Denegada' || v.head_status === 'Denegada' ? 'Denegada' : 'Pendent'}</span>
-                        {(isRRHH || v.user_id === currentUser?.id) && (
-                          <button onClick={async () => { await apiDeleteVacanca(v.id); fetchVacances(); }} style={{ background: 'none', border: 'none', color: 'var(--tavil-accent)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
-                        )}
-                      </div>
+            ) : (() => {
+              const activeMine = myVacances.filter(v => !vacIsProcessed(v));
+              const processedMine = myVacances.filter(v => vacIsProcessed(v));
+              const row = (v: Vacanca, i: number, n: number, muted: boolean) => (
+                <div key={v.id} style={{ padding: '12px 14px', borderBottom: i < n - 1 ? '1px solid var(--tavil-border)' : 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: muted ? 500 : 600, color: muted ? 'var(--tavil-muted)' : 'var(--tavil-text)' }}>
+                      {formatDate(v.start_date)} – {formatDate(v.end_date)}
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--tavil-faint)' }}>{laboralDaysBetween(v.start_date, v.end_date)} dies laborables</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(vacFinalStatus(v)) }}>{vacFinalStatus(v)}</span>
+                      {(isRRHH || isHead || v.user_id === currentUser?.id) && (
+                        <button onClick={() => askDeleteVac(v.id, `${formatDate(v.start_date)} – ${formatDate(v.end_date)}`)} style={{ background: 'none', border: 'none', color: muted ? 'var(--tavil-faint)' : 'var(--tavil-accent)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
+                      )}
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div style={{ fontSize: 12, color: 'var(--tavil-faint)' }}>{laboralDaysBetween(v.start_date, v.end_date)} dies laborables</div>
+                </div>
+              );
+              return (
+                <>
+                  {activeMine.length > 0 && (
+                    <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden', marginBottom: processedMine.length > 0 ? 16 : 0 }}>
+                      {activeMine.map((v, i) => row(v, i, activeMine.length, false))}
+                    </div>
+                  )}
+                  {processedMine.length > 0 && (
+                    <>
+                      <button onClick={() => setVacClosedCollapsed(c => !c)} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        <span className="mobile-kicker" style={{ opacity: 0.7 }}>SOL·LICITUDS PROCESSADES · {processedMine.length}</span>
+                        <ChevronDown size={12} className={cn("transition-transform duration-300", !vacClosedCollapsed ? 'rotate-180' : '')} style={{ color: 'var(--tavil-faint)' }} />
+                      </button>
+                      <div className="sol-drawer" data-open={String(!vacClosedCollapsed)}>
+                        <div className="sol-drawer-inner">
+                          <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, overflow: 'hidden', opacity: 0.85 }}>
+                            {processedMine.map((v, i) => row(v, i, processedMine.length, true))}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 
@@ -4808,7 +4851,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
       {solConfirm && (
         <ConfirmModal
           message={solConfirm.message}
-          onConfirm={() => { const id = solConfirm.id; setSolConfirm(null); handleSolDelete(id); }}
+          onConfirm={() => { const { id, kind } = solConfirm; setSolConfirm(null); kind === 'vac' ? handleVacDelete(id) : handleSolDelete(id); }}
           onCancel={() => setSolConfirm(null)}
         />
       )}
@@ -5195,32 +5238,76 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                   <Calendar size={32} className="text-gray-300 dark:text-zinc-600 mx-auto mb-3" />
                   <p className="text-sm text-gray-400 dark:text-zinc-500">Cap sol·licitud de vacances</p>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {vacances.map(v => (
-                    <div key={v.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
-                      <div className="flex items-start gap-3">
-                        <Calendar size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          {(isRRHH || isHead) && <p className="font-semibold text-gray-900 dark:text-white text-sm mb-0.5">{v.author_name} <span className="text-gray-400 font-normal text-xs">— {v.author_dept}</span></p>}
-                          <p className="text-sm font-medium text-gray-700 dark:text-zinc-300">Del {formatDate(v.start_date)} al {formatDate(v.end_date)}</p>
-                          <p className="text-xs text-gray-400 mb-2">Sol·licitades el {formatDate(v.created_at)}</p>
-                          {v.comments && <p className="text-xs text-gray-500 dark:text-zinc-400 italic mb-2">"{v.comments}"</p>}
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] font-semibold text-gray-500">Cap:</span>
-                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(v.head_status))}>{v.head_status}</span>
-                            <span className="text-[10px] font-semibold text-gray-500">RRHH:</span>
-                            <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(v.rrhh_status))}>{v.rrhh_status}</span>
+              ) : (() => {
+                const activeVac = vacances.filter(v => !vacIsProcessed(v));
+                const processedVac = vacances.filter(v => vacIsProcessed(v));
+                return (
+                  <>
+                    {/* Active (encara en flux) */}
+                    {activeVac.length > 0 && (
+                      <div className="space-y-3">
+                        {activeVac.map(v => (
+                          <div key={v.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
+                            <div className="flex items-start gap-3">
+                              <Calendar size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                {(isRRHH || isHead) && <p className="font-semibold text-gray-900 dark:text-white text-sm mb-0.5">{v.author_name} <span className="text-gray-400 font-normal text-xs">— {v.author_dept}</span></p>}
+                                <p className="text-sm font-medium text-gray-700 dark:text-zinc-300">Del {formatDate(v.start_date)} al {formatDate(v.end_date)}</p>
+                                <p className="text-xs text-gray-400 mb-2">Sol·licitades el {formatDate(v.created_at)}</p>
+                                {v.comments && <p className="text-xs text-gray-500 dark:text-zinc-400 italic mb-2">"{v.comments}"</p>}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-[10px] font-semibold text-gray-500">Cap:</span>
+                                  <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(v.head_status))}>{v.head_status}</span>
+                                  <span className="text-[10px] font-semibold text-gray-500">RRHH:</span>
+                                  <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(v.rrhh_status))}>{v.rrhh_status}</span>
+                                </div>
+                                {v.head_comment && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Comentari cap: {v.head_comment}</p>}
+                                {v.rrhh_comment && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">Comentari RRHH: {v.rrhh_comment}</p>}
+                              </div>
+                              <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded flex-shrink-0", statusColor(v.status))}>{v.status}</span>
+                            </div>
                           </div>
-                          {v.head_comment && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Comentari cap: {v.head_comment}</p>}
-                          {v.rrhh_comment && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">Comentari RRHH: {v.rrhh_comment}</p>}
-                        </div>
-                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded flex-shrink-0", statusColor(v.status))}>{v.status}</span>
+                        ))}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    )}
+                    {/* Processades (Aprovada / Denegada) */}
+                    {processedVac.length > 0 && (
+                      <div className={activeVac.length > 0 ? 'mt-6' : ''}>
+                        <button onClick={() => setVacClosedCollapsed(c => !c)} className="flex items-center gap-2 mb-3 group">
+                          <span className="text-[10px] font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">Sol·licituds processades · {processedVac.length}</span>
+                          <ChevronDown size={12} className={cn("text-gray-400 dark:text-zinc-500 transition-transform duration-300", vacClosedCollapsed ? '' : 'rotate-180')} />
+                        </button>
+                        <div className="sol-drawer" data-open={String(!vacClosedCollapsed)}>
+                          <div className="sol-drawer-inner">
+                            <div className="space-y-2 pb-0.5">
+                              {processedVac.map(v => (
+                                <div key={v.id} className="bg-gray-50 dark:bg-zinc-900/50 rounded-xl border border-gray-100 dark:border-zinc-800/60 p-3.5 opacity-90">
+                                  <div className="flex items-start gap-3">
+                                    <Calendar size={14} className="text-gray-400 dark:text-zinc-500 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1 min-w-0">
+                                      {(isRRHH || isHead) && <p className="font-medium text-gray-600 dark:text-zinc-300 text-sm mb-0.5">{v.author_name} <span className="text-gray-400 font-normal text-xs">— {v.author_dept}</span></p>}
+                                      <p className="text-sm font-medium text-gray-600 dark:text-zinc-300">Del {formatDate(v.start_date)} al {formatDate(v.end_date)}</p>
+                                      {v.comments && <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5 italic">"{v.comments}"</p>}
+                                      {v.head_comment && <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">Comentari cap: {v.head_comment}</p>}
+                                      {v.rrhh_comment && <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">Comentari RRHH: {v.rrhh_comment}</p>}
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(vacFinalStatus(v)))}>{vacFinalStatus(v)}</span>
+                                      {(isRRHH || isHead || v.user_id === currentUser?.id) && (
+                                        <button onClick={() => askDeleteVac(v.id, `${formatDate(v.start_date)} – ${formatDate(v.end_date)}`)} className="p-1 text-gray-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"><Trash2 size={13} /></button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {showForm && mobileFormOpen && createPortal(
@@ -5380,7 +5467,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
       {solConfirm && (
         <ConfirmModal
           message={solConfirm.message}
-          onConfirm={() => { const id = solConfirm.id; setSolConfirm(null); handleSolDelete(id); }}
+          onConfirm={() => { const { id, kind } = solConfirm; setSolConfirm(null); kind === 'vac' ? handleVacDelete(id) : handleSolDelete(id); }}
           onCancel={() => setSolConfirm(null)}
         />
       )}

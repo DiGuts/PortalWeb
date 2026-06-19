@@ -210,7 +210,8 @@ elseif ($method === 'POST' && $action === 'impersonate') {
     }
     require_once __DIR__ . '/../auth_middleware.php';
     $caller = auth_user();
-    if (($caller['email'] ?? '') !== 'unaiclapers@tavil.net') {
+    $impersonate_allowed = ['unaiclapers@tavil.net', 'crmit@tavil.net'];
+    if (!in_array(($caller['email'] ?? ''), $impersonate_allowed, true)) {
         respond(['detail' => 'No autoritzat'], 403);
     }
     $target_id = (int)($segments[2] ?? 0);
