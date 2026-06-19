@@ -70,7 +70,7 @@ elseif ($method === 'PATCH' && $seg1 === 'me' && $seg2 === '') {
                 $updates[$k] = bool_val($body, $k) ? 1 : 0;
             } elseif ($k === 'avatar_url') {
                 $v = $body[$k];
-                if ($v !== null && $v !== '' && !str_starts_with((string)$v, '/uploads/')) {
+                if ($v !== null && $v !== '' && !str_starts_with((string)$v, '/')) {
                     respond(['detail' => 'avatar_url invàlid'], 400);
                 }
                 $updates[$k] = $v === '' ? null : $v;

@@ -48,8 +48,8 @@ function _upsert_activity_agenda(PDO $db, int $activity_id, array $body): void {
 // POST /api/activities
 if ($method === 'POST' && $id === null) {
     require_comunicacions_or_admin();
-    $db->prepare('INSERT INTO activities (title,category,description,date,time,location,capacity,link,image,enrolled,past) VALUES (?,?,?,?,?,?,?,?,?,0,0)')
-       ->execute([str_val($body,'title'), str_val($body,'category'), str_val($body,'description'), str_val($body,'date'), str_val($body,'time'), str_val($body,'location'), int_val($body,'capacity'), str_val($body,'link'), str_val($body,'image')]);
+    $db->prepare('INSERT INTO activities (title,category,description,date,time,location,capacity,link,image,image_crop,enrolled,past) VALUES (?,?,?,?,?,?,?,?,?,?,0,0)')
+       ->execute([str_val($body,'title'), str_val($body,'category'), str_val($body,'description'), str_val($body,'date'), str_val($body,'time'), str_val($body,'location'), int_val($body,'capacity'), str_val($body,'link'), str_val($body,'image'), str_val($body,'image_crop')]);
     $new_id = (int)$db->lastInsertId();
     $stmt = $db->prepare('SELECT * FROM activities WHERE id=?'); $stmt->execute([$new_id]); $row = $stmt->fetch();
     $row['id'] = (int)$row['id'];
@@ -157,7 +157,7 @@ elseif ($method === 'GET' && $id !== null && $sub === 'enrollments') {
                 u.name, u.email, u.dept
          FROM activity_enrollments ae
          JOIN users u ON u.id = ae.user_id
-         WHERE ae.activity_id = ? AND ae.status = 'confirmed'
+         WHERE ae.activity_id = ? AND ae.status = "confirmed"
          ORDER BY ae.enrolled_at ASC'
     );
     $stmt->execute([$id]);
@@ -172,8 +172,8 @@ elseif ($method === 'GET' && $id !== null && $sub === 'enrollments') {
 // PUT /api/activities/{id}
 elseif ($method === 'PUT' && $id !== null) {
     require_comunicacions_or_admin();
-    $db->prepare('UPDATE activities SET title=?,category=?,description=?,date=?,time=?,location=?,capacity=?,link=?,image=? WHERE id=?')
-       ->execute([str_val($body,'title'), str_val($body,'category'), str_val($body,'description'), str_val($body,'date'), str_val($body,'time'), str_val($body,'location'), int_val($body,'capacity'), str_val($body,'link'), str_val($body,'image'), $id]);
+    $db->prepare('UPDATE activities SET title=?,category=?,description=?,date=?,time=?,location=?,capacity=?,link=?,image=?,image_crop=? WHERE id=?')
+       ->execute([str_val($body,'title'), str_val($body,'category'), str_val($body,'description'), str_val($body,'date'), str_val($body,'time'), str_val($body,'location'), int_val($body,'capacity'), str_val($body,'link'), str_val($body,'image'), str_val($body,'image_crop'), $id]);
     _upsert_activity_agenda($db, $id, $body);
     respond(['ok' => true]);
 }

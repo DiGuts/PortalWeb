@@ -18,13 +18,14 @@ if ($method === 'POST' && $id === null) {
     $title    = str_val($body,'title');
     $day      = int_val($body,'day');
     $month    = int_val($body,'month');
+    $year     = int_val($body,'year', date('Y'));
     $time     = str_val($body,'time');
     $time_end = str_val($body,'time_end');
     if ($time_end === '') $time_end = null;
     $location = str_val($body,'location');
     $type     = str_val($body,'type','Sessió interna');
-    $db->prepare('INSERT INTO agenda_events (title,day,month,time,time_end,location,type,target_departments) VALUES (?,?,?,?,?,?,?,?)')
-       ->execute([$title, $day, $month, $time, $time_end, $location, $type, $depts]);
+    $db->prepare('INSERT INTO agenda_events (title,day,month,year,time,time_end,location,type,target_departments) VALUES (?,?,?,?,?,?,?,?,?)')
+       ->execute([$title, $day, $month, $year, $time, $time_end, $location, $type, $depts]);
     $new_id = (int)$db->lastInsertId();
     $stmt = $db->prepare('SELECT * FROM agenda_events WHERE id=?'); $stmt->execute([$new_id]); $row = $stmt->fetch();
     $row['id'] = (int)$row['id'];
@@ -53,8 +54,8 @@ elseif ($method === 'PUT' && $id !== null) {
         : null;
     $time_end = str_val($body,'time_end');
     if ($time_end === '') $time_end = null;
-    $db->prepare('UPDATE agenda_events SET title=?,day=?,month=?,time=?,time_end=?,location=?,type=?,target_departments=? WHERE id=?')
-       ->execute([str_val($body,'title'), int_val($body,'day'), int_val($body,'month'), str_val($body,'time'), $time_end, str_val($body,'location'), str_val($body,'type','Sessió interna'), $depts, $id]);
+    $db->prepare('UPDATE agenda_events SET title=?,day=?,month=?,year=?,time=?,time_end=?,location=?,type=?,target_departments=? WHERE id=?')
+       ->execute([str_val($body,'title'), int_val($body,'day'), int_val($body,'month'), int_val($body,'year', date('Y')), str_val($body,'time'), $time_end, str_val($body,'location'), str_val($body,'type','Sessió interna'), $depts, $id]);
     respond(['ok' => true]);
 }
 
@@ -69,7 +70,10 @@ elseif ($method === 'DELETE' && $id !== null) {
 elseif ($method === 'GET' && $id === null) {
     $u = auth_user();
     $is_admin = user_has_any_role($u, ['Administrador', 'Administrador/a', 'Recursos humans', 'Comunicacions', 'Comunicació', 'Formacions']);
-    if (isset($_GET['month'])) {
+    if (isset($_GET['month']) && isset($_GET['year'])) {
+        $stmt = $db->prepare('SELECT * FROM agenda_events WHERE month=? AND year=? ORDER BY day, time');
+        $stmt->execute([(int)$_GET['month'], (int)$_GET['year']]);
+    } elseif (isset($_GET['month'])) {
         $stmt = $db->prepare('SELECT * FROM agenda_events WHERE month=? ORDER BY day, time');
         $stmt->execute([(int)$_GET['month']]);
     } else {
@@ -83,6 +87,7 @@ elseif ($method === 'GET' && $id === null) {
         $r['id']    = (int)$r['id'];
         $r['day']   = (int)$r['day'];
         $r['month'] = (int)$r['month'];
+        $r['year']  = (int)($r['year'] ?? 2026);
         if (!$is_admin) {
             $td = $r['target_departments'] ?? null;
             $tu = $r['target_users'] ?? null;

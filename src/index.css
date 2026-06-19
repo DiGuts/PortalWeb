@@ -47,8 +47,8 @@
   /* ── Motion system (TAVIL Handoff spec) ────────────────────────────────── */
   --motion-ease:      cubic-bezier(0.32, 0.72, 0.24, 1); /* arrivals — corporate ease-out */
   --motion-ease-out:  cubic-bezier(0.22, 1, 0.36, 1);    /* departures — quick exit */
-  --motion-dur-in:    320ms;  /* arrivals */
-  --motion-dur-out:   200ms;  /* departures */
+  --motion-dur-in:    220ms;  /* arrivals */
+  --motion-dur-out:   160ms;  /* departures */
   --motion-dur-quick: 150ms;  /* hovers, toggles, micro-state */
   --motion-stagger:   50ms;   /* sequential child reveals */
 }
@@ -226,6 +226,31 @@
   animation: tavil-drawer-down 280ms var(--ease-out-quint) both;
 }
 
+/* ── Formation body_html — rich article content rendered inside course detail ── */
+.formation-body { color: var(--tavil-text); line-height: 1.7; font-size: 0.9375rem; }
+.formation-body h2 { font-size: 1.0625rem; font-weight: 700; margin: 1.5rem 0 0.5rem; color: var(--tavil-text); letter-spacing: -0.01em; }
+.formation-body p  { margin: 0 0 0.875rem; }
+.formation-body ul,
+.formation-body ol { margin: 0 0 0.875rem 1.25rem; }
+.formation-body ul { list-style: disc; }
+.formation-body ol { list-style: decimal; }
+.formation-body li { margin-bottom: 0.3rem; }
+.formation-body li + li { margin-top: 0.2rem; }
+.formation-body strong { font-weight: 600; }
+.formation-body em { font-style: italic; }
+.formation-body blockquote {
+  margin: 1.25rem 0;
+  padding: 0.875rem 1.125rem;
+  border-left: 3px solid var(--tavil-accent);
+  background: color-mix(in srgb, var(--tavil-accent) 6%, var(--tavil-card));
+  border-radius: 0 8px 8px 0;
+  color: var(--tavil-text-muted);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+.dark .formation-body blockquote {
+  background: color-mix(in srgb, var(--tavil-accent) 10%, transparent);
+}
 
 /* ── Glass header — transparent on Inici, solid on hover ───────────────── */
 .header-glass {

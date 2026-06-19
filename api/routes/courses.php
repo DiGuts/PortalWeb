@@ -37,7 +37,7 @@ if ($method === 'GET' && $id === null) {
     $rows = $db->query('SELECT * FROM courses ORDER BY mandatory DESC, title')->fetchAll();
 
     // Non-manager users only see external courses targeted at their dept/user (or no restriction)
-    $isManager = in_array($u['role'], ['Administrador/a', 'Recursos humans', 'Formacions'], true);
+    $isManager = user_has_any_role($u, ['Administrador', 'Administrador/a', 'Recursos humans', 'Formacions']);
     if (!$isManager) {
         $userDept = (string)($u['dept'] ?? '');
         $userId   = (int)$u['id'];

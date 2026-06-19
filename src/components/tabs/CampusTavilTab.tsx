@@ -1,4 +1,5 @@
 import { tabPrefetch, tabPrefetchAt, isTabCacheFresh } from '../../lib/tabPrefetch';
+import { resolveImg } from '../../lib/resolveImg';
 import { scrollPageToTop } from '../../lib/scroll';
 import { cn } from '../../lib/cn';
 import { useIsMobile } from '../../lib/useIsMobile';
@@ -119,12 +120,16 @@ type CatalogItem = {
   quizAttempted?: boolean;
   quizQuestions?: number;
   isPresential?: boolean;
+  modality?: string;
   certificateStatus?: 'pending' | 'approved' | 'rejected' | null;
   certificateId?: number | null;
   requiresCert?: boolean;
   departments?: string[];
   startAt?: string | null;
   endAt?: string | null;
+  body_html?: string | null;
+  page_content?: string | null;
+  image?: string;
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -162,14 +167,19 @@ function CatalogCard({ item, i, onSelect, onOpenExternal, onCertUpload }: {
       {/* Category + status */}
       <div className="flex items-start justify-between mb-3 gap-2">
         <div className="flex items-center gap-1.5 flex-wrap">
-          {item.category && (
-            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400">
-              {item.category}
+          {item.modality === 'online' && (
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-[#dbeafe] text-[#1d4ed8] dark:bg-[#1e3a5f] dark:text-[#93c5fd]">
+              {t('campus.online')}
             </span>
           )}
-          {item.isPresential && (
+          {item.modality === 'presencial' && (
             <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-[#d1fae5] text-[#065f46] dark:bg-[#14532d] dark:text-[#86efac]">
               {t('campus.presential')}
+            </span>
+          )}
+          {item.modality === 'hibrida' && (
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-[#ede9fe] text-[#5b21b6] dark:bg-[#2e1065] dark:text-[#c4b5fd]">
+              {t('campus.hibrida')}
             </span>
           )}
         </div>
@@ -361,6 +371,7 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
       departments: (() => { try { return JSON.parse(c.departments || '[]'); } catch { return []; } })(),
       startAt: c.start_at ?? null,
       endAt: c.end_at ?? null,
+      image: c.image || undefined,
     }));
 
   const internes: CatalogItem[] = quizList
@@ -377,9 +388,13 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
       quizAttempted: !!q.user_attempt,
       quizQuestions: q.question_count ?? 0,
       isPresential: q.is_presential === 1,
+      modality: q.modality ?? '',
       departments: q.target_departments ?? [],
       startAt: q.start_at ?? null,
       endAt: q.end_at ?? null,
+      body_html: q.body_html ?? null,
+      page_content: q.page_content ?? null,
+      image: q.image || undefined,
     })) as CatalogItem[];
 
   const catalog: CatalogItem[] = [...externes, ...internes].filter(
@@ -460,16 +475,30 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
           <ChevronLeft size={16} /> {t('campus.backToCampus')}
         </button>
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden">
-          <div className="p-8">
+          {selectedCourse.image && (
+            <img
+              src={resolveImg(selectedCourse.image)}
+              alt={selectedCourse.title}
+              loading="lazy"
+              className="w-full object-cover"
+              style={{ height: 288 }}
+            />
+          )}
+          <div className="p-5 sm:p-8">
             <div className="flex items-center gap-2 flex-wrap mb-4">
-              {selectedCourse.category && (
-                <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400">
-                  {selectedCourse.category}
+              {selectedCourse.modality === 'online' && (
+                <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-[#dbeafe] text-[#1d4ed8] dark:bg-[#1e3a5f] dark:text-[#93c5fd]">
+                  {t('campus.online')}
                 </span>
               )}
-              {selectedCourse.isPresential && (
+              {selectedCourse.modality === 'presencial' && (
                 <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-[#d1fae5] text-[#065f46] dark:bg-[#14532d] dark:text-[#86efac]">
                   {t('campus.presential')}
+                </span>
+              )}
+              {selectedCourse.modality === 'hibrida' && (
+                <span className="text-[10px] font-semibold uppercase tracking-[0.1em] px-2 py-0.5 rounded bg-[#ede9fe] text-[#5b21b6] dark:bg-[#2e1065] dark:text-[#c4b5fd]">
+                  {t('campus.hibrida')}
                 </span>
               )}
               {!!selectedCourse.mandatory && (
@@ -497,10 +526,46 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
                 </span>
               )}
             </div>
-            {selectedCourse.description && (
+            {selectedCourse.description && !selectedCourse.body_html && !selectedCourse.page_content && (
               <p className="text-gray-600 dark:text-zinc-300 text-base leading-relaxed mb-6">
                 {selectedCourse.description}
               </p>
+            )}
+            {selectedCourse.page_content && (() => {
+              try {
+                const blocks = JSON.parse(selectedCourse.page_content!);
+                if (!Array.isArray(blocks) || !blocks.length) return null;
+                const sorted = [...blocks].sort((a, b) => a.y - b.y || a.x - b.x);
+                return (
+                  <div className="formation-body mb-6 space-y-3">
+                    {sorted.map((block: any) => {
+                      const c = block.content || '';
+                      switch (block.type) {
+                        case 'headline': return <h2 key={block.id} className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>{c}</h2>;
+                        case 'subhead': return <h3 key={block.id} className="text-lg font-semibold">{c}</h3>;
+                        case 'byline': return <p key={block.id} className="text-sm text-[var(--tavil-faint)]">{c}</p>;
+                        case 'paragraph': return <p key={block.id} className="text-base leading-relaxed text-[var(--tavil-text)]" dangerouslySetInnerHTML={{ __html: c }} />;
+                        case 'image': return block.url ? <img key={block.id} src={resolveImg(block.url)} alt={c} className="w-full rounded-xl object-cover max-h-72" /> : null;
+                        case 'list': return (
+                          <ul key={block.id} className="list-disc list-inside space-y-1 text-base text-[var(--tavil-text)]">
+                            {c.split('\n').filter(Boolean).map((li: string, i: number) => <li key={i}>{li}</li>)}
+                          </ul>
+                        );
+                        case 'pullquote': return <blockquote key={block.id} className="border-l-4 border-[var(--tavil-accent)] pl-4 italic text-[var(--tavil-muted)]">{c}</blockquote>;
+                        case 'divider': return <hr key={block.id} className="border-[var(--tavil-border)]" />;
+                        case 'link': return block.url ? <a key={block.id} href={block.url} target="_blank" rel="noopener noreferrer" className="text-[var(--tavil-accent)] underline text-sm">{c || block.url}</a> : null;
+                        default: return c ? <p key={block.id} className="text-base leading-relaxed">{c}</p> : null;
+                      }
+                    })}
+                  </div>
+                );
+              } catch { return null; }
+            })()}
+            {selectedCourse.body_html && !selectedCourse.page_content && (
+              <div
+                className="formation-body mb-6"
+                dangerouslySetInnerHTML={{ __html: selectedCourse.body_html }}
+              />
             )}
             <div className="flex flex-col gap-3">
               {selectedCourse.type === 'Externes' && selectedCourse.url && (
@@ -547,13 +612,18 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
 
   if (isMobileCampus) {
     const inProgress = courses.filter(c => c.user_progress > 0 && c.user_progress < 100);
-    const MOBILE_CATS = ['Tot', 'Seguretat', 'Qualitat', 'Sistemes', 'Comercial', 'Compliance', 'Producció', 'Habilitats'];
-    const mobileFiltered = courses.filter(c => c.user_status !== 'Completat' && (mobileCat === 'Tot' || c.category === mobileCat));
+    const allMobileItems = [...externes, ...internes];
+    const mobileCats = ['Tot', ...Array.from(new Set(allMobileItems.map(i => i.category).filter((c): c is string => !!c)))];
+    const mobileFiltered = allMobileItems.filter(item =>
+      item.status !== 'Completat' &&
+      item.status !== 'No aprovat' &&
+      (mobileCat === 'Tot' || item.category === mobileCat)
+    );
     return (
       <div style={{ background: 'var(--tavil-bg)', paddingBottom: 96 }}>
         {/* Top bar */}
         <div style={{ height: 82, display: 'flex', alignItems: 'center', padding: '0 16px', position: 'relative' }}>
-          <button onClick={onBack} aria-label={t('common.back') || 'Enrere'} style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0, zIndex: 1 }}>
+          <button onClick={onBack} aria-label={t('common.back') || 'Enrere'} style={{ width: 44, height: 44, borderRadius: 22, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--tavil-text)', flexShrink: 0, zIndex: 1 }}>
             <ChevronLeft size={18} />
           </button>
           <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>Campus TAVIL</span>
@@ -595,7 +665,7 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
                   <div style={{ height: 5, width: '100%', background: 'var(--tavil-text)', borderRadius: 3, transform: `scaleX(${inProgress[0].user_progress / 100})`, transformOrigin: 'left', transition: 'transform 400ms var(--ease-out-quint)' }} />
                 </div>
                 {inProgress[0].url && (
-                  <button onClick={() => window.open(inProgress[0].url, '_blank', 'noopener,noreferrer')} style={{ marginTop: 14, width: '100%', height: 42, borderRadius: 12, border: 'none', background: 'var(--tavil-text)', color: 'var(--tavil-bg)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <button onClick={() => window.open(inProgress[0].url, '_blank', 'noopener,noreferrer')} style={{ marginTop: 14, width: '100%', height: 44, borderRadius: 12, border: 'none', background: 'var(--tavil-text)', color: 'var(--tavil-bg)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                     {t('campus.continue')}
                   </button>
                 )}
@@ -606,7 +676,7 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
 
         {/* Category pills */}
         <div data-no-swipe style={{ padding: '0 16px 14px', overflowX: 'auto', display: 'flex', gap: 8 }} className="hide-sb">
-          {MOBILE_CATS.map(c => (
+          {mobileCats.map(c => (
             <button key={c} onClick={() => setMobileCat(c)} style={{
               flexShrink: 0, height: 32, padding: '0 14px', borderRadius: 999,
               background: mobileCat === c ? 'var(--tavil-text)' : 'var(--tavil-card)',
@@ -619,36 +689,46 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
 
         {/* Course list */}
         <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {mobileFiltered.map((course, i) => (
-            <div key={i} className="anim-item" style={{ '--i': i, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: '14px 16px' } as React.CSSProperties}>
+          {mobileFiltered.map((item, i) => (
+            <div key={item.id} className="anim-item" onClick={() => setSelectedCourse(item)} style={{ '--i': i, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, padding: '14px 16px', cursor: 'pointer' } as React.CSSProperties}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--tavil-muted)', background: 'var(--tavil-bg)', border: '1px solid var(--tavil-border)', borderRadius: 6, padding: '2px 8px' }}>{course.category}</span>
-                <span style={{ fontSize: 10.5, fontWeight: 700, borderRadius: 6, padding: '2px 8px', marginLeft: 'auto', background: course.user_status === 'Completat' ? '#d1fae5' : course.user_progress > 0 ? '#fef3c7' : 'var(--tavil-bg)', color: course.user_status === 'Completat' ? '#065f46' : course.user_progress > 0 ? '#92400e' : 'var(--tavil-muted)' }}>{course.user_status}</span>
+                {item.modality === 'online' && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', borderRadius: 6, padding: '2px 8px' }}>{t('campus.online')}</span>}
+                {item.modality === 'presencial' && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#065f46', background: '#d1fae5', borderRadius: 6, padding: '2px 8px' }}>{t('campus.presential')}</span>}
+                {item.modality === 'hibrida' && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#5b21b6', background: '#ede9fe', borderRadius: 6, padding: '2px 8px' }}>{t('campus.hibrida')}</span>}
+                <span style={{ fontSize: 10.5, fontWeight: 700, borderRadius: 6, padding: '2px 8px', marginLeft: 'auto', background: item.status === 'Completat' ? '#d1fae5' : item.status === 'En curs' ? '#fef3c7' : 'var(--tavil-bg)', color: item.status === 'Completat' ? '#065f46' : item.status === 'En curs' ? '#92400e' : 'var(--tavil-muted)' }}>{item.status}</span>
               </div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 6, lineHeight: 1.3 }}>{course.title}</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 6, lineHeight: 1.3 }}>{item.title}</div>
               <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--tavil-muted)', alignItems: 'center' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={11} />{course.hours}</span>
-                {(course.start_at || course.end_at) && (
+                {item.hours && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={11} />{item.hours}</span>}
+                {(item.startAt || item.endAt) && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <CalendarDays size={11} />
-                    {course.start_at ? course.start_at.slice(0, 10).split('-').reverse().join('/') : ''}
-                    {course.start_at && course.end_at ? ' – ' : ''}
-                    {course.end_at ? course.end_at.slice(0, 10).split('-').reverse().join('/') : ''}
+                    {item.startAt ? item.startAt.slice(0, 10).split('-').reverse().join('/') : ''}
+                    {item.startAt && item.endAt ? ' – ' : ''}
+                    {item.endAt ? item.endAt.slice(0, 10).split('-').reverse().join('/') : ''}
                   </span>
                 )}
-                {Number(course.mandatory) === 1 && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#dc2626', background: '#fef2f2', borderRadius: 6, padding: '1px 7px' }}>{t('campus.mandatory')}</span>}
+                {item.mandatory && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#dc2626', background: '#fef2f2', borderRadius: 6, padding: '1px 7px' }}>{t('campus.mandatory')}</span>}
               </div>
-              {course.user_progress > 0 && course.user_progress < 100 && (
+              {item.status === 'En curs' && typeof item.progress === 'number' && (
                 <div style={{ marginTop: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--tavil-muted)', marginBottom: 5 }}><span>{t('campus.progress')}</span><span>{course.user_progress}%</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--tavil-muted)', marginBottom: 5 }}><span>{t('campus.progress')}</span><span>{item.progress}%</span></div>
                   <div style={{ height: 4, background: 'var(--tavil-border)', borderRadius: 2 }}>
-                    <div style={{ height: 4, width: '100%', background: 'var(--tavil-text)', borderRadius: 2, transform: `scaleX(${course.user_progress / 100})`, transformOrigin: 'left', transition: 'transform 400ms var(--ease-out-quint)' }} />
+                    <div style={{ height: 4, width: '100%', background: 'var(--tavil-text)', borderRadius: 2, transform: `scaleX(${(item.progress ?? 0) / 100})`, transformOrigin: 'left', transition: 'transform 400ms var(--ease-out-quint)' }} />
                   </div>
                 </div>
               )}
-              {course.url && (
-                <button onClick={(e) => { e.stopPropagation(); window.open(course.url, '_blank', 'noopener,noreferrer'); }} style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', height: 38, borderRadius: 10, border: '1px solid var(--tavil-border)', background: 'transparent', color: 'var(--tavil-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              {item.type === 'Externes' && item.url && (
+                <button onClick={(e) => { e.stopPropagation(); openExternalCourse(item); }} style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', height: 44, borderRadius: 10, border: '1px solid var(--tavil-border)', background: 'transparent', color: 'var(--tavil-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                   <ExternalLink size={13} /> {t('campus.openCourse')}
+                </button>
+              )}
+              {item.type === 'Internes' && item.quizId && !item.isPresential && item.status !== 'Completat' && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); window.open(`${window.location.pathname}?quiz=${item.quizId}${item.quizInProgress ? '&resume=1' : ''}`, '_blank'); }}
+                  style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', height: 44, borderRadius: 10, border: 'none', background: item.quizInProgress ? '#d97706' : 'var(--tavil-text)', color: 'var(--tavil-bg)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  <PlayCircle size={13} /> {item.quizInProgress ? t('campus.continue') : t('campus.start')}
                 </button>
               )}
             </div>

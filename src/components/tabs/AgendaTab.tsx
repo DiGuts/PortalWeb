@@ -19,6 +19,7 @@ import {
   apiGetAgendaEvents, apiCreateAgendaEvent, apiUpdateAgendaEvent, apiDeleteAgendaEvent,
 } from '../../api';
 import { DatePicker, TimePicker } from '../shared/AgendaPickers';
+import { useToast } from '../shared/Toast';
 
 // ── Agenda Tab ────────────────────────────────────────────────────────────────
 
@@ -76,6 +77,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
     return ['Administrador', 'Administrador/a', 'Recursos humans', 'Comunicacions', 'Comunicació', 'Formacions'].some(x => x === r || rs.includes(x));
   })();
   const { t, i18n } = useTranslation();
+  const toast = useToast();
   const MONTH_NAMES = t('common.months', { returnObjects: true }) as string[];
 
   const eventRailColor = (ev: AgendaEvent): string => {
@@ -142,7 +144,8 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
       setApiAgendaEvents(await apiGetAgendaEvents());
       closeEventForm();
       setTimeout(() => { setETitle(''); setEDate(''); setETime(''); setETimeEnd(''); setELocation(''); setEDepts([]); }, 260);
-    } catch (e) { console.error(e); }
+      toast.success('Esdeveniment creat');
+    } catch (e: any) { toast.error(e?.message ?? 'Error creant l\'esdeveniment'); }
     finally { setESaving(false); }
   };
 
@@ -181,7 +184,8 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
         location: eeLocation.trim(), type: eeType, target_departments: eeDepts });
       setApiAgendaEvents(await apiGetAgendaEvents());
       setEvEditId(null);
-    } catch (e) { console.error(e); }
+      toast.success('Canvis guardats');
+    } catch (e: any) { toast.error(e?.message ?? 'Error guardant l\'esdeveniment'); }
     finally { setEeSaving(false); }
   };
 
@@ -192,8 +196,8 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
       message: t('agenda.confirmDelete'),
       onConfirm: async () => {
         setConfirmModal(null);
-        try { await apiDeleteAgendaEvent(id); setApiAgendaEvents(await apiGetAgendaEvents()); }
-        catch (e) { console.error(e); }
+        try { await apiDeleteAgendaEvent(id); setApiAgendaEvents(await apiGetAgendaEvents()); toast.info('Esdeveniment eliminat'); }
+        catch (e: any) { toast.error(e?.message ?? 'Error eliminant l\'esdeveniment'); }
       },
     });
   };
@@ -214,7 +218,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
     setCurrentYear(ny);
   };
 
-  const filters = ['Tots', 'Festiu', 'Fira', 'Visita comercial', 'Sessió interna', 'Activitat empresa'];
+  const filters = ['Tots', 'Festiu', 'Fira', 'Sessió interna', 'Activitat empresa'];
 
   // Festius always pass (affect everyone). Events with no target_departments are visible to all.
   // Otherwise the selected deptFilter must be in target_departments. 'Tots' = no filtering.
@@ -227,11 +231,12 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
   };
 
   const filteredEvents = (activeFilter === 'Tots' ? agendaEvents : agendaEvents.filter(e => e.type === activeFilter))
-    .filter(passesDept);
+    .filter(passesDept)
+    .filter(e => (e.id ?? 0) < 0 ? true : (!e.year || Number(e.year) === currentYear));
 
   // Build calendar cell events map for the current month
   const calendarEvents: Record<number, AgendaEvent[]> = {};
-  filteredEvents.filter(e => e.month === currentMonth && e.id !== undefined).forEach(e => {
+  filteredEvents.filter(e => e.month === currentMonth).forEach(e => {
     if (!calendarEvents[e.day]) calendarEvents[e.day] = [];
     calendarEvents[e.day].push(e);
   });
@@ -424,7 +429,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
           {/* Type multiselect — fills remaining space */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <DropdownMultiselect
-              options={['Festiu', 'Fira', 'Visita comercial', 'Sessió interna', 'Activitat empresa']}
+              options={['Festiu', 'Fira', 'Sessió interna', 'Activitat empresa']}
               value={typeFilterMulti}
               onChange={setTypeFilterMulti}
               getLabel={(x) => x}

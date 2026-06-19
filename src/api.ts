@@ -504,6 +504,7 @@ export async function apiGetEmployees(dept?: string): Promise<Employee[]> {
 export interface Activity {
   id: number;
   title: string;
+  image_crop?: string;
   category: string;
   description: string;
   date: string;
@@ -519,7 +520,7 @@ export interface Activity {
 export async function apiCreateActivity(fields: {
   title: string; category: string; description: string;
   date: string; time: string; location: string; capacity: number; link: string;
-  image?: string;
+  image?: string; image_crop?: string;
 }): Promise<Activity> {
   return apiFetch<Activity>('/api/activities', { method: 'POST', body: JSON.stringify(fields) });
 }
@@ -527,7 +528,7 @@ export async function apiCreateActivity(fields: {
 export async function apiUpdateActivity(id: number, fields: {
   title: string; category: string; description: string;
   date: string; time: string; location: string; capacity: number; link: string;
-  image?: string;
+  image?: string; image_crop?: string;
 }): Promise<void> {
   await apiFetch(`/api/activities/${id}`, { method: 'PUT', body: JSON.stringify(fields) });
 }
@@ -605,8 +606,8 @@ export async function apiDeleteAgendaEvent(id: number): Promise<void> {
   await apiFetch(`/api/agenda/${id}`, { method: 'DELETE' });
 }
 
-export async function apiGetAgendaEvents(month?: number): Promise<AgendaEvent[]> {
-  const qs = month !== undefined ? `?month=${month}` : '';
+export async function apiGetAgendaEvents(month?: number, year?: number): Promise<AgendaEvent[]> {
+  const qs = month !== undefined && year !== undefined ? `?month=${month}&year=${year}` : month !== undefined ? `?month=${month}` : '';
   return apiFetch<AgendaEvent[]>(`/api/agenda${qs}`);
 }
 
@@ -744,6 +745,7 @@ export interface Course {
   user_progress: number;
   certificate_status?: 'pending' | 'approved' | 'rejected' | null;
   certificate_id?: number | null;
+  image?: string | null;
 }
 
 // ── Certificates ──────────────────────────────────────────────────────────────
@@ -785,6 +787,7 @@ export interface ExternalCoursePayload {
   target_users: number[];
   start_at?: string | null;
   end_at?: string | null;
+  image?: string;
 }
 
 export async function apiCreateExternalCourse(data: ExternalCoursePayload): Promise<{ id: number }> {
@@ -934,6 +937,8 @@ export interface Quiz {
   id: number;
   title: string;
   description: string;
+  body_html?: string;
+  page_content?: string | null;
   image: string;
   category: string;
   time_limit: number;
@@ -945,6 +950,7 @@ export interface Quiz {
   target_departments: string[];
   target_users: number[];
   is_presential: number;
+  modality?: string;
   location: string;
   created_at: string;
   questions: QuizQuestion[];
@@ -984,6 +990,7 @@ export interface QuizIn {
   target_departments: string[];
   target_users: number[];
   is_presential?: number;
+  modality?: string;
   location?: string;
   questions: QuizQuestionIn[];
 }

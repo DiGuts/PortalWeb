@@ -80,7 +80,7 @@ export function CreateActivityModal({ open, onClose, onCreated }: {
           <AInput value={title} onChange={e => setTitle(e.target.value)} onBlur={() => setTitleTouched(true)} placeholder="Nom de l'activitat" hasError={titleError} />
         </AField>
         <AField label="Descripció">
-          <ATextarea rows={3} value={description} onChange={e => setDescription(e.target.value)} placeholder="Breu descripció" />
+          <ATextarea rows={3} maxLength={400} value={description} onChange={e => setDescription(e.target.value)} placeholder="Breu descripció" />
         </AField>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <AField label="Data">

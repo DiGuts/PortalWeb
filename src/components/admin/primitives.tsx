@@ -441,18 +441,27 @@ export function AInput({ value, onChange, placeholder, type = 'text', icon: Icon
   );
 }
 
-export function ATextarea({ value, onChange, onBlur, placeholder, rows = 4, hasError }: {
+export function ATextarea({ value, onChange, onBlur, placeholder, rows = 4, hasError, maxLength }: {
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onBlur?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
   placeholder?: string;
   rows?: number;
   hasError?: boolean;
+  maxLength?: number;
 }) {
   const [focus, setFocus] = useState(false);
-  return (
+  const current = (value ?? '').length;
+
+  const counterColor = maxLength === undefined ? T.textFaint
+    : current / maxLength > 0.9 ? '#c0392b'
+    : current / maxLength > 0.7 ? '#e8a020'
+    : T.textFaint;
+
+  const textarea = (
     <textarea
       value={value ?? ''} onChange={onChange} placeholder={placeholder} rows={rows}
+      maxLength={maxLength}
       onFocus={() => setFocus(true)}
       onBlur={e => { setFocus(false); onBlur?.(e); }}
       style={{
@@ -465,6 +474,20 @@ export function ATextarea({ value, onChange, onBlur, placeholder, rows = 4, hasE
         transition: 'border-color 140ms, box-shadow 140ms, background 140ms',
       }}
     />
+  );
+
+  if (maxLength === undefined) return textarea;
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {textarea}
+      <div style={{
+        fontSize: 11.5, fontFamily: F_BODY, textAlign: 'right',
+        marginTop: 4, color: counterColor, transition: 'color 200ms',
+      }}>
+        {current} / {maxLength}
+      </div>
+    </div>
   );
 }
 

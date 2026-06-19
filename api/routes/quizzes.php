@@ -50,6 +50,7 @@ function _get_full_quiz(PDO $db, int $quiz_id, bool $include_correct): array {
     $quiz['active']         = (int)$quiz['active'];
     $quiz['mandatory']      = (int)($quiz['mandatory'] ?? 0);
     $quiz['is_presential']  = (int)($quiz['is_presential'] ?? 0);
+    $quiz['modality']       = $quiz['modality'] ?? '';
     $quiz['image']          = $quiz['image'] ?? '';
     $quiz['location']       = $quiz['location'] ?? '';
     $quiz['start_at']       = $quiz['start_at'] ?? null;
@@ -146,7 +147,7 @@ function _insert_questions(PDO $db, int $quiz_id, array $questions): void {
 // GET /api/quizzes
 if ($method === 'GET' && $id === null) {
     $u = auth_user();
-    $is_admin = in_array($u['role'], ['Administrador/a', 'Recursos humans', 'Formacions'], true);
+    $is_admin = user_has_any_role($u, ['Administrador', 'Administrador/a', 'Recursos humans', 'Formacions']);
     if ($is_admin) {
         $rows = $db->query('SELECT * FROM quizzes ORDER BY created_at DESC')->fetchAll();
     } else {
@@ -185,6 +186,7 @@ if ($method === 'GET' && $id === null) {
         $row['active']         = (int)$row['active'];
         $row['mandatory']      = (int)($row['mandatory'] ?? 0);
         $row['is_presential']  = (int)($row['is_presential'] ?? 0);
+        $row['modality']       = $row['modality'] ?? '';
         $row['image']          = $row['image'] ?? '';
         $row['location']       = $row['location'] ?? '';
         $row['start_at']       = $row['start_at'] ?? null;
@@ -214,9 +216,11 @@ elseif ($method === 'GET' && $id !== null && $sub === '') {
 // POST /api/quizzes
 elseif ($method === 'POST' && $id === null) {
     require_formacions_or_admin();
-    $is_presential = bool_val($body, 'is_presential') ? 1 : 0;
+    $modality = in_array(str_val($body, 'modality'), ['presencial', 'online', 'hibrida', ''], true)
+        ? str_val($body, 'modality') : '';
+    $is_presential = ($modality === 'presencial') ? 1 : 0;
     $mandatory = bool_val($body, 'mandatory') ? 1 : 0;
-    $db->prepare('INSERT INTO quizzes (title, description, image, category, time_limit, passing_score, mandatory, active, start_at, end_at, target_departments, target_users, is_presential, location) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+    $db->prepare('INSERT INTO quizzes (title, description, image, category, time_limit, passing_score, mandatory, active, start_at, end_at, target_departments, target_users, is_presential, location, modality) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
        ->execute([
            str_val($body,'title'), str_val($body,'description'),
            str_val($body,'image'), str_val($body,'category'),
@@ -226,6 +230,7 @@ elseif ($method === 'POST' && $id === null) {
            _quiz_str($body, 'start_at'), _quiz_str($body, 'end_at'),
            _encode_target_depts($body), _encode_target_users($body),
            $is_presential, str_val($body, 'location'),
+           $modality,
        ]);
     $quiz_id = (int)$db->lastInsertId();
     _insert_questions($db, $quiz_id, $body['questions'] ?? []);
@@ -243,7 +248,9 @@ elseif ($method === 'PUT' && $id !== null && $sub === '') {
     $stmt->execute([$id]);
     if (!$stmt->fetch()) respond(['detail' => 'Quiz no trobat'], 404);
 
-    $is_presential = bool_val($body, 'is_presential') ? 1 : 0;
+    $modality = in_array(str_val($body, 'modality'), ['presencial', 'online', 'hibrida', ''], true)
+        ? str_val($body, 'modality') : '';
+    $is_presential = ($modality === 'presencial') ? 1 : 0;
     if (array_key_exists('mandatory', $body)) {
         $mandatory = bool_val($body, 'mandatory') ? 1 : 0;
     } else {
@@ -251,7 +258,7 @@ elseif ($method === 'PUT' && $id !== null && $sub === '') {
         $cur->execute([$id]);
         $mandatory = (int)($cur->fetch()['mandatory'] ?? 0);
     }
-    $db->prepare('UPDATE quizzes SET title=?, description=?, image=?, category=?, time_limit=?, passing_score=?, mandatory=?, active=?, start_at=?, end_at=?, target_departments=?, target_users=?, is_presential=?, location=? WHERE id=?')
+    $db->prepare('UPDATE quizzes SET title=?, description=?, image=?, category=?, time_limit=?, passing_score=?, mandatory=?, active=?, start_at=?, end_at=?, target_departments=?, target_users=?, is_presential=?, location=?, page_content=?, modality=? WHERE id=?')
        ->execute([
            str_val($body,'title'), str_val($body,'description'),
            str_val($body,'image'), str_val($body,'category'),
@@ -261,6 +268,8 @@ elseif ($method === 'PUT' && $id !== null && $sub === '') {
            _quiz_str($body, 'start_at'), _quiz_str($body, 'end_at'),
            _encode_target_depts($body), _encode_target_users($body),
            $is_presential, str_val($body, 'location'),
+           str_val($body, 'page_content'),
+           $modality,
            $id,
        ]);
     $db->prepare('DELETE FROM quiz_questions WHERE quiz_id=?')->execute([$id]);

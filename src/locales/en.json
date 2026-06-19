@@ -348,6 +348,8 @@
     "attendanceByAdmin": "Attendance validated by the administrator",
     "questionsCount": "{{n}} questions",
     "presential": "In-person",
+    "online": "Online",
+    "hibrida": "Hybrid",
     "progress": "Progress",
     "noCoursesInCat": "No training available in this category.",
     "certPendingValidation": "Certificate pending validation",

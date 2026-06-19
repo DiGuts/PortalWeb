@@ -22,6 +22,7 @@ import {
   BarChart3, ShieldCheck, KeyRound, PlayCircle, Target,
   Type as TypeIcon, Heading2, Quote, Minus, RefreshCw,
 } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { cn } from './lib/cn';
 import { timeAgo } from './lib/timeAgo';
 import { scrollPageToTop, scrollIntoViewIfBelowFold, useScrollIntoViewWhen } from './lib/scroll';
@@ -40,6 +41,7 @@ import { DeptSearch } from './components/admin/DeptSearch';
 // AgendaTab, DirectoriTab, CampusTavilTab → lazy (see lazy declarations below)
 import { UnderlineTab } from './components/shared/UnderlineTab';
 import { EditModal } from './components/shared/EditModal';
+import { ImageCropModal } from './components/shared/ImageCropModal';
 import { Toggle } from './components/shared/Toggle';
 import { resolveImg } from './lib/resolveImg';
 import { DEPT_ORDER, avatarBg, deptLabel } from './lib/depts';
@@ -266,7 +268,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
             ? { bg: '#fef2f2', color: '#7f1d1d', border: '1px solid #fecaca', iconColor: '#dc2626', NIcon: AlertTriangle }
             : nk === 'neutral'
             ? { bg: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', iconColor: '#6b7280', NIcon: Info }
-            : { bg: '#fef3c7', color: '#78350f', border: '1px solid #fde68a', iconColor: '#b45309', NIcon: AlertTriangle };
+            : { bg: '#fffbeb', color: '#222725', border: '1px solid #f59e0b', iconColor: '#92400e', NIcon: AlertTriangle };
           const isLong = !!(notice.content && notice.content.length > 80);
           return (
           <>
@@ -489,8 +491,8 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
 
       <div className="p-3 md:p-4 lg:p-8 max-w-7xl mx-auto">
 
-      {/* Loading skeletons — shown until first fetch completes */}
-      {loading && <SkeletonInici />}
+      {/* Loading skeletons — shown only when all sources still empty (true first load) */}
+      {loading && news.length === 0 && activities.length === 0 && agendaEvents.length === 0 && notices.length === 0 && <SkeletonInici />}
 
       {!loading && error && notices.length === 0 && news.length === 0 && (
         <div style={{ padding: '2rem 1.5rem', textAlign: 'center' }}>
@@ -503,7 +505,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
           </button>
         </div>
       )}
-      {!loading && (<>
+      <>
       {/* Urgent notice (optional — only if notices exist) */}
       {notice && (() => {
         const nk = notice.kind ?? 'warning';
@@ -846,7 +848,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
           </div>
         </div>
       </div>
-      </>)}
+      </>
       </div>{/* end padded content */}
     </div>
   );
@@ -1764,6 +1766,8 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
 
   // New activity form state
   const [showActForm, setShowActForm] = useState(false);
+  const [closingActForm, setClosingActForm] = useState(false);
+  useEffect(() => { setGlobalNavHidden(!!selectedAct || showActForm); }, [selectedAct, showActForm]);
   const [aTitle, setATitle] = useState('');
   const [aCategory, setACategory] = useState('Esport');
   const [aDesc, setADesc] = useState('');
@@ -1779,6 +1783,8 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
   const [aSaving, setASaving] = useState(false);
   const [aTitleTouched, setATitleTouched] = useState(false);
   const [aActError, setAActError] = useState<string | null>(null);
+
+  const closeActForm = () => { setClosingActForm(true); setTimeout(() => { setShowActForm(false); setClosingActForm(false); resetActForm(); }, 220); };
 
   const resetActForm = () => {
     setATitle(''); setADesc(''); setADate(''); setATime(''); setALocation('');
@@ -1801,8 +1807,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         link: aLink.trim(), image: aImageUrl || undefined });
       tabPrefetch.agendaEvents = undefined;
       setActivities(await apiGetActivities());
-      setShowActForm(false);
-      resetActForm();
+      closeActForm();
     } catch (e: any) { setAActError(e?.message ?? 'Error creant activitat'); }
     finally { setASaving(false); }
   };
@@ -1819,9 +1824,15 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
   const [aeUnlimited, setAeUnlimited] = useState(false);
   const [aeLink, setAeLink] = useState('');
   const [aeImage, setAeImage] = useState('');
-  const [aeImageFile, setAeImageFile] = useState<File | null>(null);
+  const [aeImageCropJson, setAeImageCropJson] = useState('');
+  const [aeCropFile, setAeCropFile] = useState<File | null>(null);
   const aeImageInputRef = React.useRef<HTMLInputElement>(null);
+  const [aeCropSrc, setAeCropSrc] = useState<string | null>(null);
   const [aeSaving, setAeSaving] = useState(false);
+  const [inlineReframeActId, setInlineReframeActId] = useState<number | null>(null);
+  const [inlineReframeSrc, setInlineReframeSrc] = useState<string | null>(null);
+  const [inlineReframeCropJson, setInlineReframeCropJson] = useState<string | null>(null);
+  const [inlineReframeSaving, setInlineReframeSaving] = useState(false);
 
   const openActEdit = (act: Activity) => {
     setActEditId(act.id);
@@ -1830,20 +1841,19 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
     setAeUnlimited(act.capacity === 0);
     setAeCapacity(act.capacity > 0 ? String(act.capacity) : '20');
     setAeLink(act.link ?? '');
-    setAeImage(act.image ?? ''); setAeImageFile(null);
+    setAeImage(act.image ?? ''); setAeImageCropJson(act.image_crop ?? ''); setAeCropFile(null);
   };
 
   const handleSaveActEdit = async () => {
     if (!actEditId || !aeTitle.trim()) return;
     setAeSaving(true);
     try {
-      let aeImageUrl = aeImage;
-      if (aeImageFile) aeImageUrl = await apiUploadImage(aeImageFile);
       await apiUpdateActivity(actEditId, { title: aeTitle.trim(), category: aeCategory,
         description: aeDesc.trim(), date: aeDate.trim(), time: aeTime.trim(),
         location: aeLocation.trim(),
         capacity: aeUnlimited ? 0 : (parseInt(aeCapacity) || 0),
-        link: aeLink.trim(), image: aeImageUrl || undefined });
+        link: aeLink.trim(), image: aeImage || undefined,
+        image_crop: aeImageCropJson || undefined });
       tabPrefetch.agendaEvents = undefined;
       setActivities(await apiGetActivities());
       setActEditId(null);
@@ -1995,41 +2005,12 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                             <span className={enrollSuccess === act.id ? 'anim-enroll-pop anim-enroll-ring' : ''} style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', gap: 4 }}>
                               ✓ Inscrit/a
                             </span>
-                            {unenrollConfirm === act.id ? (
-                              <div className="anim-confirm-in" style={{ display: 'flex', flexDirection: 'column', gap: 7, background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', borderRadius: 10, padding: '8px 10px' }}>
-                                <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--tavil-text)', margin: 0 }}>Cancel·lar inscripció?</p>
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                <button
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    setUnenrollConfirm(null);
-                                    const prev = new Map(myEnrollments);
-                                    setMyEnrollments(cur => { const n = new Map(cur); n.delete(act.id); return n; });
-                                    try {
-                                      await apiUnenrollActivity(act.id);
-                                      setActivities(await apiGetActivities());
-                                    } catch { setMyEnrollments(prev); }
-                                  }}
-                                  style={{ flex: 1, height: 32, borderRadius: 8, border: 'none', fontSize: 12, fontWeight: 600, background: 'var(--tavil-accent)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}
-                                >
-                                  Sí, cancel·la
-                                </button>
-                                <button
-                                  onClick={e => { e.stopPropagation(); setUnenrollConfirm(null); }}
-                                  style={{ flex: 1, height: 32, borderRadius: 8, border: '1px solid var(--tavil-border)', fontSize: 12, fontWeight: 600, background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}
-                                >
-                                  No
-                                </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={e => { e.stopPropagation(); setUnenrollConfirm(act.id); }}
-                                style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--tavil-border)', fontSize: 12, fontWeight: 600, background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}
-                              >
-                                {t('common.cancel')}
-                              </button>
-                            )}
+                            <button
+                              onClick={e => { e.stopPropagation(); setSelectedAct(act); setEnrollError(''); setUnenrollConfirm(act.id); }}
+                              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--tavil-border)', fontSize: 12, fontWeight: 600, background: 'none', color: 'var(--tavil-muted)', cursor: 'pointer', fontFamily: 'inherit' }}
+                            >
+                              {t('common.cancel')}
+                            </button>
                           </>
                         ) : (
                           <button
@@ -2078,61 +2059,66 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
           ><Plus size={22} /></button>
         )}
 
-        {/* Admin form portal */}
-        {isAdmin && (
-          <AdminCreateModalShell
-            open={showActForm} onClose={() => { setShowActForm(false); resetActForm(); }} onSubmit={handleCreateActivity}
-            title="Crea una activitat" kicker="NOVA ACTIVITAT"
-            saveLabel="Crea activitat" savingLabel="Creant…"
-            saving={aSaving} error={aActError}
-          >
-            <AField label="Títol" required error={aTitleTouched && !aTitle.trim() ? 'El títol és obligatori.' : undefined}>
-              <AInput value={aTitle} onChange={e => { setATitle(e.target.value); if (aActError) setAActError(null); }} onBlur={() => setATitleTouched(true)} placeholder="Nom de l'activitat" hasError={aTitleTouched && !aTitle.trim()} />
-            </AField>
-            <AField label="Descripció">
-              <ATextarea rows={3} value={aDesc} onChange={e => setADesc(e.target.value)} placeholder="Breu descripció" />
-            </AField>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <AField label="Data">
-                <DatePicker value={aDate} onChange={setADate} />
-              </AField>
-              <AField label="Hora">
-                <TimePicker value={aTime} onChange={setATime} />
-              </AField>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <AField label="Categoria">
-                <ASelect value={aCategory} onChange={e => setACategory(e.target.value)} options={['Esport','Cultura','Social','RSC','Benestar']} />
-              </AField>
-              <AField label="Aforament">
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button type="button" onClick={() => setAUnlimited(v => !v)} title={aUnlimited ? 'Il·limitat' : 'Limitat'} style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 8, border: '1.5px solid', borderColor: aUnlimited ? 'var(--tavil-accent)' : 'var(--tavil-border)', background: aUnlimited ? 'var(--tavil-accent-light)' : 'var(--tavil-card)', color: aUnlimited ? 'var(--tavil-accent)' : 'var(--tavil-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 140ms' }}>∞</button>
-                  {!aUnlimited ? <AInput type="number" value={aCapacity} onChange={e => setACapacity(e.target.value)} /> : <span style={{ fontSize: 13, color: 'var(--tavil-accent)', fontWeight: 500 }}>Il·limitat</span>}
+        {/* Admin form — bottom sheet (mobile) */}
+        {isAdmin && showActForm && createPortal(
+          <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${closingActForm ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeActForm}>
+            <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: `20px 20px calc(env(safe-area-inset-bottom, 0px) + 80px)`, width: '100%', maxHeight: 'calc(92dvh - env(safe-area-inset-bottom, 0px))', overflowY: 'auto' }} className={closingActForm ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--tavil-text)', marginBottom: 18 }}>Nova activitat</h3>
+              {aActError && <p style={{ fontSize: 13, color: '#bf211e', background: 'rgba(191,33,30,0.08)', borderRadius: 8, padding: '8px 12px', marginBottom: 12 }}>{aActError}</p>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <input type="text" value={aTitle} onChange={e => { setATitle(e.target.value); if (aActError) setAActError(null); }} onBlur={() => setATitleTouched(true)} placeholder="Títol *" style={{ borderRadius: 10, border: `1px solid ${aTitleTouched && !aTitle.trim() ? '#bf211e' : 'var(--tavil-border)'}`, padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                <textarea value={aDesc} onChange={e => setADesc(e.target.value)} placeholder="Descripció" rows={3} style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', resize: 'none' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Data</div>
+                    <DatePicker value={aDate} onChange={setADate} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10.5, color: 'var(--tavil-muted)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Hora <span style={{ textTransform: 'none', fontWeight: 400 }}>(opcional)</span></div>
+                    <TimePicker value={aTime} onChange={setATime} optional />
+                  </div>
                 </div>
-              </AField>
-            </div>
-            <AField label="Ubicació">
-              <AInput value={aLocation} onChange={e => setALocation(e.target.value)} placeholder="Sala, edifici, ciutat…" icon={MapPin} />
-            </AField>
-            <AField label="Enllaç extern" optional>
-              <AInput value={aLink} onChange={e => setALink(e.target.value)} placeholder="https://…" />
-            </AField>
-            <AField label="Foto de portada" optional>
-              <input ref={aImageInputRef} type="file" accept="image/*" style={{ display: 'none' }}
-                onChange={e => { const f = e.target.files?.[0]; if (f) { setAImageFile(f); setAImage(''); } }} />
-              <div onClick={() => aImageInputRef.current?.click()} style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 10, border: '1.5px dashed var(--tavil-border)', background: 'var(--tavil-bgAlt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', transition: 'border-color 150ms' }}>
-                {aImageFile ? <img src={URL.createObjectURL(aImageFile)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : aImage ? <img src={aImage} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: 'var(--tavil-faint)' }}><ImageIcon size={24} /><span style={{ fontSize: 12 }}>Afegir foto de portada</span></div>}
+                <div>
+                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8, fontWeight: 600 }}>Categoria</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {['Esport','Cultura','Social','RSC','Benestar'].map(cat => (
+                      <button key={cat} type="button" onClick={() => setACategory(cat)} style={{ padding: '7px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer', background: aCategory === cat ? 'var(--tavil-text)' : 'var(--tavil-bg)', color: aCategory === cat ? 'var(--tavil-bg)' : 'var(--tavil-muted)', border: `1px solid ${aCategory === cat ? 'var(--tavil-text)' : 'var(--tavil-border)'}` }}>{cat}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8, fontWeight: 600 }}>Aforament</div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button type="button" onClick={() => setAUnlimited(v => !v)} style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 8, border: `1.5px solid ${aUnlimited ? 'var(--tavil-accent)' : 'var(--tavil-border)'}`, background: aUnlimited ? 'var(--tavil-accent-light)' : 'var(--tavil-bg)', color: aUnlimited ? 'var(--tavil-accent)' : 'var(--tavil-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 18, transition: 'all 140ms' }}>∞</button>
+                    {!aUnlimited
+                      ? <input type="number" value={aCapacity} onChange={e => setACapacity(e.target.value)} style={{ flex: 1, borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                      : <span style={{ fontSize: 13, color: 'var(--tavil-accent)', fontWeight: 500 }}>Il·limitat</span>}
+                  </div>
+                </div>
+                <input type="text" value={aLocation} onChange={e => setALocation(e.target.value)} placeholder="Ubicació" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                <input type="text" value={aLink} onChange={e => setALink(e.target.value)} placeholder="Enllaç extern (opcional)" style={{ borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '11px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                <div>
+                  <div style={{ fontSize: 11.5, color: 'var(--tavil-muted)', marginBottom: 8, fontWeight: 600 }}>Foto de portada <span style={{ fontWeight: 400 }}>(opcional)</span></div>
+                  <input ref={aImageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) { setAImageFile(f); setAImage(''); } }} />
+                  <div onClick={() => aImageInputRef.current?.click()} style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 10, border: '1.5px dashed var(--tavil-border)', background: 'var(--tavil-bgAlt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                    {aImageFile ? <img src={URL.createObjectURL(aImageFile)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : aImage ? <img src={aImage} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: 'var(--tavil-faint)' }}><ImageIcon size={24} /><span style={{ fontSize: 12 }}>Afegir foto</span></div>}
+                  </div>
+                  {(aImageFile || aImage) && (
+                    <button type="button" onClick={() => { setAImageFile(null); setAImage(''); if (aImageInputRef.current) aImageInputRef.current.value = ''; }} style={{ marginTop: 6, fontSize: 12, color: 'var(--tavil-faint)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <X size={12} /> Elimina la foto
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                  <button type="button" onClick={closeActForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('common.cancel')}</button>
+                  <button type="button" onClick={handleCreateActivity} disabled={!aTitle.trim() || aSaving} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!aTitle.trim() || aSaving) ? 0.5 : 1 }}>{aSaving ? 'Creant…' : 'Crear activitat'}</button>
+                </div>
               </div>
-              {(aImageFile || aImage) && (
-                <button type="button" onClick={() => { setAImageFile(null); setAImage(''); if (aImageInputRef.current) aImageInputRef.current.value = ''; }}
-                  style={{ marginTop: 6, fontSize: 12, color: 'var(--tavil-faint)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <X size={12} /> Elimina la foto
-                </button>
-              )}
-            </AField>
-          </AdminCreateModalShell>
+            </div>
+          </div>,
+          document.body
         )}
 
         {/* Detail modal (shared with desktop) */}
@@ -2231,6 +2217,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                           setEnrollSuccess(selectedAct.id);
                           setTimeout(() => setEnrollSuccess(null), 900);
                           toast.success("Inscripció confirmada!");
+                          confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 }, colors: ['#bf211e','#16a34a','#f59e0b','#3b82f6','#ffffff'] });
                         } catch (e: any) { setEnrollError(e.message ?? 'Error en la inscripció'); }
                         finally { setEnrolling(false); }
                       }}
@@ -2379,29 +2366,69 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         {filtered.map((act, i) => {
           const available = act.capacity > 0 ? act.capacity - act.enrolled : 0;
           return (
-          <div key={i} className="hover-lift rounded-xl overflow-hidden flex flex-col" style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)' }}>
-            <div className="hidden md:flex h-24 items-center justify-center overflow-hidden flex-shrink-0" style={{
-              background: ({
-                'Esport':   'rgba(34,197,94,0.08)',
-                'Cultura':  'rgba(139,92,246,0.08)',
-                'Social':   'rgba(59,130,246,0.08)',
-                'RSC':      'rgba(245,158,11,0.08)',
-                'Benestar': 'rgba(20,184,166,0.08)',
-              } as Record<string,string>)[act.category] ?? 'rgba(191,33,30,0.06)'
-            }}>
-              {act.image
-                ? <img src={resolveImg(act.image)} alt="" loading="lazy" className="w-full h-full object-cover" />
-                : <ActivityIcon size={36} style={{
-                    opacity: 0.25,
-                    color: ({
-                      'Esport':   '#16a34a',
-                      'Cultura':  '#7c3aed',
-                      'Social':   '#2563eb',
-                      'RSC':      '#d97706',
-                      'Benestar': '#0f766e',
-                    } as Record<string,string>)[act.category] ?? '#bf211e'
-                  }} />}
-            </div>
+          <div key={i} className={`hover-lift rounded-xl flex flex-col ${inlineReframeActId === act.id ? '' : 'overflow-hidden'}`} style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)' }}>
+            {inlineReframeActId === act.id && inlineReframeSrc ? (
+              <ImageCropModal
+                inline
+                src={inlineReframeSrc}
+                initialCrop={inlineReframeCropJson ? JSON.parse(inlineReframeCropJson) : undefined}
+                onConfirm={async params => {
+                  setInlineReframeSrc(null);
+                  setInlineReframeSaving(true);
+                  try {
+                    const cropJson = JSON.stringify(params);
+                    await apiUpdateActivity(act.id, {
+                      title: act.title, category: act.category, description: act.description,
+                      date: act.date, time: act.time, location: act.location,
+                      capacity: act.capacity, link: act.link ?? '', image: act.image,
+                      image_crop: cropJson,
+                    });
+                    setActivities(prev => prev.map(a => a.id === act.id ? { ...a, image_crop: cropJson } : a));
+                  } catch (e) { console.error(e); }
+                  finally { setInlineReframeSaving(false); setInlineReframeActId(null); setInlineReframeCropJson(null); }
+                }}
+                onCancel={() => { setInlineReframeSrc(null); setInlineReframeActId(null); setInlineReframeCropJson(null); }}
+              />
+            ) : (
+              <div className="hidden md:flex h-32 items-center justify-center overflow-hidden flex-shrink-0 relative group" style={{
+                background: act.image ? 'transparent' : ((({
+                  'Esport':   'rgba(34,197,94,0.08)',
+                  'Cultura':  'rgba(139,92,246,0.08)',
+                  'Social':   'rgba(59,130,246,0.08)',
+                  'RSC':      'rgba(245,158,11,0.08)',
+                  'Benestar': 'rgba(20,184,166,0.08)',
+                } as Record<string,string>)[act.category]) ?? 'rgba(191,33,30,0.06)'),
+              }}>
+                {act.image
+                  ? <img src={resolveImg(act.image)} alt="" loading="lazy" className="w-full h-full object-cover" style={act.image_crop ? (() => { try { const c = JSON.parse(act.image_crop); return { objectPosition: `${c.cx * 100}% ${c.cy * 100}%` }; } catch { return {}; } })() : undefined} />
+                  : <ActivityIcon size={36} style={{
+                      opacity: 0.25,
+                      color: ({
+                        'Esport':   '#16a34a',
+                        'Cultura':  '#7c3aed',
+                        'Social':   '#2563eb',
+                        'RSC':      '#d97706',
+                        'Benestar': '#0f766e',
+                      } as Record<string,string>)[act.category] ?? '#bf211e'
+                    }} />}
+                {isAdmin && act.image && (
+                  <button
+                    onClick={async e => {
+                      e.stopPropagation();
+                      const res = await fetch(resolveImg(act.image!));
+                      const blob = await res.blob();
+                      setInlineReframeCropJson(act.image_crop ?? null);
+                      setInlineReframeActId(act.id);
+                      setInlineReframeSrc(URL.createObjectURL(blob));
+                    }}
+                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ background: 'rgba(0,0,0,0.4)', border: 'none', cursor: 'pointer' }}
+                  >
+                    <span style={{ color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', background: 'rgba(0,0,0,0.45)', padding: '3px 10px', borderRadius: 6 }}>REENCUADRAR</span>
+                  </button>
+                )}
+              </div>
+            )}
             <div className="p-5 flex flex-col flex-1">
               <div className="flex items-start justify-between mb-3">
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tavil-muted)', background: 'var(--tavil-bgAlt)', border: '1px solid var(--tavil-border)', padding: '2px 8px', borderRadius: 6 }}>{act.category}</span>
@@ -2563,6 +2590,7 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
                         setEnrollSuccess(selectedAct.id);
                         setTimeout(() => setEnrollSuccess(null), 900);
                         toast.success("Inscripció confirmada!");
+                        confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 }, colors: ['#bf211e','#16a34a','#f59e0b','#3b82f6','#ffffff'] });
                       } catch (e: any) { setEnrollError(e.message ?? 'Error en la inscripció'); }
                       finally { setEnrolling(false); }
                     }}
@@ -2650,18 +2678,40 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
               <div>
                 <label className={lCls}>Foto de portada <span className="font-normal normal-case tracking-normal opacity-60">(opcional)</span></label>
                 <input ref={aeImageInputRef} type="file" accept="image/*" style={{ display: 'none' }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) { setAeImageFile(f); setAeImage(''); } }} />
-                <div onClick={() => aeImageInputRef.current?.click()}
+                  onChange={e => { const f = e.target.files?.[0]; if (!f) return; setAeCropFile(f); setAeCropSrc(URL.createObjectURL(f)); if (aeImageInputRef.current) aeImageInputRef.current.value = ''; }} />
+                <div
+                  onClick={async () => {
+                    if (aeImage) {
+                      const res = await fetch(resolveImg(aeImage));
+                      const blob = await res.blob();
+                      setAeCropFile(null);
+                      setAeCropSrc(URL.createObjectURL(blob));
+                    } else {
+                      aeImageInputRef.current?.click();
+                    }
+                  }}
                   style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 10, border: '1.5px dashed var(--tavil-border)', background: 'var(--tavil-bgAlt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                  {aeImageFile ? <img src={URL.createObjectURL(aeImageFile)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : aeImage ? <img src={aeImage} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {aeImage ? <img src={resolveImg(aeImage)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: 'var(--tavil-faint)' }}><ImageIcon size={24} /><span style={{ fontSize: 12 }}>Afegir foto de portada</span></div>}
+                  {aeImage && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.15s' }}
+                      onMouseEnter={e => (e.currentTarget.style.opacity = '1') && (e.currentTarget.style.background = 'rgba(0,0,0,0.35)')}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.background = 'rgba(0,0,0,0)'; }}>
+                      <span style={{ color: '#fff', fontSize: 12, fontWeight: 600, background: 'rgba(0,0,0,0.5)', padding: '4px 12px', borderRadius: 6 }}>Reencuadrar</span>
+                    </div>
+                  )}
                 </div>
-                {(aeImageFile || aeImage) && (
-                  <button type="button" onClick={() => { setAeImageFile(null); setAeImage(''); if (aeImageInputRef.current) aeImageInputRef.current.value = ''; }}
-                    style={{ marginTop: 6, fontSize: 12, color: 'var(--tavil-faint)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <X size={12} /> Elimina la foto
-                  </button>
+                {aeImage && (
+                  <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
+                    <button type="button" onClick={() => aeImageInputRef.current?.click()}
+                      style={{ fontSize: 12, color: 'var(--tavil-accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      Canviar foto
+                    </button>
+                    <button type="button" onClick={() => { setAeCropFile(null); setAeImage(''); setAeImageCropJson(''); if (aeImageInputRef.current) aeImageInputRef.current.value = ''; }}
+                      style={{ fontSize: 12, color: 'var(--tavil-faint)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <X size={12} /> Elimina la foto
+                    </button>
+                  </div>
                 )}
               </div>
               <div className="flex gap-2 pt-1">
@@ -2676,6 +2726,24 @@ function ActivitatsTab({ currentUser, onBack }: { currentUser: User | null; onBa
         );
       })()}
       {confirmModal && <ConfirmModal message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} />}
+      {aeCropSrc && (
+        <ImageCropModal
+          src={aeCropSrc}
+          initialCrop={aeCropFile ? undefined : (aeImageCropJson ? JSON.parse(aeImageCropJson) : undefined)}
+          onConfirm={async params => {
+            setAeCropSrc(null);
+            if (aeCropFile) {
+              try {
+                const url = await apiUploadImage(aeCropFile);
+                setAeImage(url); setAeImageCropJson(JSON.stringify(params));
+              } catch { /* ignore */ } finally { setAeCropFile(null); }
+            } else {
+              setAeImageCropJson(JSON.stringify(params));
+            }
+          }}
+          onCancel={() => setAeCropSrc(null)}
+        />
+      )}
     </div>
   );
 }
@@ -2720,19 +2788,16 @@ const ESPAI_CATS = [
     ],
   },
   {
-    icon: Shield, iconColor: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-950/20",
-    title: "Polítiques internes i protocols", desc: "Protocols d'actuació i plans d'igualtat i no-discriminació", docs: 7,
-    sharepointUrl: SP_BASE + '%2FPol%C3%ADtiques%20internes%20i%20protocols',
-    spFolderPath: 'Tavipedia/Politiques internes i protocols',
-    filters: ['Tots', 'Igualtat', 'Assetjament', 'LGTBI'],
+    icon: Gift, iconColor: "text-rose-500", bg: "bg-rose-50 dark:bg-rose-950/20",
+    title: "Beneficis socials", desc: "Retribució flexible i assegurança de salut", docs: 4,
+    sharepointUrl: SP_BASE + '%2FBeneficis%20socials',
+    spFolderPath: 'Tavipedia/Beneficis socials',
+    filters: ['Tots', 'Retribució Flexible', 'Salut'],
     documents: [
-      { title: "Pla d'Igualtat TAVIL 2022", desc: "Mesures per garantir la igualtat de tracte i oportunitats a l'empresa.", tag: "Igualtat", meta: "PDF", views: 318, file: "PLA D'IGUALTAT TAVIL 2022_V2 (1).pdf" },
-      { title: "Protocol Assetjament Sexual (CAT)", desc: "Protocol d'actuació davant situacions d'assetjament sexual.", tag: "Assetjament", meta: "PDF", views: 204, file: "Protocol assetjament sexual_Tavil_V2024CAT (1).pdf" },
-      { title: "Protocolo Acoso Sexual (ESP)", desc: "Protocolo de actuación ante situaciones de acoso sexual.", tag: "Assetjament", meta: "PDF", views: 187, file: "Protocol assetjament sexual_Tavil_V2024ESP.pdf" },
-      { title: "Protocol Assetjament Laboral (CAT)", desc: "Protocol d'actuació davant situacions d'assetjament laboral.", tag: "Assetjament", meta: "PDF", views: 231, file: "Protocol_AssatjamentLaboral_V2024CAT.pdf" },
-      { title: "Protocolo Acoso Laboral (ESP)", desc: "Protocolo de actuación ante situaciones de acoso laboral.", tag: "Assetjament", meta: "PDF", views: 178, file: "Protocolo_AcosoLaboral_TAVIL_V2024ESP.pdf" },
-      { title: "Protocol LGTBI TAVIL (CAT)", desc: "Protocol per a la protecció i inclusió de les persones LGTBI a l'empresa.", tag: "LGTBI", meta: "PDF", views: 265, file: "ProtocolAssetjamentLGTBI_TAVIL_CAT_V05032024.pdf" },
-      { title: "Protocolo LGTBI TAVIL (ESP)", desc: "Protocolo para la protección e inclusión de las personas LGTBI en la empresa.", tag: "LGTBI", meta: "PDF", views: 241, file: "ProtocolAssetjamentLGTBI_TAVIL_ESP_V05032024.pdf" },
+      { title: "Retribució Flexible Alan (CAT)", desc: "Guia de retribució flexible: menjar, transport, guarderia i altres beneficis.", tag: "Retribució Flexible", meta: "PDF", views: 312, file: "Alan Flex (CAT).pdf" },
+      { title: "Retribución Flexible Alan (ESP)", desc: "Guía de retribución flexible: comida, transporte, guardería y otros beneficios.", tag: "Retribució Flexible", meta: "PDF", views: 278, file: "Alan Flex (ESP).pdf" },
+      { title: "Assegurança de Salut (CAT)", desc: "Informació sobre la cobertura d'assegurança mèdica corporativa.", tag: "Salut", meta: "PDF", views: 256, file: "AssegurançaSalut.pdf" },
+      { title: "Seguro de Salud (ESP)", desc: "Información sobre la cobertura de seguro médico corporativo.", tag: "Salut", meta: "PDF", views: 231, file: "SeguroSalud.pdf" },
     ],
   },
   {
@@ -2760,16 +2825,19 @@ const ESPAI_CATS = [
     ],
   },
   {
-    icon: Gift, iconColor: "text-rose-500", bg: "bg-rose-50 dark:bg-rose-950/20",
-    title: "Beneficis socials", desc: "Retribució flexible i assegurança de salut", docs: 4,
-    sharepointUrl: SP_BASE + '%2FBeneficis%20socials',
-    spFolderPath: 'Tavipedia/Beneficis socials',
-    filters: ['Tots', 'Retribució Flexible', 'Salut'],
+    icon: Shield, iconColor: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-950/20",
+    title: "Polítiques internes i protocols", desc: "Protocols d'actuació i plans d'igualtat i no-discriminació", docs: 7,
+    sharepointUrl: SP_BASE + '%2FPol%C3%ADtiques%20internes%20i%20protocols',
+    spFolderPath: 'Tavipedia/Politiques internes i protocols',
+    filters: ['Tots', 'Igualtat', 'Assetjament', 'LGTBI'],
     documents: [
-      { title: "Retribució Flexible Alan (CAT)", desc: "Guia de retribució flexible: menjar, transport, guarderia i altres beneficis.", tag: "Retribució Flexible", meta: "PDF", views: 312, file: "Alan Flex (CAT).pdf" },
-      { title: "Retribución Flexible Alan (ESP)", desc: "Guía de retribución flexible: comida, transporte, guardería y otros beneficios.", tag: "Retribució Flexible", meta: "PDF", views: 278, file: "Alan Flex (ESP).pdf" },
-      { title: "Assegurança de Salut (CAT)", desc: "Informació sobre la cobertura d'assegurança mèdica corporativa.", tag: "Salut", meta: "PDF", views: 256, file: "AssegurançaSalut.pdf" },
-      { title: "Seguro de Salud (ESP)", desc: "Información sobre la cobertura de seguro médico corporativo.", tag: "Salut", meta: "PDF", views: 231, file: "SeguroSalud.pdf" },
+      { title: "Pla d'Igualtat TAVIL 2022", desc: "Mesures per garantir la igualtat de tracte i oportunitats a l'empresa.", tag: "Igualtat", meta: "PDF", views: 318, file: "PLA D'IGUALTAT TAVIL 2022_V2 (1).pdf" },
+      { title: "Protocol Assetjament Sexual (CAT)", desc: "Protocol d'actuació davant situacions d'assetjament sexual.", tag: "Assetjament", meta: "PDF", views: 204, file: "Protocol assetjament sexual_Tavil_V2024CAT (1).pdf" },
+      { title: "Protocolo Acoso Sexual (ESP)", desc: "Protocolo de actuación ante situaciones de acoso sexual.", tag: "Assetjament", meta: "PDF", views: 187, file: "Protocol assetjament sexual_Tavil_V2024ESP.pdf" },
+      { title: "Protocol Assetjament Laboral (CAT)", desc: "Protocol d'actuació davant situacions d'assetjament laboral.", tag: "Assetjament", meta: "PDF", views: 231, file: "Protocol_AssatjamentLaboral_V2024CAT.pdf" },
+      { title: "Protocolo Acoso Laboral (ESP)", desc: "Protocolo de actuación ante situaciones de acoso laboral.", tag: "Assetjament", meta: "PDF", views: 178, file: "Protocolo_AcosoLaboral_TAVIL_V2024ESP.pdf" },
+      { title: "Protocol LGTBI TAVIL (CAT)", desc: "Protocol per a la protecció i inclusió de les persones LGTBI a l'empresa.", tag: "LGTBI", meta: "PDF", views: 265, file: "ProtocolAssetjamentLGTBI_TAVIL_CAT_V05032024.pdf" },
+      { title: "Protocolo LGTBI TAVIL (ESP)", desc: "Protocolo para la protección e inclusión de las personas LGTBI en la empresa.", tag: "LGTBI", meta: "PDF", views: 241, file: "ProtocolAssetjamentLGTBI_TAVIL_ESP_V05032024.pdf" },
     ],
   },
   {
@@ -5361,6 +5429,10 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
   // Avatar (user-editable; rest of personal data is admin-managed).
   // Staged: pending* only persists when user presses "Desa" on edit-profile modal.
   const savedAvatarUrl: string | null = currentUser?.avatar_url ?? null;
+  const avatarImgStyle = (url: string | null): React.CSSProperties =>
+    url?.startsWith('/assets/') ? { width: '100%', height: '100%', objectFit: 'contain', padding: '8%' } : { width: '100%', height: '100%', objectFit: 'cover' };
+  const avatarBgStyle = (url: string | null) =>
+    url?.startsWith('/assets/') ? '#ffffff' : 'var(--tavil-accent)';
   const [pendingAvatar, setPendingAvatar] = useState<string | null | undefined>(undefined); // undefined = no change
   const [avatarSaving, setAvatarSaving] = useState(false);
   const avatarUrl: string | null = pendingAvatar !== undefined ? (pendingAvatar || null) : savedAvatarUrl;
@@ -5369,6 +5441,22 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarErr, setAvatarErr] = useState<string | null>(null);
   const avatarFileRef = useRef<HTMLInputElement | null>(null);
+  const galleryFromEditForm = useRef(false);
+  const resolvedGalleryUrls = useRef<Record<string, string>>({});
+  const commitAvatarUrl = async (url: string): Promise<boolean> => {
+    setAvatarSaving(true);
+    try {
+      const updated = await apiUpdateMe({ avatar_url: url });
+      onUserUpdate(updated);
+      setPendingAvatar(undefined);
+      return true;
+    } catch (e: any) {
+      setAvatarErr(e?.message ?? 'Error desant la foto'); setTimeout(() => setAvatarErr(null), 4000);
+      return false;
+    } finally {
+      setAvatarSaving(false);
+    }
+  };
   const handleAvatarPick = async (file: File) => {
     if (!file) return;
     setAvatarUploading(true);
@@ -5652,12 +5740,12 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
         <div style={{ padding: '10px 20px 22px', textAlign: 'center' }}>
           <button
             type="button"
-            onClick={() => { setGallerySelected(avatarUrl); setShowAvatarGallery(true); }}
+            onClick={() => { galleryFromEditForm.current = false; setGallerySelected(avatarUrl); setShowAvatarGallery(true); }}
             disabled={avatarUploading}
             aria-label="Canviar foto de perfil"
             style={{
               width: 84, height: 84, borderRadius: 42, margin: '0 auto 14px',
-              background: 'var(--tavil-accent)', color: '#fff',
+              background: avatarBgStyle(avatarUrl), color: '#fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontWeight: 600, fontSize: 32, letterSpacing: '-0.01em',
               boxShadow: '0 6px 20px -8px rgba(0,0,0,0.18)',
@@ -5665,7 +5753,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
               border: 'none', padding: 0, cursor: 'pointer', overflow: 'hidden', position: 'relative',
             }}>
             {avatarUrl
-              ? <img src={resolveImg(avatarUrl)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ? <img src={resolveImg(avatarUrl)} alt="" loading="lazy" style={avatarImgStyle(avatarUrl)} />
               : <span>{ini}</span>}
             <div style={{ position: 'absolute', right: -2, bottom: -2, width: 28, height: 28, borderRadius: 14, background: 'var(--tavil-card)', border: '2px solid var(--tavil-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tavil-text)' }}>
               <ImageIcon size={13} />
@@ -5677,10 +5765,12 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
           {showAvatarGallery && createPortal((() => {
             const ext = currentUser?.ext ?? '';
             const PHOTOS_BASE = '/uploads/photos/';
-            const options: { url: string; label: string; candidates?: string[] }[] = [
-              ...(ext ? [{ url: `${PHOTOS_BASE}${ext}.png`, label: 'La meva foto', candidates: [`${PHOTOS_BASE}${ext}.png`, `${PHOTOS_BASE}${ext}.jpg`, `${PHOTOS_BASE}${ext}.jpeg`] }] : []),
+            const hrPhoto = ext ? `${PHOTOS_BASE}${ext}.png` : null;
+
+            const options: { url: string; label: string; candidates?: string[]; contain?: boolean; hideOnError?: boolean }[] = [
+              ...(hrPhoto ? [{ url: hrPhoto, label: 'La meva foto', candidates: [`${PHOTOS_BASE}${ext}.png`, `${PHOTOS_BASE}${ext}.jpg`, `${PHOTOS_BASE}${ext}.jpeg`], hideOnError: true }] : []),
               { url: '/tavil-header.jpg', label: 'Nau Tavil' },
-              { url: '/assets/images/tavilLogo.png', label: 'Logo Tavil' },
+              { url: '/assets/images/tavilLogo.png', label: 'Logo Tavil', contain: true },
             ];
             return (
               <div
@@ -5693,26 +5783,35 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                   <h3 className="font-bold text-[var(--tavil-text)] text-lg mb-4" style={{ fontFamily: 'var(--font-display)' }}>Canvia la foto de perfil</h3>
                   <div className="grid grid-cols-3 gap-3 mb-4">
                     {options.map(opt => {
-                      const isSelected = gallerySelected === opt.url;
+                      const resolved = resolvedGalleryUrls.current[opt.url] ?? opt.url;
+                      const isSelected = gallerySelected === resolved || gallerySelected === opt.url;
                       return (
-                        <button key={opt.url} onClick={() => setGallerySelected(opt.url)}
+                        <button key={opt.url} onClick={() => setGallerySelected(resolved)}
                           className="press flex flex-col items-center gap-1.5 focus:outline-none"
                           style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
                           <div className="relative w-full aspect-square rounded-xl overflow-hidden"
-                            style={{ border: isSelected ? '2.5px solid var(--tavil-text)' : '2px solid var(--tavil-border)', transition: 'border-color 140ms' }}>
+                            style={{ border: isSelected ? '2.5px solid var(--tavil-text)' : '2px solid var(--tavil-border)', transition: 'border-color 140ms', background: opt.contain ? '#f5f5f0' : undefined }}>
                             <img
                               src={resolveImg(opt.url)}
                               alt={opt.label}
-                              className="w-full h-full object-cover"
+                              className={`w-full h-full ${opt.contain ? 'object-contain p-2' : 'object-cover'}`}
                               onError={e => {
                                 const img = e.currentTarget;
                                 const cands = opt.candidates;
                                 if (cands && !img.dataset.tried) {
                                   img.dataset.tried = '1';
                                   const next = cands.find(c => resolveImg(c) !== img.src);
-                                  if (next) { img.src = resolveImg(next); return; }
+                                  if (next) {
+                                    img.src = resolveImg(next);
+                                    img.onload = () => {
+                                      resolvedGalleryUrls.current[opt.url] = next;
+                                      setGallerySelected(prev => prev === opt.url ? next : prev);
+                                    };
+                                    return;
+                                  }
                                 }
-                                img.parentElement!.parentElement!.style.opacity = '0.35';
+                                if (opt.hideOnError) { const btn = img.closest('button'); if (btn) btn.style.display = 'none'; }
+                                else img.parentElement!.parentElement!.style.opacity = '0.35';
                               }}
                             />
                             {isSelected && (
@@ -5730,7 +5829,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                   </div>
                   <div className="flex flex-col gap-2">
                     <button
-                      onClick={() => { if (gallerySelected) setPendingAvatar(gallerySelected); setShowAvatarGallery(false); }}
+                      onClick={() => { if (gallerySelected) { setPendingAvatar(gallerySelected); if (!galleryFromEditForm.current) commitAvatarUrl(gallerySelected); } setShowAvatarGallery(false); }}
                       disabled={!gallerySelected}
                       className="press w-full py-2.5 rounded-xl text-sm font-semibold bg-[var(--tavil-text)] text-[var(--tavil-bg)] disabled:opacity-40 transition-opacity"
                     >Confirmar</button>
@@ -5881,7 +5980,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
               />
               <button
                 type="button"
-                onClick={() => { setGallerySelected(avatarUrl); setShowAvatarGallery(true); }}
+                onClick={() => { galleryFromEditForm.current = false; setGallerySelected(avatarUrl); setShowAvatarGallery(true); }}
                 aria-label="Canviar foto de perfil"
                 style={{
                   position: 'absolute', left: 24, bottom: -56,
@@ -5889,14 +5988,14 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                   border: '5px solid var(--tavil-bg)',
                   boxShadow: '0 10px 24px -10px rgba(34, 39, 37, 0.18)',
                   overflow: 'hidden',
-                  background: 'var(--tavil-accent)', color: 'var(--tavil-bg)',
+                  background: avatarBgStyle(avatarUrl), color: 'var(--tavil-bg)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 500, letterSpacing: '-0.02em',
                   cursor: 'pointer', padding: 0,
                 }}
               >
                 {avatarUrl
-                  ? <img src={resolveImg(avatarUrl)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ? <img src={resolveImg(avatarUrl)} alt="" loading="lazy" style={avatarImgStyle(avatarUrl)} />
                   : <span>{initials}</span>}
               </button>
             </div>
@@ -5975,7 +6074,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                     <ArrowRight size={14} style={{ color: 'var(--tavil-faint)', flexShrink: 0 }} />
                   </button>
                   <a
-                    href="https://bizneohr.com/welcome?locale=es"
+                    href="https://tavil.bizneohr.com/sessions/new"
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 12, textDecoration: 'none', fontFamily: 'inherit', transition: 'background 140ms' }}
@@ -6211,12 +6310,12 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                   <div
                     style={{
                       width: 72, height: 72, borderRadius: 999, flexShrink: 0,
-                      overflow: 'hidden', background: 'var(--tavil-accent)', color: 'var(--tavil-bg)',
+                      overflow: 'hidden', background: avatarBgStyle(avatarUrl), color: 'var(--tavil-bg)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 500, letterSpacing: '-0.02em',
                     }}
                   >
-                    {avatarUrl ? <img src={resolveImg(avatarUrl)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>{initials}</span>}
+                    {avatarUrl ? <img src={resolveImg(avatarUrl)} alt="" loading="lazy" style={avatarImgStyle(avatarUrl)} /> : <span>{initials}</span>}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tavil-text)' }}>Foto de perfil</div>
@@ -6225,7 +6324,7 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button
-                        onClick={() => { setGallerySelected(avatarUrl); setShowAvatarGallery(true); }}
+                        onClick={() => { galleryFromEditForm.current = true; setGallerySelected(avatarUrl); setShowAvatarGallery(true); }}
                         disabled={avatarUploading}
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -6482,10 +6581,11 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
       {showAvatarGallery && createPortal((() => {
         const ext = currentUser?.ext ?? '';
         const PHOTOS_BASE = '/uploads/photos/';
-        const options: { url: string; label: string; candidates?: string[] }[] = [
-          ...(ext ? [{ url: `${PHOTOS_BASE}${ext}.png`, label: 'La meva foto', candidates: [`${PHOTOS_BASE}${ext}.png`, `${PHOTOS_BASE}${ext}.jpg`, `${PHOTOS_BASE}${ext}.jpeg`] }] : []),
+        const hrPhoto = ext ? `${PHOTOS_BASE}${ext}.png` : null;
+        const options: { url: string; label: string; candidates?: string[]; contain?: boolean; hideOnError?: boolean }[] = [
+          ...(hrPhoto ? [{ url: hrPhoto, label: 'La meva foto', candidates: [`${PHOTOS_BASE}${ext}.png`, `${PHOTOS_BASE}${ext}.jpg`, `${PHOTOS_BASE}${ext}.jpeg`], hideOnError: true }] : []),
           { url: '/tavil-header.jpg', label: 'Nau Tavil' },
-          { url: '/assets/images/tavilLogo.png', label: 'Logo Tavil' },
+          { url: '/assets/images/tavilLogo.png', label: 'Logo Tavil', contain: true },
         ];
         return (
           <div
@@ -6498,26 +6598,35 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
               <h3 className="font-bold text-[var(--tavil-text)] text-lg mb-4" style={{ fontFamily: 'var(--font-display)' }}>Canvia la foto de perfil</h3>
               <div className="grid grid-cols-3 gap-3 mb-4">
                 {options.map(opt => {
-                  const isSelected = gallerySelected === opt.url;
+                  const resolved = resolvedGalleryUrls.current[opt.url] ?? opt.url;
+                  const isSelected = gallerySelected === resolved || gallerySelected === opt.url;
                   return (
-                    <button key={opt.url} onClick={() => setGallerySelected(opt.url)}
+                    <button key={opt.url} onClick={() => setGallerySelected(resolved)}
                       className="press flex flex-col items-center gap-1.5 focus:outline-none"
                       style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
                       <div className="relative w-full aspect-square rounded-xl overflow-hidden"
-                        style={{ border: isSelected ? '2.5px solid var(--tavil-text)' : '2px solid var(--tavil-border)', transition: 'border-color 140ms' }}>
+                        style={{ border: isSelected ? '2.5px solid var(--tavil-text)' : '2px solid var(--tavil-border)', transition: 'border-color 140ms', background: opt.contain ? '#f5f5f0' : undefined }}>
                         <img
                           src={resolveImg(opt.url)}
                           alt={opt.label}
-                          className="w-full h-full object-cover"
+                          className={`w-full h-full ${opt.contain ? 'object-contain p-2' : 'object-cover'}`}
                           onError={e => {
                             const img = e.currentTarget;
                             const cands = opt.candidates;
                             if (cands && !img.dataset.tried) {
                               img.dataset.tried = '1';
                               const next = cands.find(c => resolveImg(c) !== img.src);
-                              if (next) { img.src = resolveImg(next); return; }
+                              if (next) {
+                                img.src = resolveImg(next);
+                                img.onload = () => {
+                                  resolvedGalleryUrls.current[opt.url] = next;
+                                  setGallerySelected(prev => prev === opt.url ? next : prev);
+                                };
+                                return;
+                              }
                             }
-                            img.parentElement!.parentElement!.style.opacity = '0.35';
+                            if (opt.hideOnError) { const btn = img.closest('button'); if (btn) btn.style.display = 'none'; }
+                            else img.parentElement!.parentElement!.style.opacity = '0.35';
                           }}
                         />
                         {isSelected && (
@@ -6535,14 +6644,10 @@ function PerfilTab({ currentUser, onUserUpdate, onNavigate, isDarkMode, toggleDa
               </div>
               <div className="flex flex-col gap-2">
                 <button
-                  onClick={() => { if (gallerySelected) setPendingAvatar(gallerySelected); setShowAvatarGallery(false); }}
+                  onClick={() => { if (gallerySelected) { setPendingAvatar(gallerySelected); if (!galleryFromEditForm.current) commitAvatarUrl(gallerySelected); } setShowAvatarGallery(false); }}
                   disabled={!gallerySelected}
                   className="press w-full py-2.5 rounded-xl text-sm font-semibold bg-[var(--tavil-text)] text-[var(--tavil-bg)] disabled:opacity-40 transition-opacity"
                 >Confirmar</button>
-                <button
-                  onClick={() => { setShowAvatarGallery(false); setTimeout(() => avatarFileRef.current?.click(), 100); }}
-                  className="press w-full py-2 rounded-xl text-sm font-medium text-[var(--tavil-muted)] hover:bg-[var(--tavil-bgAlt)] transition-colors"
-                >Pujar foto pròpia…</button>
               </div>
             </div>
           </div>
@@ -12016,6 +12121,9 @@ function CourseEditorPage({ courseId, kind = 'external' }: { courseId: number; k
   // Course metadata (settings modal)
   const [title, setTitle] = useState('Esborrany sense títol');
   const [summary, setSummary] = useState('');
+  const [coverUrl, setCoverUrl] = useState('');
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
 
   // Composer state
   const [tiles, setTiles] = useState<NewsTile[]>([]);
@@ -12044,6 +12152,7 @@ function CourseEditorPage({ courseId, kind = 'external' }: { courseId: number; k
         setCourseRaw(c);
         setTitle(c.title || 'Esborrany sense títol');
         setSummary(c.description || '');
+        setCoverUrl(c.image || '');
         document.title = `${c.title} · Editor · TAVIL`;
         const raw = kind === 'quiz' ? (c.page_content || '') : (c.content || '');
         const trimmed = (raw || '').trim();
@@ -12289,14 +12398,14 @@ function CourseEditorPage({ courseId, kind = 'external' }: { courseId: number; k
         ? `${API_BASE}/quizzes/${courseId}`
         : `${API_BASE}/courses/${courseId}`;
       const body = kind === 'quiz'
-        ? { ...courseRaw, title: title.trim(), description: summary.trim(), page_content: JSON.stringify(tiles) }
-        : { ...courseRaw, title: title.trim(), description: summary.trim(), content: JSON.stringify(tiles) };
+        ? { ...courseRaw, title: title.trim(), description: summary.trim(), page_content: JSON.stringify(tiles), image: coverUrl }
+        : { ...courseRaw, title: title.trim(), description: summary.trim(), content: JSON.stringify(tiles), image: coverUrl };
       await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
         body: JSON.stringify(body),
       });
-      setCourseRaw((prev: any) => ({ ...prev, title: title.trim(), description: summary.trim() }));
+      setCourseRaw((prev: any) => ({ ...prev, title: title.trim(), description: summary.trim(), image: coverUrl }));
       setSavedToast(true);
       setTimeout(() => setSavedToast(false), 1800);
     } catch (e: any) {
@@ -12741,7 +12850,7 @@ function App() {
     prevTabRef.current = activeTab;
     // Always reset scroll to top when switching tabs (subtle animation).
     scrollPageToTop();
-    const duration = isMobilePage ? 380 : 320;
+    const duration = isMobilePage ? 220 : 200;
     const timer = setTimeout(() => setExitingTab(null), duration);
     return () => clearTimeout(timer);
   }, [activeTab, isMobilePage, tabOrder]);
@@ -13198,24 +13307,21 @@ function App() {
               <img
                 src={`${process.env.PUBLIC_URL}/assets/images/tavilLogo.png`}
                 alt="TAVIL"
-                className="h-7"
-                style={{ position: 'absolute', top: 0, left: 0, opacity: !sidebarCollapsed && !isDarkMode ? 1 : 0, transition: 'opacity 200ms cubic-bezier(.23,1,.32,1)', pointerEvents: 'none' }}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 28, objectFit: 'contain', objectPosition: 'left center', opacity: !sidebarCollapsed && !isDarkMode ? 1 : 0, transition: 'opacity 200ms cubic-bezier(.23,1,.32,1)', pointerEvents: 'none' }}
               />
               {/* Full wordmark — dark */}
               <img
                 src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoDark.png`}
                 alt=""
                 aria-hidden="true"
-                className="h-7"
-                style={{ position: 'absolute', top: 0, left: 0, opacity: !sidebarCollapsed && isDarkMode ? 1 : 0, transition: 'opacity 200ms cubic-bezier(.23,1,.32,1)', pointerEvents: 'none' }}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 28, objectFit: 'contain', objectPosition: 'left center', opacity: !sidebarCollapsed && isDarkMode ? 1 : 0, transition: 'opacity 200ms cubic-bezier(.23,1,.32,1)', pointerEvents: 'none' }}
               />
               {/* Collapsed icon */}
               <img
                 src={`${process.env.PUBLIC_URL}/assets/images/tavilLogoCollapsed.png`}
                 alt=""
                 aria-hidden="true"
-                className="h-7"
-                style={{ position: 'absolute', top: 0, left: 0, opacity: sidebarCollapsed ? 1 : 0, transition: 'opacity 200ms cubic-bezier(.23,1,.32,1)', pointerEvents: 'none' }}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 28, objectFit: 'contain', objectPosition: 'left center', opacity: sidebarCollapsed ? 1 : 0, transition: 'opacity 200ms cubic-bezier(.23,1,.32,1)', pointerEvents: 'none' }}
               />
             </div>
           </div>
@@ -13231,7 +13337,7 @@ function App() {
         <div className="mt-auto border-t border-gray-100 dark:border-zinc-800">
           <div className={cn("flex items-center p-4 gap-3", sidebarCollapsed && "justify-center p-3")}>
             {userAvatar
-              ? <img src={resolveImg(userAvatar)} alt="" loading="lazy" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+              ? <img src={resolveImg(userAvatar)} alt="" loading="lazy" className="w-8 h-8 rounded-full flex-shrink-0" style={userAvatar?.startsWith('/assets/') ? { objectFit: 'contain', padding: '4px', background: '#fff' } : { objectFit: 'cover' }} />
               : <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{userInitials}</div>}
             {!sidebarCollapsed && (
               <>
@@ -13427,7 +13533,7 @@ function App() {
                 className="flex items-center gap-2 p-1.5 hover:bg-gray-100/20 dark:hover:bg-zinc-800/30 rounded-lg transition-colors"
               >
                 {userAvatar
-                  ? <img src={resolveImg(userAvatar)} alt="" loading="lazy" className="w-7 h-7 rounded-full object-cover" />
+                  ? <img src={resolveImg(userAvatar)} alt="" loading="lazy" className="w-7 h-7 rounded-full" style={userAvatar?.startsWith('/assets/') ? { objectFit: 'contain', padding: '3px', background: '#fff' } : { objectFit: 'cover' }} />
                   : <div className="w-7 h-7 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold">{userInitials}</div>}
                 <div className="hidden lg:block text-left">
                   <p className="text-xs font-semibold hg-text text-gray-900 dark:text-white leading-none">{currentUser?.name ?? 'Usuari'}</p>

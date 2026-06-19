@@ -118,9 +118,6 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
             <button onClick={() => setView('departaments')} className={cn("flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors", view === 'departaments' ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white" : "text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
                 <Users size={14} /> {t('directory.departments')}
             </button>
-            <button onClick={() => setView('organigrama')} className={cn("flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors", view === 'organigrama' ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white" : "text-gray-500 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800")}>
-                <Network size={14} /> {t('directory.orgchart')}
-            </button>
         </div>
     );
 

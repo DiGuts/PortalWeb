@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, CSSProperties } from 'react';
+import React, { useState, useMemo, useEffect, useRef, CSSProperties } from 'react';
 import {
   Plus, Check, Mail, MapPin, Clock, Users, Calendar, Newspaper,
   GraduationCap, Activity as ActivityIcon, ArrowRight, Settings,
@@ -11,7 +11,7 @@ import {
   apiGetActivities, apiCreateActivity, apiUpdateActivity, apiDeleteActivity,
   apiGetAgendaEvents, apiCreateAgendaEvent, apiUpdateAgendaEvent, apiDeleteAgendaEvent,
   apiGetAllNotices, apiCreateNotice, apiUpdateNotice, apiDeleteNotice,
-  apiGetCourses, apiGetQuizzes, apiGetQuiz, apiUpdateQuiz, apiCreateExternalCourse, apiUpdateExternalCourse, apiDeleteExternalCourse, apiDeleteQuiz, apiSetQuizMandatory,
+  apiGetCourses, apiGetQuizzes, apiGetQuiz, apiUpdateQuiz, apiCreateExternalCourse, apiUpdateExternalCourse, apiDeleteExternalCourse, apiDeleteQuiz, apiSetQuizMandatory, apiUploadImage,
   apiSetUserActive,
   ExternalCoursePayload, API_BASE,
   Certificate, apiGetCertificates, apiReviewCertificate, openCertificateFile,
@@ -27,6 +27,7 @@ import {
   Column,
 } from './primitives';
 import { DEPT_ORDER } from '../../lib/depts';
+import { tabPrefetch, tabPrefetchAt } from '../../lib/tabPrefetch';
 import { DatePicker } from '../shared/AgendaPickers';
 import { ImageGalleryPicker } from './ImageGalleryPicker';
 import { CreateUserModal } from './CreateUserModal';
@@ -35,8 +36,10 @@ import { CreateActivityModal } from './CreateActivityModal';
 import { CreateAgendaModal } from './CreateAgendaModal';
 import { CreateNoticeModal } from './CreateNoticeModal';
 import { CreateExternalCourseModal } from './CreateExternalCourseModal';
+import { CreateFormacioModal } from './CreateFormacioModal';
 import { DeptSearch } from './DeptSearch';
 import { useConfirm } from '../ConfirmDialog';
+import { ImageCropModal } from '../shared/ImageCropModal';
 
 // Primitives + tokens imported from ./primitives. Modules below compose them.
 
@@ -822,6 +825,7 @@ function AdminNews({ news, refresh, intent, onConsumeIntent }: { news: NewsArtic
             <AField label={`Resum (${editorLang.toUpperCase()})`} hint={editorLang !== 'ca' ? 'Si es deixa buit, es mostrarà la versió CA.' : undefined}>
               <ATextarea
                 rows={2}
+                maxLength={250}
                 value={langDraft[editorLang].summary}
                 onChange={e => setLangDraft(d => ({ ...d, [editorLang]: { ...d[editorLang], summary: e.target.value } }))}
                 placeholder={editorLang !== 'ca' && langDraft.ca.summary ? langDraft.ca.summary : ''}
@@ -1068,14 +1072,20 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
   const [saving, setSaving] = useState(false);
   const { confirm, confirmNode } = useConfirm();
   const [adminToast, showErr] = useAdminToast();
+  const imgInputRef = useRef<HTMLInputElement>(null);
+  const [imgUploading, setImgUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [imgCropFile, setImgCropFile] = useState<File | null>(null);
 
   const selected = activities.find(a => a.id === selectedId) || null;
   useEffect(() => {
     setDraft(selected ? {
       title: selected.title, description: selected.description, date: selected.date,
       time: selected.time, location: selected.location, category: selected.category,
-      capacity: selected.capacity, link: selected.link ?? '',
+      capacity: selected.capacity, link: selected.link ?? '', image: selected.image ?? '',
+      image_crop: selected.image_crop ?? '',
     } : {});
+    setImgCropFile(null);
   }, [selected?.id]);
 
   const dirty = !!selected && (
@@ -1086,7 +1096,9 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
     draft.location !== selected.location ||
     draft.category !== selected.category ||
     draft.capacity !== selected.capacity ||
-    (draft.link ?? '') !== (selected.link ?? '')
+    (draft.link ?? '') !== (selected.link ?? '') ||
+    (draft.image ?? '') !== (selected.image ?? '') ||
+    (draft.image_crop ?? '') !== (selected.image_crop ?? '')
   );
 
   const save = async () => {
@@ -1102,6 +1114,8 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
         category: draft.category ?? selected.category,
         capacity: draft.capacity ?? selected.capacity,
         link: (draft.link !== undefined ? draft.link : selected.link) ?? '',
+        image: draft.image !== undefined ? draft.image : (selected.image ?? ''),
+        image_crop: draft.image_crop !== undefined ? draft.image_crop : (selected.image_crop ?? ''),
       });
       refresh();
     } catch (e: any) { showErr(e?.message ?? 'Error desant'); }
@@ -1213,8 +1227,34 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
                   </>
                 }
               >
+                <AField label="Imatge de portada">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <input ref={imgInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      setImgCropFile(f); setCropSrc(URL.createObjectURL(f));
+                      if (imgInputRef.current) imgInputRef.current.value = '';
+                    }} />
+                    {(draft.image ?? selected?.image) ? (
+                      <div style={{ position: 'relative' }}>
+                        <img
+                          src={resolveUploadUrl(draft.image ?? selected?.image ?? '')}
+                          alt=""
+                          style={{ width: '100%', aspectRatio: '3/2', objectFit: 'cover', borderRadius: 8, display: 'block' }}
+                        />
+                        <button onClick={() => imgInputRef.current?.click()} style={{ position: 'absolute', bottom: 6, left: 6, background: 'rgba(0,0,0,0.58)', color: '#fff', border: 'none', borderRadius: 6, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Canviar</button>
+                        <button onClick={async () => { const r = await fetch(resolveUploadUrl(draft.image ?? selected?.image ?? '')); const b = await r.blob(); setImgCropFile(null); setCropSrc(URL.createObjectURL(b)); }} style={{ position: 'absolute', bottom: 6, left: 80, background: 'rgba(0,0,0,0.58)', color: '#fff', border: 'none', borderRadius: 6, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Enquadrar</button>
+                        <button onClick={() => setDraft(d => ({ ...d, image: '', image_crop: '' }))} style={{ position: 'absolute', bottom: 6, right: 6, background: 'rgba(0,0,0,0.58)', color: '#fff', border: 'none', borderRadius: 6, padding: '3px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Treure</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => imgInputRef.current?.click()} disabled={imgUploading} style={{ padding: '14px 0', width: '100%', border: `1.5px dashed ${T.border}`, borderRadius: 8, background: 'transparent', color: T.textFaint, fontSize: 12, cursor: imgUploading ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
+                        {imgUploading ? 'Pujant…' : '+ Afegir imatge de portada'}
+                      </button>
+                    )}
+                  </div>
+                </AField>
                 <AField label="Títol"><AInput value={draft.title ?? ''} onChange={e => setDraft(d => ({ ...d, title: e.target.value }))} /></AField>
-                <AField label="Descripció"><ATextarea rows={4} value={draft.description ?? ''} onChange={e => setDraft(d => ({ ...d, description: e.target.value }))} /></AField>
+                <AField label="Descripció"><ATextarea rows={4} maxLength={400} value={draft.description ?? ''} onChange={e => setDraft(d => ({ ...d, description: e.target.value }))} /></AField>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <AField label="Data"><DatePicker value={(draft.date ?? '').slice(0, 10)} onChange={(v) => setDraft(d => ({ ...d, date: v }))} /></AField>
                   <AField label="Hora"><AInput type="time" value={draft.time ?? ''} onChange={e => setDraft(d => ({ ...d, time: e.target.value }))} icon={Clock} /></AField>
@@ -1254,6 +1294,26 @@ function AdminActivities({ activities, refresh, intent, onConsumeIntent }: { act
         </>
       )}
 
+      {cropSrc && (
+        <ImageCropModal
+          src={cropSrc}
+          initialCrop={imgCropFile ? undefined : (() => { try { const j = draft.image_crop ?? selected?.image_crop; return j ? JSON.parse(j) : undefined; } catch { return undefined; } })()}
+          onConfirm={async params => {
+            setCropSrc(null);
+            if (imgCropFile) {
+              setImgUploading(true);
+              try {
+                const url = await apiUploadImage(imgCropFile);
+                setDraft(d => ({ ...d, image: url, image_crop: JSON.stringify(params) }));
+              } catch (e: any) { showErr(e?.message ?? 'Error pujant imatge'); }
+              finally { setImgUploading(false); setImgCropFile(null); }
+            } else {
+              setDraft(d => ({ ...d, image_crop: JSON.stringify(params) }));
+            }
+          }}
+          onCancel={() => setCropSrc(null)}
+        />
+      )}
       <CreateActivityModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={onCreatedActivity} />
       {confirmNode}
       <AdminToast toast={adminToast} />
@@ -1599,16 +1659,20 @@ function AdminSeguiment({ quizzes, externals }: { quizzes: Quiz[]; externals: Co
 // ── Module: AdminCampus (Formacions) ────────────────────────────────────────
 
 type FormationRow =
-  | { kind: 'quiz'; id: number; refId: number; title: string; category: string; hours: string; mandatory: number; is_external: 0; image: string; description: string; questions: number; time_limit: number; passing_score: number; active: number; start_at: string | null; end_at: string | null }
+  | { kind: 'quiz'; id: number; refId: number; title: string; category: string; hours: string; mandatory: number; is_external: 0; is_presential: number; modality: string; image: string; description: string; questions: number; time_limit: number; passing_score: number; active: number; start_at: string | null; end_at: string | null }
   | { kind: 'external'; id: number; refId: number; title: string; category: string; hours: string; mandatory: number; cert: number; is_external: 1; url: string; description: string; departments: string; target_users: number[]; start_at: string | null; end_at: string | null };
 
 function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: { quizzes: Quiz[]; externals: Course[]; refresh: () => void; intent?: 'new' | null; onConsumeIntent?: () => void }) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [q, setQ] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'quiz' | 'external' | 'presencial'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [draft, setDraft] = useState<Partial<ExternalCoursePayload & { title: string; description: string; category: string; active: number; start_at: string | null; end_at: string | null; time_limit: number; passing_score: number; target_departments: string[] }>>({});
   const [quizMandatoryOverride, setQuizMandatoryOverride] = useState<Record<number, number>>({});
   const [fullQuiz, setFullQuiz] = useState<Quiz | null>(null);
   const [saving, setSaving] = useState(false);
+  const imgInputRef = useRef<HTMLInputElement>(null);
+  const [imgUploading, setImgUploading] = useState(false);
   const { confirm, confirmNode } = useConfirm();
   const [campusTab, setCampusTab] = useState<'formacions' | 'certificats' | 'seguiment'>('formacions');
   const [adminToast, showErr] = useAdminToast();
@@ -1617,7 +1681,7 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
     const qz: FormationRow[] = quizzes.map(z => ({
       kind: 'quiz', id: z.id, refId: z.id,
       title: z.title, category: z.category, hours: '',
-      mandatory: quizMandatoryOverride[z.id] ?? z.mandatory ?? 0, is_external: 0, image: z.image, description: z.description,
+      mandatory: quizMandatoryOverride[z.id] ?? z.mandatory ?? 0, is_external: 0, is_presential: z.is_presential ?? 0, modality: z.modality ?? '', image: z.image, description: z.description,
       questions: z.question_count ?? z.questions?.length ?? 0,
       time_limit: z.time_limit, passing_score: z.passing_score,
       active: z.active, start_at: z.start_at, end_at: z.end_at,
@@ -1634,10 +1698,23 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
 
   const rowKey = (r: FormationRow) => `${r.kind}-${r.id}`;
   const selected = rows.find(r => rowKey(r) === selectedKey) || null;
+  const counts = {
+    all: rows.length,
+    active: rows.filter(r => r.kind === 'external' || r.active).length,
+    inactive: rows.filter(r => r.kind === 'quiz' && !r.active).length,
+    quiz: rows.filter(r => r.kind === 'quiz' && !(r as any).is_presential).length,
+    external: rows.filter(r => r.kind === 'external').length,
+    presencial: rows.filter(r => r.kind === 'quiz' && (r as any).is_presential).length,
+  };
   const filtered = useMemo(() => rows.filter(r => {
+    if (typeFilter === 'quiz' && !(r.kind === 'quiz' && !(r as any).is_presential)) return false;
+    if (typeFilter === 'external' && r.kind !== 'external') return false;
+    if (typeFilter === 'presencial' && !(r.kind === 'quiz' && (r as any).is_presential)) return false;
+    if (activeFilter === 'active' && r.kind === 'quiz' && !r.active) return false;
+    if (activeFilter === 'inactive' && !(r.kind === 'quiz' && !r.active)) return false;
     if (q && !(r.title + (r.category ?? '') + (r.description ?? '')).toLowerCase().includes(q.toLowerCase())) return false;
     return true;
-  }), [rows, q]);
+  }), [rows, q, typeFilter, activeFilter]);
 
   useEffect(() => {
     setFullQuiz(null);
@@ -1686,19 +1763,31 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
     window.open(url.toString(), '_blank');
   };
 
-  const newInternal = () => openExtendedEditor();
-  const [createExtOpen, setCreateExtOpen] = useState(false);
-  const newExternal = () => setCreateExtOpen(true);
-  const onCreatedExternal = (created: { id: number }) => {
-    setCreateExtOpen(false);
+  const openNewsStyleEditor = (kind: 'quiz' | 'external', refId: number) => {
+    const u = new URL(window.location.href);
+    const param = kind === 'quiz' ? `q-${refId}` : String(refId);
+    u.searchParams.set('course', param);
+    u.searchParams.set('cedit', '1');
+    window.open(u.toString(), '_blank');
+  };
+
+  const [createFormOpen, setCreateFormOpen] = useState(false);
+  const newFormacio = () => setCreateFormOpen(true);
+  const onCreatedFormacio = (kind: 'quiz' | 'external', id: number, isPresential: boolean) => {
+    setCreateFormOpen(false);
     refresh();
-    setSelectedKey(`external-${created.id}`);
+    setSelectedKey(kind === 'quiz' ? `quiz-${id}` : `external-${id}`);
+    if (kind === 'external' || isPresential) {
+      openNewsStyleEditor(kind, id);
+    } else {
+      openExtendedEditor(id);
+    }
   };
 
   useEffect(() => {
     if (intent === 'new') {
       onConsumeIntent?.();
-      newInternal();
+      newFormacio();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intent]);
@@ -1735,12 +1824,13 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
           target_users: draft.target_users ?? [],
           start_at: draft.start_at ?? null,
           end_at: draft.end_at ?? null,
+          image: (draft as any).image !== undefined ? ((draft as any).image ?? '') : ((selected as any).image ?? ''),
         });
       } else if (selected.kind === 'quiz' && fullQuiz) {
         await apiUpdateQuiz(selected.refId, {
           title: draft.title ?? selected.title,
           description: draft.description ?? selected.description ?? '',
-          image: fullQuiz.image ?? '',
+          image: (draft as any).image !== undefined ? ((draft as any).image ?? '') : (fullQuiz.image ?? ''),
           category: draft.category ?? selected.category,
           time_limit: (draft as any).time_limit ?? selected.time_limit ?? 0,
           passing_score: (draft as any).passing_score ?? selected.passing_score ?? 70,
@@ -1750,7 +1840,8 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
           end_at: (draft as any).end_at ?? null,
           target_departments: (draft as any).target_departments ?? fullQuiz.target_departments ?? [],
           target_users: fullQuiz.target_users ?? [],
-          is_presential: fullQuiz.is_presential,
+          is_presential: (draft as any).is_presential !== undefined ? ((draft as any).is_presential ? 1 : 0) : fullQuiz.is_presential,
+          modality: (draft as any).modality !== undefined ? (draft as any).modality : (fullQuiz?.modality ?? ''),
           location: fullQuiz.location,
           questions: (fullQuiz.questions ?? []) as any,
         });
@@ -1780,10 +1871,14 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
         </div>
       ),
     },
-    { key: 'category', label: 'Categoria', width: '120px', render: (r) => <span style={{ color: T.textMuted, fontSize: 12 }}>{r.category || '—'}</span> },
-    { key: 'hours', label: 'Hores/Preguntes', width: '110px', align: 'right', render: (r) => <span style={{ color: T.textMuted, fontSize: 12, fontFeatureSettings: '"tnum"' }}>{r.kind === 'quiz' ? `${r.questions} q` : (r.hours || '—')}</span> },
-    { key: 'mandatory', label: 'Obligatori', width: '90px', render: (r) => r.mandatory ? <AStatusPill status="active" /> : <span style={{ color: T.textFaint, fontSize: 12 }}>—</span> },
-    { key: 'type', label: 'Tipus', width: '90px', render: (r) => <span style={{ color: T.textMuted, fontSize: 12 }}>{r.kind === 'quiz' ? 'Interna' : 'Externa'}</span> },
+    { key: 'hours', label: 'Hores/Preguntes', width: '100px', align: 'right', render: (r) => <span style={{ color: T.textMuted, fontSize: 12, fontFeatureSettings: '"tnum"' }}>{r.kind === 'quiz' ? `${r.questions} q` : (r.hours || '—')}</span> },
+    { key: 'type', label: 'Tipus', width: '95px', render: (r) => {
+      const modalityLabel = r.kind === 'quiz'
+        ? (r.modality === 'presencial' ? 'Presencial' : r.modality === 'online' ? 'Online' : r.modality === 'hibrida' ? 'Híbrida' : 'Interna')
+        : 'Externa';
+      return <span style={{ color: T.textMuted, fontSize: 12 }}>{modalityLabel}</span>;
+    }},
+    { key: 'active', label: 'Estat', width: '95px', render: (r) => r.kind === 'external' ? <AStatusPill status="active" /> : <AStatusPill status={r.active ? 'active' : 'inactive'} /> },
   ];
 
   return (
@@ -1803,13 +1898,25 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
             subtitle="Catàleg del Campus TAVIL: cursos, itineraris i sessions presencials."
             actions={
               <>
-                <ABtn variant="secondary" icon={Plus} onClick={newExternal}>Externa</ABtn>
-                <ABtn variant="primary" icon={Plus} onClick={newInternal}>Nova formació</ABtn>
+                <ABtn variant="primary" icon={Plus} onClick={newFormacio}>Nova formació</ABtn>
               </>
             }
           />
           <AdminToolbar>
             <AdminSearch value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca cursos, instructor, categoria…" />
+            <div style={{ width: 1, height: 22, background: T.border }} />
+            <AdminFilterPills value={typeFilter} onChange={(id) => setTypeFilter(id as any)} options={[
+              { id: 'all', label: 'Tots', count: counts.all },
+              { id: 'quiz', label: 'Interna', count: counts.quiz },
+              { id: 'external', label: 'Externa', count: counts.external },
+              { id: 'presencial', label: 'Presencial', count: counts.presencial },
+            ]} />
+            <div style={{ width: 1, height: 22, background: T.border }} />
+            <AdminFilterPills value={activeFilter} onChange={(id) => setActiveFilter(id as any)} options={[
+              { id: 'all', label: 'Tots', count: counts.all },
+              { id: 'active', label: 'Actius', count: counts.active },
+              { id: 'inactive', label: 'Inactius', count: counts.inactive },
+            ]} />
           </AdminToolbar>
           <AdminTwoPane
             left={<AdminTable columns={columns} rows={tableRows} selectedId={selectedKey} onRowClick={(id) => setSelectedKey(id as string)} emptyMessage="Cap formació." />}
@@ -1819,26 +1926,47 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
                 title={selected.title}
                 onClose={() => setSelectedKey(null)}
                 footer={
-                  <>
-                    <ABtn variant="danger" size="sm" onClick={remove}>Elimina</ABtn>
-                    {selected.kind === 'quiz' && <ABtn variant="secondary" size="sm" icon={FileText} onClick={() => openExtendedEditor(selected.refId)}>Editor extens</ABtn>}
-                    <ABtn variant="secondary" size="sm" icon={LayoutGrid} onClick={() => { const u = new URL(window.location.href); const param = selected.kind === 'quiz' ? `q-${selected.refId}` : String(selected.refId); u.searchParams.set('course', param); u.searchParams.set('cedit', '1'); window.open(u.toString(), '_blank'); }}>Editor estil notícia</ABtn>
-                    <ABtn variant="ghost" onClick={() => setSelectedKey(null)}>Tanca</ABtn>
-                    <ABtn variant="primary" icon={Check} onClick={save} disabled={saving}>{saving ? 'Desant…' : 'Desa'}</ABtn>
-                  </>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {selected.kind === 'quiz' && <ABtn variant="secondary" size="sm" icon={FileText} onClick={() => openExtendedEditor(selected.refId)}>Editor extens</ABtn>}
+                      <ABtn variant="secondary" size="sm" icon={LayoutGrid} onClick={() => openNewsStyleEditor(selected.kind as 'quiz' | 'external', selected.refId)}>Editor notícia</ABtn>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <ABtn variant="danger" size="sm" onClick={remove}>Elimina</ABtn>
+                      <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                        <ABtn variant="ghost" onClick={() => setSelectedKey(null)}>Tanca</ABtn>
+                        <ABtn variant="primary" icon={Check} onClick={save} disabled={saving}>{saving ? 'Desant…' : 'Desa'}</ABtn>
+                      </div>
+                    </div>
+                  </div>
                 }
               >
                 {selected.kind === 'external' ? (
                   <>
+                    <AField label="Imatge portada">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <input ref={imgInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
+                          const f = e.target.files?.[0]; if (!f) return;
+                          setImgUploading(true);
+                          try { const url = await apiUploadImage(f); setDraft(d => ({ ...d, image: url } as any)); }
+                          catch { /* ignore */ }
+                          finally { setImgUploading(false); if (imgInputRef.current) imgInputRef.current.value = ''; }
+                        }} />
+                        {((draft as any).image !== undefined ? (draft as any).image : (selected as any).image) ? (
+                          <div style={{ position: 'relative' }}>
+                            <img src={resolveUploadUrl((draft as any).image ?? (selected as any).image ?? '')} alt="" style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 8, display: 'block' }} />
+                            <button onClick={() => setDraft(d => ({ ...d, image: '' } as any))} style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none', borderRadius: 6, padding: '2px 8px', fontSize: 11, cursor: 'pointer' }}>Treure</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => imgInputRef.current?.click()} disabled={imgUploading} style={{ padding: '10px 0', width: '100%', border: '1.5px dashed var(--admin-border, #e5e7eb)', borderRadius: 8, background: 'transparent', color: '#9ca3af', fontSize: 12, cursor: imgUploading ? 'wait' : 'pointer' }}>
+                            {imgUploading ? 'Pujant…' : 'Pujar imatge'}
+                          </button>
+                        )}
+                      </div>
+                    </AField>
                     <AField label="Títol"><AInput value={draft.title ?? ''} onChange={(e) => setDraft(d => ({ ...d, title: e.target.value }))} /></AField>
-                    <AField label="Descripció"><ATextarea rows={4} value={draft.description ?? ''} onChange={(e) => setDraft(d => ({ ...d, description: e.target.value }))} /></AField>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <AField label="Categoria">
-                        <ASelect value={draft.category ?? ''} onChange={(e) => setDraft(d => ({ ...d, category: e.target.value }))}
-                          options={['Comercial', 'Finances', 'Persones', 'Producció', 'Sostenibilitat']} />
-                      </AField>
-                      <AField label="Hores"><AInput value={draft.hours ?? ''} onChange={(e) => setDraft(d => ({ ...d, hours: e.target.value }))} placeholder="6" /></AField>
-                    </div>
+                    <AField label="Descripció"><ATextarea rows={4} maxLength={400} value={draft.description ?? ''} onChange={(e) => setDraft(d => ({ ...d, description: e.target.value }))} /></AField>
+                    <AField label="Hores"><AInput value={draft.hours ?? ''} onChange={(e) => setDraft(d => ({ ...d, hours: e.target.value }))} placeholder="6" /></AField>
                     <AField label="URL extern">
                       <AInput value={draft.url ?? ''} onChange={(e) => setDraft(d => ({ ...d, url: e.target.value }))} placeholder="https://…" />
                     </AField>
@@ -1871,20 +1999,36 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
                   </>
                 ) : (
                   <>
+                    <AField label="Imatge portada">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <input ref={imgInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
+                          const f = e.target.files?.[0]; if (!f) return;
+                          setImgUploading(true);
+                          try { const url = await apiUploadImage(f); setDraft(d => ({ ...d, image: url } as any)); }
+                          catch { /* ignore */ }
+                          finally { setImgUploading(false); if (imgInputRef.current) imgInputRef.current.value = ''; }
+                        }} />
+                        {((draft as any).image !== undefined ? (draft as any).image : fullQuiz?.image) ? (
+                          <div style={{ position: 'relative' }}>
+                            <img src={resolveUploadUrl((draft as any).image ?? fullQuiz?.image ?? '')} alt="" style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 8, display: 'block' }} />
+                            <button onClick={() => setDraft(d => ({ ...d, image: '' } as any))} style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none', borderRadius: 6, padding: '2px 8px', fontSize: 11, cursor: 'pointer' }}>Treure</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => imgInputRef.current?.click()} disabled={imgUploading} style={{ padding: '10px 0', width: '100%', border: '1.5px dashed var(--admin-border, #e5e7eb)', borderRadius: 8, background: 'transparent', color: '#9ca3af', fontSize: 12, cursor: imgUploading ? 'wait' : 'pointer' }}>
+                            {imgUploading ? 'Pujant…' : 'Pujar imatge'}
+                          </button>
+                        )}
+                      </div>
+                    </AField>
                     <AField label="Títol">
                       <AInput value={(draft as any).title ?? ''} onChange={e => setDraft(d => ({ ...d, title: e.target.value }))} />
                     </AField>
                     <AField label="Descripció">
-                      <ATextarea rows={3} value={(draft as any).description ?? ''} onChange={e => setDraft(d => ({ ...d, description: e.target.value }))} />
+                      <ATextarea rows={3} maxLength={400} value={(draft as any).description ?? ''} onChange={e => setDraft(d => ({ ...d, description: e.target.value }))} />
                     </AField>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <AField label="Categoria">
-                        <AInput value={(draft as any).category ?? ''} onChange={e => setDraft(d => ({ ...d, category: e.target.value }))} />
-                      </AField>
-                      <AField label="Nota mínima (%)">
-                        <AInput type="number" value={(draft as any).passing_score ?? selected.passing_score ?? 70} onChange={e => setDraft(d => ({ ...d, passing_score: +e.target.value }))} />
-                      </AField>
-                    </div>
+                    <AField label="Nota mínima (%)">
+                      <AInput type="number" value={(draft as any).passing_score ?? selected.passing_score ?? 70} onChange={e => setDraft(d => ({ ...d, passing_score: +e.target.value }))} />
+                    </AField>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <AField label="Temps límit (min)" hint="0 = sense límit">
                         <AInput type="number" value={(draft as any).time_limit ?? selected.time_limit ?? 0} onChange={e => setDraft(d => ({ ...d, time_limit: +e.target.value }))} />
@@ -1905,6 +2049,18 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
                       label="Publicat"
                       hint="Si no és publicat, no es mostra als usuaris."
                     />
+                    <AField label="Modalitat">
+                      <ASegmented
+                        value={(draft as any).modality !== undefined ? (draft as any).modality : (fullQuiz?.modality ?? '')}
+                        onChange={(v) => setDraft(d => ({ ...d, modality: v, is_presential: v === 'presencial' ? 1 : 0 }))}
+                        options={[
+                          { value: '', label: 'Cap' },
+                          { value: 'presencial', label: 'Presencial' },
+                          { value: 'online', label: 'Online' },
+                          { value: 'hibrida', label: 'Híbrida' },
+                        ]}
+                      />
+                    </AField>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <AField label="Inici">
                         <DatePicker value={(draft as any).start_at} onChange={(v) => setDraft(d => ({ ...d, start_at: v || null }))} />
@@ -1929,7 +2085,7 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
               <AdminDetailEmpty icon={GraduationCap} label="Selecciona una formació" hint="Tria una fila per editar el contingut, instructor i calendari." />
             )}
           />
-          <CreateExternalCourseModal open={createExtOpen} onClose={() => setCreateExtOpen(false)} onCreated={onCreatedExternal} />
+          <CreateFormacioModal open={createFormOpen} onClose={() => setCreateFormOpen(false)} onCreated={onCreatedFormacio} />
         </>
       )}
       <AdminToast toast={adminToast} />
@@ -2087,7 +2243,7 @@ function AdminAgenda({ events, refresh, intent, onConsumeIntent }: { events: Age
             <AField label="Ubicació"><AInput value={draft.location ?? ''} onChange={e => setDraft(d => ({ ...d, location: e.target.value }))} icon={MapPin} /></AField>
             <AField label="Tipus">
               <ASelect value={draft.type ?? ''} onChange={e => setDraft(d => ({ ...d, type: e.target.value }))}
-                options={['Sessió interna', 'Visita comercial', 'Fira', 'Festiu', 'Activitat empresa']} />
+                options={['Sessió interna', 'Fira', 'Festiu', 'Activitat empresa']} />
             </AField>
             <AField label="Departaments destinataris" hint="Si no en selecciones cap, l'esdeveniment és visible per a tothom.">
               <DeptSearch
@@ -2236,7 +2392,7 @@ function AdminAvisos({ notices, refresh, intent, onConsumeIntent }: { notices: N
             }
           >
             <AField label="Títol"><AInput value={draft.title ?? ''} onChange={(e) => setDraft(d => ({ ...d, title: e.target.value }))} /></AField>
-            <AField label="Contingut"><ATextarea rows={3} value={draft.content ?? ''} onChange={(e) => setDraft(d => ({ ...d, content: e.target.value }))} /></AField>
+            <AField label="Contingut"><ATextarea rows={3} maxLength={300} value={draft.content ?? ''} onChange={(e) => setDraft(d => ({ ...d, content: e.target.value }))} /></AField>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <AField label="Enllaç (opcional)"><AInput value={draft.link ?? ''} onChange={(e) => setDraft(d => ({ ...d, link: e.target.value }))} placeholder="https://…" /></AField>
               <AField label="Text de l'enllaç"><AInput value={draft.link_text ?? ''} onChange={(e) => setDraft(d => ({ ...d, link_text: e.target.value }))} placeholder="Llegir més" /></AField>
@@ -2296,6 +2452,7 @@ export function AdminBackoffice({ view, currentUser, onNavigate, onImpersonate, 
       apiGetAllNotices().catch(() => [] as Notice[]),
     ]).then(([u, n, a, ag, c, qz, no]) => {
       setUsers(u); setNews(n); setActivities(a); setAgenda(ag); setCourses(c); setQuizzes(qz); setNotices(no);
+      tabPrefetch.news = n; tabPrefetchAt.news = Date.now();
     }).finally(() => setLoading(false));
   };
 

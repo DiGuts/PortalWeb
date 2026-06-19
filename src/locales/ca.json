@@ -348,6 +348,8 @@
     "attendanceByAdmin": "Assistència validada per l'administrador",
     "questionsCount": "{{n}} preguntes",
     "presential": "Presencial",
+    "online": "En línia",
+    "hibrida": "Híbrida",
     "progress": "Progrés",
     "noCoursesInCat": "Cap formació disponible en aquesta categoria.",
     "certPendingValidation": "Certificat pendent de validació",

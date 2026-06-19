@@ -80,7 +80,7 @@ export function CreateExternalCourseModal({ open, onClose, onCreated }: {
           <AInput value={title} onChange={e => setTitle(e.target.value)} onBlur={() => setTitleTouched(true)} placeholder="Nom de la formació" hasError={titleError} />
         </AField>
         <AField label="Descripció">
-          <ATextarea rows={3} value={description} onChange={e => setDescription(e.target.value)} placeholder="Breu descripció del contingut" />
+          <ATextarea rows={3} maxLength={400} value={description} onChange={e => setDescription(e.target.value)} placeholder="Breu descripció del contingut" />
         </AField>
         <AField label="URL del curs" required error={urlError ? "La URL és obligatòria." : undefined}>
           <AInput value={url} onChange={e => setUrl(e.target.value)} onBlur={() => setUrlTouched(true)} placeholder="https://…" type="url" icon={ExternalLink} hasError={urlError} />

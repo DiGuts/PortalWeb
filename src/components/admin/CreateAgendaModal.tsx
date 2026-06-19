@@ -6,7 +6,7 @@ import { DatePicker } from '../shared/AgendaPickers';
 import { useConfirm } from '../ConfirmDialog';
 import { DeptSearch } from './DeptSearch';
 
-const TYPE_OPTIONS = ['Sessió interna', 'Visita comercial', 'Fira', 'Festiu', 'Activitat empresa'];
+const TYPE_OPTIONS = ['Sessió interna', 'Fira', 'Festiu', 'Activitat empresa'];
 
 // ── Shared form fields ────────────────────────────────────────────────────
 interface FormState {

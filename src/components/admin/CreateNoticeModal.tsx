@@ -71,7 +71,7 @@ export function CreateNoticeModal({ open, onClose, onCreated }: {
           <AInput value={title} onChange={e => setTitle(e.target.value)} onBlur={() => setTitleTouched(true)} placeholder="Títol del banner" hasError={titleError} />
         </AField>
         <AField label="Contingut" required hint="Text breu, visible al portal." error={contentError ? 'El contingut és obligatori.' : undefined}>
-          <ATextarea rows={3} value={content} onChange={e => setContent(e.target.value)} onBlur={() => setContentTouched(true)} placeholder="Missatge de l'avís" hasError={contentError} />
+          <ATextarea rows={3} maxLength={300} value={content} onChange={e => setContent(e.target.value)} onBlur={() => setContentTouched(true)} placeholder="Missatge de l'avís" hasError={contentError} />
         </AField>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <AField label="Enllaç (opcional)">

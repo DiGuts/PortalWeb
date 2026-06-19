@@ -21,6 +21,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/sql.js": "^1.4.10",
+    "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.20",
     "i18next": "^23.16.8",
@@ -72,6 +73,7 @@
     ]
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "autoprefixer": "^10.4.27",
     "concurrently": "^9.2.1",
     "jimp": "^1.6.0",
