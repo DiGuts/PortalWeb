@@ -8610,6 +8610,7 @@ function useSidebarSections(role?: string, roles?: string[]) {
     {
       title: t('nav.personal'),
       items: [
+        { id: 'Solicituds', label: t('nav.solicituds'), icon: FileText },
         { id: 'Perfil', label: t('nav.perfil'), icon: UserCircle },
       ]
     },
