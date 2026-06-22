@@ -114,13 +114,13 @@
     ],
     "required": "Campo obligatorio",
     "retry": "Volver a intentar",
-    "seeAll": "Ver todo",
     "showAll": "Ver todo",
     "week": "Semana",
     "month": "Mes",
     "send": "Enviar",
     "sending": "Enviando…",
-    "noEvents": "Sin eventos"
+    "noEvents": "Sin eventos",
+    "refresh": "Refrescar"
   },
   "auth": {
     "login": "Inicia sesión",
@@ -283,7 +283,9 @@
       "sessioInterna": "Sesión interna",
       "activitatEmpresa": "Actividad empresa",
       "formacio": "Formación"
-    }
+    },
+    "prevMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente"
   },
   "directory": {
     "subtitle": "Busca trabajadores por nombre, departamento, cargo o extensión",
@@ -316,7 +318,8 @@
     "openInSharePoint": "Abrir en SharePoint",
     "docsCount": "{{count}} documentos",
     "result": "{{count}} resultado",
-    "results": "{{count}} resultados"
+    "results": "{{count}} resultados",
+    "loadingSharePoint": "Cargando desde SharePoint…"
   },
   "campus": {
     "subtitle": "Formación y cursos internos de TAVIL",
@@ -378,7 +381,8 @@
     "allDepartments": "Todos los departamentos",
     "deadlineWarning": "Plazo próximo — completa pronto:",
     "backToCampus": "Volver al Campus",
-    "externalEnrollmentNotice": "Inscripciones gestionadas por una entidad externa"
+    "externalEnrollmentNotice": "Inscripciones gestionadas por una entidad externa",
+    "collapse": "Plegar"
   },
   "veu": {
     "subtitle": "Sugerencias, incidencias y encuestas internas",
@@ -412,7 +416,18 @@
     "priority": "Prioridad",
     "registerIncident": "Registrar incidencia",
     "incidentNote": "Las incidencias se identifican con tu perfil para facilitar el seguimiento.",
-    "incidents_list": "Incidencias registradas ({{count}})"
+    "incidents_list": "Incidencias registradas ({{count}})",
+    "suggSent": "Sugerencia enviada correctamente.",
+    "incSent": "Incidencia registrada correctamente.",
+    "priorityLabel": "Prioridad: {{priority}}",
+    "assignedTo": "Asignado a: {{name}}",
+    "resolution": "Resolución",
+    "assignedToName": "Asignado a (nombre)",
+    "resolutionOptional": "Resolución (opcional)",
+    "surveyMeta": "{{questions}} preguntas · Plazo: {{deadline}} · Creada por: {{creator}} · {{responses}}/{{total}} respuestas ({{pct}}%)",
+    "surveyRespond": "Responder",
+    "surveySubmitted": "Respuesta enviada",
+    "surveyClosed": "Cerrada"
   },
   "solicituds": {
     "subtitle": "Gestión de solicitudes y peticiones personales",
@@ -452,7 +467,114 @@
       "approved": "Aprobada",
       "denied": "Denegada",
       "pending": "Pendiente"
-    }
+    },
+    "vacPeriodsTitle": "Periodos de vacaciones 2026",
+    "vacColPeriod": "Periodo",
+    "vacColDates": "Fechas",
+    "vacColDays": "Días",
+    "vacColRequest": "Solicitud",
+    "vacColConfirm": "Confirmación",
+    "vacTotalDays": "TOTAL DE DÍAS A REALIZAR: {{count}} días",
+    "vacClarificationsTitle": "Aclaraciones",
+    "vacIntensiveTitle": "Intensivos 2026",
+    "vacIntensivePara1": "Los viernes intensivos comenzarán a partir del <strong>26 de Junio</strong> y finalizarán el <strong>4 de Septiembre</strong>. Fuera de este periodo no está permitido realizarlos.",
+    "vacIntensivePara2": "También se hará intensivo el <strong>2 de abril</strong>, el <strong>23 de junio</strong>, el <strong>18 de diciembre</strong>, el <strong>24 de diciembre</strong>, el <strong>31 de diciembre</strong> y el <strong>5 de enero 2027</strong>. El 18 de diciembre está aprobado hacer intensivo para asistir a la comida del departamento; si se cambia de día, el intensivo se puede cambiar, pero el día 18 habrá que hacer el horario habitual.",
+    "vacIntensiveNote": "Si es necesario hacer un día intensivo fuera de las fechas preestablecidas, deberá estar comunicado, justificado y aceptado por Recursos Humanos como mínimo con <strong>una semana de antelación</strong>.",
+    "vacNewsTitle": "Novedad — gestiones",
+    "vacNewsBody": "A partir del 1 de Enero de 2026, todas las gestiones relacionadas con vacaciones, registro de jornada, justificantes de visitas médicas, etc., deben enviarse a:",
+    "vacHolidaysTitle": "Días festivos 2026",
+    "vacHolidayAnyNou": "Año Nuevo",
+    "vacHolidayReis": "Reyes",
+    "vacHolidayDivendresSant": "Viernes Santo",
+    "vacHolidayPasqua": "Lunes de Pascua",
+    "vacHolidayTreball": "Día del trabajo",
+    "vacHolidaySantJoan": "San Juan",
+    "vacHolidayAssumpcio": "La Asunción",
+    "vacHolidayDiada": "Diada de Cataluña",
+    "vacHolidayEspanya": "Fiesta Nacional de España",
+    "vacHolidayTotsSants": "Todos los Santos",
+    "vacHolidayConstitucio": "La Constitución",
+    "vacHolidayPurissima": "La Purísima",
+    "vacHolidayNadal": "Navidad",
+    "vacHolidaySantEsteve": "San Esteban",
+    "vacWeekdayMon": "lunes",
+    "vacWeekdayTue": "martes",
+    "vacWeekdayWed": "miércoles",
+    "vacWeekdayThu": "jueves",
+    "vacWeekdayFri": "viernes",
+    "vacWeekdaySat": "sábado",
+    "vacWeekdaySun": "domingo",
+    "vacClarification1": "Los días sin marcar (en blanco) en el calendario son días en los que la empresa ha decidido que NO se pueden hacer vacaciones.",
+    "vacClarification2": "En el mes de enero-2026 se pueden realizar los días pendientes de 2025.",
+    "vacClarification3": "Durante las vacaciones de Navidad (periodo amarillo) se deben hacer semanas completas: semana de Navidad o semana de Fin de año (4 días).",
+    "vacClarification4": "Las 2 horas restantes se ponen: 1 hora el 02/04 (Jueves Santo) y la otra hora el 24/12 o el 31/12.",
+    "vacClarification5": "Las vacaciones del año que ya estén introducidas en el mes de Febrero se intentarán respetar.",
+    "vacClarification6": "El máximo de días seguidos a realizar son 3 semanas (15 días laborables).",
+    "vacClarification7": "Las vacaciones de 2026 se pueden realizar hasta el 31/01/2027.",
+    "vacClarification8": "No se pueden coger más de 2 viernes/lunes sueltos seguidos de vacaciones.",
+    "vacClarification9": "Si coges vacaciones en una semana, no puedes coger 4 días de vacaciones y trabajar solo 1: debes hacer la semana completa de vacaciones o trabajar al menos 2 días.",
+    "vacClarification10": "El lunes 7 de diciembre 2026, adicionalmente, se podrá marcar como vacaciones, procurando siempre que el departamento quede cubierto.",
+    "vacListTitle": "Solicitudes de vacaciones ({{count}})",
+    "vacEmpty": "Ninguna solicitud de vacaciones",
+    "vacRange": "Del {{start}} al {{end}}",
+    "vacRequestedOn": "Solicitadas el {{date}}",
+    "vacHeadLabel": "Jefe:",
+    "vacRrhhLabel": "RRHH:",
+    "vacHeadComment": "Comentario jefe: {{comment}}",
+    "vacRrhhComment": "Comentario RRHH: {{comment}}",
+    "vacReviewPendingHead": "Peticiones pendientes de aprobación",
+    "vacReviewPendingRrhh": "Peticiones aprobadas por el jefe — pendiente RRHH",
+    "vacFormTitle": "Nueva solicitud de vacaciones",
+    "vacSent": "Solicitud enviada correctamente",
+    "vacStartDate": "Fecha de inicio",
+    "vacEndDate": "Fecha de fin",
+    "vacCommentsOptional": "Comentarios (opcional)",
+    "vacCommentsPlaceholder": "Motivo o información adicional...",
+    "vacWorkingDays": "{{count}} día laborable",
+    "vacWorkingDays_other": "{{count}} días laborables",
+    "vacAnnualConsumption": "consumo anual: {{used}}/{{quota}}",
+    "vacRangesSummary": "{{days}} días laborables · {{count}} rango",
+    "vacRangesSummary_other": "{{days}} días laborables · {{count}} rangos",
+    "vacRequiresApproval": "Requiere aprobación del jefe y de RRHH",
+    "vacSubmit": "Enviar solicitud",
+    "vacFabTitle": "Nueva solicitud",
+    "vacErrorConveniSingle": "La solicitud no cumple el convenio: {{errors}}",
+    "vacErrorConveniRange": "La solicitud ({{start}} – {{end}}) no cumple el convenio: {{errors}}",
+    "vacErrorRejected": "La solicitud ha sido rechazada: {{error}}",
+    "vacErrorUnknown": "Error desconocido",
+    "vacPickerTitle": "Selección de fechas",
+    "vacPickerNoRange": "Ningún rango seleccionado",
+    "vacPickerSummary": "{{count}} rango · {{days}} días laborables",
+    "vacPickerSummary_other": "{{count}} rangos · {{days}} días laborables",
+    "vacPickerRemoveRange": "Eliminar rango",
+    "vacPickerSelectStart": "Selecciona la fecha de inicio",
+    "vacPickerSelectEnd": "Selecciona la fecha final",
+    "vacPickerDraftDays": "{{start}} – {{end}} · {{count}} días lab.",
+    "vacPickerAddRange": "+ Añadir rango",
+    "vacPickerErrEndBeforeStart": "La fecha final debe ser posterior a la de inicio.",
+    "vacPickerErrNoWorkingDays": "El rango no contiene ningún día laborable.",
+    "vacPickerErrOverlap": "El rango se solapa con otro ya añadido.",
+    "vacQuotaTitle": "Días de vacaciones",
+    "vacQuotaCount": "{{used}} / {{quota}} días",
+    "vacQuotaAvailable": "{{count}} días disponibles",
+    "vacPendingHead": "Pendiente jefe",
+    "vacPendingRrhh": "Pendiente RRHH",
+    "vacMine": "MIS VACACIONES",
+    "vacWorkingDaysCount": "{{count}} días laborables",
+    "vacFormStart": "Fecha inicio",
+    "vacFormEnd": "Fecha fin",
+    "vacFormComments": "Comentarios",
+    "vacFormCommentsPlaceholder": "Opcional",
+    "vacFormSubmit": "Solicitar",
+    "vacFormSubmitting": "Enviando…",
+    "vacRequest": "Solicitar vacaciones",
+    "vacSubTabMine": "Mis solicitudes",
+    "vacSubTabInfo": "Información",
+    "mobileMyRequests": "MIS SOLICITUDES",
+    "noRequestsShort": "Sin solicitudes",
+    "noVacRequests": "Sin solicitudes de vacaciones",
+    "processedShort": "SOLICITUDES PROCESADAS",
+    "confirm": "Confirmar"
   },
   "confirm": {
     "deleteTitle": "Confirmar eliminación",
@@ -556,20 +678,60 @@
     "solicitudsAccess": "Acceso vía la pestaña Solicitudes",
     "solicitudsAccessHint": "Tu rol da acceso a la gestión de solicitudes directamente desde el portal, en la sección Solicitudes.",
     "actions": {
-      "news": { "label": "Nueva noticia", "sub": "Publica o programa un artículo", "heroSub": "Publica o programa un artículo. Editor extenso, audiencia segmentada, multilingüe." },
-      "formation": { "label": "Nueva formación", "sub": "Curso o itinerario del Campus", "heroSub": "Curso o itinerario del Campus TAVIL: extenso, presencial o interno." },
-      "activity": { "label": "Nueva actividad", "sub": "Evento interno con inscripción", "heroSub": "Evento interno con inscripción: cultura, deporte, formación, jornadas." },
-      "agenda": { "label": "Nuevo evento", "sub": "Reunión o jornada corporativa", "heroSub": "Reunión, jornada o evento corporativo." },
-      "user": { "label": "Nuevo usuario", "sub": "Crea una cuenta y envíale el acceso" },
-      "notice": { "label": "Nuevo aviso", "sub": "Banner destacado en el portal" }
+      "news": {
+        "label": "Nueva noticia",
+        "sub": "Publica o programa un artículo",
+        "heroSub": "Publica o programa un artículo. Editor extenso, audiencia segmentada, multilingüe."
+      },
+      "formation": {
+        "label": "Nueva formación",
+        "sub": "Curso o itinerario del Campus",
+        "heroSub": "Curso o itinerario del Campus TAVIL: extenso, presencial o interno."
+      },
+      "activity": {
+        "label": "Nueva actividad",
+        "sub": "Evento interno con inscripción",
+        "heroSub": "Evento interno con inscripción: cultura, deporte, formación, jornadas."
+      },
+      "agenda": {
+        "label": "Nuevo evento",
+        "sub": "Reunión o jornada corporativa",
+        "heroSub": "Reunión, jornada o evento corporativo."
+      },
+      "user": {
+        "label": "Nuevo usuario",
+        "sub": "Crea una cuenta y envíale el acceso"
+      },
+      "notice": {
+        "label": "Nuevo aviso",
+        "sub": "Banner destacado en el portal"
+      }
     },
     "modules": {
-      "users": { "label": "Usuarios", "sub": "cuentas" },
-      "news": { "label": "Noticias", "sub": "artículos" },
-      "avisos": { "label": "Avisos", "sub": "banners" },
-      "connect": { "label": "Connect", "sub": "actividades" },
-      "formations": { "label": "Formaciones", "sub": "cursos" },
-      "agenda": { "label": "Agenda", "sub": "eventos" }
+      "users": {
+        "label": "Usuarios",
+        "sub": "cuentas"
+      },
+      "news": {
+        "label": "Noticias",
+        "sub": "artículos"
+      },
+      "avisos": {
+        "label": "Avisos",
+        "sub": "banners"
+      },
+      "connect": {
+        "label": "Connect",
+        "sub": "actividades"
+      },
+      "formations": {
+        "label": "Formaciones",
+        "sub": "cursos"
+      },
+      "agenda": {
+        "label": "Agenda",
+        "sub": "eventos"
+      }
     }
   }
 }

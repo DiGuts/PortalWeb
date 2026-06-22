@@ -114,13 +114,13 @@
     ],
     "required": "Camp obligatori",
     "retry": "Torna-ho a intentar",
-    "seeAll": "Veure-ho tot",
     "showAll": "Veure tot",
     "week": "Setmana",
     "month": "Mes",
     "send": "Enviar",
     "sending": "Enviant…",
-    "noEvents": "Cap event"
+    "noEvents": "Cap event",
+    "refresh": "Refrescar"
   },
   "auth": {
     "login": "Inicia sessió",
@@ -283,7 +283,9 @@
       "sessioInterna": "Sessió interna",
       "activitatEmpresa": "Activitat empresa",
       "formacio": "Formació"
-    }
+    },
+    "prevMonth": "Mes anterior",
+    "nextMonth": "Mes següent"
   },
   "directory": {
     "subtitle": "Cerca treballadors per nom, departament, càrrec o extensió",
@@ -316,7 +318,8 @@
     "openInSharePoint": "Obrir a SharePoint",
     "docsCount": "{{count}} documents",
     "result": "{{count}} resultat",
-    "results": "{{count}} resultats"
+    "results": "{{count}} resultats",
+    "loadingSharePoint": "Carregant des de SharePoint…"
   },
   "campus": {
     "subtitle": "Formació i cursos interns de TAVIL",
@@ -378,7 +381,8 @@
     "allDepartments": "Tots els departaments",
     "deadlineWarning": "Termini proper — cal completar aviat:",
     "backToCampus": "Tornar al Campus",
-    "externalEnrollmentNotice": "Inscripcions gestionades per una entitat externa"
+    "externalEnrollmentNotice": "Inscripcions gestionades per una entitat externa",
+    "collapse": "Plegar"
   },
   "veu": {
     "subtitle": "Suggeriments, incidències i enquestes internes",
@@ -399,7 +403,7 @@
     "category": "Categoria",
     "anonymous": "Enviar de forma anònima",
     "send": "Enviar suggeriment",
-    "reviewNote": "L'equip de persones revisa els suggeriments setmanalment.",
+    "reviewNote": "L'equip de RRHH revisa els suggeriments setmanalment.",
     "recentSuggestions": "Suggeriments recents ({{count}})",
     "manage": "Gestionar",
     "anonymous_label": "Anònim",
@@ -412,7 +416,18 @@
     "priority": "Prioritat",
     "registerIncident": "Registrar incidència",
     "incidentNote": "Les incidències s'identifiquen amb el teu perfil per facilitar-ne el seguiment.",
-    "incidents_list": "Incidències registrades ({{count}})"
+    "incidents_list": "Incidències registrades ({{count}})",
+    "suggSent": "Suggeriment enviat correctament.",
+    "incSent": "Incidència registrada correctament.",
+    "priorityLabel": "Prioritat: {{priority}}",
+    "assignedTo": "Assignat a: {{name}}",
+    "resolution": "Resolució",
+    "assignedToName": "Assignat a (nom)",
+    "resolutionOptional": "Resolució (opcional)",
+    "surveyMeta": "{{questions}} preguntes · Termini: {{deadline}} · Creada per: {{creator}} · {{responses}}/{{total}} respostes ({{pct}}%)",
+    "surveyRespond": "Respondre",
+    "surveySubmitted": "Resposta enviada",
+    "surveyClosed": "Tancada"
   },
   "solicituds": {
     "subtitle": "Gestió de sol·licituds i peticions personals",
@@ -452,7 +467,114 @@
       "approved": "Aprovada",
       "denied": "Denegada",
       "pending": "Pendent"
-    }
+    },
+    "vacPeriodsTitle": "Períodes de vacances 2026",
+    "vacColPeriod": "Període",
+    "vacColDates": "Dates",
+    "vacColDays": "Dies",
+    "vacColRequest": "Sol·licitud",
+    "vacColConfirm": "Confirmació",
+    "vacTotalDays": "TOTAL DE DIES PER FER: {{count}} dies",
+    "vacClarificationsTitle": "Aclariments",
+    "vacIntensiveTitle": "Intensius 2026",
+    "vacIntensivePara1": "Els divendres intensius començaran a partir del <strong>26 de Juny</strong> i finalitzaran el <strong>4 de Setembre</strong>. Fora d'aquest període no està permès realitzar-ne.",
+    "vacIntensivePara2": "També es farà intensiu el <strong>2 d'abril</strong>, el <strong>23 de juny</strong>, el <strong>18 de desembre</strong>, el <strong>24 de desembre</strong>, el <strong>31 de desembre</strong> i el <strong>5 de gener 2027</strong>. El 18 de desembre està aprovat fer intensiu per assistir al dinar del departament; si es mou de dia, l'intensiu es pot canviar, però el dia 18 caldrà fer l'horari habitual.",
+    "vacIntensiveNote": "Si és necessari fer un dia intensiu fora de les dates preestablertes, haurà d'estar comunicat, justificat i acceptat per Recursos Humans com a mínim amb <strong>una setmana d'antelació</strong>.",
+    "vacNewsTitle": "Novetat — gestions",
+    "vacNewsBody": "A partir de l'1 de Gener de 2026, totes les gestions relacionades amb vacances, registre de jornada, justificants de visites mèdiques, etc., cal enviar-les a:",
+    "vacHolidaysTitle": "Dies festius 2026",
+    "vacHolidayAnyNou": "Any Nou",
+    "vacHolidayReis": "Reis",
+    "vacHolidayDivendresSant": "Divendres Sant",
+    "vacHolidayPasqua": "Dilluns de Pasqua",
+    "vacHolidayTreball": "Festa del treball",
+    "vacHolidaySantJoan": "Sant Joan",
+    "vacHolidayAssumpcio": "L'Assumpció",
+    "vacHolidayDiada": "Diada de Catalunya",
+    "vacHolidayEspanya": "Festa Nacional d'Espanya",
+    "vacHolidayTotsSants": "Tots Sants",
+    "vacHolidayConstitucio": "La Constitució",
+    "vacHolidayPurissima": "La Puríssima",
+    "vacHolidayNadal": "Nadal",
+    "vacHolidaySantEsteve": "Sant Esteve",
+    "vacWeekdayMon": "dilluns",
+    "vacWeekdayTue": "dimarts",
+    "vacWeekdayWed": "dimecres",
+    "vacWeekdayThu": "dijous",
+    "vacWeekdayFri": "divendres",
+    "vacWeekdaySat": "dissabte",
+    "vacWeekdaySun": "diumenge",
+    "vacClarification1": "Els dies sense marcar (en blanc) al calendari són dies que l'empresa ha decidit que NO es pot fer vacances.",
+    "vacClarification2": "El mes de gener-2026 es poden realitzar els dies pendents del 2025.",
+    "vacClarification3": "Durant les vacances de Nadal (període groc) s'han de fer setmanes completes: setmana de Nadal o setmana de Cap d'any (4 dies).",
+    "vacClarification4": "Les 2 hores restants es posen: 1 hora el 02/04 (dijous Sant) i l'altra hora el 24/12 o el 31/12.",
+    "vacClarification5": "Les vacances de l'any que ja estiguin entrades el mes de Febrer s'intentarà respectar-les.",
+    "vacClarification6": "El màxim de dies seguits per fer són 3 setmanes (15 dies laborals).",
+    "vacClarification7": "Les vacances del 2026 es poden realitzar fins al 31/01/2027.",
+    "vacClarification8": "No es poden agafar més de 2 divendres/dilluns solts seguits de vacances.",
+    "vacClarification9": "Si agafes vacances en una setmana, no pots agafar 4 dies de vacances i treballar només 1: has de fer la setmana complerta de vacances o treballar almenys 2 dies.",
+    "vacClarification10": "Dilluns 7 de desembre 2026, addicionalment, es podrà marcar com a vacances, procurant sempre que el departament quedi cobert.",
+    "vacListTitle": "Sol·licituds de vacances ({{count}})",
+    "vacEmpty": "Cap sol·licitud de vacances",
+    "vacRange": "Del {{start}} al {{end}}",
+    "vacRequestedOn": "Sol·licitades el {{date}}",
+    "vacHeadLabel": "Cap:",
+    "vacRrhhLabel": "RRHH:",
+    "vacHeadComment": "Comentari cap: {{comment}}",
+    "vacRrhhComment": "Comentari RRHH: {{comment}}",
+    "vacReviewPendingHead": "Peticions pendents d'aprovació",
+    "vacReviewPendingRrhh": "Peticions aprovades pel cap — pendent RRHH",
+    "vacFormTitle": "Nova sol·licitud de vacances",
+    "vacSent": "Sol·licitud enviada correctament",
+    "vacStartDate": "Data d'inici",
+    "vacEndDate": "Data de fi",
+    "vacCommentsOptional": "Comentaris (opcional)",
+    "vacCommentsPlaceholder": "Motiu o informació addicional...",
+    "vacWorkingDays": "{{count}} dia laboral",
+    "vacWorkingDays_other": "{{count}} dies laborals",
+    "vacAnnualConsumption": "consum anual: {{used}}/{{quota}}",
+    "vacRangesSummary": "{{days}} dies laborals · {{count}} rang",
+    "vacRangesSummary_other": "{{days}} dies laborals · {{count}} rangs",
+    "vacRequiresApproval": "Requereix aprovació del cap i de RRHH",
+    "vacSubmit": "Enviar sol·licitud",
+    "vacFabTitle": "Nova sol·licitud",
+    "vacErrorConveniSingle": "La sol·licitud no compleix el conveni: {{errors}}",
+    "vacErrorConveniRange": "La sol·licitud ({{start}} – {{end}}) no compleix el conveni: {{errors}}",
+    "vacErrorRejected": "La sol·licitud ha estat rebutjada: {{error}}",
+    "vacErrorUnknown": "Error desconegut",
+    "vacPickerTitle": "Selecció de dates",
+    "vacPickerNoRange": "Cap rang seleccionat",
+    "vacPickerSummary": "{{count}} rang · {{days}} dies laborals",
+    "vacPickerSummary_other": "{{count}} rangs · {{days}} dies laborals",
+    "vacPickerRemoveRange": "Eliminar rang",
+    "vacPickerSelectStart": "Selecciona la data d'inici",
+    "vacPickerSelectEnd": "Selecciona la data final",
+    "vacPickerDraftDays": "{{start}} – {{end}} · {{count}} dies lab.",
+    "vacPickerAddRange": "+ Afegir rang",
+    "vacPickerErrEndBeforeStart": "La data final ha de ser posterior a la d'inici.",
+    "vacPickerErrNoWorkingDays": "El rang no conté cap dia laboral.",
+    "vacPickerErrOverlap": "El rang es solapa amb un altre ja afegit.",
+    "vacQuotaTitle": "Dies de vacances",
+    "vacQuotaCount": "{{used}} / {{quota}} dies",
+    "vacQuotaAvailable": "{{count}} dies disponibles",
+    "vacPendingHead": "Pendent cap",
+    "vacPendingRrhh": "Pendent RRHH",
+    "vacMine": "LES MEVES VACANCES",
+    "vacWorkingDaysCount": "{{count}} dies laborables",
+    "vacFormStart": "Data inici",
+    "vacFormEnd": "Data fi",
+    "vacFormComments": "Comentaris",
+    "vacFormCommentsPlaceholder": "Opcional",
+    "vacFormSubmit": "Sol·licitar",
+    "vacFormSubmitting": "Enviant…",
+    "vacRequest": "Sol·licitar vacances",
+    "vacSubTabMine": "Les meves sol·licituds",
+    "vacSubTabInfo": "Informació",
+    "mobileMyRequests": "LES MEVES SOL·LICITUDS",
+    "noRequestsShort": "Sense sol·licituds",
+    "noVacRequests": "Sense sol·licituds de vacances",
+    "processedShort": "SOL·LICITUDS PROCESSADES",
+    "confirm": "Confirmar"
   },
   "confirm": {
     "deleteTitle": "Confirmar eliminació",
@@ -556,20 +678,60 @@
     "solicitudsAccess": "Accés via la pestanya Sol·licituds",
     "solicitudsAccessHint": "El teu rol dona accés a la gestió de sol·licituds directament des del portal, a la secció Sol·licituds.",
     "actions": {
-      "news": { "label": "Nova notícia", "sub": "Publica o programa un article", "heroSub": "Publica o programa un article. Editor extens, audiència segmentada, multilingüe." },
-      "formation": { "label": "Nova formació", "sub": "Curs o itinerari del Campus", "heroSub": "Curs o itinerari del Campus TAVIL: extens, presencial o intern." },
-      "activity": { "label": "Nova activitat", "sub": "Esdeveniment intern amb inscripció", "heroSub": "Esdeveniment intern amb inscripció: cultura, esport, formació, jornades." },
-      "agenda": { "label": "Nou esdeveniment", "sub": "Reunió o jornada corporativa", "heroSub": "Reunió, jornada o esdeveniment corporatiu." },
-      "user": { "label": "Nou usuari", "sub": "Crea un compte i envia-li l'accés" },
-      "notice": { "label": "Nou avís", "sub": "Banner destacat al portal" }
+      "news": {
+        "label": "Nova notícia",
+        "sub": "Publica o programa un article",
+        "heroSub": "Publica o programa un article. Editor extens, audiència segmentada, multilingüe."
+      },
+      "formation": {
+        "label": "Nova formació",
+        "sub": "Curs o itinerari del Campus",
+        "heroSub": "Curs o itinerari del Campus TAVIL: extens, presencial o intern."
+      },
+      "activity": {
+        "label": "Nova activitat",
+        "sub": "Esdeveniment intern amb inscripció",
+        "heroSub": "Esdeveniment intern amb inscripció: cultura, esport, formació, jornades."
+      },
+      "agenda": {
+        "label": "Nou esdeveniment",
+        "sub": "Reunió o jornada corporativa",
+        "heroSub": "Reunió, jornada o esdeveniment corporatiu."
+      },
+      "user": {
+        "label": "Nou usuari",
+        "sub": "Crea un compte i envia-li l'accés"
+      },
+      "notice": {
+        "label": "Nou avís",
+        "sub": "Banner destacat al portal"
+      }
     },
     "modules": {
-      "users": { "label": "Usuaris", "sub": "comptes" },
-      "news": { "label": "Notícies", "sub": "articles" },
-      "avisos": { "label": "Avisos", "sub": "banners" },
-      "connect": { "label": "Connect", "sub": "activitats" },
-      "formations": { "label": "Formacions", "sub": "cursos" },
-      "agenda": { "label": "Agenda", "sub": "esdeveniments" }
+      "users": {
+        "label": "Usuaris",
+        "sub": "comptes"
+      },
+      "news": {
+        "label": "Notícies",
+        "sub": "articles"
+      },
+      "avisos": {
+        "label": "Avisos",
+        "sub": "banners"
+      },
+      "connect": {
+        "label": "Connect",
+        "sub": "activitats"
+      },
+      "formations": {
+        "label": "Formacions",
+        "sub": "cursos"
+      },
+      "agenda": {
+        "label": "Agenda",
+        "sub": "esdeveniments"
+      }
     }
   }
 }

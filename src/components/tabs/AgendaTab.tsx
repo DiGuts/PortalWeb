@@ -596,7 +596,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
               <button
                 onClick={() => navigateMonth(-1)}
                 style={{ width: 48, height: 48, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', borderRight: '1px solid var(--tavil-border)', cursor: 'pointer', color: 'var(--tavil-muted)' }}
-                aria-label="Mes anterior"
+                aria-label={t('agenda.prevMonth')}
               >
                 <ChevronLeft size={16} />
               </button>
@@ -606,7 +606,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
               <button
                 onClick={() => navigateMonth(1)}
                 style={{ width: 48, height: 48, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', borderLeft: '1px solid var(--tavil-border)', cursor: 'pointer', color: 'var(--tavil-muted)' }}
-                aria-label="Mes següent"
+                aria-label={t('agenda.nextMonth')}
               >
                 <ChevronRight size={16} />
               </button>
@@ -654,7 +654,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
                       transition: 'background 150ms, border-color 150ms, outline-color 150ms',
                       padding: 0,
                     }}
-                    aria-label={`${d} ${MONTH_NAMES[currentMonth - 1]}, ${evs.length} esdeveniments`}
+                    aria-label={`${d} ${MONTH_NAMES[currentMonth - 1]}, ${t('agenda.events', { count: evs.length })}`}
                   >
                     <span style={{ fontSize: 13, fontWeight: isTod || isActiveDay ? 700 : 500, lineHeight: 1, color: todayOnlyMes ? 'var(--tavil-accent)' : undefined }}>{d}</span>
                     {dotColors.length > 0 && (
@@ -833,7 +833,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
           <div className="flex items-center justify-between mb-4 rounded-xl overflow-hidden" style={{ border: '1px solid var(--tavil-border)', background: 'var(--tavil-card)' }}>
             <button
               onClick={() => navigateMonth(-1)}
-              aria-label="Mes anterior"
+              aria-label={t('agenda.prevMonth')}
               className="w-10 h-10 flex-shrink-0 flex items-center justify-center transition-colors"
               style={{ color: 'var(--tavil-muted)', borderRight: '1px solid var(--tavil-border)' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--tavil-bgAlt)')}
@@ -844,7 +844,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
             </span>
             <button
               onClick={() => navigateMonth(1)}
-              aria-label="Mes següent"
+              aria-label={t('agenda.nextMonth')}
               className="w-10 h-10 flex-shrink-0 flex items-center justify-center transition-colors"
               style={{ color: 'var(--tavil-muted)', borderLeft: '1px solid var(--tavil-border)' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--tavil-bgAlt)')}
@@ -872,7 +872,7 @@ export function AgendaTab({ currentUser, initDate, onInitDateConsumed, onOpenDra
                 <button
                   key={i}
                   onClick={() => setSelectedDay(d === selectedDay ? null : d)}
-                  aria-label={`${d} ${MONTH_NAMES[currentMonth-1]}, ${evs.length} esdeveniments`}
+                  aria-label={`${d} ${MONTH_NAMES[currentMonth-1]}, ${t('agenda.events', { count: evs.length })}`}
                   style={{
                     height: 80, width: '100%', borderRadius: 8, overflow: 'hidden',
                     background: active

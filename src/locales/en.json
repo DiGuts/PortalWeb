@@ -114,13 +114,13 @@
     ],
     "required": "Required field",
     "retry": "Try again",
-    "seeAll": "See all",
     "showAll": "Show all",
     "week": "Week",
     "month": "Month",
     "send": "Send",
     "sending": "Sending…",
-    "noEvents": "No events"
+    "noEvents": "No events",
+    "refresh": "Refresh"
   },
   "auth": {
     "login": "Sign in",
@@ -283,7 +283,9 @@
       "sessioInterna": "Internal session",
       "activitatEmpresa": "Company event",
       "formacio": "Training"
-    }
+    },
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month"
   },
   "directory": {
     "subtitle": "Search employees by name, department, role or extension",
@@ -316,7 +318,8 @@
     "openInSharePoint": "Open in SharePoint",
     "docsCount": "{{count}} documents",
     "result": "{{count}} result",
-    "results": "{{count}} results"
+    "results": "{{count}} results",
+    "loadingSharePoint": "Loading from SharePoint…"
   },
   "campus": {
     "subtitle": "TAVIL internal training and courses",
@@ -378,7 +381,8 @@
     "allDepartments": "All departments",
     "deadlineWarning": "Upcoming deadline — complete soon:",
     "backToCampus": "Back to Campus",
-    "externalEnrollmentNotice": "Enrollments managed by an external entity"
+    "externalEnrollmentNotice": "Enrollments managed by an external entity",
+    "collapse": "Collapse"
   },
   "veu": {
     "subtitle": "Suggestions, incidents and internal surveys",
@@ -412,7 +416,18 @@
     "priority": "Priority",
     "registerIncident": "Register incident",
     "incidentNote": "Incidents are linked to your profile to facilitate follow-up.",
-    "incidents_list": "Registered incidents ({{count}})"
+    "incidents_list": "Registered incidents ({{count}})",
+    "suggSent": "Suggestion submitted successfully.",
+    "incSent": "Incident registered successfully.",
+    "priorityLabel": "Priority: {{priority}}",
+    "assignedTo": "Assigned to: {{name}}",
+    "resolution": "Resolution",
+    "assignedToName": "Assigned to (name)",
+    "resolutionOptional": "Resolution (optional)",
+    "surveyMeta": "{{questions}} questions · Deadline: {{deadline}} · Created by: {{creator}} · {{responses}}/{{total}} responses ({{pct}}%)",
+    "surveyRespond": "Respond",
+    "surveySubmitted": "Response submitted",
+    "surveyClosed": "Closed"
   },
   "solicituds": {
     "subtitle": "Management of personal requests and petitions",
@@ -452,7 +467,114 @@
       "approved": "Approved",
       "denied": "Denied",
       "pending": "Pending"
-    }
+    },
+    "vacPeriodsTitle": "Vacation periods 2026",
+    "vacColPeriod": "Period",
+    "vacColDates": "Dates",
+    "vacColDays": "Days",
+    "vacColRequest": "Request",
+    "vacColConfirm": "Confirmation",
+    "vacTotalDays": "TOTAL DAYS TO TAKE: {{count}} days",
+    "vacClarificationsTitle": "Clarifications",
+    "vacIntensiveTitle": "Intensive days 2026",
+    "vacIntensivePara1": "Intensive Fridays will begin on <strong>26 June</strong> and end on <strong>4 September</strong>. Outside this period they are not allowed.",
+    "vacIntensivePara2": "There will also be intensive days on <strong>2 April</strong>, <strong>23 June</strong>, <strong>18 December</strong>, <strong>24 December</strong>, <strong>31 December</strong> and <strong>5 January 2027</strong>. An intensive day on 18 December is approved to attend the department lunch; if the lunch moves, the intensive day can be changed, but on the 18th the usual schedule must be worked.",
+    "vacIntensiveNote": "If an intensive day is needed outside the preset dates, it must be communicated, justified and accepted by Human Resources at least <strong>one week in advance</strong>.",
+    "vacNewsTitle": "New — administrative tasks",
+    "vacNewsBody": "From 1 January 2026, all tasks related to vacation, time registration, medical appointment receipts, etc. must be sent to:",
+    "vacHolidaysTitle": "Public holidays 2026",
+    "vacHolidayAnyNou": "New Year's Day",
+    "vacHolidayReis": "Epiphany",
+    "vacHolidayDivendresSant": "Good Friday",
+    "vacHolidayPasqua": "Easter Monday",
+    "vacHolidayTreball": "Labour Day",
+    "vacHolidaySantJoan": "St John's Day",
+    "vacHolidayAssumpcio": "Assumption Day",
+    "vacHolidayDiada": "National Day of Catalonia",
+    "vacHolidayEspanya": "National Day of Spain",
+    "vacHolidayTotsSants": "All Saints' Day",
+    "vacHolidayConstitucio": "Constitution Day",
+    "vacHolidayPurissima": "Immaculate Conception",
+    "vacHolidayNadal": "Christmas Day",
+    "vacHolidaySantEsteve": "St Stephen's Day",
+    "vacWeekdayMon": "Monday",
+    "vacWeekdayTue": "Tuesday",
+    "vacWeekdayWed": "Wednesday",
+    "vacWeekdayThu": "Thursday",
+    "vacWeekdayFri": "Friday",
+    "vacWeekdaySat": "Saturday",
+    "vacWeekdaySun": "Sunday",
+    "vacClarification1": "Unmarked (blank) days in the calendar are days on which the company has decided vacation CANNOT be taken.",
+    "vacClarification2": "In January 2026 the days pending from 2025 can be taken.",
+    "vacClarification3": "During the Christmas holidays (yellow period) full weeks must be taken: Christmas week or New Year week (4 days).",
+    "vacClarification4": "The 2 remaining hours are taken: 1 hour on 02/04 (Maundy Thursday) and the other hour on 24/12 or 31/12.",
+    "vacClarification5": "The year's vacation already submitted in February will be respected where possible.",
+    "vacClarification6": "The maximum of consecutive days is 3 weeks (15 working days).",
+    "vacClarification7": "The 2026 vacation can be taken until 31/01/2027.",
+    "vacClarification8": "No more than 2 isolated Fridays/Mondays of vacation in a row can be taken.",
+    "vacClarification9": "If you take vacation in a week, you cannot take 4 vacation days and work only 1: you must take the full week as vacation or work at least 2 days.",
+    "vacClarification10": "Monday 7 December 2026 may additionally be marked as vacation, always ensuring the department remains covered.",
+    "vacListTitle": "Vacation requests ({{count}})",
+    "vacEmpty": "No vacation requests",
+    "vacRange": "From {{start}} to {{end}}",
+    "vacRequestedOn": "Requested on {{date}}",
+    "vacHeadLabel": "Manager:",
+    "vacRrhhLabel": "HR:",
+    "vacHeadComment": "Manager comment: {{comment}}",
+    "vacRrhhComment": "HR comment: {{comment}}",
+    "vacReviewPendingHead": "Requests pending approval",
+    "vacReviewPendingRrhh": "Requests approved by the manager — pending HR",
+    "vacFormTitle": "New vacation request",
+    "vacSent": "Request sent successfully",
+    "vacStartDate": "Start date",
+    "vacEndDate": "End date",
+    "vacCommentsOptional": "Comments (optional)",
+    "vacCommentsPlaceholder": "Reason or additional information...",
+    "vacWorkingDays": "{{count}} working day",
+    "vacWorkingDays_other": "{{count}} working days",
+    "vacAnnualConsumption": "annual use: {{used}}/{{quota}}",
+    "vacRangesSummary": "{{days}} working days · {{count}} range",
+    "vacRangesSummary_other": "{{days}} working days · {{count}} ranges",
+    "vacRequiresApproval": "Requires approval from the manager and HR",
+    "vacSubmit": "Send request",
+    "vacFabTitle": "New request",
+    "vacErrorConveniSingle": "The request does not comply with the agreement: {{errors}}",
+    "vacErrorConveniRange": "The request ({{start}} – {{end}}) does not comply with the agreement: {{errors}}",
+    "vacErrorRejected": "The request was rejected: {{error}}",
+    "vacErrorUnknown": "Unknown error",
+    "vacPickerTitle": "Date selection",
+    "vacPickerNoRange": "No range selected",
+    "vacPickerSummary": "{{count}} range · {{days}} working days",
+    "vacPickerSummary_other": "{{count}} ranges · {{days}} working days",
+    "vacPickerRemoveRange": "Remove range",
+    "vacPickerSelectStart": "Select the start date",
+    "vacPickerSelectEnd": "Select the end date",
+    "vacPickerDraftDays": "{{start}} – {{end}} · {{count}} work. days",
+    "vacPickerAddRange": "+ Add range",
+    "vacPickerErrEndBeforeStart": "The end date must be after the start date.",
+    "vacPickerErrNoWorkingDays": "The range contains no working days.",
+    "vacPickerErrOverlap": "The range overlaps with another already added.",
+    "vacQuotaTitle": "Vacation days",
+    "vacQuotaCount": "{{used}} / {{quota}} days",
+    "vacQuotaAvailable": "{{count}} days available",
+    "vacPendingHead": "Pending manager",
+    "vacPendingRrhh": "Pending HR",
+    "vacMine": "MY VACATION",
+    "vacWorkingDaysCount": "{{count}} working days",
+    "vacFormStart": "Start date",
+    "vacFormEnd": "End date",
+    "vacFormComments": "Comments",
+    "vacFormCommentsPlaceholder": "Optional",
+    "vacFormSubmit": "Request",
+    "vacFormSubmitting": "Sending…",
+    "vacRequest": "Request vacation",
+    "vacSubTabMine": "My requests",
+    "vacSubTabInfo": "Information",
+    "mobileMyRequests": "MY REQUESTS",
+    "noRequestsShort": "No requests",
+    "noVacRequests": "No vacation requests",
+    "processedShort": "PROCESSED REQUESTS",
+    "confirm": "Confirm"
   },
   "confirm": {
     "deleteTitle": "Confirm deletion",
@@ -556,20 +678,60 @@
     "solicitudsAccess": "Access via the Requests tab",
     "solicitudsAccessHint": "Your role grants access to request management directly from the portal, in the Requests section.",
     "actions": {
-      "news": { "label": "New article", "sub": "Publish or schedule an article", "heroSub": "Publish or schedule an article. Rich editor, segmented audience, multilingual." },
-      "formation": { "label": "New training", "sub": "Course or itinerary of the Campus", "heroSub": "Course or itinerary of TAVIL Campus: rich, in-person or internal." },
-      "activity": { "label": "New activity", "sub": "Internal event with enrollment", "heroSub": "Internal event with enrollment: culture, sport, training, sessions." },
-      "agenda": { "label": "New event", "sub": "Meeting or corporate session", "heroSub": "Meeting, session or corporate event." },
-      "user": { "label": "New user", "sub": "Create an account and send the access" },
-      "notice": { "label": "New notice", "sub": "Featured banner on the portal" }
+      "news": {
+        "label": "New article",
+        "sub": "Publish or schedule an article",
+        "heroSub": "Publish or schedule an article. Rich editor, segmented audience, multilingual."
+      },
+      "formation": {
+        "label": "New training",
+        "sub": "Course or itinerary of the Campus",
+        "heroSub": "Course or itinerary of TAVIL Campus: rich, in-person or internal."
+      },
+      "activity": {
+        "label": "New activity",
+        "sub": "Internal event with enrollment",
+        "heroSub": "Internal event with enrollment: culture, sport, training, sessions."
+      },
+      "agenda": {
+        "label": "New event",
+        "sub": "Meeting or corporate session",
+        "heroSub": "Meeting, session or corporate event."
+      },
+      "user": {
+        "label": "New user",
+        "sub": "Create an account and send the access"
+      },
+      "notice": {
+        "label": "New notice",
+        "sub": "Featured banner on the portal"
+      }
     },
     "modules": {
-      "users": { "label": "Users", "sub": "accounts" },
-      "news": { "label": "News", "sub": "articles" },
-      "avisos": { "label": "Notices", "sub": "banners" },
-      "connect": { "label": "Connect", "sub": "activities" },
-      "formations": { "label": "Trainings", "sub": "courses" },
-      "agenda": { "label": "Agenda", "sub": "events" }
+      "users": {
+        "label": "Users",
+        "sub": "accounts"
+      },
+      "news": {
+        "label": "News",
+        "sub": "articles"
+      },
+      "avisos": {
+        "label": "Notices",
+        "sub": "banners"
+      },
+      "connect": {
+        "label": "Connect",
+        "sub": "activities"
+      },
+      "formations": {
+        "label": "Trainings",
+        "sub": "courses"
+      },
+      "agenda": {
+        "label": "Agenda",
+        "sub": "events"
+      }
     }
   }
 }

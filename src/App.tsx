@@ -3760,35 +3760,35 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
           <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 h-fit">
             <div className="flex items-center gap-2 mb-4">
               <MessageSquare size={15} className="text-gray-500" />
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Nou suggeriment</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">{t('veu.newSuggestion')}</h3>
             </div>
             {suggSuccess && (
               <div className="mb-3 flex items-center gap-2 text-green-600 bg-green-50 dark:bg-green-950/20 rounded-lg px-3 py-2 text-xs font-medium">
-                <CheckCircle size={13} /> Suggeriment enviat correctament.
+                <CheckCircle size={13} /> {t('veu.suggSent')}
               </div>
             )}
             <div className="space-y-3">
-              <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Títol del suggeriment" className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+              <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder={t('veu.suggestionTitle')} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
               <div>
-                <textarea value={newDesc} onChange={e => setNewDesc(e.target.value.slice(0, 1000))} placeholder="Descriu la teva proposta amb detall..." rows={5} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none" />
+                <textarea value={newDesc} onChange={e => setNewDesc(e.target.value.slice(0, 1000))} placeholder={t('veu.suggestionDesc')} rows={5} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none" />
                 <p className="text-[10px] text-gray-400 text-right">{newDesc.length}/1000</p>
               </div>
               <select value={newCat} onChange={e => setNewCat(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none dark:bg-zinc-800 dark:text-white">
-                <option value="">Categoria</option>
+                <option value="">{ t('veu.category')}</option>
                 <option>Instal·lacions</option>
                 <option>Sostenibilitat</option>
                 <option>Benestar</option>
                 <option>Organització</option>
               </select>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-700 dark:text-zinc-300 font-medium">Enviar de forma anònima</span>
+                <span className="text-xs text-gray-700 dark:text-zinc-300 font-medium">{t('veu.anonymous')}</span>
                 <button onClick={() => setIsAnon(!isAnon)} className={cn("relative inline-flex h-5 w-9 items-center rounded-full transition-colors", isAnon ? "bg-red-600" : "bg-gray-200 dark:bg-zinc-700")}>
                   <span className="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform" style={{ transform: isAnon ? 'translateX(18px)' : 'translateX(2px)' }} />
                 </button>
               </div>
-              <p className="text-[11px] text-red-600">L'equip de RRHH revisa els suggeriments setmanalment.</p>
+              <p className="text-[11px] text-red-600">{t('veu.reviewNote')}</p>
               <button onClick={handleSuggSubmit} disabled={!newTitle.trim() || !newCat || suggSubmitting} className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
-                <Send size={14} /> Enviar suggeriment
+                <Send size={14} /> {t('veu.send')}
               </button>
             </div>
           </div>
@@ -3799,7 +3799,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
       {activeTab === 'Incidències' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           <div className="md:col-span-2">
-            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">Incidències registrades ({incidencies.length})</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4">{t('veu.incidents_list', { count: incidencies.length })}</h3>
             <div className="space-y-3">
               {incidencies.map(inc => (
                 <div key={inc.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-4">
@@ -3808,16 +3808,16 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{inc.title}</p>
                       <p className="text-xs text-gray-400 mb-2">
-                        {formatDate(inc.created_at)} · Prioritat: {inc.priority}
-                        {inc.assigned_to && ` · Assignat a: ${inc.assigned_to}`}
+                        {formatDate(inc.created_at)} · {t('veu.priorityLabel', { priority: inc.priority })}
+                        {inc.assigned_to && ` · ${t('veu.assignedTo', { name: inc.assigned_to })}`}
                       </p>
                       <div className="flex gap-2 flex-wrap">
                         <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400')}>{inc.area}</span>
                         <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", incStatusColor(inc.status))}>{statusLabel(inc.status)}</span>
                       </div>
-                      {inc.resolution && <div className="mt-2 bg-gray-50 dark:bg-zinc-800 rounded-lg p-3 text-xs text-gray-600 dark:text-zinc-400"><span className="font-semibold">Resolució:</span> {inc.resolution}</div>}
+                      {inc.resolution && <div className="mt-2 bg-gray-50 dark:bg-zinc-800 rounded-lg p-3 text-xs text-gray-600 dark:text-zinc-400"><span className="font-semibold">{t('veu.resolution')}:</span> {inc.resolution}</div>}
                       {isRrhhOrAdmin && (
-                        <button onClick={() => incAdminOpen === inc.id ? setIncAdminOpen(null) : openIncAdmin(inc)} className="mt-2 text-[10px] px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-red-50 hover:text-red-600 transition-colors">Gestionar</button>
+                        <button onClick={() => incAdminOpen === inc.id ? setIncAdminOpen(null) : openIncAdmin(inc)} className="mt-2 text-[10px] px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-red-50 hover:text-red-600 transition-colors">{t('veu.manage')}</button>
                       )}
                       {isRrhhOrAdmin && incAdminOpen === inc.id && (
                         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-zinc-800 space-y-2">
@@ -3827,10 +3827,10 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                             <option>Resolta</option>
                             <option>Tancada</option>
                           </select>
-                          <input type="text" value={incAdminAssigned} onChange={e => setIncAdminAssigned(e.target.value)} placeholder="Assignat a (nom)" className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
-                          <textarea value={incAdminResolution} onChange={e => setIncAdminResolution(e.target.value)} placeholder="Resolució (opcional)" rows={2} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white resize-none" />
+                          <input type="text" value={incAdminAssigned} onChange={e => setIncAdminAssigned(e.target.value)} placeholder={t('veu.assignedToName')} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white" />
+                          <textarea value={incAdminResolution} onChange={e => setIncAdminResolution(e.target.value)} placeholder={t('veu.resolutionOptional')} rows={2} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none dark:bg-zinc-800 dark:text-white resize-none" />
                           <button onClick={() => saveIncAdmin(inc.id)} disabled={incAdminSaving} className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">
-                            {incAdminSaving ? 'Desant...' : 'Desar'}
+                            {incAdminSaving ? t('common.saving') : t('common.save')}
                           </button>
                         </div>
                       )}
@@ -3841,31 +3841,31 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
             </div>
           </div>
           <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 h-fit">
-            <div className="flex items-center gap-2 mb-4"><AlertTriangle size={15} className="text-orange-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">Nova incidència</h3></div>
+            <div className="flex items-center gap-2 mb-4"><AlertTriangle size={15} className="text-orange-500" /><h3 className="font-bold text-gray-900 dark:text-white text-sm">{t('veu.newIncident')}</h3></div>
             {incSuccess && (
               <div className="mb-3 flex items-center gap-2 text-green-600 bg-green-50 dark:bg-green-950/20 rounded-lg px-3 py-2 text-xs font-medium">
-                <CheckCircle size={13} /> Incidència registrada correctament.
+                <CheckCircle size={13} /> {t('veu.incSent')}
               </div>
             )}
             <div className="space-y-3">
-              <input type="text" value={incTitle} onChange={e => setIncTitle(e.target.value)} placeholder="Títol de la incidència" className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
-              <textarea value={incDesc} onChange={e => setIncDesc(e.target.value)} placeholder="Descriu la incidència, ubicació i detalls rellevants..." rows={4} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none" />
+              <input type="text" value={incTitle} onChange={e => setIncTitle(e.target.value)} placeholder={t('veu.incidentTitle')} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white" />
+              <textarea value={incDesc} onChange={e => setIncDesc(e.target.value)} placeholder={t('veu.incidentDesc')} rows={4} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none" />
               <select value={incArea} onChange={e => setIncArea(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none dark:bg-zinc-800 dark:text-white">
-                <option value="">Àrea afectada</option>
+                <option value="">{t('veu.affectedArea')}</option>
                 <option>Instal·lacions</option>
                 <option>Equipament</option>
                 <option>Sistemes</option>
                 <option>Seguretat</option>
               </select>
               <select value={incPriority} onChange={e => setIncPriority(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none dark:bg-zinc-800 dark:text-white">
-                <option value="">Prioritat</option>
+                <option value="">{t('veu.priority')}</option>
                 <option>Baixa</option>
                 <option>Mitjana</option>
                 <option>Alta</option>
               </select>
-              <p className="text-[11px] text-gray-400">Les incidències s'identifiquen amb el teu perfil per facilitar-ne el seguiment.</p>
+              <p className="text-[11px] text-gray-400">{t('veu.incidentNote')}</p>
               <button onClick={handleIncSubmit} disabled={!incTitle.trim() || !incArea || !incPriority || incSubmitting} className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
-                <Send size={14} /> Registrar incidència
+                <Send size={14} /> {t('veu.registerIncident')}
               </button>
             </div>
           </div>
@@ -3898,7 +3898,7 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                       <h4 className="font-bold text-gray-900 dark:text-white text-sm">{enc.title}</h4>
                     </div>
                     <p className="text-xs text-gray-400 mb-3">
-                      {enc.questions} preguntes · Termini: {formatDate(enc.deadline)} · Creada per: {enc.creator} · <span className="font-medium">{enc.responses}/{enc.total} respostes ({pct}%)</span>
+                      {t('veu.surveyMeta', { questions: enc.questions, deadline: formatDate(enc.deadline), creator: enc.creator, responses: enc.responses, total: enc.total, pct })}
                     </p>
                     <div className="w-full max-w-xs bg-gray-100 dark:bg-zinc-800 rounded-full h-1.5">
                       <div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
@@ -3908,17 +3908,17 @@ function VeuEmpleatTab({ currentUser, initialSubTab, onSubTabConsumed, onBack }:
                     <span className={cn("text-[11px] font-bold px-2.5 py-1 rounded", scColor)}>{displayStatus}</span>
                     {isAvailable && (
                       <button onClick={() => handleRespondre(enc.id)} className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-1">
-                        Respondre <ArrowRight size={13} />
+                        {t('veu.surveyRespond')} <ArrowRight size={13} />
                       </button>
                     )}
                     {isCompleted && !isClosed && (
                       <div className="flex items-center gap-1 text-green-600 text-sm">
-                        <CheckCircle size={14} /><span>Resposta enviada</span>
+                        <CheckCircle size={14} /><span>{t('veu.surveySubmitted')}</span>
                       </div>
                     )}
                     {isClosed && (
                       <div className="flex items-center gap-1 text-gray-400 text-sm">
-                        <Clock size={14} /><span>Tancada</span>
+                        <Clock size={14} /><span>{t('veu.surveyClosed')}</span>
                       </div>
                     )}
                   </div>
@@ -3943,53 +3943,56 @@ const VAC_PERIODS = [
   { idx: 4, color: 'bg-yellow-400', dates: '7 Des · 21 Des – 31 Des',    dies: 'Màxim 5',  sol: '02 Nov – 13 Nov',  conf: '23 Nov – 04 Des' },
 ];
 
+// Clarification i18n keys (rendered as bullets). See solicituds.vacClarification*.
 const VAC_CLARIFICATIONS = [
-  "Els dies sense marcar (en blanc) al calendari són dies que l'empresa ha decidit que NO es pot fer vacances.",
-  "El mes de gener-2026 es poden realitzar els dies pendents del 2025.",
-  "Durant les vacances de Nadal (període groc) s'han de fer setmanes completes: setmana de Nadal o setmana de Cap d'any (4 dies).",
-  "Les 2 hores restants es posen: 1 hora el 02/04 (dijous Sant) i l'altra hora el 24/12 o el 31/12.",
-  "Les vacances de l'any que ja estiguin entrades el mes de Febrer s'intentarà respectar-les.",
-  "El màxim de dies seguits per fer són 3 setmanes (15 dies laborals).",
-  "Les vacances del 2026 es poden realitzar fins al 31/01/2027.",
-  "No es poden agafar més de 2 divendres/dilluns solts seguits de vacances.",
-  "Si agafes vacances en una setmana, no pots agafar 4 dies de vacances i treballar només 1: has de fer la setmana complerta de vacances o treballar almenys 2 dies.",
-  "Dilluns 7 de desembre 2026, addicionalment, es podrà marcar com a vacances, procurant sempre que el departament quedi cobert.",
+  'solicituds.vacClarification1',
+  'solicituds.vacClarification2',
+  'solicituds.vacClarification3',
+  'solicituds.vacClarification4',
+  'solicituds.vacClarification5',
+  'solicituds.vacClarification6',
+  'solicituds.vacClarification7',
+  'solicituds.vacClarification8',
+  'solicituds.vacClarification9',
+  'solicituds.vacClarification10',
 ];
 
+// Holiday rows. `date` stays as displayed; name/weekday resolved via i18n keys.
 const VAC_HOLIDAYS = [
-  { date: '1 de Gener',    name: 'Any Nou',              weekday: 'dijous' },
-  { date: '6 de Gener',    name: 'Reis',                 weekday: 'dimarts' },
-  { date: '3 d\'Abril',    name: 'Divendres Sant',       weekday: 'divendres' },
-  { date: '6 d\'Abril',    name: 'Dilluns de Pasqua',    weekday: 'dilluns' },
-  { date: '1 de Maig',     name: 'Festa del treball',    weekday: 'divendres' },
-  { date: '24 de Juny',    name: 'Sant Joan',            weekday: 'dimecres' },
-  { date: '15 d\'Agost',   name: 'L\'Assumpció',         weekday: 'dissabte' },
-  { date: '11 de Setembre',name: 'Diada de Catalunya',   weekday: 'divendres' },
-  { date: '12 d\'Octubre', name: 'Festa Nacional d\'Espanya', weekday: 'dilluns' },
-  { date: '1 de Novembre', name: 'Tots Sants',           weekday: 'diumenge' },
-  { date: '6 de Desembre', name: 'La Constitució',       weekday: 'diumenge' },
-  { date: '8 de Desembre', name: 'La Puríssima',         weekday: 'dimarts' },
-  { date: '25 de Desembre',name: 'Nadal',                weekday: 'divendres' },
-  { date: '26 de Desembre',name: 'Sant Esteve',          weekday: 'dissabte' },
+  { date: '1 de Gener',    nameKey: 'solicituds.vacHolidayAnyNou',        weekdayKey: 'solicituds.vacWeekdayThu' },
+  { date: '6 de Gener',    nameKey: 'solicituds.vacHolidayReis',          weekdayKey: 'solicituds.vacWeekdayTue' },
+  { date: '3 d\'Abril',    nameKey: 'solicituds.vacHolidayDivendresSant', weekdayKey: 'solicituds.vacWeekdayFri' },
+  { date: '6 d\'Abril',    nameKey: 'solicituds.vacHolidayPasqua',        weekdayKey: 'solicituds.vacWeekdayMon' },
+  { date: '1 de Maig',     nameKey: 'solicituds.vacHolidayTreball',       weekdayKey: 'solicituds.vacWeekdayFri' },
+  { date: '24 de Juny',    nameKey: 'solicituds.vacHolidaySantJoan',      weekdayKey: 'solicituds.vacWeekdayWed' },
+  { date: '15 d\'Agost',   nameKey: 'solicituds.vacHolidayAssumpcio',     weekdayKey: 'solicituds.vacWeekdaySat' },
+  { date: '11 de Setembre',nameKey: 'solicituds.vacHolidayDiada',         weekdayKey: 'solicituds.vacWeekdayFri' },
+  { date: '12 d\'Octubre', nameKey: 'solicituds.vacHolidayEspanya',       weekdayKey: 'solicituds.vacWeekdayMon' },
+  { date: '1 de Novembre', nameKey: 'solicituds.vacHolidayTotsSants',     weekdayKey: 'solicituds.vacWeekdaySun' },
+  { date: '6 de Desembre', nameKey: 'solicituds.vacHolidayConstitucio',   weekdayKey: 'solicituds.vacWeekdaySun' },
+  { date: '8 de Desembre', nameKey: 'solicituds.vacHolidayPurissima',     weekdayKey: 'solicituds.vacWeekdayTue' },
+  { date: '25 de Desembre',nameKey: 'solicituds.vacHolidayNadal',         weekdayKey: 'solicituds.vacWeekdayFri' },
+  { date: '26 de Desembre',nameKey: 'solicituds.vacHolidaySantEsteve',    weekdayKey: 'solicituds.vacWeekdaySat' },
 ];
 
 function VacancesInfo() {
+  const { t } = useTranslation();
   return (
     <div className="space-y-5">
       {/* Períodes */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
         <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4 flex items-center gap-2">
-          <Calendar size={15} className="text-red-600" /> Períodes de vacances 2026
+          <Calendar size={15} className="text-red-600" /> {t('solicituds.vacPeriodsTitle')}
         </h3>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-gray-400 border-b border-gray-100 dark:border-zinc-800">
-                <th className="py-2 pr-3 font-semibold">Període</th>
-                <th className="py-2 pr-3 font-semibold">Dates</th>
-                <th className="py-2 pr-3 font-semibold">Dies</th>
-                <th className="py-2 pr-3 font-semibold">Sol·licitud</th>
-                <th className="py-2 pr-3 font-semibold">Confirmació</th>
+                <th className="py-2 pr-3 font-semibold">{t('solicituds.vacColPeriod')}</th>
+                <th className="py-2 pr-3 font-semibold">{t('solicituds.vacColDates')}</th>
+                <th className="py-2 pr-3 font-semibold">{t('solicituds.vacColDays')}</th>
+                <th className="py-2 pr-3 font-semibold">{t('solicituds.vacColRequest')}</th>
+                <th className="py-2 pr-3 font-semibold">{t('solicituds.vacColConfirm')}</th>
               </tr>
             </thead>
             <tbody>
@@ -4010,19 +4013,19 @@ function VacancesInfo() {
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-gray-500 dark:text-zinc-400 mt-3 font-semibold">TOTAL DE DIES PER FER: 33 dies</p>
+        <p className="text-xs text-gray-500 dark:text-zinc-400 mt-3 font-semibold">{t('solicituds.vacTotalDays', { count: 33 })}</p>
       </div>
 
       {/* Aclariments */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
         <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3 flex items-center gap-2">
-          <FileText size={15} className="text-red-600" /> Aclariments
+          <FileText size={15} className="text-red-600" /> {t('solicituds.vacClarificationsTitle')}
         </h3>
         <ul className="space-y-2">
           {VAC_CLARIFICATIONS.map((c, i) => (
             <li key={i} className="flex gap-2 text-xs text-gray-700 dark:text-zinc-300 leading-relaxed">
               <span className="text-red-500 mt-0.5 flex-shrink-0">•</span>
-              <span>{c}</span>
+              <span>{t(c)}</span>
             </li>
           ))}
         </ul>
@@ -4031,17 +4034,11 @@ function VacancesInfo() {
       {/* Intensius */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
         <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3 flex items-center gap-2">
-          <Clock size={15} className="text-red-600" /> Intensius 2026
+          <Clock size={15} className="text-red-600" /> {t('solicituds.vacIntensiveTitle')}
         </h3>
-        <p className="text-xs text-gray-700 dark:text-zinc-300 leading-relaxed mb-2">
-          Els divendres intensius començaran a partir del <strong>26 de Juny</strong> i finalitzaran el <strong>4 de Setembre</strong>. Fora d'aquest període no està permès realitzar-ne.
-        </p>
-        <p className="text-xs text-gray-700 dark:text-zinc-300 leading-relaxed mb-2">
-          També es farà intensiu el <strong>2 d'abril</strong>, el <strong>23 de juny</strong>, el <strong>18 de desembre</strong>, el <strong>24 de desembre</strong>, el <strong>31 de desembre</strong> i el <strong>5 de gener 2027</strong>. El 18 de desembre està aprovat fer intensiu per assistir al dinar del departament; si es mou de dia, l'intensiu es pot canviar, però el dia 18 caldrà fer l'horari habitual.
-        </p>
-        <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-100 dark:border-yellow-900/40 rounded-lg px-3 py-2 text-xs text-yellow-800 dark:text-yellow-300 mt-2">
-          Si és necessari fer un dia intensiu fora de les dates preestablertes, haurà d'estar comunicat, justificat i acceptat per Recursos Humans com a mínim amb <strong>una setmana d'antelació</strong>.
-        </div>
+        <p className="text-xs text-gray-700 dark:text-zinc-300 leading-relaxed mb-2" dangerouslySetInnerHTML={{ __html: t('solicituds.vacIntensivePara1') }} />
+        <p className="text-xs text-gray-700 dark:text-zinc-300 leading-relaxed mb-2" dangerouslySetInnerHTML={{ __html: t('solicituds.vacIntensivePara2') }} />
+        <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-100 dark:border-yellow-900/40 rounded-lg px-3 py-2 text-xs text-yellow-800 dark:text-yellow-300 mt-2" dangerouslySetInnerHTML={{ __html: t('solicituds.vacIntensiveNote') }} />
       </div>
 
       {/* Novetat taviltime */}
@@ -4049,9 +4046,9 @@ function VacancesInfo() {
         <div className="flex items-start gap-3">
           <Mail size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-bold text-gray-900 dark:text-white text-sm">Novetat — gestions</p>
+            <p className="font-bold text-gray-900 dark:text-white text-sm">{t('solicituds.vacNewsTitle')}</p>
             <p className="text-xs text-gray-700 dark:text-zinc-300 mt-1 leading-relaxed">
-              A partir de l'1 de Gener de 2026, totes les gestions relacionades amb vacances, registre de jornada, justificants de visites mèdiques, etc., cal enviar-les a:
+              {t('solicituds.vacNewsBody')}
             </p>
             <a href="mailto:taviltime@tavil.net" className="inline-block mt-2 font-mono text-sm font-semibold text-red-600 hover:underline">taviltime@tavil.net</a>
           </div>
@@ -4061,7 +4058,7 @@ function VacancesInfo() {
       {/* Dies festius */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5">
         <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3 flex items-center gap-2">
-          <Star size={15} className="text-red-600" /> Dies festius 2026
+          <Star size={15} className="text-red-600" /> {t('solicituds.vacHolidaysTitle')}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {VAC_HOLIDAYS.map((h, i) => (
@@ -4069,7 +4066,7 @@ function VacancesInfo() {
               <div className="flex-shrink-0 w-1 h-8 rounded-full bg-red-500" />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-gray-800 dark:text-zinc-200">{h.date}</p>
-                <p className="text-[10px] text-gray-500 dark:text-zinc-400">{h.name} <span className="text-gray-400">({h.weekday})</span></p>
+                <p className="text-[10px] text-gray-500 dark:text-zinc-400">{t(h.nameKey)} <span className="text-gray-400">({t(h.weekdayKey)})</span></p>
               </div>
             </div>
           ))}
@@ -4138,12 +4135,12 @@ function VacRangePicker({
   // Basic checks only — no periodo rules (sense periodes mode).
   const draftError = (() => {
     if (!draftRange) return null;
-    if (draftRange.final < draftRange.inici) return "La data final ha de ser posterior a la d'inici.";
-    if (laboralDaysBetween(draftRange.inici, draftRange.final) === 0) return 'El rang no conté cap dia laboral.';
+    if (draftRange.final < draftRange.inici) return tVac('solicituds.vacPickerErrEndBeforeStart');
+    if (laboralDaysBetween(draftRange.inici, draftRange.final) === 0) return tVac('solicituds.vacPickerErrNoWorkingDays');
     // Overlap check with existing confirmed ranges
     for (const r of ranges) {
       if (!(draftRange.final < r.inici || draftRange.inici > r.final)) {
-        return 'El rang es solapa amb un altre ja afegit.';
+        return tVac('solicituds.vacPickerErrOverlap');
       }
     }
     return null;
@@ -4189,9 +4186,9 @@ function VacRangePicker({
     <div ref={cardRef} className="rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50/50 dark:bg-zinc-900/50">
       <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50 transition-colors rounded-xl">
         <div className="text-left">
-          <p className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">Selecció de dates</p>
+          <p className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">{tVac('solicituds.vacPickerTitle')}</p>
           <p className="text-sm text-gray-900 dark:text-white mt-0.5">
-            {ranges.length === 0 ? 'Cap rang seleccionat' : `${ranges.length} rang${ranges.length > 1 ? 's' : ''} · ${totalDies} dies laborals`}
+            {ranges.length === 0 ? tVac('solicituds.vacPickerNoRange') : tVac('solicituds.vacPickerSummary', { count: ranges.length, days: totalDies })}
           </p>
         </div>
         <ChevronDown size={16} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -4209,7 +4206,7 @@ function VacRangePicker({
                     {fmtDayMonth(r.inici)} – {fmtDayMonth(r.final)}
                     <span className="text-gray-400 ml-1">·</span>
                     <span className="text-gray-500 text-[10px]">{laboralDaysBetween(r.inici, r.final)}d</span>
-                    <button onClick={() => handleRemove(idx)} aria-label="Eliminar rang" className="flex items-center justify-center w-5 h-5 rounded-full hover:bg-red-100 dark:hover:bg-red-950/40 hover:text-red-600 transition-colors ml-0.5">
+                    <button onClick={() => handleRemove(idx)} aria-label={tVac('solicituds.vacPickerRemoveRange')} className="flex items-center justify-center w-5 h-5 rounded-full hover:bg-red-100 dark:hover:bg-red-950/40 hover:text-red-600 transition-colors ml-0.5">
                       <X size={11} />
                     </button>
                   </span>
@@ -4284,19 +4281,19 @@ function VacRangePicker({
 
             {/* Draft footer */}
             <div className="mt-3 flex items-center justify-between gap-3 min-h-[34px]">
-              {!draftFrom && <p className="text-[11px] text-gray-500 dark:text-zinc-400">Selecciona la data d'inici</p>}
-              {draftFrom && !draftTo && <p className="text-[11px] text-gray-500 dark:text-zinc-400">Selecciona la data final</p>}
+              {!draftFrom && <p className="text-[11px] text-gray-500 dark:text-zinc-400">{tVac('solicituds.vacPickerSelectStart')}</p>}
+              {draftFrom && !draftTo && <p className="text-[11px] text-gray-500 dark:text-zinc-400">{tVac('solicituds.vacPickerSelectEnd')}</p>}
               {draftRange && (
                 <>
                   <div className="flex flex-col gap-0.5">
                     <span className="text-[11px] text-gray-700 dark:text-zinc-300">
-                      {fmtDayMonth(draftRange.inici)} – {fmtDayMonth(draftRange.final)} · {laboralDaysBetween(draftRange.inici, draftRange.final)} dies lab.
+                      {tVac('solicituds.vacPickerDraftDays', { start: fmtDayMonth(draftRange.inici), end: fmtDayMonth(draftRange.final), count: laboralDaysBetween(draftRange.inici, draftRange.final) })}
                     </span>
                     {draftError && <span className="text-[10.5px] text-red-600 dark:text-red-400">{draftError}</span>}
                   </div>
                   <div className="flex gap-1.5">
-                    <button type="button" onClick={() => { setDraftFrom(null); setDraftTo(null); }} className="text-[11px] px-2.5 py-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800">Cancel·lar</button>
-                    <button type="button" onClick={handleAfegir} disabled={!!draftError} className="text-[11px] px-3 py-1.5 rounded-md bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-semibold">+ Afegir rang</button>
+                    <button type="button" onClick={() => { setDraftFrom(null); setDraftTo(null); }} className="text-[11px] px-2.5 py-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800">{tVac('common.cancel')}</button>
+                    <button type="button" onClick={handleAfegir} disabled={!!draftError} className="text-[11px] px-3 py-1.5 rounded-md bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-semibold">{tVac('solicituds.vacPickerAddRange')}</button>
                   </div>
                 </>
               )}
@@ -4521,7 +4518,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
             <ChevronLeft size={18} />
           </button>
           <span style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--tavil-text)', pointerEvents: 'none' }}>{t('solicituds.title')}</span>
-          <button onClick={handleRefresh} disabled={refreshing} aria-label="Refrescar" style={{ width: 36, height: 36, borderRadius: 18, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: refreshing ? 'wait' : 'pointer', color: refreshing ? 'var(--tavil-accent)' : 'var(--tavil-muted)', flexShrink: 0, zIndex: 1, marginLeft: 'auto', transition: 'color 150ms' }}>
+          <button onClick={handleRefresh} disabled={refreshing} aria-label={t('common.refresh')} style={{ width: 36, height: 36, borderRadius: 18, background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: refreshing ? 'wait' : 'pointer', color: refreshing ? 'var(--tavil-accent)' : 'var(--tavil-muted)', flexShrink: 0, zIndex: 1, marginLeft: 'auto', transition: 'color 150ms' }}>
             <RefreshCw size={15} className={cn(refreshing && "animate-spin")} />
           </button>
         </div>
@@ -4599,15 +4596,15 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                       {d.comments && <p style={{ fontSize: 12.5, color: 'var(--tavil-muted)', marginBottom: 8 }}>{d.comments}</p>}
                       <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginBottom: 10 }}>{d.author}</div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => handleApprove(d.id)} style={{ flex: 1, padding: '8px', borderRadius: 10, border: 'none', background: '#dcfce7', color: '#15803d', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Aprovar</button>
+                        <button onClick={() => handleApprove(d.id)} style={{ flex: 1, padding: '8px', borderRadius: 10, border: 'none', background: '#dcfce7', color: '#15803d', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{t('solicituds.approve')}</button>
                         {denyingId !== d.id ? (
-                          <button onClick={() => { setDenyingId(d.id); setDenyMotive(''); }} style={{ flex: 1, padding: '8px', borderRadius: 10, border: 'none', background: '#fee2e2', color: '#dc2626', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Denegar</button>
+                          <button onClick={() => { setDenyingId(d.id); setDenyMotive(''); }} style={{ flex: 1, padding: '8px', borderRadius: 10, border: 'none', background: '#fee2e2', color: '#dc2626', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{t('solicituds.deny')}</button>
                         ) : (
                           <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <input type="text" value={denyMotive} onChange={e => setDenyMotive(e.target.value)} placeholder="Motiu (opcional)" style={{ borderRadius: 8, border: '1px solid var(--tavil-border)', padding: '7px 10px', fontSize: 13, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
+                            <input type="text" value={denyMotive} onChange={e => setDenyMotive(e.target.value)} placeholder={t('solicituds.reasonOptional')} style={{ borderRadius: 8, border: '1px solid var(--tavil-border)', padding: '7px 10px', fontSize: 13, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none' }} />
                             <div style={{ display: 'flex', gap: 6 }}>
                               <button onClick={() => setDenyingId(null)} style={{ flex: 1, padding: '7px', borderRadius: 8, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>{t('common.cancel')}</button>
-                              <button onClick={() => handleDenyConfirm(d.id)} style={{ flex: 1, padding: '7px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Confirmar</button>
+                              <button onClick={() => handleDenyConfirm(d.id)} style={{ flex: 1, padding: '7px', borderRadius: 8, border: 'none', background: '#dc2626', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{t('solicituds.confirm')}</button>
                             </div>
                           </div>
                         )}
@@ -4619,7 +4616,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
             )}
 
             {/* My requests */}
-            <div className="mobile-kicker" style={{ marginBottom: 8 }}>LES MEVES SOL·LICITUDS</div>
+            <div className="mobile-kicker" style={{ marginBottom: 8 }}>{t('solicituds.mobileMyRequests')}</div>
             {(() => {
               const myReqs = diesNoOrdinaris.filter(d => !isRRHH && !isHead ? true : d.author === currentUser?.email);
               const activeReqs = myReqs.filter(d => d.status === 'Pendent');
@@ -4627,7 +4624,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
               if (myReqs.length === 0) return (
                 <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--tavil-faint)' }}>
                   <FileText size={32} style={{ margin: '0 auto 10px', opacity: 0.35 }} />
-                  <p style={{ fontSize: 13.5 }}>Sense sol·licituds</p>
+                  <p style={{ fontSize: 13.5 }}>{t('solicituds.noRequestsShort')}</p>
                 </div>
               );
               return (
@@ -4655,7 +4652,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                   {closedReqs.length > 0 && (
                     <>
                       <button onClick={() => setClosedCollapsed(c => !c)} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                        <span className="mobile-kicker" style={{ opacity: 0.7 }}>SOL·LICITUDS PROCESSADES · {closedReqs.length}</span>
+                        <span className="mobile-kicker" style={{ opacity: 0.7 }}>{t('solicituds.processedShort')} · {closedReqs.length}</span>
                         <ChevronDown size={12} className={cn("transition-transform duration-300", !closedCollapsed ? 'rotate-180' : '')} style={{ color: 'var(--tavil-faint)' }} />
                       </button>
                       <div className="sol-drawer" data-open={String(!closedCollapsed)}>
@@ -4701,13 +4698,13 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
               return (
                 <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 16, padding: '14px 16px', marginBottom: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)' }}>Dies de vacances</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tavil-accent)' }}>{used} / {ANNUAL_QUOTA_DAYS} dies</span>
+                    <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tavil-text)' }}>{t('solicituds.vacQuotaTitle')}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--tavil-accent)' }}>{t('solicituds.vacQuotaCount', { used, quota: ANNUAL_QUOTA_DAYS })}</span>
                   </div>
                   <div style={{ height: 6, borderRadius: 3, background: 'var(--tavil-border)' }}>
                     <div style={{ height: 6, width: '100%', borderRadius: 3, background: 'var(--tavil-accent)', transform: `scaleX(${pct / 100})`, transformOrigin: 'left', transition: 'transform 600ms var(--ease-out-quint)' }} />
                   </div>
-                  <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginTop: 6 }}>{ANNUAL_QUOTA_DAYS - used} dies disponibles</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--tavil-faint)', marginTop: 6 }}>{t('solicituds.vacQuotaAvailable', { count: ANNUAL_QUOTA_DAYS - used })}</div>
                 </div>
               );
             })()}
@@ -4723,7 +4720,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                         {formatDate(v.start_date)} → {formatDate(v.end_date)}
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--tavil-muted)', marginBottom: 4 }}>{v.author_name}</div>
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: '#fef3c7', color: '#b45309' }}>{v.head_status === 'Pendent' ? 'Pendent cap' : 'Pendent RRHH'}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: '#fef3c7', color: '#b45309' }}>{v.head_status === 'Pendent' ? t('solicituds.vacPendingHead') : t('solicituds.vacPendingRrhh')}</span>
                     </div>
                   ))}
                 </div>
@@ -4731,11 +4728,11 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
             )}
 
             {/* My vacances list */}
-            <div className="mobile-kicker" style={{ marginBottom: 8 }}>LES MEVES VACANCES</div>
+            <div className="mobile-kicker" style={{ marginBottom: 8 }}>{t('solicituds.vacMine')}</div>
             {myVacances.length === 0 ? (
               <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--tavil-faint)' }}>
                 <Calendar size={32} style={{ margin: '0 auto 10px', opacity: 0.35 }} />
-                <p style={{ fontSize: 13.5 }}>Sense sol·licituds de vacances</p>
+                <p style={{ fontSize: 13.5 }}>{t('solicituds.noVacRequests')}</p>
               </div>
             ) : (() => {
               const activeMine = myVacances.filter(v => !vacIsProcessed(v));
@@ -4747,13 +4744,13 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                       {formatDate(v.start_date)} – {formatDate(v.end_date)}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(vacFinalStatus(v)) }}>{vacFinalStatus(v)}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, ...statusInline(vacFinalStatus(v)) }}>{solStatusLabel(vacFinalStatus(v))}</span>
                       {(isRRHH || isHead || v.user_id === currentUser?.id) && (
                         <button onClick={() => askDeleteVac(v.id, `${formatDate(v.start_date)} – ${formatDate(v.end_date)}`)} style={{ background: 'none', border: 'none', color: muted ? 'var(--tavil-faint)' : 'var(--tavil-accent)', cursor: 'pointer', padding: 4 }}><Trash2 size={14} /></button>
                       )}
                     </div>
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--tavil-faint)' }}>{laboralDaysBetween(v.start_date, v.end_date)} dies laborables</div>
+                  <div style={{ fontSize: 12, color: 'var(--tavil-faint)' }}>{t('solicituds.vacWorkingDaysCount', { count: laboralDaysBetween(v.start_date, v.end_date) })}</div>
                 </div>
               );
               return (
@@ -4766,7 +4763,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                   {processedMine.length > 0 && (
                     <>
                       <button onClick={() => setVacClosedCollapsed(c => !c)} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                        <span className="mobile-kicker" style={{ opacity: 0.7 }}>SOL·LICITUDS PROCESSADES · {processedMine.length}</span>
+                        <span className="mobile-kicker" style={{ opacity: 0.7 }}>{t('solicituds.processedShort')} · {processedMine.length}</span>
                         <ChevronDown size={12} className={cn("transition-transform duration-300", !vacClosedCollapsed ? 'rotate-180' : '')} style={{ color: 'var(--tavil-faint)' }} />
                       </button>
                       <div className="sol-drawer" data-open={String(!vacClosedCollapsed)}>
@@ -4814,19 +4811,19 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
         {mobileVacForm && createPortal(
           <div className={`fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm ${vacClosing ? 'anim-fade-out' : 'anim-fade-in'}`} onClick={closeVacForm}>
             <div style={{ background: 'var(--tavil-card)', borderRadius: '20px 20px 0 0', padding: '20px 20px 40px', width: '100%' }} className={vacClosing ? 'anim-sheet-exit' : 'anim-sheet-enter'} onClick={e => e.stopPropagation()}>
-              <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>Sol·licitar vacances</h3>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--tavil-text)', marginBottom: 16 }}>{t('solicituds.vacRequest')}</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div>
-                  <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>Data inici</label>
+                  <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>{t('solicituds.vacFormStart')}</label>
                   <DatePicker value={vacStartDate} onChange={setVacStartDate} minDate={today} />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>Data fi</label>
+                  <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>{t('solicituds.vacFormEnd')}</label>
                   <DatePicker value={vacEndDate} onChange={setVacEndDate} minDate={vacStartDate || today} />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>Comentaris</label>
-                  <textarea value={vacComments} onChange={e => setVacComments(e.target.value)} placeholder="Opcional" rows={2} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', resize: 'none', boxSizing: 'border-box' }} />
+                  <label style={{ fontSize: 12.5, color: 'var(--tavil-muted)', display: 'block', marginBottom: 5 }}>{t('solicituds.vacFormComments')}</label>
+                  <textarea value={vacComments} onChange={e => setVacComments(e.target.value)} placeholder={t('solicituds.vacFormCommentsPlaceholder')} rows={2} style={{ width: '100%', borderRadius: 10, border: '1px solid var(--tavil-border)', padding: '10px 14px', fontSize: 14, background: 'var(--tavil-bg)', color: 'var(--tavil-text)', fontFamily: 'inherit', outline: 'none', resize: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                   <button onClick={closeVacForm} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--tavil-border)', background: 'none', color: 'var(--tavil-muted)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('common.cancel')}</button>
@@ -4848,7 +4845,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                     disabled={!vacStartDate || !vacEndDate || vacSubmitting}
                     style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'var(--tavil-accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: (!vacStartDate || !vacEndDate || vacSubmitting) ? 0.5 : 1 }}
                   >
-                    {vacSubmitting ? 'Enviant…' : 'Sol·licitar'}
+                    {vacSubmitting ? t('solicituds.vacFormSubmitting') : t('solicituds.vacFormSubmit')}
                   </button>
                 </div>
               </div>
@@ -5103,7 +5100,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                 ? "bg-red-600 text-white border-red-600"
                 : "border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:border-gray-300 dark:hover:border-zinc-600 bg-white dark:bg-zinc-900"
             )}
-          >Les meves sol·licituds</button>
+          >{t('solicituds.vacSubTabMine')}</button>
           <button
             onClick={() => setVacSubTab('info')}
             className={cn(
@@ -5112,7 +5109,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                 ? "bg-red-600 text-white border-red-600"
                 : "border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:border-gray-300 dark:hover:border-zinc-600 bg-white dark:bg-zinc-900"
             )}
-          >Informació</button>
+          >{t('solicituds.vacSubTabInfo')}</button>
         </div>
       )}
 
@@ -5163,7 +5160,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
             for (const r of vacRanges) {
               const rep = validateVacanca(r.inici, r.final, ownVacances.map(v => ({ start_date: v.start_date, end_date: v.end_date, status: v.status })));
               if (rep.errors.length > 0) {
-                setVacError(`La sol·licitud (${r.inici} – ${r.final}) no compleix el conveni: ` + rep.errors.join('; '));
+                setVacError(t('solicituds.vacErrorConveniRange', { start: r.inici, end: r.final, errors: rep.errors.join('; ') }));
                 return;
               }
             }
@@ -5176,7 +5173,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
               setVacRanges([]); setVacComments('');
               setVacSuccess(true); setTimeout(() => setVacSuccess(false), 3000);
             } catch (e: any) {
-              setVacError('La sol·licitud ha estat rebutjada: ' + (e?.message ?? 'Error desconegut'));
+              setVacError(t('solicituds.vacErrorRejected', { error: e?.message ?? t('solicituds.vacErrorUnknown') }));
             } finally { setVacSubmitting(false); }
             return;
           }
@@ -5186,7 +5183,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
             ownVacances.map(v => ({ start_date: v.start_date, end_date: v.end_date, status: v.status })),
           );
           if (report.errors.length > 0) {
-            setVacError('La sol·licitud no compleix el conveni: ' + report.errors.join('; '));
+            setVacError(t('solicituds.vacErrorConveniSingle', { errors: report.errors.join('; ') }));
             return;
           }
           setVacSubmitting(true); setVacError(null);
@@ -5196,7 +5193,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
             setVacStartDate(''); setVacEndDate(''); setVacComments('');
             setVacSuccess(true); setTimeout(() => setVacSuccess(false), 3000);
           } catch (e: any) {
-            setVacError('La sol·licitud ha estat rebutjada: ' + (e?.message ?? 'Error desconegut'));
+            setVacError(t('solicituds.vacErrorRejected', { error: e?.message ?? t('solicituds.vacErrorUnknown') }));
           } finally { setVacSubmitting(false); }
         };
 
@@ -5206,7 +5203,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
               {showReviewPanel && reviewList.length > 0 && (
                 <div className="mb-6">
                   <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3">
-                    {isHead ? 'Peticions pendents d\'aprovació' : 'Peticions aprovades pel cap — pendent RRHH'}
+                    {isHead ? t('solicituds.vacReviewPendingHead') : t('solicituds.vacReviewPendingRrhh')}
                   </h3>
                   <div className="space-y-3">
                     {reviewList.map(v => (
@@ -5215,14 +5212,14 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                           <Calendar size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-gray-900 dark:text-white text-sm">{v.author_name} <span className="text-gray-400 font-normal">— {v.author_dept}</span></p>
-                            <p className="text-xs text-gray-400 mb-1">Del {formatDate(v.start_date)} al {formatDate(v.end_date)}</p>
+                            <p className="text-xs text-gray-400 mb-1">{t('solicituds.vacRange', { start: formatDate(v.start_date), end: formatDate(v.end_date) })}</p>
                             {v.comments && <p className="text-xs text-gray-500 dark:text-zinc-400 italic mb-2">"{v.comments}"</p>}
                             {vacDenyingId === v.id && (
                               <div className="mt-2 space-y-2">
-                                <textarea value={vacDenyComment} onChange={e => setVacDenyComment(e.target.value)} placeholder="Motiu de la denegació..." rows={2}
+                                <textarea value={vacDenyComment} onChange={e => setVacDenyComment(e.target.value)} placeholder={t('solicituds.denyReason')} rows={2}
                                   className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none" />
                                 <div className="flex gap-2">
-                                  <button onClick={() => handleVacDenyConfirm(v.id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">Confirmar denegació</button>
+                                  <button onClick={() => handleVacDenyConfirm(v.id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors">{t('solicituds.confirmDeny')}</button>
                                   <button onClick={() => { setVacDenyingId(null); setVacDenyComment(''); }} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">{t('common.cancel')}</button>
                                 </div>
                               </div>
@@ -5230,8 +5227,8 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                           </div>
                           {vacDenyingId !== v.id && (
                             <div className="flex items-center gap-2 flex-shrink-0">
-                              <button onClick={() => handleVacApprove(v.id)} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950/30 dark:text-green-400 transition-colors">Aprovar</button>
-                              <button onClick={() => { setVacDenyingId(v.id); setVacDenyStage(isHead ? 'head' : 'rrhh'); setVacDenyComment(''); }} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 transition-colors">Denegar</button>
+                              <button onClick={() => handleVacApprove(v.id)} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950/30 dark:text-green-400 transition-colors">{t('solicituds.approve')}</button>
+                              <button onClick={() => { setVacDenyingId(v.id); setVacDenyStage(isHead ? 'head' : 'rrhh'); setVacDenyComment(''); }} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 transition-colors">{t('solicituds.deny')}</button>
                             </div>
                           )}
                         </div>
@@ -5240,11 +5237,11 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                   </div>
                 </div>
               )}
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3">Sol·licituds de vacances ({vacances.length})</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3">{t('solicituds.vacListTitle', { count: vacances.length })}</h3>
               {vacances.length === 0 ? (
                 <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-8 text-center">
                   <Calendar size={32} className="text-gray-300 dark:text-zinc-600 mx-auto mb-3" />
-                  <p className="text-sm text-gray-400 dark:text-zinc-500">Cap sol·licitud de vacances</p>
+                  <p className="text-sm text-gray-400 dark:text-zinc-500">{t('solicituds.vacEmpty')}</p>
                 </div>
               ) : (() => {
                 const activeVac = vacances.filter(v => !vacIsProcessed(v));
@@ -5260,19 +5257,19 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                               <Calendar size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
                               <div className="flex-1 min-w-0">
                                 {(isRRHH || isHead) && <p className="font-semibold text-gray-900 dark:text-white text-sm mb-0.5">{v.author_name} <span className="text-gray-400 font-normal text-xs">— {v.author_dept}</span></p>}
-                                <p className="text-sm font-medium text-gray-700 dark:text-zinc-300">Del {formatDate(v.start_date)} al {formatDate(v.end_date)}</p>
-                                <p className="text-xs text-gray-400 mb-2">Sol·licitades el {formatDate(v.created_at)}</p>
+                                <p className="text-sm font-medium text-gray-700 dark:text-zinc-300">{t('solicituds.vacRange', { start: formatDate(v.start_date), end: formatDate(v.end_date) })}</p>
+                                <p className="text-xs text-gray-400 mb-2">{t('solicituds.vacRequestedOn', { date: formatDate(v.created_at) })}</p>
                                 {v.comments && <p className="text-xs text-gray-500 dark:text-zinc-400 italic mb-2">"{v.comments}"</p>}
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-[10px] font-semibold text-gray-500">Cap:</span>
-                                  <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(v.head_status))}>{v.head_status}</span>
-                                  <span className="text-[10px] font-semibold text-gray-500">RRHH:</span>
-                                  <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(v.rrhh_status))}>{v.rrhh_status}</span>
+                                  <span className="text-[10px] font-semibold text-gray-500">{t('solicituds.vacHeadLabel')}</span>
+                                  <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(v.head_status))}>{solStatusLabel(v.head_status)}</span>
+                                  <span className="text-[10px] font-semibold text-gray-500">{t('solicituds.vacRrhhLabel')}</span>
+                                  <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(v.rrhh_status))}>{solStatusLabel(v.rrhh_status)}</span>
                                 </div>
-                                {v.head_comment && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Comentari cap: {v.head_comment}</p>}
-                                {v.rrhh_comment && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">Comentari RRHH: {v.rrhh_comment}</p>}
+                                {v.head_comment && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">{t('solicituds.vacHeadComment', { comment: v.head_comment })}</p>}
+                                {v.rrhh_comment && <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">{t('solicituds.vacRrhhComment', { comment: v.rrhh_comment })}</p>}
                               </div>
-                              <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded flex-shrink-0", statusColor(v.status))}>{v.status}</span>
+                              <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded flex-shrink-0", statusColor(v.status))}>{solStatusLabel(v.status)}</span>
                             </div>
                           </div>
                         ))}
@@ -5294,13 +5291,13 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                                     <Calendar size={14} className="text-gray-400 dark:text-zinc-500 flex-shrink-0 mt-0.5" />
                                     <div className="flex-1 min-w-0">
                                       {(isRRHH || isHead) && <p className="font-medium text-gray-600 dark:text-zinc-300 text-sm mb-0.5">{v.author_name} <span className="text-gray-400 font-normal text-xs">— {v.author_dept}</span></p>}
-                                      <p className="text-sm font-medium text-gray-600 dark:text-zinc-300">Del {formatDate(v.start_date)} al {formatDate(v.end_date)}</p>
+                                      <p className="text-sm font-medium text-gray-600 dark:text-zinc-300">{t('solicituds.vacRange', { start: formatDate(v.start_date), end: formatDate(v.end_date) })}</p>
                                       {v.comments && <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5 italic">"{v.comments}"</p>}
-                                      {v.head_comment && <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">Comentari cap: {v.head_comment}</p>}
-                                      {v.rrhh_comment && <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">Comentari RRHH: {v.rrhh_comment}</p>}
+                                      {v.head_comment && <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">{t('solicituds.vacHeadComment', { comment: v.head_comment })}</p>}
+                                      {v.rrhh_comment && <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">{t('solicituds.vacRrhhComment', { comment: v.rrhh_comment })}</p>}
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
-                                      <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(vacFinalStatus(v)))}>{vacFinalStatus(v)}</span>
+                                      <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded", statusColor(vacFinalStatus(v)))}>{solStatusLabel(vacFinalStatus(v))}</span>
                                       {(isRRHH || isHead || v.user_id === currentUser?.id) && (
                                         <button onClick={() => askDeleteVac(v.id, `${formatDate(v.start_date)} – ${formatDate(v.end_date)}`)} className="p-1 text-gray-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"><Trash2 size={13} /></button>
                                       )}
@@ -5332,7 +5329,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                     <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-zinc-800 sticky top-0 bg-white dark:bg-zinc-900 z-10">
                       <div className="flex items-center gap-2">
                         <Calendar size={16} className="text-gray-500" />
-                        <h3 className="font-bold text-gray-900 dark:text-white text-sm">Nova sol·licitud de vacances</h3>
+                        <h3 className="font-bold text-gray-900 dark:text-white text-sm">{t('solicituds.vacFormTitle')}</h3>
                       </div>
                       <button onClick={() => setMobileFormOpen(false)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg text-gray-500">
                         <X size={18} />
@@ -5341,7 +5338,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                     <div className="p-4 space-y-3">
                       {vacSuccess && (
                         <div className="flex items-center gap-2 text-green-600 bg-green-50 dark:bg-green-950/20 rounded-lg px-3 py-2 text-xs font-medium">
-                          <CheckCircle size={13} /> Sol·licitud enviada correctament
+                          <CheckCircle size={13} /> {t('solicituds.vacSent')}
                         </div>
                       )}
                       {vacError && (
@@ -5350,25 +5347,25 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                         </div>
                       )}
                       <div>
-                        <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Data d'inici</label>
+                        <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">{t('solicituds.vacStartDate')}</label>
                         <DatePicker value={vacStartDate} onChange={setVacStartDate} minDate={today} />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Data de fi</label>
+                        <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">{t('solicituds.vacEndDate')}</label>
                         <DatePicker value={vacEndDate} onChange={setVacEndDate} minDate={vacStartDate || today} />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Comentaris (opcional)</label>
-                        <textarea value={vacComments} onChange={e => setVacComments(e.target.value.slice(0, 500))} placeholder="Motiu o informació addicional..." rows={3}
+                        <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">{t('solicituds.vacCommentsOptional')}</label>
+                        <textarea value={vacComments} onChange={e => setVacComments(e.target.value.slice(0, 500))} placeholder={t('solicituds.vacCommentsPlaceholder')} rows={3}
                           className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none" />
                       </div>
                       {vacReport && (
                         <div className="space-y-1.5">
                           {vacReport.laboralDays > 0 && (
                             <div className="text-[11px] text-gray-600 dark:text-zinc-400 bg-gray-50 dark:bg-zinc-800/50 rounded-lg px-2.5 py-1.5">
-                              <strong>{vacReport.laboralDays}</strong> dia{vacReport.laboralDays > 1 ? 's' : ''} laboral{vacReport.laboralDays > 1 ? 's' : ''}
+                              <strong>{t('solicituds.vacWorkingDays', { count: vacReport.laboralDays })}</strong>
                               {vacReport.period ? <> · {vacReport.period.label}</> : null}
-                              {' · '}consum anual: {vacReport.annualUsedIfApproved}/{ANNUAL_QUOTA_DAYS}
+                              {' · '}{t('solicituds.vacAnnualConsumption', { used: vacReport.annualUsedIfApproved, quota: ANNUAL_QUOTA_DAYS })}
                             </div>
                           )}
                           {vacReport.errors.map((e, i) => (
@@ -5383,10 +5380,10 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                           ))}
                         </div>
                       )}
-                      <p className="text-[11px] text-red-600">Requereix aprovació del cap i de RRHH</p>
+                      <p className="text-[11px] text-red-600">{t('solicituds.vacRequiresApproval')}</p>
                       <button onClick={async () => { await handleVacSubmit(); setMobileFormOpen(false); }} disabled={!vacStartDate || !vacEndDate || vacSubmitting || (vacReport?.errors.length ?? 0) > 0}
                         className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
-                        <Send size={14} /> Enviar sol·licitud
+                        <Send size={14} /> {t('solicituds.vacSubmit')}
                       </button>
                     </div>
                   </div>
@@ -5399,7 +5396,7 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                 onClick={() => setMobileFormOpen(true)}
                 style={{ position: 'fixed', right: '1rem', bottom: '5rem', zIndex: 9998 }}
                 className="md:hidden w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"
-                title="Nova sol·licitud"
+                title={t('solicituds.vacFabTitle')}
               >
                 <Plus size={24} />
               </button>,
@@ -5409,11 +5406,11 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
               <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 p-5 h-fit">
                 <div className="flex items-center gap-2 mb-4">
                   <Calendar size={15} className="text-gray-500" />
-                  <h3 className="font-bold text-gray-900 dark:text-white text-sm">Nova sol·licitud de vacances</h3>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-sm">{t('solicituds.vacFormTitle')}</h3>
                 </div>
                 {vacSuccess && (
                   <div className="mb-3 flex items-center gap-2 text-green-600 bg-green-50 dark:bg-green-950/20 rounded-lg px-3 py-2 text-xs font-medium">
-                    <CheckCircle size={13} /> Sol·licitud enviada correctament
+                    <CheckCircle size={13} /> {t('solicituds.vacSent')}
                   </div>
                 )}
                 {vacError && (
@@ -5430,17 +5427,17 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                     maxIso="2027-01-31"
                   />
                   <div>
-                    <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">Comentaris (opcional)</label>
-                    <textarea value={vacComments} onChange={e => setVacComments(e.target.value.slice(0, 500))} placeholder="Motiu o informació addicional..." rows={3}
+                    <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1 block">{t('solicituds.vacCommentsOptional')}</label>
+                    <textarea value={vacComments} onChange={e => setVacComments(e.target.value.slice(0, 500))} placeholder={t('solicituds.vacCommentsPlaceholder')} rows={3}
                       className="w-full border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-red-400 dark:bg-zinc-800 dark:text-white resize-none" />
                   </div>
                   {vacReport && (
                     <div className="space-y-1.5">
                       {vacReport.laboralDays > 0 && (
                         <div className="text-[11px] text-gray-600 dark:text-zinc-400 bg-gray-50 dark:bg-zinc-800/50 rounded-lg px-2.5 py-1.5">
-                          <strong>{vacReport.laboralDays}</strong> dia{vacReport.laboralDays > 1 ? 's' : ''} laboral{vacReport.laboralDays > 1 ? 's' : ''}
+                          <strong>{t('solicituds.vacWorkingDays', { count: vacReport.laboralDays })}</strong>
                           {vacReport.period ? <> · {vacReport.period.label}</> : null}
-                          {' · '}consum anual: {vacReport.annualUsedIfApproved}/{ANNUAL_QUOTA_DAYS}
+                          {' · '}{t('solicituds.vacAnnualConsumption', { used: vacReport.annualUsedIfApproved, quota: ANNUAL_QUOTA_DAYS })}
                         </div>
                       )}
                       {vacReport.errors.map((e, i) => (
@@ -5457,13 +5454,13 @@ function SolicitudsTab({ currentUser, onNotifChange, initialSubTab, onSubTabCons
                   )}
                   {vacRanges.length > 0 && (
                     <div className="text-[11px] text-gray-600 dark:text-zinc-400 bg-gray-50 dark:bg-zinc-800/50 rounded-lg px-2.5 py-1.5">
-                      <strong>{vacRanges.reduce((acc, r) => acc + laboralDaysBetween(r.inici, r.final), 0)}</strong> dies laborals · {vacRanges.length} rang{vacRanges.length > 1 ? 's' : ''}
+                      {t('solicituds.vacRangesSummary', { days: vacRanges.reduce((acc, r) => acc + laboralDaysBetween(r.inici, r.final), 0), count: vacRanges.length })}
                     </div>
                   )}
-                  <p className="text-[11px] text-red-600">Requereix aprovació del cap i de RRHH</p>
+                  <p className="text-[11px] text-red-600">{t('solicituds.vacRequiresApproval')}</p>
                   <button onClick={handleVacSubmit} disabled={(vacRanges.length === 0 && (!vacStartDate || !vacEndDate)) || vacSubmitting || (vacReport?.errors.length ?? 0) > 0}
                     className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
-                    <Send size={14} /> Enviar sol·licitud
+                    <Send size={14} /> {t('solicituds.vacSubmit')}
                   </button>
                 </div>
               </div>
