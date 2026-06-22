@@ -228,7 +228,7 @@ export function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
                                     </div>
                                     <div style={{ background: 'var(--tavil-card)', border: '1px solid var(--tavil-border)', borderRadius: 14, overflow: 'hidden' }}>
                                         {isLoading ? (
-                                            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--tavil-faint)', fontSize: 13 }}>Carregant…</div>
+                                            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--tavil-faint)', fontSize: 13 }}>{t('common.loading')}</div>
                                         ) : files !== null ? files.map((f, fi) => {
                                             const ext = f.name.split('.').pop()?.toUpperCase() ?? '';
                                             const { bg, fg } = spFtStyle(f.name);
@@ -355,7 +355,7 @@ export function EspaiCorporatiuTab({ onBack }: { onBack?: () => void }) {
                     {spLoading ? (
                         <div className="flex items-center justify-center py-12 gap-2 text-gray-400">
                             <div className="w-4 h-4 border-2 border-gray-300 border-t-red-500 rounded-full animate-spin" />
-                            <span className="text-sm">Carregant des de SharePoint…</span>
+                            <span className="text-sm">{t('corporate.loadingSharePoint')}</span>
                         </div>
                     ) : spError ? (
                         <div className="flex flex-col items-center py-8 gap-2 text-gray-400">

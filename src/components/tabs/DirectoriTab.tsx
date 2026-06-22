@@ -46,7 +46,7 @@ export function DirectoriTab({ onOpenDrawer }: { onOpenDrawer?: () => void } = {
                 </div>
                 {/* Header kicker + title */}
                 <div style={{ padding: '0 20px 14px' }}>
-                    <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>Equip</div>
+                    <div style={{ fontSize: 11, color: 'var(--tavil-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 6 }}>{t('directory.kicker')}</div>
                     <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 600, lineHeight: 1, margin: 0, letterSpacing: '0em', color: 'var(--tavil-text)' }}>{t('nav.directori')}</h1>
                 </div>
                 {/* Search */}

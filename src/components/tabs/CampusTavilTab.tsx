@@ -211,7 +211,7 @@ function CatalogCard({ item, i, onSelect, onOpenExternal, onCertUpload }: {
             onClick={e => { e.stopPropagation(); setExpanded(v => !v); }}
             className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
           >
-            {expanded ? <><ChevronUp size={10} />Plegar</> : '···'}
+            {expanded ? <><ChevronUp size={10} />{t('campus.collapse')}</> : '···'}
           </button>
         )}
       </div>
