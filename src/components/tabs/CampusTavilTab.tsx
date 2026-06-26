@@ -129,6 +129,7 @@ type CatalogItem = {
   endAt?: string | null;
   body_html?: string | null;
   page_content?: string | null;
+  content?: string | null;
   image?: string;
 };
 
@@ -301,6 +302,7 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
   const [mobileCat, setMobileCat] = useState('Tot');
   const [quizList, setQuizList] = useState<Quiz[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<CatalogItem | null>(null);
+  const [completedOpen, setCompletedOpen] = useState(false);
   const canManageFormacions = useMemo(() => {
     const allRoles = new Set([currentUser?.role ?? '', ...(currentUser?.roles ?? [])]);
     const isAdmin = allRoles.has('Administrador') || allRoles.has('Administrador/a');
@@ -372,6 +374,7 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
       startAt: c.start_at ?? null,
       endAt: c.end_at ?? null,
       image: c.image || undefined,
+      content: c.content ?? null,
     }));
 
   const internes: CatalogItem[] = quizList
@@ -397,7 +400,9 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
       image: q.image || undefined,
     })) as CatalogItem[];
 
-  const catalog: CatalogItem[] = [...externes, ...internes].filter(
+  const allItems: CatalogItem[] = [...externes, ...internes];
+  const completedItems: CatalogItem[] = allItems.filter(item => item.status === 'Completat');
+  const catalog: CatalogItem[] = allItems.filter(
     item => item.status !== 'Completat' && item.status !== 'No aprovat'
   );
   const filteredCatalog = catalog.filter(item => {
@@ -526,36 +531,93 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
                 </span>
               )}
             </div>
-            {selectedCourse.description && !selectedCourse.body_html && !selectedCourse.page_content && (
-              <p className="text-gray-600 dark:text-zinc-300 text-base leading-relaxed mb-6">
+            {selectedCourse.description && !selectedCourse.body_html && !selectedCourse.page_content && !selectedCourse.content && (
+              <p className="text-gray-600 dark:text-zinc-300 text-base leading-relaxed mb-6 whitespace-pre-wrap">
                 {selectedCourse.description}
               </p>
             )}
-            {selectedCourse.page_content && (() => {
+            {(selectedCourse.content || selectedCourse.page_content) && (() => {
+              const raw = selectedCourse.content || selectedCourse.page_content;
               try {
-                const blocks = JSON.parse(selectedCourse.page_content!);
+                const blocks: any[] = JSON.parse(raw!);
                 if (!Array.isArray(blocks) || !blocks.length) return null;
-                const sorted = [...blocks].sort((a, b) => a.y - b.y || a.x - b.x);
+                const ROW_H = 40, GAP = 8;
+                const maxRow = Math.max(...blocks.map(b => (b.y ?? 0) + (b.h ?? 1)));
                 return (
-                  <div className="formation-body mb-6 space-y-3">
-                    {sorted.map((block: any) => {
-                      const c = block.content || '';
-                      switch (block.type) {
-                        case 'headline': return <h2 key={block.id} className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>{c}</h2>;
-                        case 'subhead': return <h3 key={block.id} className="text-lg font-semibold">{c}</h3>;
-                        case 'byline': return <p key={block.id} className="text-sm text-[var(--tavil-faint)]">{c}</p>;
-                        case 'paragraph': return <p key={block.id} className="text-base leading-relaxed text-[var(--tavil-text)]" dangerouslySetInnerHTML={{ __html: c }} />;
-                        case 'image': return block.url ? <img key={block.id} src={resolveImg(block.url)} alt={c} className="w-full rounded-xl object-cover max-h-72" /> : null;
-                        case 'list': return (
-                          <ul key={block.id} className="list-disc list-inside space-y-1 text-base text-[var(--tavil-text)]">
-                            {c.split('\n').filter(Boolean).map((li: string, i: number) => <li key={i}>{li}</li>)}
-                          </ul>
-                        );
-                        case 'pullquote': return <blockquote key={block.id} className="border-l-4 border-[var(--tavil-accent)] pl-4 italic text-[var(--tavil-muted)]">{c}</blockquote>;
-                        case 'divider': return <hr key={block.id} className="border-[var(--tavil-border)]" />;
-                        case 'link': return block.url ? <a key={block.id} href={block.url} target="_blank" rel="noopener noreferrer" className="text-[var(--tavil-accent)] underline text-sm">{c || block.url}</a> : null;
-                        default: return c ? <p key={block.id} className="text-base leading-relaxed">{c}</p> : null;
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(12, 1fr)',
+                    gridTemplateRows: `repeat(${maxRow}, ${ROW_H}px)`,
+                    gap: GAP,
+                    marginBottom: 24,
+                  }}>
+                    {blocks.map((b: any) => {
+                      const col = Math.max(1, (b.x ?? 0) + 1);
+                      const colSpan = Math.max(1, Math.min(13 - col, b.w ?? 12));
+                      const row = Math.max(1, (b.y ?? 0) + 1);
+                      const rowSpan = Math.max(1, b.h ?? 1);
+                      const c = b.content ?? '';
+                      let inner: React.ReactNode;
+                      switch (b.type) {
+                        case 'headline':
+                          inner = <p style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.05rem,2.2vw,1.6rem)', fontWeight: 800, lineHeight: 1.1, color: 'var(--tavil-text)' }}>{c}</p>;
+                          break;
+                        case 'subhead':
+                          inner = <p style={{ fontSize: '1rem', fontWeight: 600, lineHeight: 1.25, color: 'var(--tavil-text)' }}>{c}</p>;
+                          break;
+                        case 'byline':
+                          inner = <p style={{ fontSize: '0.75rem', color: 'var(--tavil-faint)' }}>{c}</p>;
+                          break;
+                        case 'paragraph':
+                          inner = <p style={{ fontSize: '0.875rem', lineHeight: 1.65, color: 'var(--tavil-text)' }} dangerouslySetInnerHTML={{ __html: c }} />;
+                          break;
+                        case 'pullquote':
+                          inner = <blockquote style={{ borderLeft: '3px solid var(--tavil-accent)', paddingLeft: 10, fontStyle: 'italic', color: 'var(--tavil-muted)', fontSize: '0.875rem', lineHeight: 1.5 }}>{c}</blockquote>;
+                          break;
+                        case 'list':
+                          inner = (
+                            <ul style={{ listStyleType: 'disc', paddingLeft: 18, fontSize: '0.875rem', lineHeight: 1.6, color: 'var(--tavil-text)' }}>
+                              {c.split('\n').filter(Boolean).map((li: string, i: number) => <li key={i}>{li}</li>)}
+                            </ul>
+                          );
+                          break;
+                        case 'caption':
+                          inner = <p style={{ fontSize: '0.7rem', color: 'var(--tavil-faint)', lineHeight: 1.4 }}>{c}</p>;
+                          break;
+                        case 'image':
+                          inner = b.url ? <img src={resolveImg(b.url)} alt={c || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6, display: 'block' }} /> : null;
+                          break;
+                        case 'video':
+                          inner = b.url ? <video src={b.url} controls style={{ width: '100%', height: '100%', borderRadius: 6 }} /> : null;
+                          break;
+                        case 'link':
+                          inner = b.url ? <a href={b.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--tavil-accent)', fontSize: '0.85rem', textDecoration: 'underline' }}>{c || b.url}</a> : null;
+                          break;
+                        case 'divider':
+                          inner = <hr style={{ border: 'none', borderTop: '1px solid var(--tavil-border)', margin: '4px 0' }} />;
+                          break;
+                        case 'stat': {
+                          const parts = c.split('|');
+                          inner = (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 2 }}>
+                              <span style={{ fontSize: 'clamp(1.4rem,2.5vw,2.2rem)', fontWeight: 800, lineHeight: 1, color: 'var(--tavil-accent)' }}>{parts[0] ?? c}</span>
+                              {parts[1] && <span style={{ fontSize: '0.7rem', color: 'var(--tavil-muted)', textAlign: 'center' }}>{parts[1]}</span>}
+                            </div>
+                          );
+                          break;
+                        }
+                        default:
+                          inner = c ? <p style={{ fontSize: '0.875rem', lineHeight: 1.65, color: 'var(--tavil-text)' }}>{c}</p> : null;
                       }
+                      return (
+                        <div key={b.id} style={{
+                          gridColumn: `${col} / span ${colSpan}`,
+                          gridRow: `${row} / span ${rowSpan}`,
+                          overflow: 'hidden',
+                        }}>
+                          {inner}
+                        </div>
+                      );
                     })}
                   </div>
                 );
@@ -796,6 +858,46 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
               />
             ))}
           </div>
+
+          {completedItems.length > 0 && (
+            <div className="mt-4 rounded-xl border border-gray-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setCompletedOpen(o => !o)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-800/60 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-[var(--tavil-text)]">Completades</span>
+                  <span className="text-[11px] font-bold bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 px-2 py-0.5 rounded-full">{completedItems.length}</span>
+                </div>
+                <ChevronDown size={15} className={`text-gray-400 transition-transform duration-300 ${completedOpen ? 'rotate-180' : ''}`} />
+              </button>
+              <div className={`grid transition-[grid-template-rows] duration-[400ms] ease-in-out ${completedOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                <div className="overflow-hidden min-h-0">
+                  <div className="border-t border-gray-100 dark:border-zinc-800 divide-y divide-gray-50 dark:divide-zinc-800">
+                    {completedItems.map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => setSelectedCourse(item)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors text-left"
+                      >
+                        {item.image
+                          ? <img src={resolveImg(item.image)} alt="" className="w-10 h-7 rounded object-cover flex-shrink-0" />
+                          : <div className="w-10 h-7 rounded bg-gray-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0"><GraduationCap size={13} className="text-gray-400" /></div>
+                        }
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-[var(--tavil-text)] truncate">{item.title}</p>
+                          <p className="text-xs text-gray-400 truncate">{[item.hours, item.category].filter(Boolean).join(' · ')}</p>
+                        </div>
+                        <span className={cn("text-[10px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded flex-shrink-0", STATUS_COLORS[item.status])}>{item.status}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {mandatoryPending && pageActive && createPortal(
             <div
               className="fixed bottom-6 right-0 z-40 flex justify-center px-4 pointer-events-none anim-slide-up"
@@ -845,10 +947,10 @@ export function CampusTavilTab({ currentUser, onBack, pageActive = true }: Props
       )}
 
       {activeTab === 'El meu progrés' && (() => {
-        const allCompleted = catalog.filter(item => item.status === 'Completat');
-        const allInProgress = catalog.filter(item => item.status === 'En curs');
-        const allPending = catalog.filter(item => item.status === 'Pendent');
-        const allFailed = catalog.filter(item => item.status === 'No aprovat');
+        const allCompleted = completedItems;
+        const allInProgress = allItems.filter(item => item.status === 'En curs');
+        const allPending = allItems.filter(item => item.status === 'Pendent');
+        const allFailed = allItems.filter(item => item.status === 'No aprovat');
         const totalHours = allCompleted.filter(item => item.hours).reduce((s, item) => s + (parseInt(item.hours ?? '0') || 0), 0);
 
         const groups: { label: string; items: typeof catalog; emptyText: string }[] = [

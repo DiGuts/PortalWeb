@@ -30,8 +30,25 @@ $body = request_body();
 $id   = isset($segments[1]) && is_numeric($segments[1]) ? (int)$segments[1] : null;
 $sub  = $segments[2] ?? '';
 
+// GET /api/courses/{id}
+if ($method === 'GET' && $id !== null && $sub === '') {
+    require_formacions_or_admin();
+    $stmt = $db->prepare('SELECT * FROM courses WHERE id=?');
+    $stmt->execute([$id]);
+    $row = $stmt->fetch();
+    if (!$row) respond(['detail' => 'Curs no trobat'], 404);
+    $row['id']          = (int)$row['id'];
+    $row['mandatory']   = (int)$row['mandatory'];
+    $row['cert']        = (int)($row['cert'] ?? 0);
+    $row['is_external'] = (int)($row['is_external'] ?? 0);
+    $row['active']      = (int)($row['active'] ?? 1);
+    $row['departments'] = $row['departments'] ?: '[]';
+    $row['target_users'] = json_decode($row['target_users'] ?? '[]', true) ?: [];
+    respond($row);
+}
+
 // GET /api/courses
-if ($method === 'GET' && $id === null) {
+elseif ($method === 'GET' && $id === null) {
     $u    = auth_user();
     $uid  = (int)$u['id'];
     $rows = $db->query('SELECT * FROM courses ORDER BY mandatory DESC, title')->fetchAll();
@@ -43,6 +60,8 @@ if ($method === 'GET' && $id === null) {
         $userId   = (int)$u['id'];
         $rows = array_values(array_filter($rows, function ($r) use ($userDept, $userId) {
             if (!(int)$r['is_external']) return true;
+            // Hide inactive external courses from regular users
+            if (isset($r['active']) && !(int)$r['active']) return false;
             $depts      = json_decode($r['departments'] ?: '[]', true) ?: [];
             $tgt_users  = json_decode($r['target_users'] ?? '[]', true) ?: [];
             // No restriction = visible to all
@@ -104,9 +123,12 @@ elseif ($method === 'POST' && $id === null) {
         : null;
     $start_at  = isset($body['start_at']) && $body['start_at'] !== '' ? (string)$body['start_at'] : null;
     $end_at    = isset($body['end_at'])   && $body['end_at']   !== '' ? (string)$body['end_at']   : null;
+    $image     = str_val($body, 'image');
+    $content   = array_key_exists('content', $body) ? (string)($body['content'] ?? '') : '';
 
-    $db->prepare('INSERT INTO courses (title, description, url, category, hours, mandatory, is_external, departments, target_users, start_at, end_at) VALUES (?,?,?,?,?,?,1,?,?,?,?)')
-       ->execute([$title, $desc, $url, $cat, $hours, $mand, $depts, $tgt_users, $start_at, $end_at]);
+    $active = array_key_exists('active', $body) ? (int)(bool)$body['active'] : 1;
+    $db->prepare('INSERT INTO courses (title, description, url, category, hours, mandatory, is_external, departments, target_users, start_at, end_at, active, image, content) VALUES (?,?,?,?,?,?,1,?,?,?,?,?,?,?)')
+       ->execute([$title, $desc, $url, $cat, $hours, $mand, $depts, $tgt_users, $start_at, $end_at, $active, $image, $content]);
     $new_id = (int)$db->lastInsertId();
     _sync_course_agenda($db, $new_id, $title, $start_at, $end_at, $depts_arr, $tgt_users);
     respond(['id' => $new_id, 'status' => 'ok'], 201);
@@ -128,9 +150,23 @@ elseif ($method === 'PUT' && $id !== null && $sub === '') {
         : null;
     $start_at  = isset($body['start_at']) && $body['start_at'] !== '' ? (string)$body['start_at'] : null;
     $end_at    = isset($body['end_at'])   && $body['end_at']   !== '' ? (string)$body['end_at']   : null;
+    $image     = array_key_exists('image', $body) ? (string)($body['image'] ?? '') : null;
 
-    $db->prepare('UPDATE courses SET title=?, description=?, url=?, category=?, hours=?, mandatory=?, departments=?, target_users=?, start_at=?, end_at=? WHERE id=? AND is_external=1')
-       ->execute([$title, $desc, $url, $cat, $hours, $mand, $depts, $tgt_users, $start_at, $end_at, $id]);
+    $active = array_key_exists('active', $body) ? (int)(bool)$body['active'] : 1;
+
+    // Base update — always applied
+    $sql    = 'UPDATE courses SET title=?, description=?, url=?, category=?, hours=?, mandatory=?, departments=?, target_users=?, start_at=?, end_at=?, active=?';
+    $params = [$title, $desc, $url, $cat, $hours, $mand, $depts, $tgt_users, $start_at, $end_at, $active];
+
+    // image — update only when the key is present in the payload
+    if ($image !== null) { $sql .= ', image=?'; $params[] = $image; }
+
+    // content — update only when the key is present (extended editor); small editor omits it → preserved
+    if (array_key_exists('content', $body)) { $sql .= ', content=?'; $params[] = (string)($body['content'] ?? ''); }
+
+    $sql .= ' WHERE id=? AND is_external=1';
+    $params[] = $id;
+    $db->prepare($sql)->execute($params);
     _sync_course_agenda($db, $id, $title, $start_at, $end_at, $depts_arr, $tgt_users);
     respond(['status' => 'ok']);
 }

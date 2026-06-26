@@ -971,7 +971,7 @@ function AdminActivityEnrollments({ activities }: { activities: Activity[] }) {
                     </div>
                     {cap > 0 && (
                       <div style={{ marginTop: 9, height: 3, borderRadius: 2, background: T.border, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? '#f59e0b' : cat.bar, borderRadius: 2, transition: 'width 400ms ease' }} />
+                        <div style={{ height: '100%', width: '100%', background: pct >= 100 ? '#f59e0b' : cat.bar, borderRadius: 2, transformOrigin: 'left', transform: `scaleX(${pct / 100})`, transition: 'transform 400ms ease' }} />
                       </div>
                     )}
                   </div>
@@ -1002,7 +1002,7 @@ function AdminActivityEnrollments({ activities }: { activities: Activity[] }) {
                     <span style={{ fontWeight: 600, color: T.text }}>{selected.enrolled}/{selected.capacity}</span>
                   </div>
                   <div style={{ height: 5, borderRadius: 3, background: T.border, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', background: T.accent, width: `${Math.min((selected.enrolled / selected.capacity) * 100, 100)}%`, borderRadius: 3, transition: 'width 400ms ease' }} />
+                    <div style={{ height: '100%', width: '100%', background: T.accent, borderRadius: 3, transformOrigin: 'left', transform: `scaleX(${Math.min(selected.enrolled / selected.capacity, 1)})`, transition: 'transform 400ms ease' }} />
                   </div>
                   <div style={{ fontSize: 10.5, color: T.textFaint, marginTop: 4 }}>
                     {Math.max(0, selected.capacity - selected.enrolled)} places lliures
@@ -1660,9 +1660,9 @@ function AdminSeguiment({ quizzes, externals }: { quizzes: Quiz[]; externals: Co
 
 type FormationRow =
   | { kind: 'quiz'; id: number; refId: number; title: string; category: string; hours: string; mandatory: number; is_external: 0; is_presential: number; modality: string; image: string; description: string; questions: number; time_limit: number; passing_score: number; active: number; start_at: string | null; end_at: string | null }
-  | { kind: 'external'; id: number; refId: number; title: string; category: string; hours: string; mandatory: number; cert: number; is_external: 1; url: string; description: string; departments: string; target_users: number[]; start_at: string | null; end_at: string | null };
+  | { kind: 'external'; id: number; refId: number; title: string; category: string; hours: string; mandatory: number; cert: number; is_external: 1; url: string; description: string; departments: string; target_users: number[]; start_at: string | null; end_at: string | null; image: string };
 
-function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: { quizzes: Quiz[]; externals: Course[]; refresh: () => void; intent?: 'new' | null; onConsumeIntent?: () => void }) {
+function AdminCampus({ quizzes, externals, refresh, onUpdated, intent, onConsumeIntent }: { quizzes: Quiz[]; externals: Course[]; refresh: () => void; onUpdated: (kind: 'quiz' | 'external', id: number, patch: Record<string, any>) => void; intent?: 'new' | null; onConsumeIntent?: () => void }) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'quiz' | 'external' | 'presencial'>('all');
@@ -1675,7 +1675,7 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
   const [imgUploading, setImgUploading] = useState(false);
   const { confirm, confirmNode } = useConfirm();
   const [campusTab, setCampusTab] = useState<'formacions' | 'certificats' | 'seguiment'>('formacions');
-  const [adminToast, showErr] = useAdminToast();
+  const [adminToast, showErr, showOk] = useAdminToast();
 
   const rows: FormationRow[] = useMemo(() => {
     const qz: FormationRow[] = quizzes.map(z => ({
@@ -1691,7 +1691,7 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
       title: c.title, category: c.category, hours: c.hours,
       mandatory: c.mandatory, cert: c.cert ?? 0, is_external: 1, url: c.url, description: c.description,
       departments: c.departments, target_users: c.target_users || [],
-      start_at: c.start_at, end_at: c.end_at,
+      start_at: c.start_at, end_at: c.end_at, image: c.image ?? '',
     }));
     return [...qz, ...ex];
   }, [quizzes, externals, quizMandatoryOverride]);
@@ -1728,6 +1728,7 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
         category: selected.category,
         hours: selected.hours,
         mandatory: selected.mandatory,
+        active: (selected as any).active ?? 1,
         cert: selected.cert ?? 0,
         departments: depts,
         target_users: selected.target_users || [],
@@ -1810,6 +1811,16 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
   const save = async () => {
     if (!selected) return;
     setSaving(true);
+
+    // Snapshot for rollback
+    const rollback = selected.kind === 'external'
+      ? externals.find(e => e.id === selected.refId)
+      : quizzes.find(q => q.id === selected.refId);
+
+    // Optimistic update: reflect changes in the list immediately
+    onUpdated(selected.kind, selected.refId, draft);
+    showOk('Desat!');
+
     try {
       if (selected.kind === 'external') {
         await apiUpdateExternalCourse(selected.refId, {
@@ -1819,6 +1830,7 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
           category: draft.category ?? '',
           hours: draft.hours ?? '',
           mandatory: draft.mandatory ?? 0,
+          active: (draft as any).active ?? 1,
           cert: (draft as any).cert ?? 0,
           departments: draft.departments ?? [],
           target_users: draft.target_users ?? [],
@@ -1846,9 +1858,11 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
           questions: (fullQuiz.questions ?? []) as any,
         });
       }
-      refresh();
-    } catch (e: any) { showErr(e?.message ?? 'Error'); }
-    finally { setSaving(false); }
+    } catch (e: any) {
+      // Rollback optimistic update on failure
+      if (rollback) onUpdated(selected.kind, selected.refId, rollback);
+      showErr(e?.message ?? 'Error desant');
+    } finally { setSaving(false); }
   };
 
   const tableRows = filtered.map(r => ({ ...r, id: rowKey(r) as any }));
@@ -1863,7 +1877,14 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
             background: T.bgAlt, color: T.textMuted,
             border: `1px solid ${T.border}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}><GraduationCap size={14} /></div>
+            overflow: 'hidden',
+          }}>
+            {(r as any).image ? (
+              <img src={resolveUploadUrl((r as any).image)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <GraduationCap size={14} />
+            )}
+          </div>
           <div style={{ minWidth: 0, overflow: 'hidden' }}>
             <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</div>
             <div style={{ fontSize: 11.5, color: T.textFaint, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.description?.slice(0, 60) || '—'}</div>
@@ -1970,6 +1991,12 @@ function AdminCampus({ quizzes, externals, refresh, intent, onConsumeIntent }: {
                     <AField label="URL extern">
                       <AInput value={draft.url ?? ''} onChange={(e) => setDraft(d => ({ ...d, url: e.target.value }))} placeholder="https://…" />
                     </AField>
+                    <AToggle
+                      value={!!((draft as any).active ?? 1)}
+                      onChange={(v) => setDraft(d => ({ ...d, active: v ? 1 : 0 } as any))}
+                      label="Publicat"
+                      hint="Si no és publicat, no es mostra als usuaris."
+                    />
                     <AToggle
                       value={!!draft.mandatory}
                       onChange={(v) => setDraft(d => ({ ...d, mandatory: v ? 1 : 0 }))}
@@ -2479,7 +2506,7 @@ export function AdminBackoffice({ view, currentUser, onNavigate, onImpersonate, 
       {!loading && view === 'users'       && <AdminUsers      users={users} setUsers={setUsers}    refresh={refresh} currentUser={currentUser} onImpersonate={onImpersonate} intent={intent} onConsumeIntent={onConsumeIntent} />}
       {!loading && view === 'news'        && <AdminNews       news={news}       refresh={refresh} intent={intent} onConsumeIntent={onConsumeIntent} />}
       {!loading && view === 'activities'  && <AdminActivities activities={activities} refresh={refresh} intent={intent} onConsumeIntent={onConsumeIntent} />}
-      {!loading && view === 'campus'      && <AdminCampus     quizzes={quizzes} externals={externals} refresh={refresh} intent={intent} onConsumeIntent={onConsumeIntent} />}
+      {!loading && view === 'campus'      && <AdminCampus     quizzes={quizzes} externals={externals} refresh={refresh} onUpdated={(kind, id, patch) => { if (kind === 'quiz') setQuizzes(prev => prev.map(q => q.id === id ? { ...q, ...patch } : q)); else setCourses(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c)); }} intent={intent} onConsumeIntent={onConsumeIntent} />}
       {!loading && view === 'agenda'      && <AdminAgenda     events={agenda}   refresh={refresh} intent={intent} onConsumeIntent={onConsumeIntent} />}
       {!loading && view === 'avisos'      && <AdminAvisos     notices={notices} refresh={refresh} intent={intent} onConsumeIntent={onConsumeIntent} />}
     </AdminFont>

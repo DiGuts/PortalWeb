@@ -737,6 +737,7 @@ export interface Course {
   cert: number;
   url: string;
   is_external: number;
+  active?: number;
   departments: string; // JSON array string e.g. '["Comercial","RRHH"]'
   target_users: number[];
   start_at: string | null;
@@ -746,6 +747,7 @@ export interface Course {
   certificate_status?: 'pending' | 'approved' | 'rejected' | null;
   certificate_id?: number | null;
   image?: string | null;
+  content?: string | null;
 }
 
 // ── Certificates ──────────────────────────────────────────────────────────────
@@ -782,6 +784,7 @@ export interface ExternalCoursePayload {
   category: string;
   hours: string;
   mandatory: number;
+  active?: number;
   cert?: number;
   departments: string[];
   target_users: number[];
@@ -992,6 +995,7 @@ export interface QuizIn {
   is_presential?: number;
   modality?: string;
   location?: string;
+  page_content?: string;
   questions: QuizQuestionIn[];
 }
 

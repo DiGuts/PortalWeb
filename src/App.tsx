@@ -165,8 +165,8 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
     return () => clearInterval(id);
   }, [featuredNews.length]);
 
-  // Grid: non-featured news (excl. comunicats) + activities, sort by date desc, cap 8
-  type NovetatItem = { kind: 'news' | 'activity'; id: number; title: string; summary: string; date: string; image?: string; category?: string };
+  // Grid: non-featured news (excl. comunicats), sort by date desc, cap 8
+  type NovetatItem = { kind: 'news'; id: number; title: string; summary: string; date: string; image?: string; category?: string };
   const parseDate = (s: string): number => {
     if (!s) return 0;
     const d = new Date(s);
@@ -175,9 +175,6 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
   const novetats: NovetatItem[] = [
     ...news.filter(n => n.category !== 'Comunicats interns' && n.featured !== 1).map(n => ({
       kind: 'news' as const, id: n.id, title: n.title, summary: n.summary, date: n.date, image: n.image, category: n.category,
-    })),
-    ...activities.map(a => ({
-      kind: 'activity' as const, id: a.id, title: a.title, summary: a.description, date: a.date, image: undefined, category: a.category,
     })),
   ].sort((a, b) => parseDate(b.date) - parseDate(a.date)).slice(0, 8);
 
@@ -492,7 +489,7 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
       <div className="p-3 md:p-4 lg:p-8 max-w-7xl mx-auto">
 
       {/* Loading skeletons — shown only when all sources still empty (true first load) */}
-      {loading && news.length === 0 && activities.length === 0 && agendaEvents.length === 0 && notices.length === 0 && <SkeletonInici />}
+      {loading && news.length === 0 && agendaEvents.length === 0 && notices.length === 0 && <SkeletonInici />}
 
       {!loading && error && notices.length === 0 && news.length === 0 && (
         <div style={{ padding: '2rem 1.5rem', textAlign: 'center' }}>
@@ -704,38 +701,26 @@ function InicialTab({ onNavigate, onNavigateToDate, onOpenDrawer, hasUnread, onO
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {novetats.map(item => (
                   <div
-                    key={`${item.kind}-${item.id}`}
-                    onClick={() => item.kind === 'news' ? openArticleFromHome(item.id) : onNavigate?.('Activitats')}
+                    key={`news-${item.id}`}
+                    onClick={() => openArticleFromHome(item.id)}
                     className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 overflow-hidden cursor-pointer hover:border-red-200 dark:hover:border-red-900/40 transition-colors flex flex-col"
                   >
                     <div className="hidden md:block">
                       {item.image ? (
                         <img src={resolveImg(item.image)} alt="" loading="lazy" className="w-full h-28 object-cover" />
                       ) : (
-                        <div className={cn("w-full h-28 flex items-center justify-center", item.kind === 'news' ? "bg-red-50 dark:bg-red-950/20" : "bg-green-50 dark:bg-green-950/20")}>
-                          {item.kind === 'news'
-                            ? <Newspaper size={28} className="text-red-400" />
-                            : <ActivityIcon size={28} className="text-green-500" />
-                          }
+                        <div className="w-full h-28 flex items-center justify-center bg-red-50 dark:bg-red-950/20">
+                          <Newspaper size={28} className="text-red-400" />
                         </div>
                       )}
                     </div>
                     <div className="p-3 flex-1 flex flex-col">
                       <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                        <span className={cn(
-                          "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase",
-                          item.kind === 'news' ? "bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400" : "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400"
-                        )}>
-                          {item.kind === 'news' ? t('news.badge.news') : t('news.badge.activity')}
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400">
+                          {t('news.badge.news')}
                         </span>
                         {item.category && (
                           <span className="text-[9px] text-gray-500 dark:text-zinc-400 truncate">{item.category}</span>
-                        )}
-                        {item.kind === 'activity' && myEnrollments?.has(item.id) && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 flex items-center gap-0.5">
-                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ flexShrink: 0 }}><path d="M1.5 4l1.8 1.8L6.5 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            {t('activities.enrolled')}
-                          </span>
                         )}
                       </div>
                       <p className="font-semibold text-gray-900 dark:text-white text-sm leading-snug line-clamp-2">{item.title}</p>
@@ -10628,8 +10613,10 @@ function NewsTileContent({ tile, editable, activeLang, onChange, onRequestImage,
         : <div style={{ fontFamily: NT.headlineFont, fontWeight: NT.headlineWeight, fontSize: 'clamp(28px, 4vw, 52px)', lineHeight: 1.05, letterSpacing: '-0.02em', color: NT.ink }}>{renderInlineLinks(tc)}</div>;
     case 'subhead':
       return editable
-        ? <EditableText key={edKey} initialContent={tc} onChange={onChange} style={{ fontFamily: NT.headlineFont, fontWeight: 400, fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3, color: NT.mute }} />
-        : <div style={{ fontFamily: NT.headlineFont, fontWeight: 400, fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3, color: NT.mute }}>{renderInlineLinks(tc)}</div>;
+        ? <RichParaEditor key={edKey} initialContent={tc} onChange={onChange} style={{ fontFamily: NT.headlineFont, fontWeight: 400, fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3, color: NT.mute }} />
+        : isHtmlContent(tc)
+          ? <div style={{ fontFamily: NT.headlineFont, fontWeight: 400, fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3, color: NT.mute, whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: sanitizeParaHtml(tc) }} />
+          : <div style={{ fontFamily: NT.headlineFont, fontWeight: 400, fontSize: 'clamp(16px, 1.6vw, 22px)', lineHeight: 1.3, color: NT.mute, whiteSpace: 'pre-wrap' }}>{renderInlineLinks(tc)}</div>;
     case 'byline':
       return editable
         ? <EditableText key={edKey} initialContent={tc} onChange={onChange} style={{ fontFamily: NT.uiFont, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: NT.mute }} />
@@ -11082,7 +11069,7 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
   const [preview, setPreview] = useState(false);
 
   // Article metadata (settings modal)
-  const [title, setTitle] = useState('Esborrany sense títol');
+  const [title, setTitle] = useState('');
   const [category, setCategory] = useState(NEWS_CATS_FULL[0]);
   const [summary, setSummary] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -11112,7 +11099,8 @@ function NewsEditorPage({ initialId }: { initialId: number | null }) {
     if (initialId === null) return;
     apiGetNewsArticle(initialId)
       .then(a => {
-        setTitle(a.title || 'Esborrany sense títol');
+        setTitle(a.title || '');
+        document.title = `${a.title || 'Article'} · Editor · TAVIL`;
         setCategory(a.category || NEWS_CATS_FULL[0]);
         setSummary(a.summary || '');
         setDate((a.date || '').slice(0, 10));
@@ -12181,9 +12169,10 @@ function CourseEditorPage({ courseId, kind = 'external' }: { courseId: number; k
   const [preview, setPreview] = useState(false);
 
   // Course metadata (settings modal)
-  const [title, setTitle] = useState('Esborrany sense títol');
+  const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [coverUploading, setCoverUploading] = useState(false);
 
@@ -12210,13 +12199,13 @@ function CourseEditorPage({ courseId, kind = 'external' }: { courseId: number; k
     fetch(url, { headers: { Authorization: `Bearer ${tok}` } })
       .then(r => r.json())
       .then(c => {
-        if (!c || c.error) { setError('No s\'ha pogut carregar la formació.'); return; }
+        if (!c || c.error || c.detail) { setError('No s\'ha pogut carregar la formació.'); return; }
         setCourseRaw(c);
-        setTitle(c.title || 'Esborrany sense títol');
+        setTitle(c.title || '');
         setSummary(c.description || '');
         setCoverUrl(c.image || '');
-        document.title = `${c.title} · Editor · TAVIL`;
-        const raw = kind === 'quiz' ? (c.page_content || '') : (c.content || '');
+        document.title = `${c.title || 'Formació'} · Editor · TAVIL`;
+        const raw = kind === 'quiz' ? (c.page_content || c.body_html || '') : (c.content || '');
         const trimmed = (raw || '').trim();
         if (!trimmed) { setTiles([]); return; }
         try {
@@ -12455,19 +12444,32 @@ function CourseEditorPage({ courseId, kind = 'external' }: { courseId: number; k
     if (!title.trim()) { setError('El títol és obligatori'); return; }
     setSaving(true); setError('');
     try {
+      let imageUrl = coverUrl;
+      if (coverFile) {
+        const full = await apiUploadImage(coverFile);
+        const m = full.match(/(\/uploads\/[^?#]+)/);
+        imageUrl = m ? m[1] : full;
+      }
       const tok = localStorage.getItem('tavil_token') || sessionStorage.getItem('tavil_token') || '';
       const url = kind === 'quiz'
         ? `${API_BASE}/quizzes/${courseId}`
         : `${API_BASE}/courses/${courseId}`;
       const body = kind === 'quiz'
-        ? { ...courseRaw, title: title.trim(), description: summary.trim(), page_content: JSON.stringify(tiles), image: coverUrl }
-        : { ...courseRaw, title: title.trim(), description: summary.trim(), content: JSON.stringify(tiles), image: coverUrl };
-      await fetch(url, {
+        ? { ...courseRaw, title: title.trim(), description: summary.trim(), page_content: JSON.stringify(tiles), image: imageUrl }
+        : { ...courseRaw, title: title.trim(), description: summary.trim(), content: JSON.stringify(tiles), image: imageUrl };
+      const resp = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
         body: JSON.stringify(body),
       });
-      setCourseRaw((prev: any) => ({ ...prev, title: title.trim(), description: summary.trim(), image: coverUrl }));
+      if (!resp.ok) {
+        const detail = await resp.json().then((d: any) => d?.detail ?? d?.message).catch(() => null);
+        throw new Error(detail ?? `Error del servidor (${resp.status})`);
+      }
+      setCoverFile(null);
+      setCoverUrl(imageUrl);
+      setCoverUploading(false);
+      setCourseRaw((prev: any) => ({ ...prev, title: title.trim(), description: summary.trim(), image: imageUrl }));
       setSavedToast(true);
       setTimeout(() => setSavedToast(false), 1800);
     } catch (e: any) {
@@ -12770,6 +12772,31 @@ function CourseEditorPage({ courseId, kind = 'external' }: { courseId: number; k
                     boxSizing: 'border-box',
                   }}
                 />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: NT.mute, marginBottom: 4 }}>Imatge de portada</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {(coverFile || coverUrl) && (
+                    <img
+                      src={coverFile ? URL.createObjectURL(coverFile) : coverUrl}
+                      alt=""
+                      style={{ width: 96, height: 64, objectFit: 'cover', borderRadius: NT.radius, border: `1px solid ${NT.soft}` }}
+                    />
+                  )}
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={e => { setCoverFile(e.target.files?.[0] ?? null); }}
+                    style={{ fontSize: 12, fontFamily: NT.uiFont, color: NT.mute }}
+                  />
+                  {coverUrl && !coverFile && (
+                    <button type="button" onClick={() => { setCoverUrl(''); if (coverInputRef.current) coverInputRef.current.value = ''; }} style={{
+                      background: 'transparent', border: 'none', color: NT.accent,
+                      fontSize: 12, cursor: 'pointer',
+                    }}>Treure</button>
+                  )}
+                </div>
               </div>
             </div>
 

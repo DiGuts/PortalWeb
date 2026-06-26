@@ -209,7 +209,7 @@ if ($method === 'GET' && $id === null) {
 // GET /api/quizzes/{id}
 elseif ($method === 'GET' && $id !== null && $sub === '') {
     $u = auth_user();
-    $is_admin = in_array($u['role'], ['Administrador/a', 'Recursos humans'], true);
+    $is_admin = user_has_any_role($u, ['Administrador', 'Administrador/a', 'Recursos humans', 'Formacions']);
     respond(_get_full_quiz($db, $id, $is_admin));
 }
 
@@ -258,7 +258,8 @@ elseif ($method === 'PUT' && $id !== null && $sub === '') {
         $cur->execute([$id]);
         $mandatory = (int)($cur->fetch()['mandatory'] ?? 0);
     }
-    $db->prepare('UPDATE quizzes SET title=?, description=?, image=?, category=?, time_limit=?, passing_score=?, mandatory=?, active=?, start_at=?, end_at=?, target_departments=?, target_users=?, is_presential=?, location=?, page_content=?, modality=? WHERE id=?')
+    $page_content_val = array_key_exists('page_content', $body) ? str_val($body, 'page_content') : null;
+    $db->prepare('UPDATE quizzes SET title=?, description=?, image=?, category=?, time_limit=?, passing_score=?, mandatory=?, active=?, start_at=?, end_at=?, target_departments=?, target_users=?, is_presential=?, location=?, page_content=COALESCE(?,page_content), modality=? WHERE id=?')
        ->execute([
            str_val($body,'title'), str_val($body,'description'),
            str_val($body,'image'), str_val($body,'category'),
@@ -268,7 +269,7 @@ elseif ($method === 'PUT' && $id !== null && $sub === '') {
            _quiz_str($body, 'start_at'), _quiz_str($body, 'end_at'),
            _encode_target_depts($body), _encode_target_users($body),
            $is_presential, str_val($body, 'location'),
-           str_val($body, 'page_content'),
+           $page_content_val,
            $modality,
            $id,
        ]);
